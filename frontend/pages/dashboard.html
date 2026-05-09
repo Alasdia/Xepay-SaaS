@@ -1,0 +1,1807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>dashboard - ePay</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <style>
+
+        body {
+            background: #020617;
+            min-height: 100vh;
+            color: white;
+            position: static;
+            overflow-x: hidden;
+        }
+        .modal {
+            z-index: 99999 !important;
+        }
+        .modal-backdrop {
+            z-index: 99990 !important;
+        }
+        .modal-content {
+            background: #0f172a;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+        }
+        .modal-header,
+        .modal-footer {
+          border: none;
+        }
+
+        .modal-title {
+          font-weight: 700;
+        }
+
+        .modal .form-control,
+        .modal select {
+          background: rgba(255,255,255,0.06);
+          border: 1px solid rgba(255,255,255,0.08);
+          color: white;
+        }
+
+        .modal .form-control::placeholder {
+          color: rgba(255,255,255,0.55);
+        }
+
+        .modal .form-control:focus,
+        .modal select:focus {
+          background: rgba(255,255,255,0.08);
+          color: white;
+          border-color: #3b82f6;
+          box-shadow: none;
+        }
+        /* Glow + modern modal */
+        .modal-content {
+          border-radius: 16px;
+          overflow: hidden;
+          background: linear-gradient(135deg, #0f172a, #1e3a8a);
+        }
+
+        /* Footer propre */
+        .modal-footer {
+          border-top: none;
+        }
+
+        /* Bouton upgrade / create */
+        .btn-warning {
+          background: linear-gradient(90deg, #facc15, #f59e0b);
+          border: none;
+          font-weight: bold;
+        }
+
+        /* Hover effet */
+        .btn-warning:hover {
+          opacity: 0.9;
+        }
+
+        /* Inputs spacing */
+        .modal-body {
+          padding: 30px;
+        }
+        .modal-dialog {
+            max-width: 500px;
+        }
+        .modal-content{
+            border-radius: 14px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        /* INPUTS PLUS GRANDS */
+        .modal .form-control,
+        .modal .form-select {
+          height: 48px;              /* + grand */
+          font-size: 15px;
+          padding: 0 14px;
+          border-radius: 10px;       /* arrondi propre */
+        }
+
+        /* INPUT MONTANT + SELECT ALIGNÉS */
+        .modal .d-flex .form-control {
+          flex: 1;
+        }
+
+        .modal .d-flex .form-select {
+          width: 100px;
+          border-radius: 10px;
+        }
+
+        /* ESPACE ENTRE LES BLOCS */
+        .modal .mb-3 {
+          margin-bottom: 18px !important;
+        }
+
+        .modal .mb-4 {
+          margin-bottom: 22px !important;
+        }
+        .modal .form-control,
+        .modal .form-select {
+          background: rgba(255,255,255,0.08);
+          border: 1px solid rgba(255,255,255,0.1);
+          color: white;
+        }
+        .modal-upgrade {
+            max-width: 750px;
+        }.modal-upgrade .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+            0 0 20px rgba(0, 0, 0, 0.04),
+            0 10px 30px rgba(0, 0, 0, 0.5);
+            max-width: 220px;
+            margin: auto;
+        }
+        .modal-upgrade .card.pro {
+          background: rgba(255, 255, 255, 0.08);
+
+          border: 1px solid rgba(255, 215, 0, 0.5);
+
+          box-shadow:
+            0 0 0 1px rgba(255, 215, 0, 0.2) inset,
+            0 0 25px rgba(255, 215, 0, 0.25),
+            0 15px 40px rgba(0,0,0,0.6);
+        }
+        .modal-upgrade .card:hover {
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 
+            0 0 0 1px rgba(255, 255, 255, 0.12) inset,
+            0 0 30px rgba(255, 255, 255, 0.08)
+            0 15px 40px rgba(0, 0, 0, 0.7);
+            transform: translateY(-3px);
+            transition: all 0.2s ease;
+        }
+
+        /* Labels */
+        .form-label {
+          font-size: 13px;
+          opacity: 0.8;
+        }
+
+        /* Glow animé */
+        body::before {
+            content: "";
+            position: fixed;
+            width: 200%;
+            height: 200%;
+            top: -50%;
+            left: -50%;
+
+            background: radial-gradient(circle, rgba(255, 78, 205, 0.2), transparent 40%),
+                radial-gradient(circle, rgba(124, 58, 237, 0.2), transparent 40%);
+
+            animation: moveGlow 10s linear infinite;
+
+            z-index: 0;
+
+            pointer-events: none;
+        }
+
+        /* Animation */
+        @keyframes moveGlow {
+            0% {
+                transform: translate(0, 0);
+            }
+            50% {
+                transform: translate(10%, 10%);
+            }
+            100% {
+                transform: translate(0, 0);
+            }
+        }
+        #main-content {
+            position: relative;
+            z-index: 1;
+            margin-left: 260px;
+            padding: 28px 40px; /* plus d'espace en bas */
+            width: calc(100% - 220px);
+        }
+        #sidebar {
+            width: 220px;
+        }
+
+
+        .custom-navbar {
+            background: linear-gradient(90deg, #0052ff, #0066ff);
+            padding: 0 20px;
+        }
+        .custom-navbar .container{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand-logo {
+            font-size: 28px;
+            font-weight: 700;
+            color: white !important;
+            text-decoration: none;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 18px;
+            align-items: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-btn {
+            margin: 0 !important;
+            text-decoration: none;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 12px;
+            color: white;
+            background: transparent;
+            transition: all 0.25s ease;
+            display: inline-flex;
+            font-weight: 600;
+            align-items: center;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255,255,255,0.18);
+            color: white;
+        }
+
+        .nav-btn.active {
+            color: white !important;
+            background: transparent !important;
+            position: relative;
+            border-radius: 0;
+            padding-bottom: 8px;
+        }
+        .nav-btn.active::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            bottom: -6px;
+            width: 100%;
+            height: 3px;
+            background: white;
+            border-radius: 999px;
+        }
+    
+        .danger-btn {
+            background: transparent !important;
+            color: white !important;
+            border-radius: 12px;
+           
+        }
+        .danger-btn:hover {
+            background: #dc3545 !important;
+            color: white !important;
+        }
+        .card-title {
+            font-size: 14px;
+            color: rgba(255,255,255,0.65);
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+        .card-amount {
+            color: #ffffff;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+        #totalAmount .card-amount,
+        #totalAmount span:first-child {
+            color: #3b82f6 !important;
+            -webkit-text-fill-color: #3b82f6 !important;
+            background: none !important;
+        }
+        .card-growth {
+            text-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+            color: #22c55e;
+        }
+        .card-sub {
+            font-size: 13px;
+            color: rgba(255,255,255,0.6);
+        }
+        .card {
+            background: linear-gradient(135deg, #2c1a4d, #3d2a6b);
+            border: none;
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+            transition: all 0.25s ease;
+            border-radius: 20px;
+        }
+        .card h6,
+        .card p,
+        .card span{
+            color: rgba(255,255,255,0.65);
+        }
+        
+        .card h3{
+            color: #ffffff;
+            font-weight: bold;
+        }
+        .text-primary{
+            color: #4ea8ff !important;
+        }
+        .text-success{
+            color: #4ade80 !important;
+        }
+        .text-warning{
+            color: #facc15;
+        }
+        .card{
+            backdrop-filter: blur(6px);
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+        }
+        .card.kpi-card {
+            min-height: 140px;
+        }
+        .kpi-card {
+            min-height: 110px;
+            border-radius: 14px;
+        }
+        .recent-payments-card table td,
+        .recent-payments-card table td string,
+        .recent-payments-card table td span,
+        .recent-payments-card table .client-email,
+        .recent-payments-card table .payment-amount {
+            color: #ffffff !important;
+        }
+        .recent-payments-card table th {
+            color: #6b7280 !important;
+        }
+        .recent-payments-card table tr {
+            border-bottom: 1px solid rgba(255,255,255,0.18);
+            background: transparent !important;
+        }
+        .custom-table thead th {
+            background: transparent;
+        }
+        .nav-link.active-link {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+        }
+        #createLinkModal .modal-dialog {
+            max-width: 500px;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            transition: 0.2s;
+        }
+
+        .custom-table thead th {
+            font-size: 14px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.7);
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            padding: 14px 16px;
+            background: transparent;
+        }
+        .recent-payments-card table tbody tr:hover {
+            background: transparent !important;
+        }
+        .table-hover tbody tr:hover > * {
+            background-color: transparent !important;
+        }
+        .recent-payments-card table tr,
+        .recent-payments-card table tr td {
+            background-color: transparent !important;
+        }
+        .recent-payments-card table tbody tr:hover {
+            box-shadow: inset 0 0 0 999px rgba(255,255,255,0.4);
+            transform: scale(1.01);
+        }
+        .recent-payments-card .custom-table tbody td {
+            color: rgba(255,255,255,0.92);
+        }
+        .recent-payments-card .custom-table tbody td:first-child,
+        .recent-payments-card .custom-table tbody td:nth-child(2) {
+            color: #f8fafc !important;
+            font-weight: 600;
+        }
+        .status-badge {
+            text-transform: capitalize;
+        }
+        .status-paid {
+            background: rgba(34, 197, 94, 0.28);
+            color: #bbf7d0 !important;
+            border: 1px solid rgba(34, 197, 94, 0.45);
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.25);;
+        }
+        .status-pending {
+            background: rgba(250, 204, 21, 0.25);
+            color: #fef08a !important;
+            border: 1px solid rgba(250, 204, 21, 0.45);
+            box-shadow: 0 0 8px rgba(250, 204, 21, 0.25);;
+        }
+
+
+        .custom-table tbody td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f3f5;
+            vertical-align: middle;
+        }
+        .custom-table-tbody tr {
+            transition: all 0.2s ease;
+        }
+        
+        .custom-table {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .status-paid {
+            background: rgba(25, 135, 84, 0.12);
+            color: #198754;
+        }
+
+        .status-pending {
+            background: rgba(255, 193, 7, 0.15);
+            color: #d39e00;
+        }
+
+        .action-link {
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            margin-right: 12px;
+        }
+
+        .action-edit {
+            color: #0d6efd;
+        }
+
+        .action-delete {
+            color: #dc3545;
+        }
+
+        .action-link:hover {
+            opacity: 0.8;
+        }
+        canvas {
+            filter: brightness(1.15);
+        }
+        .card {
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        }
+        payments-chart-wrapper {
+            position: relative;
+            width: 260px;
+            height: 260px;
+            margin: 0 auto;
+        }
+
+        #paymentsChart {
+            width: 260px !important;
+            height: 260px !important;
+            display: block;
+        }
+
+        #paymentsCenterPercent {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px;
+            font-weight: 800;
+            color: #198754;
+            text-align: center;
+            z-index: 2;
+            pointer-events: none;
+        }
+        .btn-create-link {
+            background: linear-gradient(90deg, #00c6ff, #0072ff);
+            border: none;
+            padding: 12px 22px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 0 12px rgba(0, 114, 255, 0.4);
+            transition: all 0.25s ease;
+        }
+
+        .btn-create-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(0, 114, 255, 0.6);
+        }
+        .btn-create-link {
+          font-size: 16px;
+          letter-spacing: 0.5px;
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .btn-create-link::after {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(120deg, transparent, rgba(255,255,255,0.4), transparent);
+          transition: 0.5s;
+        }
+
+        .btn-create-link:hover::after {
+          left: 100%;
+        }
+      
+        .custom-toast {
+          position: fixed;
+          bottom: 20px;
+          left: 50%;
+          background: #1f2937;
+          color: white;
+          padding: 12px 18px;
+          border-radius: 8px;
+          opacity: 0;
+          transform: translateX(-50%);
+          transition: 0.3s;
+          z-index: 9999;
+        }
+
+        .custom-toast.show {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        .plan-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          transition: all 0.25s ease;
+
+          padding: 6px 14px;
+          border-radius: 999px;
+
+          font-size: 13px;
+          font-weight: 600;
+
+          color: white;
+          border: none;
+        }
+        .plan-badge:hover {
+          transform: scale(1.05);
+        }
+        /* DOT */
+        .plan-badge .dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+        }
+
+    </style>
+</head>
+<body class="d-flex" style="margin: 0; padding: 0;">
+
+    
+<!-- SIDEBAR -->
+<div id="sidebar" class="d-flex flex-column p-3"
+    style="width: 260px; min-height: 100vh; background: #0d1b6e; position: fixed;">
+
+    <!-- Logo -->
+    <div class="mb-4 mt-2">
+        <h4 class="text-white fw-bold">⚡ ePay</h4>
+        <small class="text-white-50">Tableau de bord marchand</small>
+    </div>
+
+    <!-- Badge plan -->
+    <div class="mb-4">
+      <span id="badge-plan" class="plan-badge">
+        <span class="dot"></span>
+      </span>
+    </div>
+
+    <!-- Navigation -->
+    <ul class="nav nav-pills flex-column gap-1">
+        <li class="nav-item">
+            <a href="dashboard.html"
+                class="nav-link text-white active-link">
+                    🏠 Accueil
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="transactions.html"
+                class="nav-link text-white">
+                    💳 Transactions
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="liens.html" class="nav-link text-white">
+                🔗 Mes liens de paiement
+            </a>
+        </li>
+
+        <!-- Fonctionnalité verrouillée (Free) -->
+        <li class="nav-item">
+            <a href="API.html" class="nav-link text-white-50 d-flex justify-content-between"
+                onclick="showUpgradeModal('api')">
+                    ⚙️ API Access
+                <span class="badge bg-warning text-dark">Pro</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="multi-users.html" class="nav-link text-white-50 d-flex justify-content-between"
+                onclick="showUpgradeModal('team')">
+                    👥 Multi-utilisateurs
+                <span class="badge bg-danger">Business</span>
+            </a>
+        </li>
+
+        <li class="nav-item mt-2">
+            <a href="profil.html" class="nav-link text-white">
+                👤 Profil / KYC
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="sécurité.html" class="nav-link text-white">
+                🔒 Sécurité
+            </a>
+        </li>
+    </ul>
+
+    <!-- Upgrade CTA -->
+    <div class="mt-auto">
+        <div class="card border-0 p-3"
+                style="background: rgba(255,255,255,0.1); border-radius: 12px;">
+            <p class="text-white mb-2" style="font-size: 0.85rem;">
+                Débloquez plus de fonctionnalités
+            </p>
+            <button class="btn btn-warning btn-sm w-100 fw-bold upgrade-btn"
+            >
+                ⚡ Upgrader
+            </button>
+        </div>
+
+        <!-- Logout -->
+        <a href="login.html" onclick="logout" class="nav-link text-white-50 mt-3 text-center fw-bold">
+            🚪 Déconnexion
+        </a>
+    </div>
+</div>
+
+<!-- Contenu principal décalé -->
+<div style="margin-left: 260px; padding: 28px 40px;" id="main-content" class="w-100">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-1" id="welcomeText">Bienvenu</h4>
+            <small class="text-white-50 d-block">
+                Plan <span class="text-success fw-bold">Free</span> 10 paiements par mois
+            </small>
+
+            <small class="text-white-50 d-block mt-1">
+                Commencez à recevoir vos paiements facilement.
+                Passez au plan Pro pour plus de volume et de fonctionnalités.
+            </small>
+        </div>
+        <button class="btn btn-warning fw-bold px-4 upgrade-btn">
+            ⚡ Passer au Pro
+        </button>
+    </div>
+
+    <!-- Bannière upgrade -->
+    <div class="p-3 mb-4 d-flex justify-content-between align-items-center"
+        style="background:rgba(245,158,11,0.15);
+            border:1px solid rgba(245,158,11,0.3);
+            border-radius:12px;">
+        <span>🚀 <strong>10/10 Paiements </strong> réussi — Passez au Pro pour ne plus être limité.</span>
+        <button class="btn btn-warning btn-sm fw-bold ms-3 upgrade-btn">
+            Upgrader →
+        </button>
+    </div>
+
+    <!-- KPI rapides -->
+    <!-- FINANCE -->
+    <div class="row g-3 mb-3">
+
+        <!-- Solde disponible -->
+        <div class="col-md-4">
+            <div class="wallet-hover-wrapper position-relative">
+
+                <div class="card-epay p-3">
+                   <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                           <small class="text-white-50"> Total Solde</small>
+                           <h4 id="wallet-balance" class="fw-bold mt-1 text-success">0 XOF</h4>
+                        </div>
+
+                        <button 
+                            id="withdrawBtn"
+                            class="btn btn-outline-light"
+                        >
+                          Retirer
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <p id="nextAvailableText" style="color: orange; font-size: 14px;"></p>
+        </div>
+
+        <!-- Retrait en attente -->
+        <div class="col-md-4">
+            <div class="card-epay p-3">
+                <small class="text-white-50">Retrait en attente</small>
+                <h4 id="pending-withdraw" class="fw-bold mt-1 text-danger">0 XOF</h4>
+            </div>
+        </div>
+
+        <!-- Total reçu -->
+        <div class="col-md-4">
+            <div class="card-epay p-3">
+                <small class="text-white-50">Total reçu</small>
+                <h4 id="total-xof" class="fw-bold mt-1">0 XOF</h4>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Barre progression plan -->
+    <div class="card-epay p-3 mb-4">
+        <div class="d-flex justify-content-between mb-2">
+            <span>Transactions ce mois</span>
+            <span id="plan-usage" class="fw-bold">0 / 0</span>
+        </div>
+        <div class="progress" style="height:8px;">
+            <div class="progress-bar bg-warning progress-bar-custom" style="width:30%"></div>
+        </div>
+        <small class="text-white-50 mt-2 d-block">
+            Plan Free — <a href="#" class="text-warning" onclick="showUpgradeModal()">Upgrader</a>
+        </small>
+    </div>
+
+    <div class="card-epay p-4 mt-4 text-center">
+
+        <h5 class="mb-3">Créer un paiement</h5>
+
+        <p class="text-white-50 mb-3">
+            Générez un lien et recevez de l’argent instantanément
+        </p>
+
+        <button class="btn-create-link w-100"
+            data-bs-toggle="modal"
+            data-bs-target="#createLinkModal">
+               🚀 Recevoir un paiement
+        </button>
+
+    </div>
+
+    <div id="links-container" class="mt-4" style="width:100%; padding: 0 20px;"></div>
+    <p class="text-white-50 mb-2">
+        Recevez de l'argent en USD, EUR et converti automatiquement en XOF
+    </p>
+
+    <div class="card-epay p-5 text-center mt-4">
+        <div style="font-size:3rem;">🚀</div>
+        <h4 class="fw-bold mt-3">Débloquez plus de fonctionnalités</h4>
+        <p class="text-white-50 mb-4">
+            Passez au plan Pro pour accéder aux graphiques avancés,
+            aux exports CSV/PDF et à plus de transactions.
+        </p>
+        <button class="btn btn-warning px-4 fw-bold" onclick="showUpgradeModal()">
+            Voir les offres
+        </button>
+    </div>
+</div>
+
+<div class="modal fade" id="createLinkModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body p-4">
+
+        <h5 class="mb-4 text-white">Créer un lien de paiement</h5>
+
+        <!-- Nom du lien -->
+        <div class="mb-3">
+          <label class="form-label text-light">Nom du lien</label>
+          <input class="form-control" placeholder="Ex: Prestation Design">
+        </div>
+
+        <!-- Montant -->
+        <div class="mb-4">
+          <label class="form-label text-light">
+             Montant <span class="text-secondary">(obligatoire)</span>
+           </label>
+
+           <div class="d-flex gap-2">
+             <input id="amount" type="number" class="form-control" placeholder="0.00">
+
+              <select id="currency" class="form-select" style="max-width: 110px;">
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+              </select>
+           </div>
+        </div>
+      </div>
+
+      <div class="modal-footer border-0 d-flex justify-content-end gap-2 px-4 pb-4">
+
+        <button class="btn btn-secondary" data-bs-dismiss="modal">
+          Annuler
+        </button>
+
+        <button id="createBtn" class="btn btn-warning fw-bold">
+          🚀 Créer
+        </button>
+
+       </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL UPGRADE -->
+<div class="modal fade" id="modalUpgrade" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-upgrade">
+        <div class="modal-content border-0"
+            style="background: #0d1b6e; color: white;">
+
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-bold">⚡ Choisir un plan ePay</h5>
+                <button type="button" class="btn-close btn-close-white"
+                    data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="row g-2 justify-content-center">
+
+                <!-- FREE -->
+                <div class=" col-10 col-md-4">
+                    <div class="card h-100 border-0 p-3 text-center"
+                            style="background: rgba(255,255,255,0.08); border-radius:16px;">
+                        <h6 class="text-success fw-bold">🟢 Free</h6>
+                        <h2 class="fw-bold">0 <small style="font-size:1rem;">XOF</small></h2>
+                        <small class="text-white-50">/ mois</small>
+                        <hr class="border-secondary">
+                        <ul class="list-unstyled text-start small">
+                            <li>✅ 10 transactions/mois</li>
+                            <li>✅ 30 lien de paiement</li>
+                            <li>✅ Historique basique</li>
+                            <li>❌ Export CSV</li>
+                            <li>❌ API Access</li>
+                            <li>❌ Multi-utilisateurs</li>
+                        </ul>
+                        <button class="btn btn-outline-success btn-sm mt-auto"
+                            disabled>Plan actuel</button>
+                    </div>
+                </div>
+
+                <!-- PRO -->
+                <div class=" col-10 col-md-4">
+                    <div class="card h-100 border-0 p-3 text-center position-relative"
+                        style="background: rgba(99,102,241,0.3);
+                            border: 2px solid #6366f1 !important;
+                            border-radius:16px;">
+                        <!-- Badge populaire -->
+                        <span class="badge bg-warning text-dark position-absolute"
+                            style="top: -10px; left: 50%; transform: translateX(-50%);">
+                                ⭐ Populaire
+                        </span>
+                        <h6 class="text-purple fw-bold" style="color:#a78bfa;">🟣 Pro</h6>
+                        <h2 class="fw-bold">15 500 <small style="font-size:1rem;">XOF</small></h2>
+                        <small class="text-white-50">/ mois</small>
+                        <hr class="border-secondary">
+                        <ul class="list-unstyled text-start small">
+                            <li>✅ 100 transactions/mois</li>
+                            <li>✅ Liens illimités</li>
+                            <li>✅ Export CSV/PDF</li>
+                            <li>✅ Notifications SMS + email</li>
+                            <li>✅ API Access</li>
+                            <li>❌ Multi-utilisateurs</li>
+                        </ul>
+                        <button 
+                            type="button"
+                            class="btn btn-sm mt-auto text-white fw-bold"
+                                style="background:#6366f1;"
+                                onclick="upgrade('pro')">
+                            Choisir Pro
+                        </button>
+                    </div>
+                </div>
+
+                <!-- BUSINESS -->
+                <div class=" col-10 col-md-4">
+                    <div class="card h-100 border-0 p-3 text-center"
+                            style="background: rgba(255,255,255,0.08); border-radius:16px;">
+                        <h6 class="text-warning fw-bold">🟡 Business</h6>
+                        <h2 class="fw-bold">36 000 <small style="font-size:1rem;">XOF</small></h2>
+                        <small class="text-white-50">/ mois</small>
+                        <hr class="border-secondary">
+                        <ul class="list-unstyled text-start small">
+                            <li>✅ Transactions illimitées</li>
+                            <li>✅ Liens illimités</li>
+                            <li>✅ Tout le plan Pro</li>
+                            <li>✅ Multi-utilisateurs</li>
+                            <li>✅ Webhook personnalisé</li>
+                            <li>✅ Support prioritaire</li>
+                        </ul>
+                        <button
+                          type="button"
+                          class="btn btn-warning btn-sm mt-auto fw-bold"
+                          onclick="upgrade('business')">
+                            Choisir Business
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<div id="free-locked-sections" style="display:none;">
+        <!-- Graphiques floutés -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <div class="card-epay p-3 position-relative" style="overflow:hidden;">
+                    <h6 class="fw-bold mb-3">📈 Revenus journaliers</h6>
+                    <div style="height:120px; filter:blur(5px); opacity:0.3;
+                            background:linear-gradient(180deg,
+                          rgba(99,102,241,0.6) 0%, transparent 100%);
+                            border-radius:8px;"></div>
+                    <div class="position-absolute top-0 start-0 w-100 h-100
+                            d-flex flex-column align-items-center justify-content-center">
+                      <span style="font-size:1.5rem;">🔒</span>
+                      <small class="text-white mt-1">Dès le plan Starter</small>
+                      <button class="btn btn-warning btn-sm mt-2 fw-bold"
+                            onclick="showUpgradeModal()">Débloquer</button>
+                    </div>
+                </div>
+            </div>
+        <div class="col-md-6">
+            <div class="card-epay p-3 position-relative" style="overflow:hidden;">
+                <h6 class="fw-bold mb-3">📊 Revenus mensuels</h6>
+                <div style="height:120px; filter:blur(5px); opacity:0.3;
+                        background:linear-gradient(180deg,
+                      rgba(16,185,129,0.6) 0%, transparent 100%);
+                        border-radius:8px;"></div>
+                <div class="position-absolute top-0 start-0 w-100 h-100
+                        d-flex flex-column align-items-center justify-content-center">
+                   <span style="font-size:1.5rem;">🔒</span>
+                   <small class="text-white mt-1">Dès le plan Starter</small>
+                   <button class="btn btn-warning btn-sm mt-2 fw-bold"
+                        onclick="showUpgradeModal()">Débloquer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lien rapide + Derniers paiements -->
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="card-epay p-3 h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <h6 class="fw-bold mb-2">🔗 Mon lien de paiement</h6>
+                    <code class="text-warning" style="font-size:0.8rem; word-break:break-all;">
+                        https://epay.sn/pay/abc123xyz
+                    </code>
+                </div>
+                <button class="btn btn-outline-warning btn-sm mt-3 w-100"
+                        onclick="navigator.clipboard.writeText('https://epay.sn/pay/abc123xyz'); alert('✅ Copié !')">
+                  📋 Copier mon lien
+                </button>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card-epay p-3">
+                <div class="d-flex justify-content-between mb-3">
+                    <h6 class="fw-bold">💳 Derniers paiements</h6>
+                    <a href="transactions.html" class="text-warning" style="font-size:0.85rem;">Voir tout →</a>
+                </div>
+                <table class="table table-sm align-middle" style="color:white;">
+                    <thead>
+                        <tr style="color:rgba(255,255,255,0.4); font-size:0.75rem;">
+                            <th>Client</th><th>Montant</th><th>Statut</th><th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-color:rgba(255,255,255,0.05)">
+                            <td>Jean Dupont</td>
+                            <td>150 EUR</td>
+                            <td><span class="badge" style="background:rgba(16,185,129,0.2); color:#10b981;">✅ Réussi</span></td>
+                            <td><small class="text-white-50">30/03/2025</small></td>
+                        </tr>
+                        <tr style="border-color:rgba(255,255,255,0.05)">
+                            <td>Sarah Connor</td>
+                            <td>80 USD</td>
+                            <td><span class="badge" style="background:rgba(245,158,11,0.2); color:#f59e0b;">⏳ En attente</span></td>
+                            <td><small class="text-white-50">29/03/2025</small></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    </div>
+</div>
+
+<div class="modal fade" id="withdrawModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark text-white">
+
+      <!-- HEADER -->
+      <div class="modal-header border-0">
+        <h5 class="modal-title">Retirer de l'argent</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <!-- BODY -->
+      <div class="modal-body">
+
+        <div class="mb-3">
+          <label class="form-label">Montant</label>
+          <input type="number" id="withdrawAmount" class="form-control" placeholder="Ex: 5000">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Opérateur</label>
+          <select id="withdrawOperator" class="form-control">
+            <option value="wave">Wave</option>
+            <option value="orange">Orange Money</option>
+            <option value="free">Free Money</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Numéro</label>
+          <input type="text" id="withdrawPhone" class="form-control" placeholder="+221 77...">
+        </div>
+
+      </div>
+
+      <!-- FOOTER -->
+      <div class="modal-footer border-0">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button id="confirmWithdrawBtn" class="btn btn-success" onclick="submitWithdraw()">Confirmer</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+<div id="toast" class="custom-toast">
+  ✅ Retrait envoyé
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const token = localStorage.getItem("token")
+if (!token) {
+  window.location.replace("login.html")
+}
+</script>
+<script>
+    
+    async function loadProfileHeader() {
+      console.log(localStorage.getItem("token"))
+        try {
+          const res = await fetch("http://127.0.0.1:8000/profile", {
+            headers: {
+              Authorization: "Bearer " + localStorage.getItem("token")
+            }
+          })
+
+          if (res.status === 401) {
+            localStorage.removeItem("token")
+            window.location.replace("login.html")
+            return
+          }
+
+          if (!res.ok) {
+            console.warn("API /profile failed")
+            return
+          }
+
+          const user = await res.json()
+
+          const name =
+            user.full_name?.split(" ")[0] ||
+            user.email ||
+              "Utilisateur"
+
+          document.getElementById("welcomeText").innerText =
+            "Bonjour, " + name + " 👋"
+
+        } catch (err) {
+          console.error(err)
+          document.getElementById("welcomeText").innerText =
+            "Bonjour 👋"
+        }
+    }
+    loadProfileHeader();
+
+    async function loadPlan() {
+      try {
+        const token = localStorage.getItem("token");
+
+        const res = await fetch("http://127.0.0.1:8000/me/plan", {
+            headers: {
+                Authorization: "Bearer " + token
+            }
+        });
+
+        const data = await res.json();
+
+        handleFreeLimit(data)
+        console.log("PLAN:", data.plan)
+        console.log("PAID:", data.paid_count)
+
+
+        console.log("Plan user :", data);
+
+        if (data.plan === "free") {
+            // Free : rien à faire, bloc premium déjà caché
+        }
+
+        if (data.plan === "starter") {
+            // débloquer starter
+        }
+
+        if (data.plan === "pro") {
+            // débloquer pro
+        }
+
+        if (data.plan === "business") {
+            // débloquer tout
+        }
+
+      } catch (error) {
+        console.error("Erreur chargement plan :", error);
+      }
+    }
+    loadPlan();
+
+    function handleFreeLimit(data) {
+      const createBtn = document.getElementById("createBtn")
+
+      if (!createBtn) return
+
+      createBtn.onclick = (e) => {
+        e.preventDefault()
+
+        if (data.plan === "free" && data.paid_count >= 10) {
+          // 🔒 limite atteinte → ouvrir upgrade
+
+          const createModal = bootstrap.Modal.getInstance(
+            document.getElementById("createLinkModal")
+          )
+          createModal.hide()
+
+          const upgradeModal = new bootstrap.Modal(
+            document.getElementById("modalUpgrade")
+          )
+          upgradeModal.show()
+
+        } else {
+          // ✅ ok → créer le lien
+          createLink()
+          }
+        }
+    }
+
+    async function loadKPI() {
+      try {
+        const token = localStorage.getItem("token")
+
+        const res = await fetch("http://127.0.0.1:8000/stats", {
+          headers: {
+            Authorization: "Bearer " + token
+          }
+        })
+
+        const data = await res.json()
+        
+        console.log("KPI:", data)
+
+        // 💰 Total reçu
+        document.getElementById("total-xof").innerText =
+          (data.total_received || 0).toLocaleString("fr-FR") + " XOF"
+
+        // ⏳ Retrait en attente
+        document.getElementById("pending-withdraw").innerText =
+          (data.pending_withdraw || 0).toLocaleString("fr-FR") + " XOF"
+
+        // 📊 Progression
+        const planRes = await fetch("http://127.0.0.1:8000/me/plan", {
+            headers: {
+                Authorization: "Bearer " + token
+            }
+        })
+
+        const planData = await planRes.json()
+        console.log("PLAN DATA FRONT:", planData)
+
+        const visibleLinks = document.querySelectorAll("#links-container > div")
+
+        const displayUsed = visibleLinks.length
+        const displayLimit = 10
+
+        const percent = (displayUsed / displayLimit) * 100
+
+        const bar = document.querySelector(".progress-bar-custom")
+        if (bar) {
+         bar.style.width = percent + "%"
+        }
+
+        const usage = document.getElementById("plan-usage")
+        if (usage) {
+         usage.innerText = `${displayUsed} / ${displayLimit}`
+        }
+
+      } catch (err) {
+        console.error("Erreur KPI:", err)
+      }
+    }
+    loadKPI()
+
+    async function chargerWallet() {
+      try {
+        const res = await fetch("http://127.0.0.1:8000/wallet/me", {
+            headers: {
+                Authorization: "Bearer " + localStorage.getItem("token")
+            }
+        });
+
+        const data = await res.json();
+
+        const balanceEl = document.getElementById("wallet-balance");
+
+        balanceEl.innerText =
+            Number(data.balance || 0).toLocaleString("fr-FR", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }) + " XOF";
+
+      } catch (err) {
+        console.error("Erreur wallet:", err);
+      }
+    }
+    chargerWallet()
+    
+    async function createLink() {
+
+      const amount = document.getElementById("amount").value
+      const currency = document.getElementById("currency").value
+
+      const res = await fetch("http://127.0.0.1:8000/links", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + localStorage.getItem("token")
+        },
+        body: JSON.stringify({
+          amount: amount,
+          currency: currency,
+          source: "dashboard"
+        })
+      })
+
+      const data = await res.json()
+     
+      console.log("ERROR:", data)
+
+      if (!res.ok) {
+
+        console.log("DATA:", data)
+
+        // ✅ cas upgrade détecté proprement
+        if (data.detail && data.detail.upgrade === true) {
+          const modal = new bootstrap.Modal(document.getElementById("modalUpgrade"))
+          modal.show()
+          return
+        }
+        alert(data.detail || data.message || "Erreur lors de la création")
+        return
+      }
+      console.log("CREATED:", data)
+      // 💥 Affichage direct sans reload
+      loadLinks()
+
+      // 💥 fermer le modal (ICI 👇)
+      const modalEl = document.getElementById('createLinkModal')
+      const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl)
+      modal.hide()
+    }
+
+    function loadLinks() {
+      const container = document.getElementById("links-container");
+      if (!container) return;
+
+      fetch("http://127.0.0.1:8000/links/dashboard", {
+        headers: {
+          "Authorization": "Bearer " + localStorage.getItem("token")
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log("LINKS:", data);
+
+        const progressText = document.getElementById("progress-text");
+
+        if (progressText) {
+          progressText.innerText = `${data.paid_this_month}/10`;
+        }
+        container.innerHTML = "";
+
+        if (!data.links || data.links.length == 0) {
+          container.innerHTML = `<p class="text-white-50">Aucun lien pour le moment</p>`;
+          return;
+        }
+
+        data.links.forEach(link => {
+          console.log('champs du lien:', Object.keys(link), link);
+          const paymentUrl = link.url;
+          container.innerHTML += getLinkHTML(link, paymentUrl);
+        });
+      });
+    }
+
+    function getLinkHTML(link, paymentUrl) {
+      const status = link.status;
+
+      let urlColor, copyBtn, archiveBtn;
+
+      if (status === 'paid') {
+        urlColor = '#4ade80';
+        copyBtn = '';
+        archiveBtn = `<button style="background:rgba(74,222,128,0.15);border:none;color:rgba(255,255,255,0.4);font-size:0.72rem;padding:5px 12px;border-radius:6px;cursor:pointer;" onclick="archivedLink('${link.id}')">Archiver</button>`;
+
+      } else if (status === 'pending') {
+        urlColor = '#facc15';
+        copyBtn = `<button style="background:rgba(74,222,128,0.15);border:none;color:#4ade80;font-size:0.72rem;padding:5px 12px;border-radius:6px;cursor:pointer;" onclick="copierLien('${paymentUrl}')" data-url="${paymentUrl}">Copier</button>`;
+        archiveBtn = `<button style="background:rgba(248,113,113,0.15);border:none;color:#f87171;font-size:0.72rem;padding:5px 12px;border-radius:6px;cursor:pointer;" onclick="deleteLink('${link.id}')">Supprimer</button>`;
+
+      } else if (status === 'expired') {
+        urlColor = '#f87171';
+        copyBtn = '';
+        archiveBtn = `<button style="background:rgba(248,113,113,0.15);border:none;color:#f87171;font-size:0.72rem;padding:5px 12px;border-radius:6px;cursor:pointer;" onclick="deleteLink('${link.id}')">Supprimer</button>`;
+
+      } else {
+        urlColor = 'rgba(255,255,255,0.6)';
+        copyBtn = '';
+        archiveBtn = '';
+      }
+
+      return `
+        <div id="link-${link.id}" style="width:100%;display:flex;align-items:center;gap:12px;padding:10px 14px;margin-bottom:8px;background:rgba(255,255,255,0.07);border-radius:10px;border:1px solid rgba(255,255,255,0.1);">
+          <span style="color:${urlColor};font-size:0.78rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;">${paymentUrl}</span>
+          ${copyBtn}
+          ${archiveBtn}
+        </div>
+      `;
+    }
+    loadLinks();
+
+    // COPIER
+    function copierLien(url) {
+      navigator.clipboard.writeText(url);
+      alert("Lien copié !");
+    }
+
+    // ARCHIVER
+    async function archiveLink(id) {
+      const token = localStorage.getItem("token");
+      try {
+        const res = await fetch(`http://127.0.0.1:8000/archive/${id}`, {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + token }
+        });
+        if (!res.ok) throw new Error("Erreur archivage");
+        loadLinks(); // rafraîchit la liste
+      } catch (e) {
+        alert("Erreur archivage");
+      }
+    }
+
+    // SUPPRIMER
+    async function deleteLink(id) {
+      const token = localStorage.getItem("token");
+      try {
+        const res = await fetch(`http://127.0.0.1:8000/links/${id}`, {
+          method: "DELETE",
+          headers: { "Authorization": "Bearer " + token }
+        });
+        if (!res.ok) throw new Error("Erreur suppression");
+        loadLinks(); // rafraîchit la liste
+      } catch (e) {
+        alert("Erreur suppression");
+      }
+    }
+    const createBtn = document.getElementById("createBtn")
+
+    createBtn.addEventListener("click", (e) => {
+        if (data.used >= data.limit) {
+            e.preventDefault()
+
+            // fermer modal create
+            const createModal = bootstrap.Modal.getInstance(
+                document.getElementById("createLinkModal")
+            )
+            createModal.hide()
+
+            // ouvrir modal upgrade
+            const upgradeModal = new bootstrap.Modal(
+                document.getElementById("modalUpgrade")
+            )
+            upgradeModal.show()
+        } else {
+            // logique normale (créer lien)
+            createPayment()
+        }
+    })
+    const withdrawBtn = document.getElementById("withdrawBtn")
+
+    withdrawBtn.addEventListener("click", (e) => {
+      e.preventDefault()
+
+      if (window.user === "free") {
+      // ❌ bloqué → ouvrir upgrade
+        const upgradeModal = new bootstrap.Modal(
+          document.getElementById("modalUpgrade")
+        )
+        upgradeModal.show()
+      } else {
+      // ✅ autorisé → ouvrir retrait
+        const withdrawModal = new bootstrap.Modal(
+          document.getElementById("withdrawModal")
+        )
+        withdrawModal.show()
+      }
+    })
+
+</script>
+<script id="upgrade-handler">
+document.querySelectorAll(".upgrade-btn").forEach(btn => {
+  btn.addEventListener("click", showUpgradeModal);
+});
+
+function showUpgradeModal() {
+  const modal = new bootstrap.Modal(document.getElementById("modalUpgrade"));
+  modal.show();
+}
+</script>
+<script>
+async function submitWithdraw() {
+  const btn = document.getElementById("confirmWithdrawBtn");
+
+  btn.innerText = "Envoi...";
+  btn.disabled = true;
+
+  try {
+    const res = await fetch("http://127.0.0.1:8000/withdraw", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + localStorage.getItem("token")
+      },
+      body: JSON.stringify({
+        amount: parseFloat(document.getElementById("withdrawAmount").value),
+        operator: document.getElementById("withdrawOperator").value,
+        phone: document.getElementById("withdrawPhone").value
+      })
+    });
+
+    const data = await res.json();
+    console.log("RESPONSE /withdraw:", data);
+
+    if (!res.ok) {
+      console.log("DETAIL:", data.detail);
+
+      let message = data.detail?.message || "Erreur";
+
+      // 👉 si date dispo existe
+      if (data.detail?.next_available_at) {
+        const date = new Date(data.detail.next_available_at);
+
+        message += `\n⏳ Disponible le ${date.toLocaleDateString("fr-FR")}`;
+      }
+
+      showToast(message);
+
+      btn.innerText = "Confirmer";
+      btn.disabled = false;
+      return;
+    }
+
+    if (!data.id) {
+      console.error("❌ ID manquant :", data);
+      showToast("Erreur: ID retrait manquant");
+
+      btn.innerText = "Confirmer";
+      btn.disabled = false;
+      return;
+    }
+
+    const withdrawId = data.id;
+
+    console.log("WITHDRAW ID:", withdrawId);
+
+    const res2 = await fetch(`http://127.0.0.1:8000/withdraw/${withdrawId}/process`, {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + localStorage.getItem("token")
+      }
+    });
+
+    const data2 = await res2.json();
+
+    if (!res2.ok) {
+      showToast(data2.detail || "Erreur process");
+      return;
+    }
+
+    showToast("Retrait envoyé !");
+
+    const modalEl = document.getElementById("withdrawModal");
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.hide();
+
+    btn.innerText = "Confirmer";
+    btn.disabled = false;
+
+  } catch (err) {
+    console.error(err);
+
+    showToast("Erreur serveur")
+
+    btn.innerText = "Confirmer";
+    btn.disabled = false;
+  }
+}
+</script>
+<script>
+function showToast(message, type = "success") {
+  let toast = document.getElementById("custom-toast");
+
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "custom-toast";
+    document.body.appendChild(toast);
+  }
+
+  toast.innerText = message;
+
+  // style minimaliste
+  toast.style.position = "fixed";
+  toast.style.top = "20%";
+  toast.style.left = "40%";
+  toast.style.transform = "translateX(-50%)";
+  toast.style.padding = "6px 12px";
+  toast.style.fontSize = "14px";
+  toast.style.fontWeight = "500";
+  toast.style.borderRadius = "6px";
+  toast.style.background = "transparent"; // ❗ plus de bloc
+  toast.style.color = "#22c55e"; // vert propre
+  toast.style.boxShadow = "none"; // ❗ enlève effet bouton
+  toast.style.zIndex = "9999";
+
+  toast.style.opacity = "1";
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+  }, 2000);
+}
+</script>
+<script>
+window.archivedLink = async function(id) {
+  try {
+    const res = await fetch(`http://127.0.0.1:8000/archive/${id}`, {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + localStorage.getItem("token")
+      }
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.detail || "Erreur");
+      return;
+    }
+
+    showToast("Lien archivé ✅");
+    const el = document.getElementById(`link-${id}`);
+    if (el) {
+      el.remove();
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("Erreur serveur");
+  }
+}
+</script>
+<script>
+async function upgrade(plan) {
+  const token = localStorage.getItem("token")
+
+  const res = await fetch("http://127.0.0.1:8000/create-checkout-session", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + token,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+        plan: plan 
+    })
+  })
+   console.log("STATUS:", res.status)
+   const data = await res.json()
+   console.log("RESPONSE =", data)
+
+   if (!data.url) {
+     alert("Erreur backend")
+     return
+   }
+
+   window.location.href = data.url
+}
+
+fetch("http://127.0.0.1:8000/wallet/me", {
+  headers: {
+    "Authorization": "Bearer " + token
+  }
+})
+.then(res => res.json())
+.then(data => {
+  console.log("NEXT:", data.next_available_at);
+  console.log("WALLET:", data);
+
+  document.getElementById("wallet-balance").innerText =
+    data.available.toLocaleString("fr-FR") + " XOF";
+
+  document.getElementById("pending-withdraw").innerText =
+    data.pending.toLocaleString("fr-FR") + " XOF";
+
+  if (data.next_available_at) {
+    startCountdown(data.next_available_at);
+
+  }
+  function startCountdown(nextAvailableAt) {
+    const el = document.getElementById("nextAvailableText");
+    const btn = document.getElementById("withdrawBtn");
+
+    function update() {
+        const now = new Date();
+        const future = new Date(nextAvailableAt);
+
+        const diff = future - now;
+
+        if (diff <= 0) {
+            el.innerText = "✅ Disponible maintenant";
+            btn.disabled = false;
+            clearInterval(timer);
+            return;
+        }
+
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor(diff / (1000 * 60 * 60)) % 24;
+        const minutes = Math.floor(diff / (1000 * 60)) % 60;
+        const seconds = Math.floor(diff / 1000) % 60;
+
+        let text = "";
+        if (days > 0) text += `${days}j `;
+        if (hours > 0 || days > 0) text += `${hours}h `;
+        if (minutes > 0 || hours > 0) text += `${minutes}min `;
+        text += `${seconds}s`;
+
+        el.innerText = "Disponible dans " + text;
+    }
+
+    update();
+    const timer = setInterval(update, 1000);
+  }
+});
+</script>
+<script>
+const params = new URLSearchParams(window.location.search)
+
+if (params.get("upgrade") === "1") {
+    console.log("LIMIT REACHED")
+
+    // OPTION 1 (direct Stripe)
+    upgrade("pro")
+
+    // OPTION 2 (plus propre UX)
+}
+</script>
+<script>
+async function loadUser() {
+  const token = localStorage.getItem("token")
+
+  const res = await fetch("http://127.0.0.1:8000/me/user-plan", {
+    headers: {
+      "Authorization": "Bearer " + token
+    }
+  })
+
+  const user = await res.json()
+
+  console.log("USER:", user)
+
+  updatePlanUI(user.plan)
+}
+
+function updatePlanUI(plan) {
+    const badge = document.getElementById("badge-plan")
+
+    badge.classList.remove("bg-success", "bg-warning", "bg-danger")
+
+    if (plan === "free") {
+        badge.innerHTML = "🟢 Free"
+        badge.classList.add("bg-success")
+    } 
+    else if (plan === "pro") {
+        badge.innerHTML = "🟡 Pro"
+        badge.classList.add("bg-warning")
+    } 
+    else if (plan === "business") {
+        badge.innerHTML = "🔴 Business"
+        badge.classList.add("bg-danger")
+    }
+
+    console.log("PLAN UI UPDATED:", plan)
+}
+
+loadUser()
+</script>
+<script>
+  function logout() {
+    localStorage.removeItem("token")
+    window.location.href = "login.html"
+  }
+</script>
+<!-- <script src="auth.js"></script> -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ePay — Multi-utilisateurs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #0b1138;
+    --bg-panel: #141a4d;
+    --bg-card: #1e246a;
+    --bg-card-2: #262c85;
+    --accent-cyan: #22d3ee;
+    --accent-yellow: #facc15;
+    --accent-pink: #ec4899;
+    --accent-green: #4ade80;
+    --accent-red: #f87171;
+    --text: #ffffff;
+    --text-dim: #b8bce0;
+    --text-muted: #8a90c4;
+    --border: rgba(255,255,255,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Sora', sans-serif;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(34,211,238,0.15), transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(168,85,247,0.15), transparent 40%),
+      radial-gradient(circle at 50% 100%, rgba(59,130,246,0.2), transparent 50%),
+      #020617;
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+  }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar {
+    width: 260px;
+    background: linear-gradient(180deg, #101652 0%, #0b1138 100%);
+    padding: 28px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-right: 1px solid var(--border);
+    position: fixed;
+    top: 0;
+    font-size: 15px;
+    bottom: 0;
+    left: 0;
+    overflow-y: auto;
+    z-index: 10;
+  }
+
+  .sidebar::-webkit-scrollbar { width: 6px; }
+  .sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15);
+    border-radius: 3px;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 4px;
+  }
+  .brand .bolt {
+    width: 28px; height: 28px;
+    background: var(--accent-yellow);
+    clip-path: polygon(45% 0, 100% 0, 55% 45%, 100% 45%, 0 100%, 45% 55%, 0 55%);
+  }
+  .brand h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+  .brand-sub { font-size: 13px; color: var(--text-dim); margin-bottom: 28px; padding-left: 2px; }
+
+  .nav-item {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px;
+    padding: 14px 14px;
+    border-radius: 12px;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 15px;
+    transition: background 0.2s, color 0.2s, transform 0.15s;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+  .nav-item .left { display: flex; align-items: center; gap: 10px; }
+  .nav-item.active {
+    background: linear-gradient(135deg, #2f3aa0, #4f5bd5);
+    color: var(--text);
+    box-shadow: 0 4px 20px rgba(79,91,213,0.4);
+  }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 5px 12px;
+  border-radius: 999px;
+
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+
+  position: relative;
+  overflow: hidden;
+
+  backdrop-filter: blur(6px);
+}
+/* ===== FREE (VERT) ===== */
+.badge.free {
+  color: #22c55e;
+  background: linear-gradient(
+    135deg,
+    rgba(34,197,94,0.15),
+    rgba(34,197,94,0.05)
+  );
+  border: 1px solid rgba(34,197,94,0.4);
+  box-shadow:
+    0 0 10px rgba(34,197,94,0.5),
+    inset 0 0 6px rgba(34,197,94,0.2);
+}
+/* ===== PRO (cyan Web3 propre) ===== */
+.badge.pro {
+  color: #a855f7;
+  background: linear-gradient(
+    135deg,
+    rgba(168,85,247,0.15),
+    rgba(168,85,247,0.05)
+  );
+  border: 1px solid rgba(168,85,247,0.4);
+  box-shadow:
+    0 0 12px rgba(168,85,247,0.6),
+    inset 0 0 8px rgba(168,85,247,0.25);
+}
+
+/* ===== BUSINESS (gold premium clean) ===== */
+.badge.business {
+  color: #facc15;
+  background: linear-gradient(
+    135deg,
+    rgba(250,204,21,0.2),
+    rgba(250,204,21,0.05)
+  );
+  border: 1px solid rgba(250,204,21,0.5);
+  box-shadow:
+    0 0 12px rgba(250,204,21,0.6),
+    inset 0 0 8px rgba(250,204,21,0.25);
+}
+/* ===== LIGHT SWEEP EFFECT ===== */
+.badge::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+
+  width: 40%;
+  height: 100%;
+
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(255,255,255,0.6),
+    transparent
+  );
+
+  transform: skewX(-20deg);
+  animation: shine 3s infinite;
+}
+
+@keyframes shine {
+  0% { left: -60%; }
+  100% { left: 120%; }
+}  .upsell {
+    margin-top: auto;
+    background: linear-gradient(145deg, #2a3288, #1a2170);
+    padding: 18px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+  }
+  .upsell p { font-size: 14px; color: var(--text-dim); margin-bottom: 12px; }
+  .upsell button {
+    width: 100%;
+    background: var(--accent-yellow);
+    color: #1a1a1a;
+    font-size: 14;
+    border: none;
+    padding: 11px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: transform 0.15s;
+  }
+  .upsell button:hover { transform: translateY(-1px); }
+
+  .logout {
+    margin-top: 8px;
+    color: var(--text-muted);
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  /* ---------- Main ---------- */
+  main {
+    flex: 1;
+    padding: 36px 44px;
+    max-width: 100%;
+    margin-left: 260px;
+    padding: 36px 44px;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .header-title {
+    display: flex; align-items: center; gap: 14px;
+    font-size: 28px; font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  .header-title .tag {
+    font-size: 11px;
+    padding: 4px 10px;
+    background: var(--accent-pink);
+    border-radius: 6px;
+    letter-spacing: 1px;
+    font-weight: 700;
+  }
+  .header p { color: var(--text-dim); font-size: 14px; margin-top: 4px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: transform 0.15s, box-shadow 0.2s;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #22d3ee, #a855f7, #3b82f6);
+    background-size: 200% 200%;
+    animation: gradientMove 4s ease infinite;
+    color: white;
+  }
+
+  @keyframes gradientMove {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(34,211,238,0.35); }
+  .btn-ghost {
+    background: rgba(255,255,255,0.05);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.08); }
+
+  /* ---------- Stats ---------- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .stat {
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    background: rgba(30,36,106,0.6);
+    padding: 18px 20px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  @keyframes borderMove {
+    0% { background-position: 0% }
+    100% { background-position: 200% }
+  }
+
+  .stat::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    padding: 1px;
+
+    background: linear-gradient(120deg, transparent, #22d3ee, transparent);
+    background-size: 200% 100%;
+    animation: borderMove 3s linear infinite;
+
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); 
+
+    -webkit-mask-composite: xor;
+    mask-composite: exclude; 
+    mask-composite: exclude;
+    transform: translateY(-4px) scale(1.02);
+    box-shadow:
+      0 20px 60px rgba(0,0,0,0.6),
+      0 0 40px rgba(34,211,238,0.3);
+    opacity: 0.4;
+  }
+  .stat-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .stat-value {
+    font-size: 28px; font-weight: 800;
+    color: var(--accent-cyan);
+  }
+  .stat-value.yellow { color: var(--accent-yellow); }
+  .stat-value.pink { color: var(--accent-pink); }
+  .stat-value.green { color: var(--accent-green); }
+  .stat-sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+  /* ---------- Filters ---------- */
+  .toolbar {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 16px;
+    align-items: center;
+  }
+  .search {
+    flex: 1;
+    min-width: 220px;
+    position: relative;
+  }
+  .search input {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 14px 12px 40px;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+  }
+  .search input:focus { outline: 2px solid var(--accent-cyan); outline-offset: 0; }
+  .search::before {
+    content: "🔍";
+    position: absolute; left: 14px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    opacity: 0.6;
+  }
+  .filter-chip {
+    padding: 8px 14px;
+    border-radius: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-dim);
+    font-family: inherit;
+  }
+  .filter-chip.active {
+    background: var(--accent-cyan);
+    color: #0b1138;
+    border-color: var(--accent-cyan);
+  }
+
+  /* ---------- Table ---------- */
+  @keyframes glowPulse {
+    0% { box-shadow: 0 0 20px rgba(34,211,238,0.3); }
+    50% { box-shadow: 0 0 40px rgba(168,85,247,0.5); }
+    100% { box-shadow: 0 0 20px rgba(34,211,238,0.3); }
+  }
+  .stat:hover,
+  .table-wrap:hover {
+    transform: translateY(-4px) scale(1.01);
+  }
+
+  .table-wrap {
+    background: rgba(30,36,106,0.4);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.08);
+    animation: glowPulse 6s infinite;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left;
+    padding: 16px 20px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    background: rgba(0,0,0,0.15);
+    font-weight: 700;
+  }
+  td {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+  }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .user-cell { display: flex; align-items: center; gap: 12px; }
+  .avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-weight: 700;
+    font-size: 13px;
+    color: #0b1138;
+  }
+  .user-name { font-weight: 600; }
+  .user-email { font-size: 12px; color: var(--text-muted); }
+
+  .role-pill {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .role-admin   { background: rgba(248,113,113,0.15); color: var(--accent-red); border: 1px solid rgba(248,113,113,0.3); }
+  .role-manager { background: rgba(250,204,21,0.15);  color: var(--accent-yellow); border: 1px solid rgba(250,204,21,0.3); }
+  .role-membre  { background: rgba(34,211,238,0.15);  color: var(--accent-cyan); border: 1px solid rgba(34,211,238,0.3); }
+  .role-lecteur { background: rgba(138,144,196,0.15); color: var(--text-dim);   border: 1px solid rgba(138,144,196,0.3); }
+
+  .status-dot {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px;
+  }
+  .status-dot::before {
+    content: ""; width: 8px; height: 8px; border-radius: 50%;
+  }
+  .status-active::before   { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
+  .status-pending::before  { background: var(--accent-yellow); }
+  .status-suspended::before{ background: var(--accent-red); }
+
+  .actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .icon-btn {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.03);
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .icon-btn:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+  .icon-btn.danger:hover { background: rgba(248,113,113,0.15); color: var(--accent-red); border-color: var(--accent-red); }
+
+  /* ---------- Modal ---------- */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(5,8,30,0.75);
+    backdrop-filter: blur(6px);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: var(--bg-panel);
+    border-radius: 18px;
+    width: 100%;
+    max-width: 480px;
+    padding: 28px;
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    animation: pop 0.25s ease-out;
+  }
+  @keyframes pop {
+    from { transform: scale(0.94); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
+  .modal h2 { font-size: 20px; margin-bottom: 4px; }
+  .modal .subtitle { color: var(--text-dim); font-size: 13px; margin-bottom: 24px; }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--bg-deep); padding: 4px; border-radius: 10px; }
+  .tab {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-weight: 600;
+    font-size: 13px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .tab.active { background: var(--bg-card-2); color: var(--text); }
+
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .field input, .field select {
+    width: 100%;
+    padding: 11px 14px;
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+  }
+  .field input:focus, .field select:focus { outline: 2px solid var(--accent-cyan); }
+
+  .modal-footer {
+    display: flex; justify-content: flex-end; gap: 10px;
+    margin-top: 24px;
+  }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 960px) {
+    body { flex-direction: column; }
+    .sidebar { width: 100%; position: static; min-height: auto; }
+    main { padding: 24px; }
+    th:nth-child(4), td:nth-child(4) { display: none; }
+  }
+  @media (max-width: 600px) {
+    th:nth-child(3), td:nth-child(3) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="bolt"></div>
+    <h1>Xepay</h1>
+  </div>
+  <p class="brand-sub">Tableau de bord marchand</p>
+
+  <div class="mb-4">
+    <span id="badge-plan" class="badge pro">PRO</span>
+  </div>
+
+  <a class="nav-item" href="dashboard.html"><span class="left">🏠 Accueil</span></a>
+  <a class="nav-item" href="transactions.html"><span class="left">💳 Transactions</span></a>
+  <a class="nav-item" href="liens.html"><span class="left">🔗 Mes liens de paiement</span></a>
+  <a class="nav-item" href="API.html"><span class="left">⚙️ API Access</span><span class="badge pro">PRO</span></a>
+  <a class="nav-item active" href="multi-users.html"><span class="left">👥 Multi-utilisateurs</span><span class="badge business">BUSINESS</span></a>
+  <a class="nav-item" href="profil.html"><span class="left">👤 Profil / KYC</span></a>
+  <a class="nav-item" href="sécurité.html"><span class="left">🔒 Sécurité</span></a>
+
+  <div class="upsell">
+    <p><strong>Débloquez plus de fonctionnalités</strong></p>
+    <button>⚡ Upgrader</button>
+  </div>
+  <a href="login.html" onclick="logout" class="nav-link text-white-50 mt-3 text-center fw-bold">
+    🚪 Déconnexion
+  </a>
+</aside>
+
+<!-- Main -->
+<main>
+  <div class="header">
+    <div>
+      <div class="header-title">👥 Multi-utilisateurs <span class="badge business">BUSINESS</span></div>
+      <p>Gérez votre équipe, les rôles et les permissions d'accès à votre espace marchand.</p>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn btn-primary" onclick="openModal('create')">＋ Ajouter un utilisateur</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Utilisateurs actifs</div>
+      <div class="stat-value" id="stat-active">0</div>
+      <div class="stat-sub">sur 10 inclus</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Invitations en attente</div>
+      <div class="stat-value yellow" id="stat-pending">0</div>
+      <div class="stat-sub">expire sous 7 jours</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Administrateurs</div>
+      <div class="stat-value pink" id="stat-admins">0</div>
+      <div class="stat-sub">accès complet</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Dernière activité</div>
+      <div class="stat-value green" id="stat-last" style="font-size:20px;">14:32</div>
+      <div class="stat-sub" id="stat-last-label">--</div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search">
+      <input type="text" id="search" placeholder="Rechercher par nom ou email…" oninput="renderTable()" />
+    </div>
+    <button class="filter-chip active" data-role="all" onclick="setFilter(this)">Tous</button>
+    <button class="filter-chip" data-role="Admin" onclick="setFilter(this)">Admin</button>
+    <button class="filter-chip" data-role="Manager" onclick="setFilter(this)">Manager</button>
+    <button class="filter-chip" data-role="Membre" onclick="setFilter(this)">Membre</button>
+    <button class="filter-chip" data-role="Lecteur" onclick="setFilter(this)">Lecteur</button>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Utilisateur</th>
+          <th>Rôle</th>
+          <th>Statut</th>
+          <th>Dernière connexion</th>
+          <th style="text-align:right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</main>
+
+<!-- Modal : Ajouter / Inviter -->
+<div class="modal-backdrop" id="modal">
+  <div class="modal">
+    <h2 id="modal-title">Inviter un utilisateur</h2>
+    <p class="subtitle">
+      L'utilisateur recevra un email pour rejoindre votre espace.
+    </p>
+    <form id="user-form" onsubmit="handleSubmit(event); return false;">
+      <div class="field">
+        <label>Nom complet</label>
+        <input type="text" id="f-name" required placeholder="Jean Dupont" />
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="f-email" required placeholder="jean@entreprise.com" />
+      </div>
+      <div class="field">
+        <label>Rôle</label>
+        <select id="f-role">
+          <option>Admin</option>
+          <option selected>Manager</option>
+          <option>Membre</option>
+          <option>Lecteur</option>
+        </select>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+        <button type="submit" class="btn btn-primary" id="submit-btn">Envoyer l'invitation</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  let users = []
+
+  async function loadUsers() {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/users", {
+        headers: {
+          Authorization: "Bearer " + localStorage.getItem("token")
+        }
+      })
+
+      const data = await res.json()
+      console.log("USERS LOADED:", data)
+
+      users = data
+
+      const now = new Date()
+
+      const time = now.toLocaleTimeString("fr-FR", {
+        hour: "2-digit",
+        minute: "2-digit"
+      })
+
+      document.getElementById("stat-last").textContent = time
+      document.getElementById("stat-last-label").textContent = "Maintenant"
+
+      renderTable()
+
+    } catch (err) {
+      console.error("Erreur loadUsers:", err)
+    }
+  }
+  
+  async function sendInvite() {
+    console.log("🚀 FETCH VERSION")
+
+    const email = document.getElementById("f-email").value
+    const role = document.getElementById("f-role").value
+
+    const res = await fetch("http://127.0.0.1:8000/invites", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + localStorage.getItem("token")
+      },
+      body: JSON.stringify({ email, role })
+    })
+
+    const data = await res.json()
+
+    console.log("INVITE:", data)
+
+    if (data.invite_link) {
+      alert("Lien:\n" + data.invite_link)
+      closeModal() 
+    } else {
+      alert(data.detail || "Erreur inconnue")
+    }
+  }
+  function handleSubmit(e) {
+    e.preventDefault();
+    sendInvite()
+
+    const data = {
+      name: document.getElementById('f-name').value,
+      email: document.getElementById('f-email').value,
+      role: document.getElementById('f-role').value
+    };
+
+    console.log("INVITATION:", data);
+
+    closeModal();
+  }
+
+  let filter = "all";
+  let mode = "create";
+
+  // ---------- Rendering ----------
+  function renderTable() {
+    const q = document.getElementById("search").value.toLowerCase();
+    const tbody = document.getElementById("tbody");
+    const rows = users
+      .filter(u => filter === "all" || u.role === filter)
+      .filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:40px; color:var(--text-muted);">Aucun utilisateur trouvé.</td></tr>`;
+    } else {
+      tbody.innerHTML = rows.map((u, i) => {
+        const idx = users.indexOf(u);
+        const initials = u.name.split(' ').map(s => s[0]).slice(0,2).join('').toUpperCase();
+        const statusLabel = u.status === "active" ? "Actif" : u.status === "pending" ? "En attente" : "Suspendu";
+        return `
+          <tr>
+            <td>
+              <div class="user-cell">
+                <div class="avatar" style="background:${u.color};">${initials}</div>
+                <div>
+                  <div class="user-name">${u.name}</div>
+                  <div class="user-email">${u.email}</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="role-pill role-${u.role.toLowerCase()}">${u.role}</span></td>
+            <td><span class="status-dot status-${u.status}">${statusLabel}</span></td>
+            <td style="color:var(--text-dim);">${u.last}</td>
+            <td>
+              <div class="actions">
+                <button class="icon-btn" title="Modifier le rôle" onclick="cycleRole(${idx})">🎚</button>
+                <button class="icon-btn" title="${u.status==='suspended'?'Réactiver':'Suspendre'}" onclick="toggleSuspend(${idx})">${u.status==='suspended'?'▶':'⏸'}</button>
+                <button class="icon-btn danger" title="Supprimer" onclick="deleteUser(${idx})">🗑</button>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    // Stats
+    document.getElementById('stat-active').textContent  = users.filter(u => u.status === 'active').length;
+    document.getElementById('stat-pending').textContent = users.filter(u => u.status === 'pending').length;
+    document.getElementById('stat-admins').textContent  = users.filter(u => u.role === 'Admin').length;
+  }
+
+  // ---------- Filters ----------
+  function setFilter(el) {
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    filter = el.dataset.role;
+    renderTable();
+  }
+
+  // ---------- Actions ----------
+  const roles = ['Admin', 'Manager', 'Membre', 'Lecteur'];
+
+  function toggleSuspend(i) {
+    const u = users[i];
+    u.status = u.status === 'suspended' ? 'active' : 'suspended';
+    renderTable();
+  }
+  function deleteUser(i) {
+    if (confirm(`Supprimer ${users[i].name} ?`)) {
+      users.splice(i, 1);
+      renderTable();
+    }
+  }
+
+  // ---------- Modal ----------
+  function openModal() {
+    document.getElementById('modal').classList.add('show');
+  }
+
+  function closeModal() {
+    document.getElementById('modal').classList.remove('show');
+    document.getElementById('user-form').reset();
+  }
+  
+  function submitUser(e) {
+    e.preventDefault();
+    const palette = ['#22d3ee','#facc15','#ec4899','#4ade80','#a78bfa','#fb923c','#60a5fa'];
+    users.unshift({
+      name: document.getElementById('f-name').value,
+      email: document.getElementById('f-email').value,
+      role: document.getElementById('f-role').value,
+      status: mode === 'create' ? 'active' : 'pending',
+      last: mode === 'create' ? "À l'instant" : '—',
+      color: palette[Math.floor(Math.random() * palette.length)],
+    });
+    closeModal();
+    renderTable();
+    return false;
+  }
+
+  // Close on backdrop click
+  document.getElementById('modal').addEventListener('click', e => {
+    if (e.target.id === 'modal') closeModal();
+  });
+
+  // Init
+  renderTable();
+
+  async function cycleRole(i) {
+    const u = users[i]
+
+    const roles = ['Admin', 'Manager', 'Membre', 'Lecteur']
+    const newRole = roles[(roles.indexOf(u.role) + 1) % roles.length]
+
+    await fetch(`http://127.0.0.1:8000/users/${u.id}/role`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + localStorage.getItem("token")
+      },
+      body: JSON.stringify({ role: newRole })
+    })
+
+    loadUsers()
+  }
+  async function toggleSuspend(i) {
+    const u = users[i]
+
+    await fetch(`http://127.0.0.1:8000/users/${u.id}/toggle`, {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + localStorage.getItem("token")
+      }
+    })
+
+    loadUsers()
+  }
+  async function loadCurrentUser() {
+    
+    try {
+      const res = await fetch("http://127.0.0.1:8000/me", {
+        headers: {
+          Authorization: "Bearer " + localStorage.getItem("token")
+        }
+      })
+
+      const user = await res.json()
+
+      console.log("CURRENT USER:", user)
+      console.log("PLAN USER =", user.plan)
+
+      renderPlanBadge(user.plan)
+
+    } catch (err) {
+      console.error("Erreur user:", err)
+    }
+  }
+  function renderPlanBadge(plan) {
+    const el = document.getElementById("badge-plan")
+
+    el.className = "badge"
+
+    if (plan === "pro") {
+      el.classList.add("pro")
+      el.textContent = "PRO"
+    } 
+    else if (plan === "business") {
+      el.classList.add("business")
+      el.textContent = "BUSINESS"
+    } 
+    else {
+      el.classList.add("free")
+      el.textContent = "FREE"
+      el.style.opacity = "0.6"
+    }
+  }
+  async function deleteUser(i) {
+    const u = users[i]
+
+    if (!confirm(`Supprimer ${u.name} ?`)) return
+
+    await fetch(`http://127.0.0.1:8000/users/${u.id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: "Bearer " + localStorage.getItem("token")
+      }
+    })
+
+    loadUsers()
+  }
+  async function submitUser(e) {
+    e.preventDefault()
+
+    const name = document.getElementById("f-name").value
+    const email = document.getElementById("f-email").value
+    const role = document.getElementById("f-role").value
+
+    try {
+        const res = await fetch("http://127.0.0.1:8000/users", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + localStorage.getItem("token")
+            },
+            body: JSON.stringify({
+                name: name,
+                email: email,
+                role: role
+            })
+        })
+
+        const data = await res.json()
+        console.log("RESPONSE:", data)
+
+        if (!res.ok) {
+          console.error("Erreur API", res.status)
+          return
+        }
+
+        closeModal()
+        loadUsers()
+
+    } catch (err) {
+        console.error("Erreur:", err)
+    }
+  }
+  console.log("🚀 INIT")
+  loadCurrentUser()
+  loadUsers()
+
+  setInterval(() => {
+    const now = new Date()
+    document.getElementById("stat-last").textContent =
+      now.toLocaleTimeString("fr-FR", {
+        hour: "2-digit",
+        minute: "2-digit"
+      })
+    }, 60000)
+</script>
+
+</body>
+</html>

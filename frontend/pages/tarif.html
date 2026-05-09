@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xepay — Tarifs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500;600&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #020408;
+  --bg2:      #06090f;
+  --cyan:     #00e5ff;
+  --violet:   #a855f7;
+  --gold:     #f0b429;
+  --green:    #00ffa3;
+  --red:      #ff4d6d;
+  --white:    #ffffff;
+  --muted:    rgba(255,255,255,0.42);
+  --border:   rgba(255,255,255,0.07);
+  --font-d:   'Bebas Neue', sans-serif;
+  --font-m:   'IBM Plex Mono', monospace;
+  --font-b:   'Manrope', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--font-b);background:var(--bg);color:var(--white);overflow-x:hidden;cursor:none}
+
+#cursor{position:fixed;width:10px;height:10px;background:var(--cyan);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .18s,height .18s;box-shadow:0 0 10px var(--cyan),0 0 24px rgba(0,229,255,.35)}
+#cursor-ring{position:fixed;width:34px;height:34px;border:1px solid rgba(0,229,255,.4);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:width .22s,height .22s}
+#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+.noise{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.028;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:18px 48px;background:rgba(2,4,8,.72);backdrop-filter:blur(28px);border-bottom:1px solid var(--border)}
+.logo{font-family:var(--font-d);font-size:26px;letter-spacing:.12em;background:linear-gradient(90deg,var(--cyan),var(--violet));background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.nav-links{display:flex;align-items:center;gap:6px}
+.nav-links a{text-decoration:none;color:var(--muted);font-size:13px;font-weight:500;padding:8px 14px;border-radius:8px;transition:all .2s}
+.nav-links a:hover{color:var(--white);background:rgba(255,255,255,.05)}
+.nav-links a.active{color:var(--cyan)}
+.btn-nav{padding:9px 20px;border-radius:10px;background:linear-gradient(135deg,rgba(0,229,255,.18),rgba(168,85,247,.18));border:1px solid rgba(0,229,255,.28);color:var(--white);font-size:13px;font-weight:700;text-decoration:none;transition:all .25s;box-shadow:0 0 18px rgba(0,229,255,.1)}
+.btn-nav:hover{box-shadow:0 0 32px rgba(0,229,255,.28);transform:translateY(-1px)}
+
+/* ── HERO ── */
+.hero{position:relative;z-index:2;padding:160px 48px 80px;max-width:1300px;margin:0 auto;text-align:center}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border-radius:999px;border:1px solid rgba(0,229,255,.2);background:rgba(0,229,255,.05);font-family:var(--font-m);font-size:11px;color:var(--cyan);letter-spacing:.14em;margin-bottom:24px}
+.eyebrow::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.hero h1{font-family:var(--font-d);font-size:clamp(72px,9vw,128px);letter-spacing:.04em;line-height:.9;margin-bottom:20px}
+.hero h1 .w1{display:block;color:rgba(255,255,255,.9)}
+.hero h1 .w2{display:block;background:linear-gradient(90deg,var(--cyan),var(--violet));background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-sub{font-size:17px;line-height:1.8;color:var(--muted);max-width:580px;margin:0 auto 20px}
+.stripe-badge{display:inline-flex;align-items:center;gap:10px;padding:8px 18px;border-radius:10px;border:1px solid rgba(99,91,255,.3);background:rgba(99,91,255,.07);margin-top:10px}
+.stripe-badge .sb-label{font-family:var(--font-m);font-size:11px;color:rgba(255,255,255,.5);letter-spacing:.1em}
+.stripe-badge .sb-val{font-family:var(--font-m);font-size:11px;color:rgba(255,255,255,.85);font-weight:600;letter-spacing:.06em}
+.stripe-badge .sb-dot{width:5px;height:5px;border-radius:50%;background:rgba(99,91,255,.7)}
+
+/* ── ARCHITECTURE FLOW ── */
+.arch-section{position:relative;z-index:2;padding:80px 48px;max-width:1300px;margin:0 auto}
+.section-label{font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;text-align:center;margin-bottom:48px}
+.arch-flow{display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap}
+.arch-node{display:flex;flex-direction:column;align-items:center;gap:12px;padding:24px 32px;border-radius:18px;background:rgba(6,12,22,.9);border:1px solid var(--border);position:relative;min-width:180px;transition:border-color .3s,box-shadow .3s}
+.arch-node:hover{border-color:rgba(0,229,255,.2);box-shadow:0 0 40px rgba(0,229,255,.05)}
+.arch-node.highlight{border-color:rgba(0,229,255,.22);background:linear-gradient(135deg,rgba(0,229,255,.04),rgba(168,85,247,.04))}
+.arch-node.highlight::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,229,255,.4),transparent)}
+.arch-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.arch-name{font-family:var(--font-d);font-size:22px;letter-spacing:.06em}
+.arch-desc{font-family:var(--font-m);font-size:9px;color:var(--muted);letter-spacing:.1em;text-align:center;max-width:160px;line-height:1.6}
+.arch-arrow{display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 12px}
+.arch-arrow-line{width:1px;height:40px;background:linear-gradient(180deg,rgba(0,229,255,.4),rgba(168,85,247,.4))}
+.arch-arrow-head{width:8px;height:8px;border-right:1px solid var(--cyan);border-bottom:1px solid var(--cyan);transform:rotate(45deg);margin-top:-6px}
+.arch-note{font-family:var(--font-m);font-size:9px;color:rgba(0,229,255,.5);letter-spacing:.08em}
+
+/* arch horizontal on wide screens */
+@media(min-width:900px){
+  .arch-flow{flex-direction:row;flex-wrap:nowrap}
+  .arch-arrow{flex-direction:row;padding:0;margin:0 8px}
+  .arch-arrow-line{width:40px;height:1px;background:linear-gradient(90deg,rgba(0,229,255,.4),rgba(168,85,247,.4))}
+  .arch-arrow-head{width:7px;height:7px;border-right:1px solid var(--cyan);border-bottom:1px solid var(--cyan);transform:rotate(-45deg);margin-top:0;margin-left:-5px}
+}
+
+/* Disclaimer strip */
+.disclaimer-strip{position:relative;z-index:2;margin:0 48px 60px;padding:20px 28px;border-radius:14px;background:rgba(240,180,41,.04);border:1px solid rgba(240,180,41,.16);display:flex;align-items:flex-start;gap:14px}
+.ds-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.ds-text{font-size:13px;line-height:1.7;color:rgba(255,255,255,.65)}
+.ds-text strong{color:var(--gold);font-weight:700}
+
+/* ── COMMISSION BLOCK ── */
+.commission-section{position:relative;z-index:2;max-width:1300px;margin:0 auto;padding:0 48px 80px}
+.commission-card{border-radius:24px;overflow:hidden;background:linear-gradient(135deg,rgba(0,229,255,.05) 0%,rgba(168,85,247,.05) 100%);border:1px solid rgba(0,229,255,.15);padding:52px;position:relative}
+.commission-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,229,255,.5),rgba(168,85,247,.4),transparent)}
+.comm-grid{display:grid;grid-template-columns:auto 1fr;gap:48px;align-items:center}
+.comm-rate-wrap{text-align:center}
+.comm-rate{font-family:var(--font-d);font-size:clamp(88px,11vw,144px);line-height:1;letter-spacing:.02em;background:linear-gradient(135deg,var(--cyan),var(--violet));background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 40px rgba(0,229,255,.2))}
+.comm-rate-label{font-family:var(--font-m);font-size:11px;color:var(--muted);letter-spacing:.16em;margin-top:6px}
+.comm-info h3{font-family:var(--font-d);font-size:42px;letter-spacing:.04em;margin-bottom:14px;line-height:1}
+.comm-info h3 span{color:var(--cyan)}
+.comm-info p{font-size:15px;line-height:1.8;color:var(--muted);max-width:460px;margin-bottom:28px}
+.comm-breakdown{display:flex;flex-direction:column;gap:8px}
+.cb-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid var(--border)}
+.cb-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cb-label{font-size:13px;color:rgba(255,255,255,.75);flex:1}
+.cb-value{font-family:var(--font-m);font-size:12px;font-weight:600;color:var(--white)}
+.cb-sub{font-family:var(--font-m);font-size:10px;color:var(--muted);margin-top:2px}
+.comm-example{margin-top:24px;padding:16px 20px;border-radius:12px;background:rgba(0,255,163,.04);border:1px solid rgba(0,255,163,.15)}
+.ce-title{font-family:var(--font-m);font-size:10px;color:var(--green);letter-spacing:.12em;margin-bottom:10px}
+.ce-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.ce-row:last-child{border-bottom:none;padding-top:8px;margin-top:4px}
+.ce-label{font-size:12px;color:var(--muted)}
+.ce-val{font-family:var(--font-m);font-size:12px;font-weight:600}
+
+/* ── PLANS ── */
+.plans-section{position:relative;z-index:2;max-width:1300px;margin:0 auto;padding:0 48px 100px}
+.plans-header{text-align:center;margin-bottom:52px}
+.plans-header h2{font-family:var(--font-d);font-size:clamp(48px,5vw,76px);letter-spacing:.04em;line-height:.95;margin-bottom:14px}
+.plans-header h2 span{background:linear-gradient(90deg,var(--cyan),var(--violet));background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.plans-header p{font-size:15px;color:var(--muted);line-height:1.7;max-width:480px;margin:0 auto}
+
+.plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
+.plan-card{border-radius:22px;padding:36px 32px;background:rgba(6,12,22,.88);border:1px solid var(--border);position:relative;overflow:hidden;transition:transform .3s,box-shadow .3s,border-color .3s;opacity:0;transform:translateY(24px)}
+.plan-card.visible{opacity:1;transform:translateY(0);transition:opacity .65s ease,transform .65s ease,box-shadow .3s,border-color .3s}
+.plan-card:hover{transform:translateY(-6px);box-shadow:0 32px 80px rgba(0,0,0,.5)}
+.plan-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;opacity:0;transition:opacity .3s}
+.plan-card:hover::before{opacity:1}
+
+/* STARTER */
+.plan-starter{border-color:rgba(255,255,255,.09)}
+.plan-starter::before{background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent)}
+.plan-starter:hover{border-color:rgba(255,255,255,.16)}
+
+/* PRO - featured */
+.plan-pro{border-color:rgba(0,229,255,.28);background:linear-gradient(160deg,rgba(0,229,255,.06) 0%,rgba(168,85,247,.05) 100%);transform:translateY(-8px) !important}
+.plan-pro.visible{transform:translateY(-8px) !important}
+.plan-pro:hover{transform:translateY(-14px) !important;box-shadow:0 40px 100px rgba(0,0,0,.6),0 0 60px rgba(0,229,255,.1) !important}
+.plan-pro::before{background:linear-gradient(90deg,transparent,rgba(0,229,255,.5),rgba(168,85,247,.4),transparent);opacity:1}
+.plan-pro-badge{position:absolute;top:16px;right:16px;padding:4px 12px;border-radius:999px;background:linear-gradient(135deg,var(--cyan),var(--violet));color:#000;font-family:var(--font-m);font-size:9px;font-weight:700;letter-spacing:.1em}
+
+/* BUSINESS */
+.plan-business{border-color:rgba(240,180,41,.2)}
+.plan-business::before{background:linear-gradient(90deg,transparent,rgba(240,180,41,.3),transparent)}
+.plan-business:hover{border-color:rgba(240,180,41,.32)}
+
+.plan-tag{display:inline-block;padding:4px 10px;border-radius:999px;font-family:var(--font-m);font-size:9px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:16px}
+.tag-default{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border)}
+.tag-pro    {background:rgba(0,229,255,.1);color:var(--cyan);border:1px solid rgba(0,229,255,.25)}
+.tag-biz    {background:rgba(240,180,41,.1);color:var(--gold);border:1px solid rgba(240,180,41,.25)}
+
+.plan-name{font-family:var(--font-d);font-size:38px;letter-spacing:.06em;margin-bottom:4px;line-height:1}
+.plan-price{margin:18px 0;display:flex;align-items:baseline;gap:4px}
+.plan-price .amount{font-family:var(--font-d);font-size:60px;letter-spacing:.02em;line-height:1}
+.plan-price .currency{font-family:var(--font-m);font-size:20px;color:var(--muted);margin-bottom:4px}
+.plan-price .period{font-family:var(--font-m);font-size:12px;color:var(--muted);align-self:flex-end;padding-bottom:8px;letter-spacing:.06em}
+.plan-price-note{font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:.08em;margin-bottom:20px}
+.plan-divider{height:1px;background:var(--border);margin:20px 0}
+
+.plan-features{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
+.plan-features li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:rgba(255,255,255,.72);line-height:1.5}
+.pf-check{width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;margin-top:1px}
+.pf-check-on {background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.25);color:var(--cyan)}
+.pf-check-gold{background:rgba(240,180,41,.1);border:1px solid rgba(240,180,41,.25);color:var(--gold)}
+.pf-check-off{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--border)}
+.pf-limit{font-family:var(--font-m);font-size:10px;color:var(--muted);margin-left:28px;margin-top:2px}
+
+.plan-cta{display:block;width:100%;padding:14px;border-radius:12px;text-align:center;font-weight:700;font-size:14px;letter-spacing:.05em;text-decoration:none;transition:all .3s;cursor:none;border:none;font-family:var(--font-b)}
+.cta-default{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--white)}
+.cta-default:hover{background:rgba(255,255,255,.09);transform:translateY(-2px)}
+.cta-primary{background:linear-gradient(135deg,var(--cyan),var(--violet));color:#000;box-shadow:0 8px 32px rgba(0,229,255,.25)}
+.cta-primary:hover{box-shadow:0 14px 44px rgba(0,229,255,.4);transform:translateY(-2px)}
+.cta-gold{background:rgba(240,180,41,.1);border:1px solid rgba(240,180,41,.28);color:var(--gold)}
+.cta-gold:hover{background:rgba(240,180,41,.18);transform:translateY(-2px)}
+
+/* ── COMPARE TABLE ── */
+.compare-section{position:relative;z-index:2;max-width:1300px;margin:0 auto;padding:0 48px 100px}
+.compare-header{text-align:center;margin-bottom:40px}
+.compare-header h3{font-family:var(--font-d);font-size:clamp(36px,4vw,56px);letter-spacing:.05em;margin-bottom:10px}
+.compare-table{width:100%;border-collapse:collapse;border-radius:16px;overflow:hidden}
+.compare-table th,.compare-table td{padding:14px 20px;text-align:left;border-bottom:1px solid var(--border)}
+.compare-table th{font-family:var(--font-m);font-size:11px;letter-spacing:.1em;color:var(--muted);background:rgba(6,12,22,.9);font-weight:500}
+.compare-table th.col-pro{color:var(--cyan);background:rgba(0,229,255,.05)}
+.compare-table th.col-biz{color:var(--gold)}
+.compare-table td{font-size:13px;color:rgba(255,255,255,.7);background:rgba(6,12,22,.6)}
+.compare-table td.col-pro{background:rgba(0,229,255,.03);color:var(--white)}
+.compare-table tr:last-child td,.compare-table tr:last-child th{border-bottom:none}
+.compare-table tr:hover td{background:rgba(255,255,255,.02)}
+.ct-row-label{font-weight:600;color:var(--white) !important;font-size:13px !important}
+.ct-category{font-family:var(--font-m);font-size:10px;letter-spacing:.12em;color:var(--muted);background:rgba(2,4,8,.95) !important;padding:10px 20px 6px !important;border-bottom:none !important}
+.ct-yes{color:var(--green);font-size:14px}
+.ct-no{color:rgba(255,255,255,.2);font-size:14px}
+.ct-lim{font-family:var(--font-m);font-size:11px;color:var(--gold)}
+
+/* ── HOW IT WORKS ── */
+.how-section{position:relative;z-index:2;max-width:1300px;margin:0 auto;padding:0 48px 80px}
+.how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.how-card{padding:28px;border-radius:18px;background:rgba(6,12,22,.85);border:1px solid var(--border);position:relative;overflow:hidden;transition:border-color .3s}
+.how-card:hover{border-color:rgba(0,229,255,.15)}
+.how-card::before{content:attr(data-n);position:absolute;bottom:-10px;right:12px;font-family:var(--font-d);font-size:80px;color:rgba(255,255,255,.025);line-height:1;pointer-events:none}
+.how-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:16px}
+.how-title{font-family:var(--font-d);font-size:24px;letter-spacing:.04em;margin-bottom:8px}
+.how-text{font-size:13px;line-height:1.75;color:var(--muted)}
+
+/* ── FAQ ── */
+.faq-section{position:relative;z-index:2;max-width:900px;margin:0 auto;padding:0 48px 100px}
+.faq-title{font-family:var(--font-d);font-size:clamp(40px,4vw,60px);letter-spacing:.05em;text-align:center;margin-bottom:40px}
+.faq-item{border-bottom:1px solid var(--border);overflow:hidden}
+.faq-q{display:flex;align-items:center;justify-content:space-between;padding:20px 0;cursor:none;font-size:15px;font-weight:600;color:rgba(255,255,255,.85);transition:color .2s;gap:16px}
+.faq-q:hover{color:var(--white)}
+.faq-q-icon{width:24px;height:24px;border-radius:6px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:var(--cyan);transition:all .3s}
+.faq-item.open .faq-q-icon{background:rgba(0,229,255,.15);transform:rotate(45deg)}
+.faq-a{font-size:14px;line-height:1.8;color:var(--muted);max-height:0;overflow:hidden;transition:max-height .4s ease,padding .3s ease}
+.faq-item.open .faq-a{max-height:300px;padding-bottom:20px}
+
+/* ── CTA ── */
+.cta-strip{position:relative;z-index:2;margin:0 48px 80px;padding:64px 80px;border-radius:24px;text-align:center;overflow:hidden;background:linear-gradient(135deg,rgba(0,229,255,.05),rgba(168,85,247,.06),rgba(240,180,41,.03));border:1px solid rgba(0,229,255,.12)}
+.cta-strip::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,229,255,.45),rgba(168,85,247,.35),transparent)}
+.cta-strip h2{font-family:var(--font-d);font-size:clamp(44px,5vw,76px);letter-spacing:.04em;line-height:.95;margin-bottom:16px}
+.cta-strip h2 span{background:linear-gradient(90deg,var(--cyan),var(--violet));background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.cta-strip p{font-size:16px;color:var(--muted);max-width:500px;margin:0 auto 36px;line-height:1.7}
+.cta-btns{display:flex;gap:14px;justify-content:center}
+.btn-primary{display:inline-flex;align-items:center;gap:8px;padding:15px 30px;border-radius:12px;background:linear-gradient(135deg,var(--cyan),var(--violet));color:#000;font-weight:800;font-size:14px;letter-spacing:.05em;text-decoration:none;border:none;cursor:none;transition:all .3s;box-shadow:0 10px 36px rgba(0,229,255,.3)}
+.btn-primary:hover{transform:translateY(-3px) scale(1.02);box-shadow:0 18px 50px rgba(0,229,255,.45)}
+.btn-ghost{display:inline-flex;align-items:center;gap:8px;padding:15px 30px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:var(--white);font-weight:600;font-size:14px;text-decoration:none;cursor:none;transition:all .25s}
+.btn-ghost:hover{background:rgba(255,255,255,.08);transform:translateY(-2px)}
+
+/* ── FOOTER ── */
+footer{position:relative;z-index:2;border-top:1px solid var(--border);padding:26px 48px;display:flex;align-items:center;justify-content:space-between;background:rgba(2,4,8,.85);backdrop-filter:blur(12px)}
+.footer-links{display:flex;gap:22px}
+.footer-links a{font-size:12px;color:var(--muted);text-decoration:none;transition:color .2s}
+.footer-links a:hover{color:var(--white)}
+.footer-copy{font-family:var(--font-m);font-size:10px;color:rgba(255,255,255,.18);letter-spacing:.06em}
+
+/* ── DIVIDER ── */
+.sglow{position:relative;z-index:2;height:1px;background:linear-gradient(90deg,transparent,rgba(0,229,255,.1),rgba(168,85,247,.1),transparent);margin:0 48px 60px}
+.section-eyebrow{font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;text-align:center;margin-bottom:14px}
+
+/* REVEAL */
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+<div class="noise"></div>
+<canvas id="bg-canvas"></canvas>
+
+<!-- ── NAV ── -->
+<nav>
+  <div class="logo">XEPAY</div>
+  <div class="nav-links">
+    <a href="accueil.html">Accueil</a>
+    <a href="fonctionnalite.html">Fonctionnalités</a>
+    <a href="tarif.html" class="active">Tarifs</a>
+    <a href="#">À propos</a>
+    <a href="login.html" class="btn-nav-outline">Connexion</a>
+    <a href="signup.html" class="btn-nav">Commencer →</a>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero reveal">
+  <div class="eyebrow">Tarifs transparents</div>
+  <h1>
+    <span class="w1">SIMPLE.</span>
+    <span class="w2">TRANSPARENT.</span>
+  </h1>
+  <p class="hero-sub">Une commission unique sur les paiements réussis. Des plans SaaS pour centraliser, piloter et automatiser vos opérations.</p>
+  <div class="stripe-badge">
+    <div class="sb-dot"></div>
+    <div class="sb-label">INFRASTRUCTURE</div>
+    <div class="sb-val">Propulsé par Stripe Connect</div>
+    <div class="sb-dot"></div>
+    <div class="sb-label">PAIEMENTS TRAITÉS PAR</div>
+    <div class="sb-val">Stripe — Certifié PCI DSS Lvl 1</div>
+  </div>
+</section>
+
+<!-- ── ARCHITECTURE ── -->
+<div class="arch-section reveal">
+  <div class="section-label">Comment fonctionne Xepay</div>
+  <div class="arch-flow">
+
+    <div class="arch-node">
+      <div class="arch-icon" style="background:rgba(255,255,255,.05)">🏪</div>
+      <div class="arch-name">MARCHAND</div>
+      <div class="arch-desc">Vous — votre business, vos clients, vos revenus</div>
+    </div>
+
+    <div class="arch-arrow">
+      <div class="arch-arrow-line"></div>
+      <div class="arch-arrow-head"></div>
+      <div class="arch-note">Gestion</div>
+    </div>
+
+    <div class="arch-node highlight">
+      <div class="arch-icon" style="background:rgba(0,229,255,.08)">⚡</div>
+      <div class="arch-name" style="background:linear-gradient(90deg,var(--cyan),var(--violet));background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent">XEPAY</div>
+      <div class="arch-desc">Dashboard · Liens · Monitoring · Automatisation · Notifications</div>
+    </div>
+
+    <div class="arch-arrow">
+      <div class="arch-arrow-line"></div>
+      <div class="arch-arrow-head"></div>
+      <div class="arch-note">Traitement</div>
+    </div>
+
+    <div class="arch-node" style="border-color:rgba(99,91,255,.25)">
+      <div class="arch-icon" style="background:rgba(99,91,255,.1)">🔷</div>
+      <div class="arch-name" style="color:rgba(148,138,255,.9)">STRIPE CONNECT</div>
+      <div class="arch-desc">Votre compte Stripe Connect individuel — fonds non détenus par Xepay</div>
+    </div>
+
+    <div class="arch-arrow">
+      <div class="arch-arrow-line"></div>
+      <div class="arch-arrow-head"></div>
+      <div class="arch-note">Exécution</div>
+    </div>
+
+    <div class="arch-node" style="border-color:rgba(0,255,163,.15)">
+      <div class="arch-icon" style="background:rgba(0,255,163,.07)">🌍</div>
+      <div class="arch-name" style="color:var(--green)">PAIEMENTS</div>
+      <div class="arch-desc">USD · EUR · XOF · 140+ pays · cartes · virements</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── DISCLAIMER ── -->
+<div class="disclaimer-strip reveal">
+  <div class="ds-icon">ℹ️</div>
+  <div class="ds-text">
+    <strong>Xepay n'est pas une banque et ne détient aucun fonds.</strong>
+    Chaque marchand dispose de son propre compte Stripe Connect. Xepay est une couche SaaS qui centralise la gestion, le monitoring et l'automatisation de vos opérations — les paiements sont intégralement traités et sécurisés par Stripe.
+  </div>
+</div>
+
+<!-- ── COMMISSION ── -->
+<section class="commission-section reveal">
+  <div class="commission-card">
+    <div class="comm-grid">
+      <div class="comm-rate-wrap">
+        <div class="comm-rate">6%</div>
+        <div class="comm-rate-label">PAR PAIEMENT RÉUSSI</div>
+      </div>
+      <div class="comm-info">
+        <h3>UNE SEULE <span>COMMISSION.</span><br>TOUT INCLUS.</h3>
+        <p>Les 6% couvrent l'intégralité des frais. Aucune surprise, aucun frais caché. Vous ne payez que lorsqu'un paiement est encaissé.</p>
+        <div class="comm-breakdown">
+          <div class="cb-row">
+            <div class="cb-dot" style="background:rgba(99,91,255,.8)"></div>
+            <div>
+              <div class="cb-label">Frais Stripe Connect</div>
+              <div class="cb-sub">Traitement, sécurité, infrastructure de paiement</div>
+            </div>
+            <div class="cb-value" style="color:rgba(148,138,255,.9)">Inclus</div>
+          </div>
+          <div class="cb-row">
+            <div class="cb-dot" style="background:var(--cyan)"></div>
+            <div>
+              <div class="cb-label">Application fee Xepay</div>
+              <div class="cb-sub">Dashboard, liens, monitoring, notifications</div>
+            </div>
+            <div class="cb-value" style="color:var(--cyan)">Inclus</div>
+          </div>
+          <div class="cb-row" style="border-color:rgba(0,255,163,.15)">
+            <div class="cb-dot" style="background:var(--green)"></div>
+            <div>
+              <div class="cb-label">Votre revenu net</div>
+              <div class="cb-sub">Versé directement sur votre compte Stripe Connect</div>
+            </div>
+            <div class="cb-value" style="color:var(--green)">94%</div>
+          </div>
+        </div>
+
+        <div class="comm-example">
+          <div class="ce-title">EXEMPLE — PAIEMENT DE 100 $</div>
+          <div class="ce-row">
+            <div class="ce-label">Montant encaissé</div>
+            <div class="ce-val">100 $</div>
+          </div>
+          <div class="ce-row">
+            <div class="ce-label">Commission Xepay (6%)</div>
+            <div class="ce-val" style="color:var(--muted)">− 6 $</div>
+          </div>
+          <div class="ce-row" style="border-bottom:none">
+            <div class="ce-label" style="font-weight:700;color:var(--white)">Vous recevez</div>
+            <div class="ce-val" style="color:var(--green);font-size:16px">54 268 XOF (94 $)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="sglow"></div>
+
+<!-- ── PLANS ── -->
+<section class="plans-section">
+  <div class="plans-header reveal">
+    <div class="section-eyebrow">Abonnements SaaS</div>
+    <h2>CHOISISSEZ VOTRE<br><span>PLAN DE GESTION</span></h2>
+    <p>La commission de 6% s'applique à tous les plans. L'abonnement détermine vos outils de gestion et vos limites opérationnelles.</p>
+  </div>
+
+  <div class="plans-grid">
+
+    <!-- STARTER -->
+    <div class="plan-card plan-starter reveal" style="transition-delay:.04s">
+      <div class="plan-tag tag-default">Free</div>
+      <div class="plan-name">FREE</div>
+      <div class="plan-price">
+        <div class="amount">0</div>
+        <div class="currency">xof</div>
+        <div class="period">/ mois</div>
+      </div>
+      <div class="plan-price-note">+ 6% par paiement réussi</div>
+      <div class="plan-divider"></div>
+      <ul class="plan-features">
+        <li>
+          <div class="pf-check pf-check-on">✓</div>
+          <div>
+            <div>Liens de paiement</div>
+            <div class="pf-limit">Jusqu'à 10 liens actifs</div>
+          </div>
+        </li>
+        <li><div class="pf-check pf-check-on">✓</div><div>Dashboard temps réel</div></li>
+        <li><div class="pf-check pf-check-on">✓</div><div>Notifications email</div></li>
+        <li><div class="pf-check pf-check-on">✓</div><div>Compte Stripe Connect individuel</div></li>
+        <li><div class="pf-check pf-check-off">—</div><div style="color:var(--muted)">Historique des transactions</div></li>
+        <li><div class="pf-check pf-check-off">—</div><div style="color:var(--muted)">Statistiques avancées</div></li>
+        <li><div class="pf-check pf-check-off">—</div><div style="color:var(--muted)">Export CSV</div></li>
+        <li><div class="pf-check pf-check-off">—</div><div style="color:var(--muted)">Multi-utilisateurs</div></li>
+      </ul>
+      <a href="#" class="plan-cta cta-default">Commencer gratuitement</a>
+    </div>
+
+    <!-- PRO -->
+    <div class="plan-card plan-pro reveal" style="transition-delay:.08s">
+      <div class="plan-pro-badge">POPULAIRE</div>
+      <div class="plan-tag tag-pro">Pro</div>
+      <div class="plan-name" style="background:linear-gradient(90deg,var(--cyan),#a5f3ff);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent">PRO</div>
+      <div class="plan-price">
+        <div class="amount" style="background:linear-gradient(90deg,var(--cyan),var(--violet));background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent">15500</div>
+        <div class="currency" style="color:var(--cyan)">xof</div>
+        <div class="period">/ mois</div>
+      </div>
+      <div class="plan-price-note">+ 6% par paiement réussi</div>
+      <div class="plan-divider" style="background:rgba(0,229,255,.15)"></div>
+      <ul class="plan-features">
+        <li>
+          <div class="pf-check pf-check-on">✓</div>
+          <div>
+            <div>Liens de paiement</div>
+            <div class="pf-limit">Jusqu'à 100 liens actifs</div>
+          </div>
+        </li>
+        <li><div class="pf-check pf-check-on">✓</div><div>Dashboard temps réel</div></li>
+        <li><div class="pf-check pf-check-on">✓</div><div>Historique complet des transactions</div></li>
+        <li><div class="pf-check pf-check-on">✓</div><div><strong>Statistiques avancées</strong></div></li>
+        <li><div class="pf-check pf-check-on">✓</div><div><strong>Export CSV</strong></div></li>
+        <li><div class="pf-check pf-check-on">✓</div><div><strong>Notifications avancées</strong> (email + SMS)</div></li>
+        <li><div class="pf-check pf-check-on">✓</div><div><strong>Suivi et monitoring améliorés</strong></div></li>
+        <li><div class="pf-check pf-check-off">—</div><div style="color:var(--muted)">Multi-utilisateurs</div></li>
+      </ul>
+      <a href="#" class="plan-cta cta-primary">Passer au Pro →</a>
+    </div>
+
+    <!-- BUSINESS -->
+    <div class="plan-card plan-business reveal" style="transition-delay:.12s">
+      <div class="plan-tag tag-biz">Business</div>
+      <div class="plan-name" style="background:linear-gradient(90deg,var(--gold),#ffd97d);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent">BUSINESS</div>
+      <div class="plan-price">
+        <div class="amount" style="color:var(--gold)">36000</div>
+        <div class="currency" style="color:var(--gold)">xof</div>
+        <div class="period">/ mois</div>
+      </div>
+      <div class="plan-price-note">+ 6% par paiement réussi</div>
+      <div class="plan-divider" style="background:rgba(240,180,41,.15)"></div>
+      <ul class="plan-features">
+        <li>
+          <div class="pf-check pf-check-gold">✓</div>
+          <div>
+            <div>Liens de paiement</div>
+            <div class="pf-limit">Illimités</div>
+          </div>
+        </li>
+        <li><div class="pf-check pf-check-gold">✓</div><div>Tout le plan Pro inclus</div></li>
+        <li><div class="pf-check pf-check-gold">✓</div><div><strong>Multi-utilisateurs</strong></div></li>
+        <li><div class="pf-check pf-check-gold">✓</div><div><strong>Rôles et permissions</strong> (admin, agent, lecture)</div></li>
+        <li><div class="pf-check pf-check-gold">✓</div><div><strong>Outils d'équipe</strong></div></li>
+        <li><div class="pf-check pf-check-gold">✓</div><div><strong>Volumes élevés</strong> — limites étendues</div></li>
+        <li><div class="pf-check pf-check-gold">✓</div><div><strong>Support prioritaire</strong> dédié</div></li>
+        <li><div class="pf-check pf-check-gold">✓</div><div>KYB entreprise accompagné</div></li>
+      </ul>
+      <a href="#" class="plan-cta cta-gold">Contacter l'équipe →</a>
+    </div>
+
+  </div>
+</section>
+
+<div class="sglow"></div>
+
+<!-- ── COMPARISON TABLE ── -->
+<section class="compare-section reveal">
+  <div class="compare-header">
+    <div class="section-eyebrow">Comparaison détaillée</div>
+    <h3>TOUT EN UN <span style="color:var(--cyan)">TABLEAU</span></h3>
+  </div>
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th style="width:40%">Fonctionnalité</th>
+        <th>Starter</th>
+        <th class="col-pro">Pro</th>
+        <th>Business</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="ct-category" colspan="4">PAIEMENTS</td></tr>
+      <tr>
+        <td class="ct-row-label">Commission par paiement</td>
+        <td><span class="ct-lim">6%</span></td>
+        <td class="col-pro"><span class="ct-lim">6%</span></td>
+        <td><span class="ct-lim">6%</span></td>
+      </tr>
+      <tr>
+        <td class="ct-row-label">Liens de paiement actifs</td>
+        <td><span class="ct-lim">10 max</span></td>
+        <td class="col-pro"><span class="ct-lim">100 max</span></td>
+        <td><span style="color:var(--gold);font-family:var(--font-m);font-size:11px">Illimité</span></td>
+      </tr>
+      <tr>
+        <td class="ct-row-label">Compte Stripe Connect individuel</td>
+        <td><span class="ct-yes">✓</span></td>
+        <td class="col-pro"><span class="ct-yes">✓</span></td>
+        <td><span class="ct-yes">✓</span></td>
+      </tr>
+      <tr>
+        <td class="ct-row-label">Devises acceptées (XOF, USD, EUR)</td>
+        <td><span class="ct-yes">✓</span></td>
+        <td class="col-pro"><span class="ct-yes">✓</span></td>
+        <td><span class="ct-yes">✓</span></td>
+      </tr>
+
+      <tr><td class="ct-category" colspan="4">DASHBOARD & MONITORING</td></tr>
+      <tr>
+        <td class="ct-row-label">Dashboard temps réel</td>
+        <td><span class="ct-yes">✓</span></td>
+        <td class="col-pro"><span class="ct-yes">✓</span></td>
+        <td><span class="ct-yes">✓</span></td>
+      </tr>
+      <tr>
+        <td class="ct-row-label">Historique des transactions</td>
+        <td><span class="ct-yes"></span></td>
+        <td class="col-pro"><span class="ct-yes">✓</span></td>
+        <td><span class="ct-yes">✓</span></td>
+      </tr>
+      <tr>
+        <td class="ct-row-label">Statistiques avancées</td>
+        <td><span class="ct-no">—</span></td>
+        <td class="col-pro"><span class="ct-yes">✓</span></td>
+        <td><span class="ct-yes">✓</span></td>
+      </tr>
+      <tr>
+        <td class="ct-row-label">Export CSV</td>
+        <td><span class="ct-no">—</span></td>
+        <td class="col-pro"><span class="ct-yes">✓</span></td>
+        <td><span class="ct-yes">✓</span></td>
+      </tr>
+      <tr>
+        <td class="ct-row-label">Suivi et monitoring améliorés</td>
+        <td><span class="ct-no">—</span></td>
+        <td class="col-pro"><span class="ct-yes">✓</span></td>
+        <td><span class="ct-yes">✓</span></td>
+      </tr>
+
+      <tr><td class="ct-category" colspan="4">NOTIFICATIONS</td></tr>
+      <tr>
+        <td class="ct-row-label">Notifications email</td>
+        <td><span class="ct-yes">✓</span></td>
+        <td class="col-pro"><span class="ct-yes">✓</span></td>
+        <td><span class="ct-yes">✓</span></td>
+      </tr>
+      <tr>
+        <td class="ct-row-label">Notifications avancées (SMS, WhatsApp)</td>
+        <td><span class="ct-no">—</span></td>
+        <td class="col-pro"><span class="ct-yes">✓</span></td>
+        <td><span class="ct-yes">✓</span></td>
+      </tr>
+
+      <tr><td class="ct-category" colspan="4">ÉQUIPE & SÉCURITÉ</td></tr>
+      <tr>
+        <td class="ct-row-label">Multi-utilisateurs</td>
+        <td><span class="ct-no">—</span></td>
+        <td class="col-pro"><span class="ct-no">—</span></td>
+        <td><span class="ct-yes">✓</span></td>
+      </tr>
+      <tr>
+        <td class="ct-row-label">Rôles et permissions</td>
+        <td><span class="ct-no">—</span></td>
+        <td class="col-pro"><span class="ct-no">—</span></td>
+        <td><span class="ct-yes">✓</span></td>
+      </tr>
+      <tr>
+        <td class="ct-row-label">KYC / Profil de conformité</td>
+        <td><span class="ct-yes">✓</span></td>
+        <td class="col-pro"><span class="ct-yes">✓</span></td>
+        <td><span class="ct-yes">✓</span></td>
+      </tr>
+      <tr>
+        <td class="ct-row-label">Support prioritaire</td>
+        <td><span class="ct-no">—</span></td>
+        <td class="col-pro"><span class="ct-no">—</span></td>
+        <td><span class="ct-yes">✓</span></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<div class="sglow"></div>
+
+<!-- ── HOW IT WORKS ── -->
+<section class="how-section reveal">
+  <div class="compare-header" style="margin-bottom:36px">
+    <div class="section-eyebrow">Ce que fait Xepay</div>
+    <h3 style="font-family:var(--font-d);font-size:clamp(36px,4vw,56px);letter-spacing:.05em">VOTRE COUCHE <span style="color:var(--cyan)">D'OPÉRATIONS</span></h3>
+  </div>
+  <div class="how-grid">
+    <div class="how-card" data-n="01">
+      <div class="how-icon" style="background:rgba(0,229,255,.08)">🔗</div>
+      <div class="how-title">LIENS DE PAIEMENT</div>
+      <div class="how-text">Créez, partagez et suivez vos liens de paiement en temps réel. Xepay génère le lien, Stripe traite le paiement — vous encaissez.</div>
+    </div>
+    <div class="how-card" data-n="02">
+      <div class="how-icon" style="background:rgba(168,85,247,.08)">📊</div>
+      <div class="how-title">DASHBOARD CENTRALISÉ</div>
+      <div class="how-text">Visualisez l'intégralité de vos flux depuis un seul endroit. Transactions, statuts, volumes — tout en temps réel, sans jongler entre outils.</div>
+    </div>
+    <div class="how-card" data-n="03">
+      <div class="how-icon" style="background:rgba(0,255,163,.07)">🔔</div>
+      <div class="how-title">MONITORING & ALERTES</div>
+      <div class="how-text">Soyez notifié instantanément à chaque événement. Paiement reçu, lien expiré, échec de paiement — par email, SMS ou WhatsApp.</div>
+    </div>
+    <div class="how-card" data-n="04">
+      <div class="how-icon" style="background:rgba(240,180,41,.07)">⚙️</div>
+      <div class="how-title">AUTOMATISATION</div>
+      <div class="how-text">Factures PDF automatiques, relances, exports comptables — Xepay automatise les tâches répétitives pour que vous vous concentriez sur votre business.</div>
+    </div>
+    <div class="how-card" data-n="05">
+      <div class="how-icon" style="background:rgba(0,229,255,.08)">👥</div>
+      <div class="how-title">GESTION D'ÉQUIPE</div>
+      <div class="how-text">Sur le plan Business, invitez votre équipe avec des rôles définis — admin, mananger, lecture seule. Vos opérations restent sécurisées et tracées.</div>
+    </div>
+    <div class="how-card" data-n="06" style="border-color:rgba(99,91,255,.2)">
+      <div class="how-icon" style="background:rgba(99,91,255,.1)">🔷</div>
+      <div class="how-title">STRIPE CONNECT</div>
+      <div class="how-text">Les fonds transitent exclusivement sur votre compte Stripe Connect personnel. Xepay ne touche jamais à votre argent — c'est votre infrastructure, pas la nôtre.</div>
+    </div>
+  </div>
+</section>
+
+<div class="sglow"></div>
+
+<!-- ── FAQ ── -->
+<section class="faq-section">
+  <div class="faq-title reveal">FAQ</div>
+
+  <div class="faq-item reveal">
+    <div class="faq-q">Est-ce que Xepay détient mes fonds ?<div class="faq-q-icon">+</div></div>
+    <div class="faq-a">Non. Xepay ne détient aucun fonds. Chaque marchand dispose de son propre compte Stripe Connect. Les paiements sont traités et conservés par Stripe directement. Xepay intervient uniquement comme couche de gestion et d'automatisation au-dessus de Stripe.</div>
+  </div>
+
+  <div class="faq-item reveal">
+    <div class="faq-q">Que couvrent les 6% de commission ?<div class="faq-q-icon">+</div></div>
+    <div class="faq-a">Les 6% couvrent l'intégralité des frais : frais Stripe Connect (traitement, sécurité, infrastructure), l'application fee Xepay, ainsi que la marge opérationnelle. Aucun frais supplémentaire n'est appliqué sur les paiements. Vous recevez 94% de chaque montant encaissé.</div>
+  </div>
+
+  <div class="faq-item reveal">
+    <div class="faq-q">Dois-je payer l'abonnement ET la commission ?<div class="faq-q-icon">+</div></div>
+    <div class="faq-a">Oui, les deux sont indépendants. L'abonnement SaaS (0F cfa, 15500F ou 36000F/mois) détermine vos outils de gestion et vos limites. La commission de 6% s'applique à chaque paiement réussi, quel que soit votre plan. Le plan Starter est gratuit — vous ne payez que la commission.</div>
+  </div>
+
+  <div class="faq-item reveal">
+    <div class="faq-q">Qu'est-ce qu'un compte Stripe Connect ?<div class="faq-q-icon">+</div></div>
+    <div class="faq-a">Stripe Connect est l'infrastructure de paiement de Stripe dédiée aux plateformes. Chaque marchand Xepay possède son propre compte Stripe Connect — un compte financier individuel, certifié PCI DSS, capable de recevoir des paiements dans 140+ pays en USD, EUR, XOF.</div>
+  </div>
+
+  <div class="faq-item reveal">
+    <div class="faq-q">Puis-je changer de plan à tout moment ?<div class="faq-q-icon">+</div></div>
+    <div class="faq-a">Oui. Vous pouvez upgrader ou downgrader votre plan à tout moment depuis votre dashboard. Le changement prend effet immédiatement. Aucun engagement minimum, aucune pénalité.</div>
+  </div>
+
+  <div class="faq-item reveal">
+    <div class="faq-q">Xepay est-il disponible partout en Afrique de l'Ouest ?<div class="faq-q-icon">+</div></div>
+    <div class="faq-a">Xepay est conçu pour la zone UEMOA (Sénégal, Côte d'Ivoire, Mali, Burkina Faso, Niger, Bénin, Togo, Guinée-Bissau). Les paiements peuvent être reçus depuis 140+ pays, et les devises principales supportées sont le USD et l'EUR.</div>
+  </div>
+
+</section>
+
+<!-- ── CTA ── -->
+<section class="cta-strip reveal">
+  <h2>DÉMARREZ<br><span>SANS RISQUE</span></h2>
+  <p>Le plan free est gratuit. Aucune carte bancaire requise. Vous ne payez que lorsque vous encaissez.</p>
+  <div class="cta-btns">
+    <a href="signup.html" class="btn-primary">Créer un compte gratuit</a>
+    <a href="#" class="btn-ghost">Voir les fonctionnalités →</a>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="logo">XEPAY</div>
+  <div class="footer-links">
+    <a href="fonctionnalite.html">Fonctionnalités</a>
+    <a href="tarif.html">Tarifs</a>
+    <a href="#">À propos</a>
+    <a href="#">Support</a>
+    <a href="#">Confidentialité</a>
+    <a href="#">CGU</a>
+  </div>
+  <div class="footer-copy">© 2026 XEPAY — PROPULSÉ PAR STRIPE CONNECT</div>
+</footer>
+
+<script>
+/* ── CURSOR ── */
+const cursor=document.getElementById('cursor'),ring=document.getElementById('cursor-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY});
+(function anim(){cursor.style.left=mx+'px';cursor.style.top=my+'px';rx+=(mx-rx)*.14;ry+=(my-ry)*.14;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(anim)})();
+document.querySelectorAll('a,button,.faq-q').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{cursor.style.width='18px';cursor.style.height='18px';ring.style.width='50px';ring.style.height='50px'});
+  el.addEventListener('mouseleave',()=>{cursor.style.width='10px';cursor.style.height='10px';ring.style.width='34px';ring.style.height='34px'});
+});
+
+/* ── CANVAS ── */
+const cv=document.getElementById('bg-canvas'),ctx=cv.getContext('2d');
+function resize(){cv.width=window.innerWidth;cv.height=window.innerHeight}
+resize();window.addEventListener('resize',resize);
+const pts=Array.from({length:45},()=>({x:Math.random()*cv.width,y:Math.random()*cv.height,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,r:Math.random()*1.3+.4,o:Math.random()*.28+.07}));
+const GC=22,GR=13;let gf=Array.from({length:GC*GR},()=>0);
+(function tf(){gf[Math.floor(Math.random()*gf.length)]=1;setTimeout(tf,Math.random()*800+200)})();
+(function draw(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const cw=cv.width/GC,ch=cv.height/GR;
+  ctx.strokeStyle='rgba(255,255,255,.018)';ctx.lineWidth=.5;
+  for(let c=0;c<=GC;c++){ctx.beginPath();ctx.moveTo(c*cw,0);ctx.lineTo(c*cw,cv.height);ctx.stroke()}
+  for(let r=0;r<=GR;r++){ctx.beginPath();ctx.moveTo(0,r*ch);ctx.lineTo(cv.width,r*ch);ctx.stroke()}
+  for(let i=0;i<gf.length;i++){gf[i]=Math.max(0,gf[i]-.016);if(gf[i]>0){ctx.fillStyle=`rgba(0,229,255,${gf[i]*.03})`;ctx.fillRect((i%GC)*cw,Math.floor(i/GC)*ch,cw,ch)}}
+  pts.forEach(p=>{
+    p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0)p.x=cv.width;if(p.x>cv.width)p.x=0;if(p.y<0)p.y=cv.height;if(p.y>cv.height)p.y=0;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=`rgba(0,229,255,${p.o})`;ctx.fill();
+  });
+  for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){
+    const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);
+    if(d<100){ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle=`rgba(0,229,255,${(1-d/100)*.08})`;ctx.lineWidth=.4;ctx.stroke()}
+  }
+  requestAnimationFrame(draw);
+})();
+
+/* ── FAQ ACCORDION ── */
+document.querySelectorAll('.faq-item').forEach(item=>{
+  item.querySelector('.faq-q').addEventListener('click',()=>{
+    const isOpen=item.classList.contains('open');
+    document.querySelectorAll('.faq-item').forEach(i=>i.classList.remove('open'));
+    if(!isOpen)item.classList.add('open');
+  });
+});
+
+/* ── REVEAL ── */
+const io=new IntersectionObserver(entries=>{
+  entries.forEach((e,i)=>{
+    if(e.isIntersecting){e.target.classList.add('visible');io.unobserve(e.target)}
+  });
+},{threshold:.1});
+document.querySelectorAll('.reveal,.plan-card').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>

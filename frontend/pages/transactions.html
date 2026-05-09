@@ -1,0 +1,1745 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transactions - ePay</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+  <style>
+    table td div {
+      color: rgba(255,255,255,0.75);
+    }
+    :root {
+      --bg-deep: #0b1138;
+      --bg-panel: #141a4d;
+      --bg-card: #1e246a;
+      --bg-card-2: #262c85;
+      --accent-cyan: #22d3ee;
+      --accent-yellow: #facc15;
+      --accent-pink: #ec4899;
+      --accent-green: #4ade80;
+      --accent-red: #f87171;
+      --text: #ffffff;
+      --text-dim: #b8bce0;
+      --text-muted: #8a90c4;
+      --border: rgba(255,255,255,0.08);
+    }
+
+    body {
+      font-family: 'Sora', sans-serif;
+      background: var(--bg-deep);
+      color: var(--text);
+      color: white;
+      margin: 0;
+      min-height: 100vh;
+      overflow-x: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      width: 200%;
+      height: 200%;
+      top: -50%;
+      left: -50%;
+      z-index: 0;
+      pointer-events: none;
+    }
+    
+
+    #sidebar {
+      width: 260px;
+      background: linear-gradient(180deg, #101652 0%, #0b1138 100%);
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 100;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    #sidebar::-webkit-scrollbar { width: 6px; }
+    #sidebar::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.15);
+      border-radius: 3px;
+    }
+
+    .nav-link {
+      color: rgba(255,255,255,0.8);
+      border-radius: 8px;
+      transition: 0.2s;
+    }
+    .nav-link:hover {
+      background: rgba(255,255,255,0.1);
+      color: white;
+    }
+    .nav-link.active-link {
+      background: rgba(255,255,255,0.15);
+      color: white;
+      border-radius: 8px;
+    }
+
+    .plan-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      position: relative;
+      background: rgba(255,255,255,0.05);
+      color: white;
+    }
+    .plan-badge .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+    }
+
+    #main-content {
+      position: relative;
+      z-index: 1;
+      margin-left: 260px;
+      padding: 28px 40px;
+      flex-grow: 1;
+    }
+
+    /* ==== HEADER ==== */
+    .page-title {
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+    .page-subtitle {
+      font-size: 0.875rem;
+      color: rgba(255,255,255,0.55);
+    }
+
+    /* ==== CARDS KPI ==== */
+    .card-epay {
+      background: linear-gradient(135deg, #2c1a4d, #3d2a6b);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 16px;
+      color: white;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+      padding: 22px 24px;
+    }
+
+    .kpi-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: rgba(255,255,255,0.6);
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .kpi-value {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: white;
+      line-height: 1.1;
+      letter-spacing: -0.5px;
+    }
+    .kpi-value.cyan   { color: #22d3ee; }
+    .kpi-value.green  { color: #4ade80; }
+    .kpi-value.yellow { color: #facc15; }
+    .kpi-value.pink   { color: #ec4899; }
+    .kpi-value.red    { color: #f87171; }
+    .kpi-value.purple { color: #a78bfa; }
+
+    .kpi-sub {
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.55);
+      margin-top: 6px;
+    }
+
+    .mini-progress {
+      height: 4px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    .mini-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #06b6d4, #a78bfa);
+      border-radius: 999px;
+      transition: width 0.4s ease;
+    }
+
+    .btn-cyan {
+      background: linear-gradient(90deg, #06b6d4, #0ea5e9);
+      border: none;
+      color: white;
+      font-weight: 600;
+      border-radius: 10px;
+    }
+    .btn-cyan:hover { opacity: 0.9; color: white; }
+
+    .retrait-btn {
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.06);
+      color: white !important;
+      transition: 0.25s;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+    .retrait-btn:hover {
+      background: linear-gradient(135deg, #06b6d4, #0ea5e9);
+      border-color: transparent;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(6,182,212,0.35);
+    }
+
+    .btn-export {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: white;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.875rem;
+      transition: 0.2s;
+    }
+    .btn-export:hover {
+      background: rgba(6,182,212,0.15);
+      border-color: #22d3ee;
+      color: #22d3ee;
+    }
+
+    /* ==== FILTRES ==== */
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .search-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 240px;
+    }
+    .search-wrap i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgba(255,255,255,0.4);
+      pointer-events: none;
+    }
+    .search-input {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: white;
+      border-radius: 10px;
+      height: 44px;
+      padding: 10px 14px 10px 40px;
+      font-size: 0.875rem;
+    }
+    .search-input::placeholder { color: rgba(255,255,255,0.4); }
+    .search-input:focus {
+      background: rgba(255,255,255,0.1);
+      border-color: #6366f1;
+      color: white;
+      box-shadow: none;
+      outline: none;
+    }
+
+    .chip {
+      padding: 8px 16px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.7);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+      white-space: nowrap;
+    }
+    .chip:hover {
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+    }
+    .chip.active {
+      background: #22d3ee;
+      border-color: #22d3ee;
+      color: #0b1138;
+    }
+
+    .date-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .date-pill {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      height: 44px;
+      padding: 0 12px;
+      gap: 6px;
+    }
+    .date-pill:focus-within {
+      border-color: #6366f1;
+      background: rgba(255,255,255,0.1);
+    }
+    .date-pill small {
+      font-size: 11px;
+      color: #8ea0c3;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .date-pill input[type="date"] {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 13px;
+      padding: 0;
+      outline: none;
+      width: 110px;
+    }
+    .date-pill input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      opacity: 0.5;
+      cursor: pointer;
+    }
+
+    .btn-refresh {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.7);
+      border-radius: 10px;
+      height: 44px;
+      width: 44px;
+      display: grid;
+      place-items: center;
+      transition: 0.2s;
+    }
+    .btn-refresh:hover {
+      background: rgba(6,182,212,0.15);
+      color: #22d3ee;
+      border-color: #22d3ee;
+    }
+
+    #filter-statut { display: none; }
+
+    /* ==== TABLEAU ==== */
+    .table-wrap {
+      background: linear-gradient(135deg, #2c1a4d, #3d2a6b);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+      padding: 20px 22px;
+    }
+
+    .table-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    .table {
+      color: white;
+      margin-bottom: 0;
+    }
+    .table thead th {
+      color: rgba(255,255,255,0.5);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      font-weight: 700;
+      background: rgba(0,0,0,0.18) !important;
+      padding: 14px 18px;
+    }
+    .table tbody tr {
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      transition: 0.15s;
+    }
+    .table tbody tr:hover {
+      background: rgba(255,255,255,0.03) !important;
+    }
+    .table tbody td {
+      padding: 14px 18px;
+      vertical-align: middle;
+      border-color: rgba(255,255,255,0.05);
+      background: transparent !important;
+      font-size: 0.875rem;
+    }
+
+    .amount-cell {
+      font-weight: 700;
+      color: white;
+      font-size: 0.95rem;
+    }
+    .amount-currency {
+      color: rgba(255,255,255,0.5);
+      font-size: 0.78rem;
+      font-weight: 500;
+      margin-left: 4px;
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 13px;
+      color: #0b1138;
+      flex-shrink: 0;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: capitalize;
+      letter-spacing: 0.3px;
+    }
+    .status-pill::before {
+      content: "";
+      width: 6px; height: 6px;
+      border-radius: 50%;
+    }
+    .badge-success {
+      background: rgba(74, 222, 128, 0.12) !important;
+      color: #4ade80 !important;
+      border: 1px solid rgba(74, 222, 128, 0.3);
+      box-shadow: none;
+      animation: none;
+    }
+    .badge-success::before { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+
+    .badge-warning {
+      background: rgba(250, 204, 21, 0.12) !important;
+      color: #facc15 !important;
+      border: 1px solid rgba(250, 204, 21, 0.3);
+      box-shadow: none;
+      animation: none;
+    }
+    .badge-warning::before { background: #facc15; }
+
+    .badge-danger {
+      background: rgba(248, 113, 113, 0.12) !important;
+      color: #f87171 !important;
+      border: 1px solid rgba(248, 113, 113, 0.3);
+      box-shadow: none;
+    }
+    .badge-danger::before { background: #f87171; }
+    .badge-web3 {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      position: relative;
+      overflow: hidden;
+      width: fit-content; /* 🔥 CRUCIAL */
+    }
+
+/* PRO */
+.badge-web3.pro {
+  color: #22d3ee;
+  background: rgba(34,211,238,0.08);
+  border: 1px solid rgba(34,211,238,0.4);
+  box-shadow:
+    0 0 8px rgba(34,211,238,0.4),
+    0 0 20px rgba(34,211,238,0.2);
+}
+
+/* BUSINESS */
+.badge-web3.business {
+  color: #facc15;
+  background: rgba(250,204,21,0.08);
+  border: 1px solid rgba(250,204,21,0.5);
+  box-shadow:
+    0 0 10px rgba(250,204,21,0.5),
+    0 0 25px rgba(250,204,21,0.25);
+}
+
+/* ✨ effet Web3 animé */
+.badge-web3::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(255,255,255,0.5),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: shimmer 2.5s infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+    #nb-transactions.badge {
+      background: rgba(6,182,212,0.15) !important;
+      color: #22d3ee !important;
+      border: 1px solid rgba(6,182,212,0.3);
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+    }
+
+    #transactions-scroll-box {
+      padding-right: 8px;
+      scrollbar-gutter: stable;
+    }
+    #transactions-scroll-box::-webkit-scrollbar { width: 6px; }
+    #transactions-scroll-box::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.15);
+      border-radius: 3px;
+    }
+
+    .wallet-hover-wrapper { position: relative; width: 100%; }
+    .wallet-popup {
+      position: absolute;
+      top: 105%;
+      left: 0;
+      width: 100%;
+      min-width: 340px;
+      background: linear-gradient(135deg, #1a1238, #2a1a4d);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 18px;
+      color: white;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+      display: none;
+      z-index: 999;
+    }
+    .wallet-hover-wrapper:hover .wallet-popup { display: block; }
+
+    .wallet-item {
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .wallet-item:last-child { border-bottom: none; }
+    .wallet-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 5px;
+    }
+    .wallet-label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      font-weight: 600;
+    }
+    .wallet-value {
+      font-size: 12px;
+      color: white;
+      text-align: right;
+      flex: 1;
+    }
+
+    .modal-content {
+      background: linear-gradient(135deg, #0f172a, #1e3a8a);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+    }
+    .modal-content .form-control,
+    .modal-content .form-select {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: white;
+      height: 46px;
+      border-radius: 10px;
+    }
+    .modal-content .form-control:focus,
+    .modal-content .form-select:focus {
+      background: rgba(255,255,255,0.1);
+      border-color: #6366f1;
+      color: white;
+      box-shadow: none;
+    }
+
+    #etat-vide { color: rgba(255,255,255,0.5); }
+    #etat-vide p { color: rgba(255,255,255,0.7); }
+
+    #chartTooltip {
+      background: linear-gradient(135deg, #1a1238, #2a1a4d) !important;
+      border: 1px solid rgba(255,255,255,0.12) !important;
+      border-radius: 14px !important;
+    }
+
+    @media (max-width: 960px) {
+      #sidebar { width: 100%; position: relative; min-height: auto; }
+      #main-content { margin-left: 0; padding: 20px; }
+    }
+  </style>
+</head>
+<body class="d-flex">
+
+  <div id="sidebar" class="d-flex flex-column p-3">
+
+    <div class="mb-4 mt-2">
+      <h4 class="text-white fw-bold">⚡ Xepay</h4>
+      <small class="text-white-50">Tableau de bord marchand</small>
+    </div>
+
+    <div class="mb-4">
+      <span id="badge-plan" class="badge-web3 pro">PRO</span>
+    </div>
+
+    <ul class="nav nav-pills flex-column gap-1">
+      <li class="nav-item">
+        <a href="./dashboard.html" class="nav-link text-white">🏠 Accueil</a>
+      </li>
+      <li class="nav-item">
+        <a href="./transactions.html" class="nav-link text-white active-link">💳 Transactions</a>
+      </li>
+      <li class="nav-item">
+        <a href="./liens.html" class="nav-link text-white">🔗 Mes liens de paiement</a>
+      </li>
+      <li class="nav-item">
+        <a href="API.html" class="nav-link text-white-50 d-flex justify-content-between"
+           onclick="showUpgradeModal('api')">
+          ⚙️ API Access
+          <span class="badge-web3 pro">Pro</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="multi-users.html" class="nav-link text-white-50 d-flex justify-content-between"
+           onclick="showUpgradeModal('team')">
+          👥 Multi-utilisateurs
+          <span class="badge-web3 business">Business</span>
+        </a>
+      </li>
+      <li class="nav-item mt-2">
+        <a href="./profil.html" class="nav-link text-white">👤 Profil / KYC</a>
+      </li>
+      <li class="nav-item">
+        <a href="./sécurité.html" class="nav-link text-white">🔒 Sécurité</a>
+      </li>
+    </ul>
+
+    <div class="mt-auto">
+      <div class="card border-0 p-3"
+           style="background: rgba(255,255,255,0.1); border-radius: 12px;">
+        <p class="text-white mb-2" style="font-size: 0.85rem;">
+          Débloquez plus de fonctionnalités
+        </p>
+        <button class="btn btn-warning btn-sm w-100 fw-bold"
+                onclick="showUpgradeModal('general')">
+          ⚡ Upgrader
+        </button>
+      </div>
+      <a href="login.html" onclick="logout()" class="nav-link text-white-50 mt-3 text-center fw-bold">
+        🚪 Déconnexion
+      </a>
+    </div>
+  </div>
+
+  <div id="main-content" class="flex-grow-1">
+
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+      <div>
+        <h4 class="page-title">💳 Transactions</h4>
+        <div class="page-subtitle">Historique de tous vos paiements</div>
+      </div>
+      <button id="exportBtn" class="btn btn-export">
+        <i class="bi bi-download me-1"></i> Exporter CSV
+      </button>
+    </div>
+
+    <!-- KPI LIGNE 1 -->
+    <div class="row g-3 mb-3">
+
+      <div class="col-md-4">
+        <div class="wallet-hover-wrapper position-relative">
+          <div class="card-epay">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <div class="kpi-label"> total Solde </div>
+                <h4 id="wallet-balance" class="kpi-value green">0 XOF</h4>
+              </div>
+
+              <button
+                class="btn btn-sm px-3 py-2 retrait-btn"
+                data-bs-toggle="modal"
+                data-bs-target="#withdrawModal">
+                Retirer
+              </button>
+            </div>
+            <div id="wallet-next" class="kpi-sub">Chargement...</div>
+          </div>
+
+          <div id="walletHistoryPopup" class="wallet-popup">
+            <h6 class="mb-3">Historique du wallet</h6>
+            <div id="wallet-scroll-box" style="max-height: 500px; overflow-y: auto;">
+              <div id="walletHistoryList"></div>
+            </div>
+            <div id="wallet-loading-more" class="text-center py-3 d-none">
+              <span class="text-white-50">Chargement...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card-epay">
+          <div class="kpi-label">Retrait en attente</div>
+          <h4 id="pending-withdraw" class="kpi-value red">0 XOF</h4>
+          <div class="kpi-sub">vers mobile money</div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card-epay">
+          <div class="kpi-label">Total reçu</div>
+          <h4 id="total-xof" class="kpi-value cyan">0 XOF</h4>
+          <div class="kpi-sub">Revenus cumulés</div>
+        </div>
+        
+      </div>
+
+    </div>
+
+    <!-- KPI LIGNE 2 -->
+    <div class="row g-3 mb-4">
+
+      <div class="col-md-4">
+        <div class="card-epay">
+          <div class="kpi-label"> Montant en attente</div>
+          <h4 id="pending-xof" class="kpi-value yellow">0 XOF</h4>
+          <div class="kpi-sub">Paiements en attente</div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card-epay">
+          <div class="kpi-label">Liens de paiement</div>
+          <h4 class="kpi-value purple">
+            <span id="links-created">0</span>
+          </h4>
+          <div class="kpi-sub">
+            <span id="links-paid" style="color:#4ade80; font-weight:700;">0</span>
+          </div>
+          <div class="mini-progress">
+            <div id="links-progress-bar" class="mini-progress-bar" style="width: 0%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card-epay position-relative" id="successCard">
+          <div class="kpi-label">Taux de réussite</div>
+          <h4 id="success-rate" class="kpi-value green">0%</h4>
+
+          <div id="chartTooltip"
+            style="
+              display:none;
+              position:absolute;
+              top:10px;
+              right:10px;
+              width:320px;
+              height:240px;
+              padding:10px;
+              z-index:1000;
+            ">
+            <canvas id="statusChart"></canvas>
+          </div>
+          <div class="kpi-sub">Transactions réussies</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- FILTRES -->
+      <div class="toolbar">
+
+        <div class="search-wrap">
+          <i class="bi bi-search"></i>
+          <input type="text" id="search-input"
+                 class="search-input"
+                 placeholder="Rechercher par client, email..."
+                 oninput="filtrerTransactions()">
+        </div>
+
+        <div class="date-group">
+          <div class="date-pill">
+            <small>Du</small>
+            <input type="date" id="startDate">
+          </div>
+          <div class="date-pill">
+            <small>Au</small>
+            <input type="date" id="endDate">
+          </div>
+        </div>
+
+        <button class="chip active" data-statut="" onclick="setStatutChip(this)">Tous</button>
+        <button class="chip" data-statut="paid" onclick="setStatutChip(this)">Réussi</button>
+        <button class="chip" data-statut="pending" onclick="setStatutChip(this)">En attente</button>
+        <button class="chip" data-statut="expired" onclick="setStatutChip(this)">Échoué</button>
+
+        <select id="filter-statut" onchange="filtrerTransactions()">
+          <option value="">Tous les statuts</option>
+          <option value="paid">Réussi</option>
+          <option value="pending">En attente</option>
+          <option value="expired">Échoué</option>
+        </select>
+
+        <button onclick="rafraichir(this)" class="btn btn-refresh">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+      </div>
+
+    <!-- TABLEAU -->
+    <div class="table-wrap mt-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="table-title">Toutes les transactions</span>
+        <span id="nb-transactions" class="badge">0 transactions</span>
+      </div>
+
+      <div id="transactions-scroll-box" style="max-height: 500px; overflow-y: auto;">
+        <table class="table table-hover align-middle">
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>Montant</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-transactions"></tbody>
+        </table>
+      </div>
+
+      <div id="loading-more" class="text-center py-3 d-none">
+        <span class="text-white-50">Chargement...</span>
+      </div>
+
+      <div id="etat-vide" class="text-center py-5">
+        <p style="font-size: 2rem;">💳</p>
+        <p class="text-white-50">Aucune transaction pour le moment</p>
+        <small class="text-white-50">
+          Partagez votre lien de paiement pour commencer à recevoir
+        </small>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="withdrawModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+
+        <div class="modal-header border-0">
+          <h5 class="modal-title fw-bold">Retirer de l'argent</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body px-4">
+
+          <div class="mb-3">
+            <label class="form-label">Montant</label>
+            <input type="number" id="withdrawAmount" class="form-control" placeholder="Ex: 5000">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Opérateur</label>
+            <select id="withdrawOperator" class="form-select">
+              <option value="wave">Wave</option>
+              <option value="orange">Orange Money</option>
+              <option value="free">Free Money</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Numéro</label>
+            <input type="text" id="withdrawPhone" class="form-control" placeholder="+221 77...">
+          </div>
+
+        </div>
+
+        <div class="modal-footer border-0">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button id="confirmWithdrawBtn" class="btn btn-cyan" onclick="submitWithdraw()">Confirmer</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+
+    function setStatutChip(el) {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      const select = document.getElementById('filter-statut');
+      select.value = el.dataset.statut;
+      select.dispatchEvent(new Event('change'));
+    }
+
+    async function exportCSV() {
+      console.log("CLICK OK")
+
+      const startDate = document.getElementById("startDate").value
+      const endDate = document.getElementById("endDate").value
+      const status = document.getElementById("statusFilter")?.value
+
+      const params = new URLSearchParams()
+
+      if (status) params.append("status", status)
+      if (startDate) params.append("start_date", startDate)
+      if (endDate) params.append("end_date", endDate)
+
+      const res = await fetch(`http://127.0.0.1:8000/export/csv?${params}`, {
+        headers: {
+          "Authorization": "Bearer " + localStorage.getItem("token")
+        }
+      })
+
+      if (res.status === 403) {
+        showUpgradeModal()
+        return
+      }
+
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "transactions.csv"
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+    }
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("exportBtn").addEventListener("click", exportCSV)
+    })
+    document.getElementById("exportBtn")
+      .addEventListener("click", exportCSV)
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const token = localStorage.getItem("token")
+
+      if (!token) {
+        window.location.href = "login.html"
+        return
+      }
+
+      const res = await fetch("http://127.0.0.1:8000/me", {
+        headers: {
+            Authorization: "Bearer " + token
+        }
+      })
+
+      const user = await res.json()
+
+      if (user.plan === "free") {
+        window.location.href = "dashboard.html"
+      }
+    })
+
+
+    const statusMap = {
+      paid: "Réussi",
+      pending: "En attente",
+      expired: "Échoué"
+    };
+
+    let statusChart = null;
+
+    function renderStatusChart(paid, pending, failed) {
+      const ctx = document.getElementById("statusChart");
+
+      if (!ctx) return;
+
+      if (statusChart) {
+        statusChart.destroy();
+      }
+      const centerTextPlugin = {
+        id: "centerText",
+        beforeDraw(chart) {
+          const { ctx } = chart;
+          const meta = chart.getDatasetMeta(0);
+
+          if (!meta.data.length) return;
+
+          const x = meta.data[0].x;
+          const y = meta.data[0].y;
+
+          const total = paid + pending + failed;
+          const percent = total > 0 ? ((paid / total) * 100).toFixed(1) : 0;
+
+          ctx.save();
+          ctx.font = "bold 26px Arial";
+          ctx.fillStyle = "#ffffff";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(percent + "%", x, y);
+          ctx.restore();
+        }
+      };
+
+      statusChart = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: ["Payés", "En attente", "Échoués"],
+          datasets: [{
+            data: [paid, pending, failed],
+            backgroundColor: [
+              "#4ade80",
+              "#facc15",
+              "#f87171"
+            ],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "55%",
+          plugins: {
+            legend: {
+              position: "right",
+              align: "center",
+              labels: {
+                color: "white",
+                boxWidth: 18,
+                boxHeight: 18,
+                padding: 20,
+                usePointStyle: false
+              }
+            }
+          }
+        },
+
+        plugins:[centerTextPlugin]
+      });
+    }
+
+    document.getElementById("filter-statut").addEventListener("change", () => {
+      offset = 0
+      transactions = []
+      chargerTransactions()
+    })
+
+    let transactions = []
+    let offset = 0;
+    const limit = 10;
+    let isLoading = false;
+
+    const badgeStatut = {
+      paid: `<span class="status-pill badge-success">Réussi</span>`,
+      pending: `<span class="status-pill badge-warning">En attente</span>`,
+      expired:  `<span class="status-pill badge-danger">Échoué</span>`
+    }
+
+    const avatarPalette = ['#22d3ee','#facc15','#ec4899','#4ade80','#a78bfa','#fb923c','#60a5fa','#f87171'];
+    function avatarColor(str) {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % avatarPalette.length;
+      return avatarPalette[h];
+    }
+
+    function afficherTransactions(data) {
+      console.log("DATA REÇUE 👉", data) 
+      const tbody = document.getElementById('tbody-transactions')
+      const vide = document.getElementById('etat-vide')
+
+      if (data.length === 0) {
+        tbody.innerHTML = ''
+        vide.classList.remove('d-none')
+        document.getElementById('nb-transactions').textContent = '0 transactions'
+        return
+      }
+
+      vide.classList.add('d-none')
+      document.getElementById('nb-transactions').textContent =
+        `${data.length} transaction${data.length > 1 ? 's' : ''}`
+
+      const html = data.map(t => {
+        const amount = (t.amount_local ?? t.amount);
+        const currency = (t.currency_local ?? t.currency);
+        const color = avatarColor(t.email || 'x');
+        return `
+          <tr>
+            <td>
+              <div class="d-flex align-items-center gap-3">
+                <div class="avatar" style="background:${color};">${t.email[0].toUpperCase()}</div>
+                <div>
+                  <div class="fw-semibold">${t.email}</div>
+                  <small style="color: rgba(255,255,255,0.45); font-size:0.75rem;">Client</small>
+                </div>
+              </div>
+            </td>
+
+            <td>
+              <span class="amount-cell">${amount.toLocaleString("fr-FR")}</span><span class="amount-currency">${currency}</span>
+            </td>
+
+            <td>
+              <span class="status-pill ${
+                t.status === "paid" ? "badge-success" :
+                t.status === "pending" ? "badge-warning" :
+                "badge-danger"
+              }">
+                ${statusMap[t.status] || t.status}
+              </span>
+            </td>
+
+            <td style="color: rgba(255,255,255,0.65); font-size: 0.85rem;">
+              ${
+                t.date && !isNaN(new Date(t.date))
+                 ? new Date(t.date).toLocaleDateString("fr-FR", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit"
+                 })
+                 :"N/A"
+              }
+            </td>
+
+            <td style="text-align:right;">
+              <button style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.7); width:32px; height:32px; border-radius:8px; cursor:pointer;">
+                <i class="bi bi-eye"></i>
+              </button>
+            </td>
+          </tr>
+        `
+      }).join('');
+
+      if (offset === 0) {
+        tbody.innerHTML = html;
+      } else {
+        tbody.innerHTML += html;
+      }
+
+    }
+    async function chargerTransactions() {
+      console.log("CHARGER TRANSACTIONS CALLED")
+
+      if (isLoading) return;
+      isLoading = true;
+
+      const loader = document.getElementById("loading-more");
+      loader.classList.remove("d-none");
+
+      try {
+        const raw = document.getElementById("filter-statut").value
+
+        const mapStatus = {
+          "Tous": "",
+          "Réussi": "paid",
+          "En attente": "pending",
+          "Échoué": "expired"
+        }
+
+        const status = mapStatus[raw] || ""
+
+        const url = `/transactions?offset=${offset}&limit=${limit}` + (status ? `&status=${status}` : "")
+
+        const res = await fetch(url)
+        const data = await res.json()
+
+        transactions = [...transactions, ...data]
+        afficherTransactions(transactions)
+
+        offset += data.length;
+
+        if (data.length < limit) {
+          return;
+        }
+
+      } catch (err) {
+        console.error("Erreur transactions:", err)
+      }
+
+      isLoading = false;
+      loader.classList.add("d-none");
+    }
+    document.getElementById("filter-statut").addEventListener("change", () => {
+      offset = 0
+      transactions = []
+      chargerTransactions()
+    })
+
+    async function rafraichir(btn) {
+      try {
+        btn.style.transition = "transform 0.6s linear"
+        btn.style.transform = "rotate(360deg)"
+        btn.disabled = true
+
+        await chargerTransactions()
+        await loadStats()
+
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setTimeout(() => {
+            btn.style.transform = "rotate(0deg)"
+            btn.disabled = false
+        }, 600)
+      }
+    }
+
+    function filtrerTransactions() {
+      const search = document.getElementById('search-input').value.toLowerCase()
+      const statut = document.getElementById('filter-statut').value
+
+      const filtered = transactions.filter(t => {
+
+        const matchSearch =
+            t.email.toLowerCase().includes(search)
+
+        const matchStatus =
+            !statut || t.status === statut
+
+        return matchSearch && matchStatus
+      })
+
+      afficherTransactions(filtered)
+    }
+
+    function resetFiltres() {
+      document.getElementById('search-input').value = ''
+      document.getElementById('filter-statut').value = ''
+      document.getElementById('filter-devise').value = ''
+    }
+
+    function voirDetail(email) {
+      const t = transactions.find(x => x.email === email)
+      alert(`Client: ${t.client}\nMontant: ${t.montant} ${t.devise}\nStatut: ${t.statut}`)
+    }
+
+    console.log("DATA =", transactions);
+
+    function renderStats(stats, plan) {
+      document.getElementById("total-xof").innerText =
+        (stats.total_received || 0).toLocaleString("fr-FR") + " XOF";
+
+      document.getElementById("pending-xof").innerText =
+        (stats.pending_total || 0).toLocaleString("fr-FR") + " XOF";
+
+      document.getElementById("success-rate").innerText =
+        (stats.success_rate || 0) + "%";
+
+      renderStatusChart(
+        stats.paid_links || 0,
+        stats.pending_links || 0,
+        stats.failed_links || 0
+      );
+
+      const paid = window.GLOBAL_PLAN?.paid_count ?? 0;
+      const paidLimit = window.GLOBAL_PLAN?.paid_limit ?? 0;
+
+      const createdEl = document.getElementById("links-created");
+      const paidEl = document.getElementById("links-paid");
+      const barEL = document.getElementById("links-progress-bar");
+
+      if (createdEl) createdEl.innerText = `${paid} / ${paidLimit}`;
+
+      if (paidEl) paidEl.innerText = `${paid} paiements sur ${paidLimit} liens`;
+
+      // 👉 barre de progression
+      if (barEL) {
+        const pct = paidLimit > 0
+          ? Math.min(100, (paid / paidLimit) * 100)
+          : 0;
+
+        barEL.style.width = pct + "%";
+      }
+    }
+
+    async function loadStats() {
+      try {
+        const token = localStorage.getItem("token");
+
+        const response = await fetch("http://127.0.0.1:8000/stats", {
+            headers: {
+                Authorization: "Bearer " + token
+            }
+        });
+
+        const stats = await response.json();
+        window.LAST_STATS = stats;
+        console.log(stats)
+
+        renderStatusChart(
+          stats.paid_count || 0,
+          stats.pending_link || 0,
+          stats.failed_links || 0
+        )
+
+        document.getElementById("success-rate").textContent =
+          (stats.success_rate || 0) + "%"
+
+        document.getElementById("pending-withdraw").textContent =
+          (stats.pending_withdraw || 0).toLocaleString("fr-FR") + " XOF";
+
+        renderStats(stats);
+
+      } catch (error) {
+        console.error("Erreur stats:", error);
+      }
+    }
+
+    async function chargerWallet() {
+      try {
+        const res = await fetch("http://127.0.0.1:8000/wallet/me", {
+            headers: {
+                Authorization: "Bearer " + localStorage.getItem("token")
+            }
+        })
+
+        const data = await res.json()
+        console.log("MES DONNES:", data)
+
+        const lockedEl = document.getElementById("wallet-locked")
+        const balanceEl = document.getElementById("wallet-balance")
+        const nextEl = document.getElementById("wallet-next")
+
+        console.log("lockedEl:", lockedEl)
+        console.log("balanceEl:", balanceEl)
+
+        balanceEl.innerText =
+          Number(data.available || 0).toLocaleString("fr-FR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          }) + " XOF"
+        if (data.next_available_at) {
+          const target = new Date(data.next_available_at)
+
+          function updateCountdown() {
+            nextEl.innerText = formatCountdown(target)
+          }
+
+          updateCountdown()
+          setInterval(updateCountdown, 1000)
+        } else {
+          nextEl.innerText = "Disponible immédiatement"
+        }
+
+      } catch (err) {
+        console.error("Erreur wallet:", err)
+      }
+    }
+    function formatCountdown(targetDate) {
+      const now = new Date()
+      const diff = new Date(targetDate) - now
+
+      if (diff <= 0) return "Disponible maintenant"
+
+      const totalSeconds = Math.floor(diff / 1000)
+
+      const days = Math.floor(totalSeconds / 86400)
+      const hours = Math.floor((totalSeconds % 86400) / 3600)
+      const minutes = Math.floor((totalSeconds % 3600) / 60)
+      const seconds = totalSeconds % 60
+
+      let result = "Disponible dans "
+
+      if (days > 0) result += `${days}j `
+      if (hours > 0 || days > 0) result += `${hours}h `
+      if (minutes > 0 || hours > 0 || days > 0) result += `${minutes}min `
+
+      result += `${seconds}s`
+
+      return result
+    }
+    async function loadTransactions() {
+
+      const token = localStorage.getItem("token")
+      
+
+      console.log("LOAD START");
+      const table = document.getElementById("tbody-transactions");
+      table.innerHTML = "Chargement...";
+
+      if (!token) {
+        alert("Session expirée")
+        window.location.href = "login.html"
+      }
+      console.log("TOKEN =", token)
+
+      const status = document.getElementById("statusFilter")?.value || "";
+      const currency = document.getElementById("currencyFilter")?.value || "";
+      const search = document.getElementById("searchInput")?.value || "";
+
+      let url = `http://127.0.0.1:8000/transactions?limit=${limit}&offset=${offset}&`;
+      if (status) url += `status=${status}&`;
+      if (currency) url += `currency=${currency}&`;
+      if (search) url += `email_search=${search}&`;
+
+       console.log("URL:", url);
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Authorization": "Bearer " + token
+        }
+      })
+      console.log("STATUS =", response.status)
+
+      if (response.status === 401) {
+        console.log("Token expiré → tentative de reconnexion")
+        window.location.href = "login.html"
+        return
+      }
+
+      const json = await response.json()
+
+      console.log("JSON =", json)
+
+      const data = json
+
+      console.log("DATA =", data)
+
+      if (response.status !== 200) {
+        console.log("Erreur API")
+        return
+      }
+
+      console.log("DATA =", data);
+      transactions = data.filter(tx => {
+        const email = (tx.email || "").toLowerCase();
+        const statusTx = (tx.status || "").toLowerCase();
+        const currencyTx = (tx.currency || "").toLowerCase();
+
+        return (
+          (!search || email.includes(search.toLowerCase())) &&
+          (!status || statusTx.includes(status.toLowerCase())) &&
+          (!currency || currencyTx === currency.toLowerCase())
+        );
+      });
+      console.log("TRANSACTIONS FINAL =", transactions)
+      
+      let rows = "";
+      console.log("DATES:", transactions.map(t => t.created_at))
+      transactions.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      transactions.forEach(tx => {
+          const amount = tx.amount_local || tx.amount;
+          const currency = tx.currency_local || tx.currency;
+          rows += `
+          <tr>
+                <td>${tx.email}</td>
+                <td>${amount.toLocaleString("fr-FR")} ${currency}</td>
+
+                <td>
+                    ${badgeStatut[tx.status] || `<span class="status-pill badge-danger">${tx.status}</span>`}
+                </td>
+
+                <td>
+                  ${
+                    tx.created_at
+                      ? new Date(tx.created_at).toLocaleDateString("fr-FR")
+                      : "-"
+                    }
+                </td>
+          </tr>
+          `;
+      });
+
+      table.innerHTML = rows;
+
+      afficherTransactions(transactions)
+
+      document.getElementById("statusFilter")?.addEventListener("change", loadTransactions);
+      document.getElementById("currencyFilter")?.addEventListener("change", loadTransactions);
+      document.getElementById("searchInput")?.addEventListener("input", loadTransactions);
+
+    }
+    loadStats();
+    loadTransactions();
+    chargerWallet();
+
+    async function loadWalletHistory() {
+      try {
+        const token = localStorage.getItem("token");
+        const historyList = document.getElementById("walletHistoryList");
+
+        const res = await fetch("http://127.0.0.1:8000/wallet/history", {
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+
+        const data = await res.json();
+
+        if (!data.transactions || data.transactions.length === 0) {
+            box.innerHTML = "<small>Aucun mouvement wallet</small>";
+            return;
+        }
+
+        const html = data.transactions.map(tx => `
+          <div class="wallet-item">
+            <div class="wallet-row">
+              <span class="wallet-label">Type :</span>
+              <span class="wallet-value">
+                ${tx.type === "deposit" ? "Dépôt" : tx.type === "withdraw" ? "Retrait" : tx.type}
+              </span>
+            </div>
+
+            <div class="wallet-row">
+              <span class="wallet-label">Montant :</span>
+              <span class="wallet-value ${tx.direction === 'in' ? 'text-success' : 'text-danger'}">
+                ${tx.direction === "in" ? "+" : "-"}${Number(tx.amount).toLocaleString("fr-FR")} XOF
+              </span>
+            </div>
+
+            <div class="wallet-row">
+              <span class="wallet-label">Date :</span>
+              <span class="wallet-value">
+                ${new Date(tx.created_at).toLocaleString("fr-FR")}
+              </span>
+            </div>
+
+            <div class="wallet-row">
+              <span class="wallet-label">Référence :</span>
+              <span class="wallet-value">${tx.reference || "N/A"}</span>
+            </div>
+
+            <div class="wallet-row">
+              <span class="wallet-label">Note :</span>
+              <span class="wallet-value">${tx.description || "—"}</span>
+            </div>
+          </div>
+        `).join("");
+        historyList.innerHTML = html;
+
+      } catch (e) {
+        const historyList = document.getElementById("walletHistoryList");
+        if (historyList) {
+          historyList.innerHTML = "<small>Erreur chargement historique</small>";
+        }
+      }
+    }
+
+    loadWalletHistory();
+
+    const confirmBtn = document.getElementById("confirmWithdrawBtn");
+
+    if (confirmBtn) {
+      confirmBtn.addEventListener("click", async () => {
+      const token = localStorage.getItem("token");
+
+      const amount = parseFloat(document.getElementById("withdrawAmount").value);
+      const operator = document.getElementById("withdrawOperator").value;
+      const phone = document.getElementById("withdrawPhone").value.trim();
+
+      if (!amount || amount <= 0) {
+        alert("Montant invalide");
+        return;
+      }
+
+      if (!phone) {
+        alert("Numéro requis");
+        return;
+      }
+
+      try {
+        const res = await fetch("http://127.0.0.1:8000/withdraw", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            amount,
+            operator,
+            phone
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.detail || "Erreur retrait");
+          return;
+        }
+
+        alert("Retrait envoyé");
+
+        bootstrap.Modal.getInstance(document.getElementById("withdrawModal")).hide();
+
+        document.getElementById("withdrawAmount").value = "";
+        document.getElementById("withdrawPhone").value = "";
+
+        location.reload();
+
+      } catch (err) {
+        alert("Erreur serveur");
+      }
+    });
+    }
+
+    async function submitWithdraw() {
+      const amount = document.getElementById("withdrawAmount").value;
+      const operator = document.getElementById("withdrawOperator").value;
+      const phone = document.getElementById("withdrawPhone").value;
+
+      const token = localStorage.getItem("token");
+
+      const res = await fetch("http://127.0.0.1:8000/withdraw", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          amount: Number(amount),
+          operator,
+          phone
+        })
+      });
+
+      const data = await res.json();
+
+      alert("Retrait demandé");
+      location.reload();
+    }
+
+    const successCard = document.getElementById("successCard");
+    const chartTooltip = document.getElementById("chartTooltip");
+
+    successCard.addEventListener("mouseenter", () => {
+      chartTooltip.style.display = "block";
+    });
+
+    successCard.addEventListener("mouseleave", () => {
+      chartTooltip.style.display = "none";
+    });
+
+    const scrollBox = document.getElementById("transactions-scroll-box");
+
+    scrollBox.addEventListener("scroll", () => {
+      const scrollTop = scrollBox.scrollTop;
+      const visibleHeight = scrollBox.clientHeight;
+      const totalHeight = scrollBox.scrollHeight;
+
+      if (scrollTop + visibleHeight >= totalHeight - 50) {
+        chargerTransactions();
+      }
+    });
+  </script>
+<script>
+async function loadUser() {
+  const token = localStorage.getItem("token")
+
+  const res = await fetch("http://127.0.0.1:8000/me/user-plan", {
+    headers: {
+      "Authorization": "Bearer " + token
+    }
+  })
+
+  const user = await res.json()
+
+  console.log("USER:", user)
+
+  updatePlanUI(user.plan)
+}
+async function loadPlan() {
+  try {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch("http://127.0.0.1:8000/me/plan", {
+      headers: {
+        Authorization: "Bearer " + token
+      }
+    });
+
+    const plan = await res.json();
+    console.log("PLAN:", plan);
+    window.GLOBAL_PLAN = plan;
+
+    renderPlan(plan);
+    renderStats(window.LAST_STATS, window.GLOBAL_PLAN);
+
+  } catch (err) {
+    console.error("Erreur loadPlan:", err);
+  }
+  function renderPlan(plan) {
+    const el = document.getElementById("plan-name");
+    if (el) el.textContent = plan.plan;
+
+    const el2 = document.getElementById("plan-limit");
+    if (el2) el2.textContent =
+      plan.paid_limit === null ? "Illimité" : plan.paid_limit;
+
+    // 🔥 AJOUTE ÇA 👇
+
+    const createdEl = document.getElementById("links-created");
+    const paidEl = document.getElementById("links-paid");
+    const progress = document.getElementById("links-progress-bar");
+
+    if (createdEl) {
+      createdEl.textContent = `${plan.links_used} / ${plan.links_limit}`;
+    }
+
+    if (paidEl) {
+      paidEl.textContent = plan.paid_count;
+    }
+
+    if (progress && plan.links_limit) {
+      const percent = (plan.links_used / plan.links_limit) * 100;
+      progress.style.width = percent + "%";
+    }
+  }
+}
+
+function updatePlanUI(plan) {
+  const badge = document.getElementById("badge-plan")
+
+  badge.className = "badge-web3"
+
+  if (plan === "free") {
+    badge.textContent = "FREE"
+  }
+  else if (plan === "pro") {
+    badge.textContent = "PRO"
+    badge.classList.add("pro")
+  }
+  else if (plan === "business") {
+    badge.textContent = "BUSINESS"
+    badge.classList.add("business")
+  }
+}
+
+window.onload = () => {
+  loadUser()
+  loadPlan()
+}
+</script>
+<script>
+  function logout() {
+  localStorage.removeItem("token")
+  window.location.href = "login.html"
+}
+</script>
+
+</body>
+</html>

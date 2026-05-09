@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>dashboard - PayTech</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <style>
+
+      body {
+        background: #080f3f !important;
+        color: white !important;
+      }
+
+      #main-content {
+        background: #080f3f;
+      }
+
+      .card-epay {
+        background: rgba(255,255,255,0.08) !important;
+        border: none !important;
+        border-radius: 16px;
+        color: white;
+      }
+
+      .form-control,
+      .form-select {
+        background: rgba(255,255,255,0.07) !important;
+        border: 1px solid rgba(255,255,255,0.15) !important;
+        color: white !important;
+        border-radius: 10px !important;
+      }
+
+      .form-control::placeholder {
+        color: rgba(255,255,255,0.3) !important;
+      }
+
+      .input-group-text {
+        background: rgba(255,255,255,0.07) !important;
+        border: 1px solid rgba(255,255,255,0.15) !important;
+        color: white !important;
+      }
+
+      .form-label {
+        color: rgba(255,255,255,0.6);
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .alert {
+        color: white !important;
+      }
+      .form-control, .form-select, .input-group-text {
+        background: rgba(255,255,255,0.07) !important;
+        border-color: rgba(255,255,255,0.15) !important;
+        color: white !important;
+      }
+      .form-control::placeholder { 
+        color: rgba(255,255,255,0.3) !important; 
+      }
+      .card-epay {
+        background: rgba(255,255,255,0.08);
+        border: none;
+        border-radius: 16px;
+        color: white;
+      }
+      .plan-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+
+        padding: 6px 14px;
+        border-radius: 999px;
+
+        font-size: 13px;
+        font-weight: 600;
+
+        position: relative;
+        background: rgba(255,255,255,0.05);
+        color: white;
+      }
+
+      /* DOT */
+      .plan-badge .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+      .card-epay {
+        background: rgba(255,255,255,0.06);
+        backdrop-filter: blur(12px);
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,0.08);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+        transition: transform 0.2s ease;
+      }
+
+      .card-epay:hover {
+        transform: translateY(-4px);
+      }
+
+      .status-badge {
+        padding: 5px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .status-ok {
+        background: rgba(34,197,94,0.2);
+        color: #22c55e;
+      }
+
+      .status-warn {
+        background: rgba(239,68,68,0.2);
+        color: #ef4444;
+      }
+      .card-epay:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+      }
+
+    </style>
+</head>
+<body class="d-flex" style="margin: 0; padding: 0;">
+
+    
+<!-- SIDEBAR -->
+  <div id="sidebar" class="d-flex flex-column p-3"
+    style="width: 260px; min-height: 100vh; background: #0d1b6e; position: fixed;">
+
+    <!-- Logo -->
+    <div class="mb-4 mt-2">
+      <h4 class="text-white fw-bold">⚡ Xepay</h4>
+        <small class="text-white-50">Tableau de bord marchand</small>
+    </div>
+
+    <!-- Badge plan -->
+    <div class="mb-4">
+      <span id="badge-plan" class="plan-badge plan-pro">
+        <span class="dot"></span>
+      </span>
+    </div>
+
+    <!-- Navigation -->
+      <ul class="nav nav-pills flex-column gap-1">
+        <li class="nav-item">
+          <a href="./dashboard.html"
+            class="nav-link text-white active-link">
+            🏠 Accueil
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="./transactions.html"
+            class="nav-link text-white">
+              💳 Transactions
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="./liens.html" class="nav-link text-white">
+            🔗 Mes liens de paiement
+          </a>
+        </li>
+
+        <!-- Fonctionnalité verrouillée (Free) -->
+        <li class="nav-item">
+          <a href="API.html" class="nav-link text-white-50 d-flex justify-content-between"
+            onclick="showUpgradeModal('api')">
+              ⚙️ API Access
+            <span class="badge bg-warning text-dark">Pro</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="multi-users.html" class="nav-link text-white-50 d-flex justify-content-between"
+            onclick="showUpgradeModal('team')">
+            👥 Multi-utilisateurs
+            <span class="badge bg-danger">Business</span>
+          </a>
+        </li>
+
+        <li class="nav-item mt-2">
+          <a href="./profil.html" class="nav-link text-white">
+            👤 Profil / KYC
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="./sécurité.html" class="nav-link text-white">
+            🔒 Sécurité
+          </a>
+        </li>
+      </ul>
+
+      <!-- Upgrade CTA -->
+      <div class="mt-auto">
+        <div class="card border-0 p-3"
+          style="background: rgba(255,255,255,0.1); border-radius: 12px;">
+          <p class="text-white mb-2" style="font-size: 0.85rem;">
+            Débloquez plus de fonctionnalités
+          </p>
+          <button class="btn btn-warning btn-sm w-100 fw-bold"
+            onclick="showUpgradeModal('general')">
+              ⚡ Upgrader
+          </button>
+        </div>
+
+        <!-- Logout -->
+        <a href="login.html" onclick="logout()" class="nav-link text-white-50 mt-3 text-center fw-bold">
+          🚪 Déconnexion
+        </a>
+      </div>
+  </div>
+<!-- Contenu principal décalé -->
+<div style="margin-left: 260px; padding: 28px 40px;" id="main-content" class="w-100">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h4 class="fw-bold mb-1">👤 Profil / KYC</h4>
+      <small class="text-white-50">Complétez votre profil pour activer les paiements</small>
+    </div>
+    <!-- Indicateur complétion -->
+    <div class="text-end">
+      <small class="text-white-50">Profil complété</small>
+      <div class="progress mt-1" style="width:150px; height:6px;">
+        <div class="progress-bar bg-warning" style="width:30%"></div>
+      </div>
+      <small class="text-warning">30%</small>
+  </div>
+</div>
+
+<!-- Alerte KYC -->
+<div id="main-kyc-alert"></div>
+
+<div id="kyc-status-box" class="mt-3"></div>
+<div class="row g-4">
+
+<!-- CARD STRIPE -->
+<div class="col-md-6">
+  <div class="card-epay p-4 h-100">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h6 class="fw-bold mb-0">⚡ Compte Stripe</h6>
+      <span id="stripe-status-badge" class="status-badge status-warn">
+        Non configuré
+      </span>
+    </div>
+
+    <p class="text-white-50 small mb-3">
+      Configurez Stripe pour activer les paiements internationaux.
+    </p>
+
+    <!-- ACTION PRINCIPALE -->
+    <button id="stripe-action-btn" class="btn btn-warning w-100 fw-bold">
+      Configurer Stripe
+    </button>
+
+  </div>
+</div>
+
+<!-- CARD RETRAIT -->
+<div class="col-md-6">
+  <div class="card-epay p-4 h-100">
+    <h6 class="fw-bold mb-3">💳 Retraits</h6>
+
+    <p class="text-white-50 small mb-2">
+      Les fonds sont envoyés via Stripe vers :
+    </p>
+
+    <div class="text-warning small">
+      ⚠️ Les retraits ne sont disponibles que vers des comptes bancaires internationaux (Europe / US).
+    </div>
+
+    <div class="text-white-50 small mt-1">
+      Les méthodes locales (Mobile Money, banques africaines) ne sont pas supportées actuellement.
+    </div>
+  </div>
+</div>
+
+<!-- CARD PROFIL -->
+<div class="col-md-12">
+  <div class="card-epay p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h6 class="fw-bold mb-0">👤 Profil</h6>
+      <button class="btn btn-outline-light btn-sm">Modifier</button>
+    </div>
+
+    <div class="row">
+      <div class="col-md-4">
+        <small class="text-white-50">Nom</small>
+        <div id="profile-name">—</div>
+      </div>
+
+      <div class="col-md-4">
+        <small class="text-white-50">Email</small>
+        <div id="profile-email">—</div>
+      </div>
+
+      <div class="col-md-4">
+        <small class="text-white-50">Téléphone</small>
+        <div id="profile-phone">—</div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+async function loadUser() {
+
+  const token = localStorage.getItem("token")
+
+  if (!token) {
+    window.location.href = "login.html"
+    return
+  }
+
+  const res = await fetch("http://127.0.0.1:8000/me/user-plan", {
+    headers: {
+      "Authorization": "Bearer " + token
+    }
+  })
+
+  const user = await res.json()
+
+  console.log("USER:", user)
+
+  updatePlanUI(user.plan)
+}
+
+function updatePlanUI(plan) {
+    const badge = document.getElementById("badge-plan")
+
+    badge.classList.remove("bg-success", "bg-warning", "bg-danger")
+
+    if (plan === "free") {
+        badge.innerHTML = "🟢 Free"
+        badge.classList.add("bg-success")
+    } 
+    else if (plan === "pro") {
+        badge.innerHTML = "🟡 Pro"
+        badge.classList.add("bg-warning")
+    } 
+    else if (plan === "business") {
+        badge.innerHTML = "🔴 Business"
+        badge.classList.add("bg-danger")
+    }
+
+    console.log("PLAN UI UPDATED:", plan)
+}
+
+async function initStripe() {
+  const token = localStorage.getItem("token")
+
+  if (!token) {
+    window.location.href = "login.html"
+    return
+  }
+
+  const res = await fetch("http://127.0.0.1:8000/stripe/status", {
+    headers: {
+      Authorization: "Bearer " + token
+    }
+  })
+
+  if (!res.ok) {
+    console.error("Stripe API error")
+    return
+  }
+
+  const data = await res.json()
+
+  console.log("STRIPE DATA:", data)
+
+  const mainAlert = document.getElementById("main-kyc-alert")
+
+  if (!data.connected) {
+    mainAlert.innerHTML = `
+      <div class="alert mb-4" style="background:rgba(239,68,68,0.15);
+        border:1px solid rgba(239,68,68,0.3);
+        border-radius:12px;">
+        ⚠️ Configurez Stripe pour activer les paiements
+      </div>
+    `
+  }
+
+  else if (data.needs_kyc) {
+    mainAlert.innerHTML = `
+      <div class="alert mb-4" style="background:rgba(255,193,7,0.15);
+        border:1px solid rgba(255,193,7,0.3);
+        border-radius:12px;">
+        ⚠️ Vérification KYC requise pour continuer à recevoir des paiements
+      </div>
+    `
+  }
+
+  else {
+    mainAlert.innerHTML = `
+      <div class="alert mb-4" style="background:rgba(34,197,94,0.15);
+        border:1px solid rgba(34,197,94,0.3);
+        border-radius:12px;">
+        ✅ Compte entièrement vérifié
+      </div>
+    `
+  }
+
+  const btn = document.getElementById("stripe-action-btn")
+  const badge = document.getElementById("stripe-status-badge")
+
+  btn.disabled = false
+
+  btn.classList.remove("btn-warning", "btn-success")
+
+if (!data.connected || data.needs_kyc) {
+    btn.classList.add("btn-warning")
+  } else {
+    btn.classList.add("btn-success")
+  }
+
+  // 1. PAS onboard
+  badge.classList.remove("status-warn", "status-ok")
+
+  if (!data.connected) {
+    badge.innerText = "Non configuré"
+    badge.classList.add("status-warn")
+    btn.innerText = "Configurer Stripe"
+
+    btn.onclick = async () => {
+      btn.innerText = "Chargement..."
+      btn.disabled = true
+
+      try {
+        const res = await fetch("http://127.0.0.1:8000/onboarding", {
+          method: "POST",
+          headers: { Authorization: "Bearer " + token }
+        })
+
+        const d = await res.json()
+        if (!res.ok || !d.url) {
+          console.error("Onboarding error:", d)
+          alert("Erreur Stripe onboarding")
+          return
+        }
+
+        window.location.href = d.url
+      } catch (e) {
+        btn.innerText = "Erreur, réessayer"
+        btn.disabled = false
+      }
+    }
+  }
+
+  else if (data.needs_kyc) {
+    badge.innerText = "Vérification requise"
+    badge.classList.add("status-warn")
+    btn.innerText = "Compléter vérification"
+
+    btn.onclick = async () => {
+      const res = await fetch("http://127.0.0.1:8000/stripe/login-link", {
+        headers: { Authorization: "Bearer " + token }
+      })
+      const d = await res.json()
+      window.location.href = d.url
+    }
+  }
+
+  else {
+    badge.innerText = "Actif"
+    badge.classList.add("status-ok")
+    btn.innerText = "Compte opérationnel ✅"
+    btn.disabled = true
+  }
+}
+
+async function loadProfile() {
+  const token = localStorage.getItem("token")
+
+  if (!token) {
+    window.location.href = "login.html"
+    return
+  }
+
+  try {
+    const res = await fetch("http://127.0.0.1:8000/profile", {
+      headers: {
+        "Authorization": "Bearer " + token
+      }
+    })
+
+    const data = await res.json()
+
+    console.log("PROFILE:", data)
+
+    // Injection dans le HTML
+    document.getElementById("profile-name").innerText = data.full_name || "—"
+    document.getElementById("profile-email").innerText = data.email || "—"
+    document.getElementById("profile-phone").innerText = data.phone || "—"
+
+  } catch (err) {
+    console.error("PROFILE ERROR:", err)
+  }
+}
+document.addEventListener("DOMContentLoaded", () => {
+  initStripe()
+  loadUser()
+  loadProfile()
+})
+
+</script>
+<script>
+  function logout() {
+  localStorage.removeItem("token")
+  window.location.href = "login.html"
+}
+</script>
+
+<!-- <script src="auth.js"></script> -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

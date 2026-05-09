@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>dashboard - PayTech</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <style>
+
+        body {
+            background: #020617;
+            min-height: 100vh;
+            color: white;
+            position: relative;
+            overflow-x: hidden;
+        }
+        #sidebar {
+          width: 220px;
+          min-height: 100vh;
+          background: #0d1b6e;
+          position: fixed;
+          top: 0;
+          left: 0;
+          z-index: 100;
+          padding: 20px;
+          display: flex;
+          flex-direction: column;
+        }
+
+        /* Glow animé */
+
+        /* Animation */
+        #main-content {
+            margin-left: 220px;
+            padding: 28px 32px; /* plus d'espace en bas */
+            width: calc(100% - 220px);
+            min-width: 0;
+            flex: 1;
+        }
+        #sidebar {
+            width: 220px;
+            min-height: 100vh;
+            background: #0d1b6e;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 100;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .card-epay {
+          background: rgba(255,255,255,0.08);
+          border: none;
+          border-radius: 16px;
+          color: white;
+        }
+
+        .form-control,
+        .form-select {
+          background: rgba(255,255,255,0.07) !important;
+          border: 1px solid rgba(255,255,255,0.15) !important;
+          color: white !important;
+          border-radius: 10px !important;
+        }
+
+        .form-control::placeholder {
+          color: rgba(255,255,255,0.3) !important;
+        }
+
+        .input-group-text {
+          background: rgba(255,255,255,0.07) !important;
+          border: 1px solid rgba(255,255,255,0.15) !important;
+          color: white !important;
+        }
+
+        .nav-link { 
+          color: rgba(255,255,255,0.8); 
+          border-radius: 8px; 
+        }
+        .nav-link:hover { 
+          background: rgba(255,255,255,0.1); 
+          color: white; 
+        }
+        .nav-link.active { 
+          background: rgba(255,255,255,0.15); 
+          color: white; 
+        }
+        .plan-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+
+          padding: 6px 14px;
+          border-radius: 999px;
+
+          font-size: 13px;
+          font-weight: 600;
+
+          position: relative;
+          background: rgba(255,255,255,0.05);
+          color: white;
+        }
+
+        /* DOT */
+        .plan-badge .dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+        }
+        .input-wrapper {
+          position: relative;
+        }
+
+        .input-wrapper input {
+          padding-right: 45px;
+        }
+
+        .toggle-eye {
+          position: absolute;
+          right: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+  
+          height: 100%;
+          display: flex;
+          align-items: center;
+
+          color: rgba(255,255,255,0.5);
+          cursor: pointer;
+        }
+    
+    </style>
+</head>
+<body class="d-flex" style="margin: 0; padding: 0;">
+
+    
+    <!-- SIDEBAR -->
+    <div id="sidebar" class="d-flex flex-column p-3"
+        style="width: 220px; min-height: 100vh; background: #0d1b6e; position: fixed;">
+
+        <!-- Logo -->
+        <div class="mb-4 mt-2">
+            <h4 class="text-white fw-bold">⚡ Xepay</h4>
+                <small class="text-white-50">Tableau de bord marchand</small>
+        </div>
+
+        <!-- Badge plan -->
+        <div class="mb-4">
+            <span id="badge-plan" class="plan-badge plan-pro">
+              <span class="dot"></span>
+            </span>
+        </div>
+
+        <!-- Navigation -->
+        <ul class="nav nav-pills flex-column gap-1">
+            <li class="nav-item">
+                <a href="./dashboard.html"
+                    class="nav-link text-white ">
+                        🏠 Accueil
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="./transactions.html"
+                    class="nav-link text-white">
+                        💳 Transactions
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="./liens.html" class="nav-link text-white">
+                    🔗 Mes liens de paiement
+                </a>
+            </li>
+
+            <!-- Fonctionnalité verrouillée (Free) -->
+            <li class="nav-item">
+                <a href="API.html" class="nav-link text-white-50 d-flex justify-content-between"
+                    onclick="showUpgradeModal('api')">
+                        ⚙️ API Access
+                        <span class="badge bg-warning text-dark">Pro</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="multi-users.html" class="nav-link text-white-50 d-flex justify-content-between"
+                    onclick="showUpgradeModal('team')">
+                        👥 Multi-utilisateurs
+                        <span class="badge bg-danger">Business</span>
+                </a>
+            </li>
+
+            <li class="nav-item mt-2">
+                <a href="./profil.html" class="nav-link text-white">
+                    👤 Profil / KYC
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="sécurité.html" class="nav-link active">
+                    🔒 Sécurité
+                </a>
+            </li>
+        </ul>
+
+        <!-- Upgrade CTA -->
+        <div class="mt-auto">
+            <div class="card border-0 p-3"
+                    style="background: rgba(255,255,255,0.1); border-radius: 12px;">
+                <p class="text-white mb-2" style="font-size: 0.85rem;">
+                    Débloquez plus de fonctionnalités
+                </p>
+                <button class="btn btn-warning btn-sm w-100 fw-bold"
+                    onclick="showUpgradeModal('general')">
+                   ⚡ Upgrader
+                </button>
+            </div>
+
+                <!-- Logout -->
+                    <a href="login.html" onclick="logout()" class="nav-link text-white-50 mt-3 text-center fw-bold">
+                      🚪 Déconnexion
+                    </a>
+            </div>
+        </div>
+
+        <div id="main-content" class="w-100" style="margin-left:220px; padding:28px 32px; min-width: 0;">
+
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h4 class="fw-bold mb-1">🔒 Sécurité</h4>
+            <small class="text-white-50">Gérez la sécurité de votre compte ePay</small>
+          </div>
+          <span class="badge px-3 py-2"
+            style="background:rgba(16,185,129,0.2); color:#10b981;">
+            ✅ Compte sécurisé
+          </span>
+        </div>
+
+        <div class="row g-4" style="align-items: stretch;">
+
+        <!-- Colonne gauche -->
+          <div class="col-md-6 d-flex flex-column gap-4 h-100">
+
+    <!-- Changer mot de passe -->
+    <div class="card-epay p-4">
+      <h6 class="fw-bold mb-4">Changer le mot de passe</h6>
+
+      <div class="mb-3">
+        <label class="form-label">Mot de passe actuel</label>
+        <div class="input-wrapper">
+          <input type="password" id="pwd-actuel"
+                 class="form-control"
+                 placeholder="••••••••"
+          >
+          <span class="toggle-eye" onclick="togglePwd('pwd-actuel')">
+            <i class="bi bi-eye-slash"></i>
+          </span>
+          
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Nouveau mot de passe</label>
+        <div class="input-wrapper">
+          <input type="password" id="pwd-nouveau"
+                 class="form-control"
+                 placeholder="••••••••"
+          >
+          <span class="toggle-eye" onclick="togglePwd('pwd-actuel')">
+            <i class="bi bi-eye-slash"></i>
+          </span>
+        </div>
+        <!-- Force du mot de passe -->
+        <div class="mt-2">
+          <div class="progress" style="height:4px;">
+            <div id="pwd-strength-bar"
+                 class="progress-bar"
+                 style="width:0%; transition:all 0.3s;">
+            </div>
+          </div>
+          <small id="pwd-strength-label"
+                 class="text-white-50 mt-1 d-block">
+          </small>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label">Confirmer le mot de passe</label>
+        <div class="input-wrapper">
+          <input type="password" id="pwd-confirm"
+                 class="form-control"
+                 placeholder="••••••••"
+          >
+          <span class="toggle-eye" onclick="togglePwd('pwd-actuel')">
+            <i class="bi bi-eye-slash"></i>
+          </span>
+        </div>
+      </div>
+
+      <button class="btn btn-warning fw-bold w-100"
+              onclick="changeMotDePasse()">
+        Mettre à jour le mot de passe
+      </button>
+    </div>
+
+    <!-- Sessions actives -->
+    <div class="card-epay p-4">
+      <h6 class="fw-bold mb-4">Sessions actives</h6>
+
+      <div class="session-card">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="fw-bold" id="session-device">Chargement...</div>
+            <small id="session-location">Chargement...</small>
+
+            <div class="session-email" id="session-email">
+              Chargement...
+            </div>
+          </div>
+
+          <span class="badge bg-success">Actuelle</span>
+        </div>
+      </div>
+      <button class="btn btn-danger btn-sm w-100 mt-2"
+              onclick="deconnecterTout()">
+         Déconnecter toutes les autres sessions
+      </button>
+    </div>
+    </div>
+
+     <!-- Colonne droite -->
+       <div class="col-md-6 d-flex flex-column gap-4 h-100">
+
+    <!-- Double authentification -->
+    <div class="card-epay p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold mb-0">Double authentification (2FA)</h6>
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox"
+                 id="toggle-2fa"
+                 onchange="toggle2FA(this.checked)"
+                 style="cursor:pointer; width:44px; height:22px;">
+        </div>
+      </div>
+      <small class="text-white-50 d-block mb-3">
+        Ajoutez une couche de sécurité supplémentaire à votre compte
+      </small>
+
+      <div id="2fa-inactive">
+        <div class="p-3 text-center"
+             style="background:rgba(255,255,255,0.05);
+                    border-radius:10px;">
+          <div style="font-size:2rem;">🔓</div>
+          <small class="text-white-50">
+            2FA désactivé — votre compte est moins protégé
+          </small>
+        </div>
+      </div>
+
+      <div id="2fa-active" style="display:none;">
+        <div class="p-3 text-center"
+             style="background:rgba(16,185,129,0.1);
+                    border:1px solid rgba(16,185,129,0.2);
+                    border-radius:10px;">
+          <div style="font-size:2rem;">🔐</div>
+          <small class="text-success">
+            2FA activé — votre compte est protégé
+          </small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notifications sécurité -->
+    <div class="card-epay p-4">
+      <h6 class="fw-bold mb-4">Alertes de sécurité</h6>
+
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <div style="font-size:0.9rem;">Email à chaque connexion</div>
+          <small class="text-white-50">Soyez alerté de toute connexion</small>
+        </div>
+        <div class="form-check form-switch mb-0">
+          <input id="alert-login" class="form-check-input" type="checkbox"
+                 checked style="cursor:pointer;
+                                width:44px; height:22px;">
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <div style="font-size:0.9rem;">Alerte nouveau paiement</div>
+          <small class="text-white-50">Notification à chaque paiement reçu</small>
+        </div>
+        <div class="form-check form-switch mb-0">
+          <input id="alert-payment" class="form-check-input" type="checkbox"
+                 checked style="cursor:pointer;
+                                width:44px; height:22px;">
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div style="font-size:0.9rem;">Alerte tentative suspecte</div>
+          <small class="text-white-50">Si quelqu'un tente d'accéder</small>
+        </div>
+        <div class="form-check form-switch mb-0">
+          <input id="alert-suspect" class="form-check-input" type="checkbox"
+                 checked style="cursor:pointer;
+                                width:44px; height:22px;">
+        </div>
+      </div>
+    </div>
+
+    <!-- Zone danger -->
+    <div class="card-epay p-4"
+         style="border:1px solid rgba(239,68,68,0.3) !important;">
+      <h6 class="fw-bold mb-3" style="color:#ef4444;">
+        ⚠️ Zone dangereuse
+      </h6>
+      <p class="text-white-50" style="font-size:0.85rem;">
+        Ces actions sont irréversibles. Procédez avec précaution.
+      </p>
+      <button class="btn btn-outline-danger btn-sm w-100"
+              onclick="supprimerCompte()">
+        Supprimer mon compte
+      </button>
+    </div>
+
+    </div>
+   </div>
+</div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+  function togglePwd(id) {
+    const input = document.getElementById(id);
+    input.type = input.type === "password" ? "text" : "password";
+  }
+
+  function checkStrength(password) {
+    const bar = document.getElementById("pwd-strength-bar");
+    const label = document.getElementById("pwd-strength-label");
+
+    let score = 0;
+
+    if (password.length >= 8) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+
+    const colors = ["danger", "warning", "info", "success"];
+    const texts = ["Faible", "Moyen", "Correct", "Fort"];
+
+    if (password.length === 0) {
+        bar.style.width = "0%";
+        label.innerText = "";
+        return;
+    }
+
+    bar.style.width = ((score / 4) * 100) + "%";
+    bar.className = "progress-bar bg-" + colors[Math.max(score - 1, 0)];
+    label.innerText = "Force : " + texts[Math.max(score - 1, 0)];
+  }
+
+  async function changeMotDePasse() {
+    const current_password = document.getElementById("pwd-actuel").value;
+    const new_password = document.getElementById("pwd-nouveau").value;
+    const confirm_password = document.getElementById("pwd-confirm").value;
+
+    const token = localStorage.getItem("token");
+
+    try {
+        const response = await fetch("http://127.0.0.1:8000/change-password", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({
+                current_password,
+                new_password,
+                confirm_password
+            })
+        });
+
+        const data = await response.json();
+        console.log("Réponse backend :", data);
+
+        if (!response.ok) {
+            throw new Error(data.detail || "Erreur");
+        }
+
+        alert("Mot de passe mis à jour");
+
+        document.getElementById("pwd-actuel").value = "";
+        document.getElementById("pwd-nouveau").value = "";
+        document.getElementById("pwd-confirm").value = "";
+
+        document.getElementById("pwd-strength-bar").style.width = "0%";
+        document.getElementById("pwd-strength-label").innerText = "";
+
+    } catch (error) {
+        alert(error.message);
+    }
+  }
+
+  async function chargerUtilisateurConnecte() {
+    try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const response = await fetch("http://127.0.0.1:8000/me", {
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
+
+        const data = await response.json();
+
+        document.getElementById("session-email").innerText =
+            data.email || "Utilisateur inconnu";
+
+        if (data.session) {
+            document.getElementById("session-device").innerText =
+                data.session.device || "Appareil inconnu";
+
+            document.getElementById("session-location").innerText =
+                (data.session.ip || "IP inconnue") + " - " +
+                (data.session.last_seen || "Maintenant");
+        }
+
+    } catch (error) {
+        console.error("Erreur user connecté :", error);
+
+        document.getElementById("session-email").innerText =
+            "Utilisateur inconnu";
+    }
+  }
+  function deconnecterTout() {
+    alert("Toutes les autres sessions ont été déconnectées.");
+  }
+
+  chargerUtilisateurConnecte();
+
+  function chargerAlertes() {
+    const login = localStorage.getItem("alert-login");
+    const payment = localStorage.getItem("alert-payment");
+    const suspect = localStorage.getItem("alert-suspect");
+
+    if (login !== null) {
+      document.getElementById("alert-login").checked = login === "true";
+    }
+
+    if (payment !== null) {
+      document.getElementById("alert-payment").checked = payment === "true";
+    }
+
+    if (suspect !== null) {
+      document.getElementById("alert-suspect").checked = suspect === "true";
+    }
+
+    document.getElementById("alert-login").addEventListener("change", function () {
+      localStorage.setItem("alert-login", this.checked);
+    });
+
+    document.getElementById("alert-payment").addEventListener("change", function () {
+      localStorage.setItem("alert-payment", this.checked);
+    });
+
+    document.getElementById("alert-suspect").addEventListener("change", function () {
+      localStorage.setItem("alert-suspect", this.checked);
+    });
+  }
+  chargerAlertes();
+
+  async function supprimerCompte() {
+    const confirmation = confirm("Voulez-vous vraiment supprimer votre compte ?");
+
+    if (!confirmation) return;
+
+    const token = localStorage.getItem("token");
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/delete-account", {
+        method: "DELETE",
+        headers: {
+          "Authorization": "Bearer " + token
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Erreur suppression");
+      }
+
+      alert("Compte supprimé avec succès");
+
+      localStorage.removeItem("token");
+      window.location.href = "login.html";
+
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+  </script>
+  <script>
+async function loadUser() {
+  const token = localStorage.getItem("token")
+
+  const res = await fetch("http://127.0.0.1:8000/me/user-plan", {
+    headers: {
+      "Authorization": "Bearer " + token
+    }
+  })
+
+  const user = await res.json()
+
+  console.log("USER:", user)
+
+  updatePlanUI(user.plan)
+}
+
+function updatePlanUI(plan) {
+    const badge = document.getElementById("badge-plan")
+
+    badge.classList.remove("bg-success", "bg-warning", "bg-danger")
+
+    if (plan === "free") {
+        badge.innerHTML = "🟢 Free"
+        badge.classList.add("bg-success")
+    } 
+    else if (plan === "pro") {
+        badge.innerHTML = "🟡 Pro"
+        badge.classList.add("bg-warning")
+    } 
+    else if (plan === "business") {
+        badge.innerHTML = "🔴 Business"
+        badge.classList.add("bg-danger")
+    }
+
+    console.log("PLAN UI UPDATED:", plan)
+}
+
+loadUser()
+</script>
+<script>
+  function logout() {
+  localStorage.removeItem("token")
+  window.location.href = "login.html"
+}
+</script>
+<!-- <script src="auth.js"></script> -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

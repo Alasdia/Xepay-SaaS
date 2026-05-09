@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mes liens de paiement - ePay</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #080f3f; color: white; margin: 0; }
+    #sidebar {
+      width: 260px; min-height: 100vh;
+      background: #0d1b6e;
+      position: fixed; top: 0; left: 0; z-index: 100;
+      padding: 20px;
+    }
+    /* Glow animé */
+    body::before {
+      content: "";
+      position: fixed;
+      width: 200%;
+      height: 200%;
+      top: -50%;
+      left: -50%;
+
+      background: radial-gradient(circle, rgba(255, 78, 205, 0.2), transparent 40%),
+      radial-gradient(circle, rgba(124, 58, 237, 0.2), transparent 40%);
+
+      animation: moveGlow 10s linear infinite;
+
+      z-index: -1;
+    }
+    /* Animation */
+    @keyframes moveGlow {
+      0% {
+        transform: translate(0, 0);
+      }
+      50% {
+        transform: translate(10%, 10%);
+      }
+      100% {
+        transform: translate(0, 0);
+      }
+    }
+    #main-content {
+      margin-left: 260px;
+      padding: 28px;
+    }
+    .card-epay {
+      background: rgba(255,255,255,0.08);
+      border: none;
+      border-radius: 16px;
+      color: white;
+    }
+    .nav-link { color: rgba(255,255,255,0.8); border-radius: 8px; }
+    .nav-link:hover { background: rgba(255,255,255,0.1); color: white; }
+    .nav-link.active { background: rgba(255,255,255,0.15); color: white; }
+    .lien-card {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .badge-statut-actif { background: #10b981; }
+    .badge-statut-inactif { background: #6b7280; }
+    .badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 5px 12px;
+  border-radius: 999px;
+
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+
+  position: relative;
+  overflow: hidden;
+
+  backdrop-filter: blur(6px);
+}
+.badge.free {
+  color: #22c55e;
+
+  background: linear-gradient(
+    135deg,
+    rgba(34,197,94,0.18),
+    rgba(34,197,94,0.05)
+  );
+
+  border: 1px solid rgba(34,197,94,0.4);
+
+  box-shadow:
+    0 0 8px rgba(34,197,94,0.6),
+    inset 0 0 6px rgba(34,197,94,0.25);
+}
+.badge.pro {
+  color: #a855f7;
+
+  background: linear-gradient(
+    135deg,
+    rgba(168,85,247,0.20),
+    rgba(168,85,247,0.05)
+  );
+
+  border: 1px solid rgba(168,85,247,0.45);
+
+  box-shadow:
+    0 0 12px rgba(168,85,247,0.7),
+    inset 0 0 8px rgba(168,85,247,0.3);
+}
+.badge.business {
+  color: #facc15;
+
+  background: linear-gradient(
+    135deg,
+    rgba(250,204,21,0.25),
+    rgba(250,204,21,0.05)
+  );
+
+  border: 1px solid rgba(250,204,21,0.6);
+
+  box-shadow:
+    0 0 14px rgba(250,204,21,0.8),
+    inset 0 0 10px rgba(250,204,21,0.35);
+}
+.badge::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(255,255,255,0.6),
+    transparent
+  );
+
+  transform: skewX(-20deg);
+  animation: shine 3s infinite;
+}
+
+@keyframes shine {
+  0% { left: -60%; }
+  100% { left: 120%; }
+}
+
+    .lien-url {
+      margin-top: 12px;
+      padding: 12px;
+      background: #0d1b3f;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      font-family: monospace;
+    }
+    .lien-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between; /* 🔥 clé */
+      height: auto; /* ou ce que tu veux */
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      overflow: visible;
+      text-overflow: unset;
+      white-space: normal;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap; /* 🔥 évite débordement */
+      margin-top: 10px;
+    }
+
+    .actions button {
+      flex: 1; /* boutons prennent la largeur dispo */
+      min-width: 120px;
+      flex: 1;
+      border-radius: 6px;
+    }
+    .lien-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .lien-infos {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0; /* 🔥 évite overflow */
+    }
+
+    .lien-infos h6 {
+      margin: 0;
+    }
+
+    .lien-infos small {
+      display: block;
+      opacity: 0.75;
+      line-height: 1.2;
+      font-size: 13px;
+
+    }
+
+    .lien-status {
+      flex-shrink: 0;
+      white-space: nowrap;
+      font-weight: bold;
+    }
+    
+    .montant {
+      display: block;
+      margin-top: 8px;
+      font-size: 20px;
+      font-weight: bold;
+      color: #FFD700;
+      line-height: 1.2;
+    }
+    .lien-card {
+      overflow: hidden;
+      padding: 15px;
+    }
+    .lien-url {
+      font-family: monospace;
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 10px;
+      transition: 0.3s;
+      word-break: break-all;
+      overflow-wrap: anywhere;
+    }
+    .lien-status.inactif {
+      color: #ff4d4d !important;
+      text-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
+      
+    }
+
+    .lien-url.inactif {
+      color: #ff4d4d !important;
+      background: rgba(255, 0, 0, 0.05) !important;
+      border: 1px solid rgba(255,77,77,0.4);;
+    }
+
+    .btn-delete-inactif {
+      background: rgba(255, 0, 0, 0.15);
+      color: #ff4d4d;
+      border: 1px solid #ff4d4d;
+    }
+
+    .btn-copy-inactif {
+      background: rgba(255, 0, 0, 0.15);
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .lien-status.actif {
+      color: #00ff88 !important;
+      text-shadow: 0 0 8px rgba(0, 255, 136, 0.07);
+    }
+
+    .lien-url.actif {
+      color: #00ff88 !important;
+      background: rgba(0, 255, 136, 0.05) !important;
+      border: 1px solid rgba(0, 255, 136, 0.04);
+    }
+
+    .btn-copy-actif {
+      background: rgba(0, 255, 136, 0.15);
+      color: #00ff88;
+      border: 1px solid #00ff88;
+    }
+
+    .btn-delete-actif {
+      background: rgba(255, 0, 0, 0.15);
+      color: white;
+      border: 1px solid #ff4d4d;
+    }
+    .status-paid {
+      color: #00ff88;
+    }
+
+    .status-pending {
+      color: orange;
+    }
+
+    .status-active {
+      color: #00d4ff;
+    }
+
+    .status-expired {
+      color: red;
+    }
+
+    .btn-disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-delete-neutral {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ccc;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-copy-neutral {
+      background: rgba(255, 255, 255, 0.08);
+      color: #aaa;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+            .plan-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+
+          padding: 6px 14px;
+          border-radius: 999px;
+
+          font-size: 13px;
+          font-weight: 600;
+
+          position: relative;
+          background: rgba(255,255,255,0.05);
+          color: white;
+        }
+
+        /* DOT */
+        .plan-badge .dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+        }
+  </style>
+</head>
+<body class="d-flex">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="mb-4 mt-2">
+      <h4 class="text-white fw-bold">⚡ Xepay</h4>
+      <small class="text-white-50">Tableau de bord marchand</small>
+    </div>
+    <!-- Badge plan -->
+    <div class="mb-4">
+      <span id="badge-plan" class="badge"></span>
+    </div>
+
+    <ul class="nav nav-pills flex-column gap-1">
+      <li><a href="dashboard.html" class="nav-link">🏠 Accueil</a></li>
+      <li><a href="transactions.html" class="nav-link">💳 Transactions</a></li>
+      <li><a href="liens.html" class="nav-link active">🔗 Mes liens de paiement</a></li>
+      <li><a href="API.html" class="nav-link text-white-50 d-flex justify-content-between"
+             onclick="showUpgradeModal()">
+        ⚙️ API Access
+        <span class="badge pro">PRO</span>
+      </a></li>
+      <li><a href="multi-users.html" class="nav-link text-white-50 d-flex justify-content-between"
+             onclick="showUpgradeModal()">
+        👥 Multi-utilisateurs
+        <span class="badge business">BUSINESS</span>
+      </a></li>
+      <li><a href="profil.html" class="nav-link">👤 Profil / KYC</a></li>
+      <li><a href="securite.html" class="nav-link">🔒 Sécurité</a></li>
+    </ul>
+    <div class="mt-auto pt-4">
+      <div class="p-3" style="background:rgba(255,255,255,0.1); border-radius:12px;">
+        <p class="text-white mb-2" style="font-size:0.85rem;">Débloquez plus de fonctionnalités</p>
+        <button class="btn btn-warning btn-sm w-100 fw-bold"
+                onclick="showUpgradeModal()">⚡ Upgrader</button>
+      </div>
+      <a href="login.html" onclick="logout()" class="nav-link text-white-50 mt-3 text-center">🚪 Déconnexion</a>
+    </div>
+  </div>
+
+
+  <!-- CONTENU PRINCIPAL -->
+    <div id="main-content" class="w-100">
+      <!-- Header -->
+      <div class="mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+            <h4 class="fw-bold mb-1">🔗 Mes liens de paiement</h4>
+            <small class="text-white-50">Créez et partagez vos liens pour recevoir des paiements internationaux</small>
+        </div>
+        <button 
+            class="btn btn-warning"
+            data-bs-toggle="modal" 
+            data-bs-target="#modalCreationLien">
+                + Nouveau lien
+        </button>
+      </div>
+    </div>
+   
+
+    <!-- Compteur liens (Free = 1 lien max) -->
+    <div class="card-epay p-3 mb-4">
+      <div class="d-flex justify-content-between align-items-center">
+        <span>Liens utilisés</span>
+        <span id="compteur-liens" class="fw-bold">0 / 10</span>
+      </div>
+
+      <div class="progress mt-2" style="height: 6px;">
+        <div id="barre-liens" class="progress-bar bg-warning" style="width: 0%"></div>
+      </div>
+
+      <small class="text-white-50 mt-1 d-block">
+        Plan Free — 
+        <a href="#" class="text-warning" onclick="showUpgradeModal()">
+          Upgrader pour plus de liens</a>
+      </small>
+
+     
+    </div>
+    
+    <!-- Liste des liens -->
+   
+
+        <!-- Message si aucun lien -->
+        <div id="liste-liens-container" style="height: 75vh; overflow-y: auto;">
+          <div id="liste-liens"></div>
+        </div>
+        <div id="aucun-lien" class="text-center py-5 d-none">
+            <p class="text-white-50">Aucun lien de paiement créé</p>
+            <button 
+                class="btn btn-warning fw-bold"
+                data-bs-toggle="modal"
+                data-bs-target="#modalCreationLien">
+                    + Créer mon premier lien
+            </button>
+        </div>
+
+    </div>
+    <!-- MODAL CRÉATION DE LIEN -->
+    <div class="modal fade" id="modalCreationLien" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 p-4" style="background:#0d1b6e; color:white; border-radius: 12px;">
+
+                <!-- HEADER -->
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold">🔗 Créer un lien de paiement</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <!-- BODY -->
+                <div class="modal-body">
+                    <!-- EMAIL -->
+                    <div class="mb-3">
+                        <label class="form-label">Email du client</label>
+                        <input type="email" id="client-email"
+                            class="form-control bg-transparent text-white border-secondary"
+                            placeholder="Ex: Freelance Design, Boutique...">
+                    </div>
+                    <!-- NOM -->
+                    <div class="mb-3">
+                        <label class="form-label">Nom du lien</label>
+                        <input type="text" id="nom-lien"
+                            class="form-control bg-transparent text-white border-secondary"
+                            placeholder="Ex: Freelance Design, Boutique...">
+                    </div>
+
+                    <!-- MONTANT -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Montant <small class="text-white-50">(obligatoire)</small>
+                        </label>
+
+                        <div class="input-group mt-2">
+                            <input type="number" id="montant-lien"
+                                class="form-control bg-transparent text-white border-secondary"
+                                placeholder="0.00">
+
+                            <select id="devise-lien"
+                                class="form-select bg-dark text-white border-secondary"
+                                style="max-width:120px;">
+                                <option value="XOF" selected>XOF</option>
+                                <option value="EUR">EUR</option>
+                                <option value="USD">USD</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="success-msg" class="alert alert-success d-none"></div>
+
+                <!-- FOOTER (IMPORTANT 🔥) -->
+                <div class="modal-footer border-0">
+
+                    <button id="btn-creer-lien" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Annuler
+                    </button>
+
+                    <button id="btn-generer-lien" class="btn btn-warning fw-bold" onclick="genererLien()">
+                        🚀 Générer le lien
+                    </button>
+
+                </div>
+                <div id="error-box" style="display:none; color:red;"></div>
+
+            </div>
+        </div>
+    </div>
+
+  <!-- MODAL LIEN GÉNÉRÉ -->
+  <div class="modal fade" id="modalLienGenere" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0"
+           style="background:#0d1b6e; color:white;">
+        <div class="modal-header border-0">
+          <h5 class="modal-title fw-bold">✅ Lien créé avec succès !</h5>
+          <button type="button" class="btn-close btn-close-white"
+                  data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-center">
+          <p class="text-white-50 mb-3">Partagez ce lien avec votre client</p>
+          <div class="p-3 rounded mb-3"
+               style="background:rgba(255,255,255,0.1);">
+            <code id="lien-genere" class="text-warning"
+                  style="word-break:break-all; font-size:0.9rem;">
+            </code>
+          </div>
+          <button class="btn btn-warning fw-bold w-100"
+                  onclick="copierLienGenere()">
+            📋 Copier le lien
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const token = localStorage.getItem("token")
+
+      if (!token) {
+        window.location.href = "login.html"
+        return
+      }
+
+      const res = await fetch("http://127.0.0.1:8000/me", {
+        headers: {
+            Authorization: "Bearer " + token
+        }
+      })
+
+      const user = await res.json()
+
+      if (user.plan === "free") {
+        window.location.href = "dashboard.html"
+      }
+    })
+
+
+    let links = []
+    let offset = 0;
+    const limit = 10;
+    let isLoading = false;
+
+    const currencySymbols = {
+      XOF: "FCFA",
+      USD: "$",
+      EUR: "€",
+    }
+
+    
+    // =========================
+    // 1. CHARGER LES LIENS
+    // =========================
+    async function chargerLiens() {
+
+      const listeLiens = document.getElementById("liste-liens");
+      const compteur = document.getElementById("compteur-liens");
+      const barre = document.getElementById("barre-liens");
+      const aucun = document.getElementById("aucun-lien");
+
+      if (!listeLiens) return;
+
+      if (isLoading) return;
+      isLoading = true;
+
+        const email = localStorage.getItem("email")
+        const token = localStorage.getItem("token")
+
+        console.log("Email connecté =", email)
+        console.log("TOKEN =", token)
+
+        if (!email || !token) {
+          window.location.href = "login.html"
+          return
+        }
+
+        const res = await fetch(
+          `http://127.0.0.1:8000/links?limit=${limit}&offset=${offset}`, 
+          { headers: { "Authorization": "Bearer " + token } } 
+        );
+        
+        if (!res.ok) {
+          const error = await res.text()
+          console.error("❌ Erreur API :", error)
+         
+          if (error.includes("Token expiré")) {
+            localStorage.clear()
+            window.location.href = "login.html"
+          }
+          return
+        }
+
+        const liens = await res.json();
+
+        const totalLiens = offset + liens.length;
+
+        if (compteur) {
+          compteur.innerText = `${totalLiens}/${limit}`;
+        }
+
+        if (barre) {
+          barre.style.width = `${(totalLiens / limit) * 100}%`;
+        }
+
+        console.log("LIENS =", liens)
+        console.log("REPONSE BACKEND =", liens)
+
+        if (liens.length === 0 && offset === 0) {
+            aucun.classList.remove("d-none")
+            return
+        }else {
+            aucun.classList.add("d-none")
+        }
+        offset += liens.length;
+
+      function getStatusLabel(lien) {
+        if (lien.status === "paid") return "Payé";
+        if (!lien.active) return "Expiré";
+        if (lien.status === "pending") return "En attente";
+        return "Actif";
+      }
+
+      function getStatusClass(lien) {
+        if (lien.status === "paid") return "status-paid";
+        if (!lien.active) return "status-expired";
+        if (lien.status === "pending") return "status-pending";
+        return "status-active";
+      }
+
+        liens
+         .filter(lien => !lien.archived)
+         .forEach(lien => {
+          console.log(lien)
+          console.log(lien.status)
+          const name = lien.name && lien.name.trim() !== ""
+            ? lien.name
+            : "Lien de paiement"
+          
+          const currency = lien.currency || "XOF";
+
+          const amount = typeof lien.amount === "number"
+            ? `${new Intl.NumberFormat('fr-FR').format(lien.amount)} ${lien.currency}`
+            : "Montant invalide"
+
+          const div = document.createElement("div");
+          div.className = "lien-card";
+          div.setAttribute("data-id", lien.id);
+
+          const exp = new Date(lien.expires_at)
+          const now = new Date()
+
+          const diff = exp - now
+          const minutes = Math.floor(diff / 60000)
+          const seconds = Math.floor((diff % 60000) / 1000)
+
+          const heure = exp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+          let expirationLabel = ""
+          let color = "orange"
+
+          if (diff <= 0) {
+            expirationLabel = "Expiré"
+            color = "red"
+          }
+          else if (minutes === 0) {
+            expirationLabel = `expire dans ${seconds}s`
+            color = "#ff4d4d"
+          }
+          else {
+            expirationLabel = `expire dans ${minutes} min (${heure})`
+          }
+
+          div.innerHTML = `
+          <div class="lien-content">
+
+              <div class="lien-header ">
+                <div class="lien-infos">
+                  <h6>${lien.name}</h6>
+                  <small style="color:${color}; font-weight:500;">
+                    ${expirationLabel}
+                  </small>
+                  <div class="montant">${amount}</div>
+                </div>
+
+                <div class="lien-status ${getStatusClass(lien)}">
+                  ${getStatusLabel(lien)}
+                </div>
+              </div>
+     
+              </div>
+              <div class="lien-url ${getStatusClass(lien)}">
+                ${lien.url}
+              </div>
+
+              <div class="actions">
+
+                ${
+                  lien.status === "pending"
+                    ? `
+                      <button
+                        class="btn-copy-actif"
+                        onclick="copier('${lien.url}')"
+                      >
+                        Copier
+                      </button>
+                    `
+                    : ""
+                }
+
+                ${
+                  lien.status === "paid"
+                    ? `
+                      <button
+                        class="btn-delete-neutral"
+                        onclick="archiverLien('${lien.id}')"
+                      >
+                        Archiver
+                      </button>
+                    `
+                    : `
+                      <button
+                        class="${
+                          lien.status === 'expired'
+                            ? "btn-delete-actif"
+                            : "btn-delete-neutral"
+                        }"
+                        onclick="supprimer('${lien.id}')"
+                      >
+                        Supprimer
+                      </button>
+                    `
+                }
+
+              </div>
+
+          </div>
+          `;
+
+          listeLiens.appendChild(div);
+        });
+
+        isLoading = false;
+    }
+
+    // =========================
+    // 2. CRÉER LIEN
+    // =========================
+    async function genererLien() {
+
+        const name = document.getElementById("nom-lien").value || "Lien de paiement"
+        const rawAmount = document.getElementById("montant-lien").value 
+        const errorBox = document.getElementById("error-box")
+
+        if (!rawAmount) {
+          errorBox.innerText = "Le montant est obligatoire"
+          errorBox.style.display = "block"
+          return
+        }
+        const amount = parseFloat(rawAmount)
+        if (isNaN(amount)) {
+          alert("Montant invalide")
+        }
+
+        const currency = document.getElementById("devise-lien").value
+
+        console.log("🔥 genererLien EXECUTE")
+        const email = localStorage.getItem("email")
+        const token = localStorage.getItem("token")
+        console.log("TOKEN =", token)
+        console.log({
+          email,
+          name,
+          amount,
+          currency,
+          type_amount: typeof amount
+        })
+
+        const payload = {
+          amount: amount,
+          currency: currency,
+          source: "links"
+        }
+
+        if (name) {
+          payload.name = name
+        }
+        console.log("PAYLOAD ENVOYÉ:", JSON.stringify(payload));
+        const res = await fetch("http://127.0.0.1:8000/links", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify(payload)
+        })
+
+        if (!res.ok) {
+          const err = await res.json();
+          alert(err.detail || "Impossible de créer le lien");
+          return;
+        }
+
+        console.log("EMAIL ENVOYÉ =", email)
+        console.log("NAME =", name)
+
+        const data = await res.json();
+        console.log(data);
+
+        const successBox = document.getElementById("success-msg")
+
+        successBox.innerText = "Lien créé avec succès ✅"
+        successBox.style.display = "block"
+
+        const liste = document.getElementById("liste-liens");
+
+        // 🔥 correction ici (PAS .hide direct)
+        const modalEl = document.getElementById('modalCreationLien');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        }
+        
+    }
+    chargerLiens();
+
+    // =========================
+    // 3. SUPPRIMER
+    // =========================
+    window.supprimer = async function supprimer(id) {
+      const token = localStorage.getItem("token");
+      const carte = document.querySelector(`[data-id="${id}"]`);
+      if (carte) carte.remove();
+
+      try {
+        await fetch(`http://127.0.0.1:8000/links/${id}`, {
+          method: "DELETE",
+          headers: {
+            "Authorization": "Bearer " + token
+          }
+        });
+
+        chargerLiens();
+      } catch (e) {
+        if (carte) carte.style.opacity = "1";
+        alert("Erreur suppression");
+      }
+    };
+
+    // =========================
+    // 4. COPIER
+    // =========================
+    function copier(url) {
+        navigator.clipboard.writeText(url);
+        alert("Lien copié !");
+    }
+
+    // =========================
+    // INIT
+    // =========================
+    chargerLiens();
+
+    window.archiverLien = async function archiverLien(id) {
+      const token = localStorage.getItem("token");
+      const carte = document.querySelector(`[data-id="${id}"]`);
+
+      if (carte) {
+        carte.style.opacity = "0.4";
+        carte.style.pointerEvents = "none";
+      }
+
+      try {
+        const response = await fetch(`http://127.0.0.1:8000/archive/${id}`, {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + token
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error("Erreur archivage");
+        }
+
+        if (carte) {
+          carte.style.transition = "all 0.25s ease";
+          carte.style.height = carte.offsetHeight + "px";
+
+          requestAnimationFrame(() => {
+            carte.style.opacity = "0";
+            carte.style.height = "0";
+            carte.style.margin = "0";
+            carte.style.padding = "0";
+            carte.style.overflow = "hidden";
+          });
+
+          setTimeout(() => {
+            carte.remove();
+          }, 250);
+        }
+
+      } catch (error) {
+        if (carte) {
+          carte.style.opacity = "1";
+          carte.style.pointerEvents = "auto";
+        }
+
+        alert("Impossible d’archiver ce lien");
+      }
+    };
+
+    const scrollBox = document.getElementById("liste-liens-container");
+
+    scrollBox.addEventListener("scroll", () => {
+      const scrollTop = scrollBox.scrollTop;
+      const visibleHeight = scrollBox.clientHeight;
+      const totalHeight = scrollBox.scrollHeight;
+
+      if (scrollTop + visibleHeight >= totalHeight - 50) {
+        chargerLiens();
+      }
+    });
+
+  </script>
+<script>
+async function loadUser() {
+  const token = localStorage.getItem("token")
+
+  const res = await fetch("http://127.0.0.1:8000/me/user-plan", {
+    headers: {
+      "Authorization": "Bearer " + token
+    }
+  })
+
+  const user = await res.json()
+
+  console.log("USER:", user)
+
+  updatePlanUI(user.plan)
+}
+
+function updatePlanUI(plan) {
+  const badge = document.getElementById("badge-plan")
+
+  // reset
+  badge.className = "badge"
+
+  if (plan === "free") {
+    badge.classList.add("free")
+    badge.textContent = "FREE"
+  } 
+  else if (plan === "pro") {
+    badge.classList.add("pro")
+    badge.textContent = "PRO"
+  } 
+  else if (plan === "business") {
+    badge.classList.add("business")
+    badge.textContent = "BUSINESS"
+  }
+}
+
+loadUser()
+</script>
+<script>
+  function logout() {
+  localStorage.removeItem("token")
+  window.location.href = "login.html"
+}
+</script>
+
+</body>
+</html>
