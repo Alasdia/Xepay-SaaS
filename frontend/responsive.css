@@ -1988,3 +1988,105 @@
   }
 
 }
+/* ───────── ULTRA FINAL MOBILE FIX ───────── */
+
+@media (max-width:768px){
+
+  html,
+  body{
+    width:100% !important;
+    overflow-x:hidden !important;
+  }
+
+  body *{
+    min-width:0 !important;
+  }
+
+  /* CONTAINERS */
+
+  .hero-inner,
+  .feature-section,
+  .feat-grid,
+  .stats-inner,
+  .plans-grid,
+  .comm-grid,
+  .how-grid{
+    display:flex !important;
+    flex-direction:column !important;
+    width:100% !important;
+    gap:24px !important;
+  }
+
+  /* TEXT BLOCKS */
+
+  .hero-text,
+  .feature-text,
+  .feat-card,
+  .hero-card{
+    width:100% !important;
+    max-width:100% !important;
+  }
+
+  /* VISUALS */
+
+  .hero-visual,
+  .feature-mockup,
+  .feature-mockup-inner,
+  .mini-chart,
+  .dashboard-widget,
+  .carousel-card{
+    width:100% !important;
+    max-width:100% !important;
+    transform:none !important;
+    left:auto !important;
+    right:auto !important;
+  }
+
+  /* ABSOLUTE ELEMENTS */
+
+  .floating-orb,
+  .bg-glow,
+  .bg-grid{
+    display:none !important;
+  }
+
+  /* NAV */
+
+  nav{
+    flex-wrap:wrap !important;
+    gap:10px !important;
+  }
+
+  .nav-links{
+    flex-wrap:wrap !important;
+    justify-content:flex-end !important;
+  }
+
+  /* TYPO */
+
+  h1{
+    font-size:44px !important;
+    line-height:.92 !important;
+  }
+
+  h2{
+    font-size:34px !important;
+  }
+
+  p{
+    font-size:14px !important;
+  }
+
+  /* BUTTONS */
+
+  .hero-actions,
+  .cta-actions{
+    flex-direction:column !important;
+  }
+
+  .btn-primary,
+  .btn-ghost{
+    width:100% !important;
+  }
+
+}
