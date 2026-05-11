@@ -134,5 +134,2054 @@
   .carousel-card {
     flex: 0 0 85%;
   }
+}
+@media (max-width: 768px) {
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    overflow-x: hidden !important;
+    width: 100%;
+  }
+
+  section,
+  div,
+  .container,
+  .hero-inner,
+  .feature-section,
+  .cards-grid,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner {
+    max-width: 100% !important;
+  }
+
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .cards-grid,
+  .stats-inner,
+  .cta-inner {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 20px !important;
+  }
+
+  .feature-card,
+  .pricing-card,
+  .dashboard-card,
+  .carousel-card,
+  .stats-card,
+  .hero-card,
+  .mockup-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .hero-visual,
+  .hero-content,
+  .feature-left,
+  .feature-right {
+    width: 100% !important;
+  }
+
+  img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+
+  h1 {
+    font-size: 42px !important;
+    line-height: 1 !important;
+  }
+
+  h2 {
+    font-size: 30px !important;
+  }
+
+  p {
+    font-size: 15px !important;
+  }
+
+  nav {
+    padding: 12px !important;
+    overflow-x: auto;
+  }
+
+  .nav-links {
+    gap: 12px !important;
+    flex-wrap: nowrap;
+  }
+
+  .carousel-track {
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory;
+    gap: 16px;
+  }
+
+  .carousel-card {
+    flex: 0 0 85% !important;
+    scroll-snap-align: center;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+}
+/* ─── responsive.css ─── */
+
+@media (max-width: 768px) {
+  body { cursor: auto; }
+  body {
+    overflow-x: hidden;
+  }
+  section,
+  .container,
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner,
+  .cards-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .feature-card,
+  .pricing-card,
+  .dashboard-card,
+  .carousel-card,
+  .stats-card {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+
+  h1 {
+    font-size: 52px !important;
+    line-height: 1;
+  }
+
+  h2 {
+    font-size: 36px !important;
+  }
+
+  p {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+  nav {
+    padding: 14px 18px;
+  }
+
+  .nav-links {
+    gap: 16px;
+    font-size: 14px;
+  }
+
+  .cta-actions {
+    flex-direction: column;
+  }
+
+  .cta-actions a,
+  .cta-actions button {
+    width: 100%;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+  #cursor, #cursor-ring { display: none; }
+
+  .noise { width: 100vw; overflow: hidden; }
+
+  nav { padding: 12px 16px; }
+  .nav-links a:not(.btn-nav-primary):not(.btn-nav-outline) { display: none; }
+
+  .hero-inner,
+  .feature-section,
+  .cta-inner { padding: 0 20px; }
+
+  .hero-inner,
+  .feature-section {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    direction: ltr;
+  }
+  .feature-section { padding: 60px 20px; }
+  .stats-inner {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 0 16px;
+    gap: 12px;
+    overflow: hidden;
+  }
+  .stat-num { font-size: 16px; }
+  .carousel-track { gap: 12px; }
+  .carousel-card {
+    width: 100%;
+  }
+
+  .cta-section { padding: 80px 20px; }
+  .cta-actions { flex-direction: column; }
+
+  footer {
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px 20px;
+    text-align: center;
+  }
+  .footer-links { flex-wrap: wrap; justify-content: center; }
+  * {
+    box-sizing: border-box;
+  }
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  .carousel-track {
+     overflow-x: auto;
+  }
+
+  .carousel-card {
+    flex: 0 0 85%;
+  }
+}
+@media (max-width: 768px) {
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    overflow-x: hidden !important;
+    width: 100%;
+  }
+
+  section,
+  div,
+  .container,
+  .hero-inner,
+  .feature-section,
+  .cards-grid,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner {
+    max-width: 100% !important;
+  }
+
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .cards-grid,
+  .stats-inner,
+  .cta-inner {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 20px !important;
+  }
+
+  .feature-card,
+  .pricing-card,
+  .dashboard-card,
+  .carousel-card,
+  .stats-card,
+  .hero-card,
+  .mockup-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .hero-visual,
+  .hero-content,
+  .feature-left,
+  .feature-right {
+    width: 100% !important;
+  }
+
+  img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+
+  h1 {
+    font-size: 42px !important;
+    line-height: 1 !important;
+  }
+
+  h2 {
+    font-size: 30px !important;
+  }
+
+  p {
+    font-size: 15px !important;
+  }
+
+  nav {
+    padding: 12px !important;
+    overflow-x: auto;
+  }
+
+  .nav-links {
+    gap: 12px !important;
+    flex-wrap: nowrap;
+  }
+
+  .carousel-track {
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory;
+    gap: 16px;
+  }
+
+  .carousel-card {
+    flex: 0 0 85% !important;
+    scroll-snap-align: center;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+}
+/* ─── responsive.css ─── */
+
+@media (max-width: 768px) {
+  body { cursor: auto; }
+  body {
+    overflow-x: hidden;
+  }
+  section,
+  .container,
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner,
+  .cards-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .feature-card,
+  .pricing-card,
+  .dashboard-card,
+  .carousel-card,
+  .stats-card {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+
+  h1 {
+    font-size: 52px !important;
+    line-height: 1;
+  }
+
+  h2 {
+    font-size: 36px !important;
+  }
+
+  p {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+  nav {
+    padding: 14px 18px;
+  }
+
+  .nav-links {
+    gap: 16px;
+    font-size: 14px;
+  }
+
+  .cta-actions {
+    flex-direction: column;
+  }
+
+  .cta-actions a,
+  .cta-actions button {
+    width: 100%;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+  #cursor, #cursor-ring { display: none; }
+
+  .noise { width: 100vw; overflow: hidden; }
+
+  nav { padding: 12px 16px; }
+  .nav-links a:not(.btn-nav-primary):not(.btn-nav-outline) { display: none; }
+
+  .hero-inner,
+  .feature-section,
+  .cta-inner { padding: 0 20px; }
+
+  .hero-inner,
+  .feature-section {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    direction: ltr;
+  }
+  .feature-section { padding: 60px 20px; }
+  .stats-inner {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 0 16px;
+    gap: 12px;
+    overflow: hidden;
+  }
+  .stat-num { font-size: 16px; }
+  .carousel-track { gap: 12px; }
+  .carousel-card {
+    width: 100%;
+  }
+
+  .cta-section { padding: 80px 20px; }
+  .cta-actions { flex-direction: column; }
+
+  footer {
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px 20px;
+    text-align: center;
+  }
+  .footer-links { flex-wrap: wrap; justify-content: center; }
+  * {
+    box-sizing: border-box;
+  }
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  .carousel-track {
+     overflow-x: auto;
+  }
+
+  .carousel-card {
+    flex: 0 0 85%;
+  }
+}
+@media (max-width: 768px) {
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    overflow-x: hidden !important;
+    width: 100%;
+  }
+
+  section,
+  div,
+  .container,
+  .hero-inner,
+  .feature-section,
+  .cards-grid,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner {
+    max-width: 100% !important;
+  }
+
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .cards-grid,
+  .stats-inner,
+  .cta-inner {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 20px !important;
+  }
+
+  .feature-card,
+  .pricing-card,
+  .dashboard-card,
+  .carousel-card,
+  .stats-card,
+  .hero-card,
+  .mockup-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .hero-visual,
+  .hero-content,
+  .feature-left,
+  .feature-right {
+    width: 100% !important;
+  }
+
+  img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+
+  h1 {
+    font-size: 42px !important;
+    line-height: 1 !important;
+  }
+
+  h2 {
+    font-size: 30px !important;
+  }
+
+  p {
+    font-size: 15px !important;
+  }
+
+  nav {
+    padding: 12px !important;
+    overflow-x: auto;
+  }
+
+  .nav-links {
+    gap: 12px !important;
+    flex-wrap: nowrap;
+  }
+
+  .carousel-track {
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory;
+    gap: 16px;
+  }
+
+  .carousel-card {
+    flex: 0 0 85% !important;
+    scroll-snap-align: center;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+}
+/* ─── responsive.css ─── */
+
+@media (max-width: 768px) {
+  body { cursor: auto; }
+  body {
+    overflow-x: hidden;
+  }
+  section,
+  .container,
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner,
+  .cards-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .feature-card,
+  .pricing-card,
+  .dashboard-card,
+  .carousel-card,
+  .stats-card {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+
+  h1 {
+    font-size: 52px !important;
+    line-height: 1;
+  }
+
+  h2 {
+    font-size: 36px !important;
+  }
+
+  p {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+  nav {
+    padding: 14px 18px;
+  }
+
+  .nav-links {
+    gap: 16px;
+    font-size: 14px;
+  }
+
+  .cta-actions {
+    flex-direction: column;
+  }
+
+  .cta-actions a,
+  .cta-actions button {
+    width: 100%;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+  #cursor, #cursor-ring { display: none; }
+
+  .noise { width: 100vw; overflow: hidden; }
+
+  nav { padding: 12px 16px; }
+  .nav-links a:not(.btn-nav-primary):not(.btn-nav-outline) { display: none; }
+
+  .hero-inner,
+  .feature-section,
+  .cta-inner { padding: 0 20px; }
+
+  .hero-inner,
+  .feature-section {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    direction: ltr;
+  }
+  .feature-section { padding: 60px 20px; }
+  .stats-inner {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 0 16px;
+    gap: 12px;
+    overflow: hidden;
+  }
+  .stat-num { font-size: 16px; }
+  .carousel-track { gap: 12px; }
+  .carousel-card {
+    width: 100%;
+  }
+
+  .cta-section { padding: 80px 20px; }
+  .cta-actions { flex-direction: column; }
+
+  footer {
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px 20px;
+    text-align: center;
+  }
+  .footer-links { flex-wrap: wrap; justify-content: center; }
+  * {
+    box-sizing: border-box;
+  }
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  .carousel-track {
+     overflow-x: auto;
+  }
+
+  .carousel-card {
+    flex: 0 0 85%;
+  }
+}
+@media (max-width: 768px) {
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    overflow-x: hidden !important;
+    width: 100%;
+  }
+
+  section,
+  div,
+  .container,
+  .hero-inner,
+  .feature-section,
+  .cards-grid,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner {
+    max-width: 100% !important;
+  }
+
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .cards-grid,
+  .stats-inner,
+  .cta-inner {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 20px !important;
+  }
+
+  .feature-card,
+  .pricing-card,
+  .dashboard-card,
+  .carousel-card,
+  .stats-card,
+  .hero-card,
+  .mockup-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .hero-visual,
+  .hero-content,
+  .feature-left,
+  .feature-right {
+    width: 100% !important;
+  }
+
+  img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+
+  h1 {
+    font-size: 42px !important;
+    line-height: 1 !important;
+  }
+
+  h2 {
+    font-size: 30px !important;
+  }
+
+  p {
+    font-size: 15px !important;
+  }
+
+  nav {
+    padding: 12px !important;
+    overflow-x: auto;
+  }
+
+  .nav-links {
+    gap: 12px !important;
+    flex-wrap: nowrap;
+  }
+
+  .carousel-track {
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory;
+    gap: 16px;
+  }
+
+  .carousel-card {
+    flex: 0 0 85% !important;
+    scroll-snap-align: center;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+  /* ─── responsive.css ─── */
+
+@media (max-width: 768px) {
+  body { cursor: auto; }
+  body {
+    overflow-x: hidden;
+  }
+  section,
+  .container,
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner,
+  .cards-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .feature-card,
+  .pricing-card,
+  .dashboard-card,
+  .carousel-card,
+  .stats-card {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+
+  h1 {
+    font-size: 52px !important;
+    line-height: 1;
+  }
+
+  h2 {
+    font-size: 36px !important;
+  }
+
+  p {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+  nav {
+    padding: 14px 18px;
+  }
+
+  .nav-links {
+    gap: 16px;
+    font-size: 14px;
+  }
+
+  .cta-actions {
+    flex-direction: column;
+  }
+
+  .cta-actions a,
+  .cta-actions button {
+    width: 100%;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+  #cursor, #cursor-ring { display: none; }
+
+  .noise { width: 100vw; overflow: hidden; }
+
+  nav { padding: 12px 16px; }
+  .nav-links a:not(.btn-nav-primary):not(.btn-nav-outline) { display: none; }
+
+  .hero-inner,
+  .feature-section,
+  .cta-inner { padding: 0 20px; }
+
+  .hero-inner,
+  .feature-section {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    direction: ltr;
+  }
+  .feature-section { padding: 60px 20px; }
+  .stats-inner {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 0 16px;
+    gap: 12px;
+    overflow: hidden;
+  }
+  .stat-num { font-size: 16px; }
+  .carousel-track { gap: 12px; }
+  .carousel-card {
+    width: 100%;
+  }
+
+  .cta-section { padding: 80px 20px; }
+  .cta-actions { flex-direction: column; }
+
+  footer {
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px 20px;
+    text-align: center;
+  }
+  .footer-links { flex-wrap: wrap; justify-content: center; }
+  * {
+    box-sizing: border-box;
+  }
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  .carousel-track {
+     overflow-x: auto;
+  }
+
+  .carousel-card {
+    flex: 0 0 85%;
+  }
+}
+@media (max-width: 768px) {
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    overflow-x: hidden !important;
+    width: 100%;
+  }
+
+  section,
+  div,
+  .container,
+  .hero-inner,
+  .feature-section,
+  .cards-grid,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner {
+    max-width: 100% !important;
+  }
+
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .cards-grid,
+  .stats-inner,
+  .cta-inner {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 20px !important;
+  }
+
+  .feature-card,
+  .pricing-card,
+  .dashboard-card,
+  .carousel-card,
+  .stats-card,
+  .hero-card,
+  .mockup-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .hero-visual,
+  .hero-content,
+  .feature-left,
+  .feature-right {
+    width: 100% !important;
+  }
+
+  img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+
+  h1 {
+    font-size: 42px !important;
+    line-height: 1 !important;
+  }
+
+  h2 {
+    font-size: 30px !important;
+  }
+
+  p {
+    font-size: 15px !important;
+  }
+
+  nav {
+    padding: 12px !important;
+    overflow-x: auto;
+  }
+
+  .nav-links {
+    gap: 12px !important;
+    flex-wrap: nowrap;
+  }
+
+  .carousel-track {
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory;
+    gap: 16px;
+  }
+
+  .carousel-card {
+    flex: 0 0 85% !important;
+    scroll-snap-align: center;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+}
+/* ─── responsive.css ─── */
+
+@media (max-width: 768px) {
+  body { cursor: auto; }
+  body {
+    overflow-x: hidden;
+  }
+  section,
+  .container,
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner,
+  .cards-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .feature-card,
+  .pricing-card,
+  .dashboard-card,
+  .carousel-card,
+  .stats-card {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+
+  h1 {
+    font-size: 52px !important;
+    line-height: 1;
+  }
+
+  h2 {
+    font-size: 36px !important;
+  }
+
+  p {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+  nav {
+    padding: 14px 18px;
+  }
+
+  .nav-links {
+    gap: 16px;
+    font-size: 14px;
+  }
+
+  .cta-actions {
+    flex-direction: column;
+  }
+
+  .cta-actions a,
+  .cta-actions button {
+    width: 100%;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+  #cursor, #cursor-ring { display: none; }
+
+  .noise { width: 100vw; overflow: hidden; }
+
+  nav { padding: 12px 16px; }
+  .nav-links a:not(.btn-nav-primary):not(.btn-nav-outline) { display: none; }
+
+  .hero-inner,
+  .feature-section,
+  .cta-inner { padding: 0 20px; }
+
+  .hero-inner,
+  .feature-section {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    direction: ltr;
+  }
+  .feature-section { padding: 60px 20px; }
+  .stats-inner {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 0 16px;
+    gap: 12px;
+    overflow: hidden;
+  }
+  .stat-num { font-size: 16px; }
+  .carousel-track { gap: 12px; }
+  .carousel-card {
+    width: 100%;
+  }
+
+  .cta-section { padding: 80px 20px; }
+  .cta-actions { flex-direction: column; }
+
+  footer {
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px 20px;
+    text-align: center;
+  }
+  .footer-links { flex-wrap: wrap; justify-content: center; }
+  * {
+    box-sizing: border-box;
+  }
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  .carousel-track {
+     overflow-x: auto;
+  }
+
+  .carousel-card {
+    flex: 0 0 85%;
+  }
+}
+@media (max-width: 768px) {
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    overflow-x: hidden !important;
+    width: 100%;
+  }
+
+  section,
+  div,
+  .container,
+  .hero-inner,
+  .feature-section,
+  .cards-grid,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner {
+    max-width: 100% !important;
+  }
+
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .cards-grid,
+  .stats-inner,
+  .cta-inner {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 20px !important;
+  }
+
+  .feature-card,
+  .pricing-card,
+  .dashboard-card,
+  .carousel-card,
+  .stats-card,
+  .hero-card,
+  .mockup-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .hero-visual,
+  .hero-content,
+  .feature-left,
+  .feature-right {
+    width: 100% !important;
+  }
+
+  img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+
+  h1 {
+    font-size: 42px !important;
+    line-height: 1 !important;
+  }
+
+  h2 {
+    font-size: 30px !important;
+  }
+
+  p {
+    font-size: 15px !important;
+  }
+
+  nav {
+    padding: 12px !important;
+    overflow-x: auto;
+  }
+
+  .nav-links {
+    gap: 12px !important;
+    flex-wrap: nowrap;
+  }
+
+  .carousel-track {
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory;
+    gap: 16px;
+  }
+
+  .carousel-card {
+    flex: 0 0 85% !important;
+    scroll-snap-align: center;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+}
+/* ─── responsive.css ─── */
+
+@media (max-width: 768px) {
+  body { cursor: auto; }
+  body {
+    overflow-x: hidden;
+  }
+  section,
+  .container,
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner,
+  .cards-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .feature-card,
+  .pricing-card,
+  .dashboard-card,
+  .carousel-card,
+  .stats-card {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+
+  h1 {
+    font-size: 52px !important;
+    line-height: 1;
+  }
+
+  h2 {
+    font-size: 36px !important;
+  }
+
+  p {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+  nav {
+    padding: 14px 18px;
+  }
+
+  .nav-links {
+    gap: 16px;
+    font-size: 14px;
+  }
+
+  .cta-actions {
+    flex-direction: column;
+  }
+
+  .cta-actions a,
+  .cta-actions button {
+    width: 100%;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+  #cursor, #cursor-ring { display: none; }
+
+  .noise { width: 100vw; overflow: hidden; }
+
+  nav { padding: 12px 16px; }
+  .nav-links a:not(.btn-nav-primary):not(.btn-nav-outline) { display: none; }
+
+  .hero-inner,
+  .feature-section,
+  .cta-inner { padding: 0 20px; }
+
+  .hero-inner,
+  .feature-section {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    direction: ltr;
+  }
+  .feature-section { padding: 60px 20px; }
+  .stats-inner {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 0 16px;
+    gap: 12px;
+    overflow: hidden;
+  }
+  .stat-num { font-size: 16px; }
+  .carousel-track { gap: 12px; }
+  .carousel-card {
+    width: 100%;
+  }
+
+  .cta-section { padding: 80px 20px; }
+  .cta-actions { flex-direction: column; }
+
+  footer {
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px 20px;
+    text-align: center;
+  }
+  .footer-links { flex-wrap: wrap; justify-content: center; }
+  * {
+    box-sizing: border-box;
+  }
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  .carousel-track {
+     overflow-x: auto;
+  }
+
+  .carousel-card {
+    flex: 0 0 85%;
+  }
+}
+@media (max-width: 768px) {
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    overflow-x: hidden !important;
+    width: 100%;
+  }
+
+  section,
+  div,
+  .container,
+  .hero-inner,
+  .feature-section,
+  .cards-grid,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner {
+    max-width: 100% !important;
+  }
+
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .cards-grid,
+  .stats-inner,
+  .cta-inner {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 20px !important;
+  }
+
+  .feature-card,
+  .pricing-card,
+  .dashboard-card,
+  .carousel-card,
+  .stats-card,
+  .hero-card,
+  .mockup-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .hero-visual,
+  .hero-content,
+  .feature-left,
+  .feature-right {
+    width: 100% !important;
+  }
+
+  img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+
+  h1 {
+    font-size: 42px !important;
+    line-height: 1 !important;
+  }
+
+  h2 {
+    font-size: 30px !important;
+  }
+
+  p {
+    font-size: 15px !important;
+  }
+
+  nav {
+    padding: 12px !important;
+    overflow-x: auto;
+  }
+
+  .nav-links {
+    gap: 12px !important;
+    flex-wrap: nowrap;
+  }
+
+  .carousel-track {
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory;
+    gap: 16px;
+  }
+
+  .carousel-card {
+    flex: 0 0 85% !important;
+    scroll-snap-align: center;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+}
+/* ─── responsive.css ─── */
+
+@media (max-width: 768px) {
+  body { cursor: auto; }
+  body {
+    overflow-x: hidden;
+  }
+  section,
+  .container,
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner,
+  .cards-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .feature-card,
+  .pricing-card,
+  .dashboard-card,
+  .carousel-card,
+  .stats-card {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+
+  h1 {
+    font-size: 52px !important;
+    line-height: 1;
+  }
+
+  h2 {
+    font-size: 36px !important;
+  }
+
+  p {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+  nav {
+    padding: 14px 18px;
+  }
+
+  .nav-links {
+    gap: 16px;
+    font-size: 14px;
+  }
+
+  .cta-actions {
+    flex-direction: column;
+  }
+
+  .cta-actions a,
+  .cta-actions button {
+    width: 100%;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+  #cursor, #cursor-ring { display: none; }
+
+  .noise { width: 100vw; overflow: hidden; }
+
+  nav { padding: 12px 16px; }
+  .nav-links a:not(.btn-nav-primary):not(.btn-nav-outline) { display: none; }
+
+  .hero-inner,
+  .feature-section,
+  .cta-inner { padding: 0 20px; }
+
+  .hero-inner,
+  .feature-section {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    direction: ltr;
+  }
+  .feature-section { padding: 60px 20px; }
+  .stats-inner {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 0 16px;
+    gap: 12px;
+    overflow: hidden;
+  }
+  .stat-num { font-size: 16px; }
+  .carousel-track { gap: 12px; }
+  .carousel-card {
+    width: 100%;
+  }
+
+  .cta-section { padding: 80px 20px; }
+  .cta-actions { flex-direction: column; }
+
+  footer {
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px 20px;
+    text-align: center;
+  }
+  .footer-links { flex-wrap: wrap; justify-content: center; }
+  * {
+    box-sizing: border-box;
+  }
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  .carousel-track {
+     overflow-x: auto;
+  }
+
+  .carousel-card {
+    flex: 0 0 85%;
+  }
+}
+@media (max-width: 768px) {
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    overflow-x: hidden !important;
+    width: 100%;
+  }
+
+  section,
+  div,
+  .container,
+  .hero-inner,
+  .feature-section,
+  .cards-grid,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner {
+    max-width: 100% !important;
+  }
+
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .cards-grid,
+  .stats-inner,
+  .cta-inner {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 20px !important;
+  }
+
+  .feature-card,
+  .pricing-card,
+  .dashboard-card,
+  .carousel-card,
+  .stats-card,
+  .hero-card,
+  .mockup-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .hero-visual,
+  .hero-content,
+  .feature-left,
+  .feature-right {
+    width: 100% !important;
+  }
+
+  img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+
+  h1 {
+    font-size: 42px !important;
+    line-height: 1 !important;
+  }
+
+  h2 {
+    font-size: 30px !important;
+  }
+
+  p {
+    font-size: 15px !important;
+  }
+
+  nav {
+    padding: 12px !important;
+    overflow-x: auto;
+  }
+
+  .nav-links {
+    gap: 12px !important;
+    flex-wrap: nowrap;
+  }
+
+  .carousel-track {
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory;
+    gap: 16px;
+  }
+
+  .carousel-card {
+    flex: 0 0 85% !important;
+    scroll-snap-align: center;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+}
+/* ─── responsive.css ─── */
+
+@media (max-width: 768px) {
+  body { cursor: auto; }
+  body {
+    overflow-x: hidden;
+  }
+  section,
+  .container,
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner,
+  .cards-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .feature-card,
+  .pricing-card,
+  .dashboard-card,
+  .carousel-card,
+  .stats-card {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+
+  h1 {
+    font-size: 52px !important;
+    line-height: 1;
+  }
+
+  h2 {
+    font-size: 36px !important;
+  }
+
+  p {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+  nav {
+    padding: 14px 18px;
+  }
+
+  .nav-links {
+    gap: 16px;
+    font-size: 14px;
+  }
+
+  .cta-actions {
+    flex-direction: column;
+  }
+
+  .cta-actions a,
+  .cta-actions button {
+    width: 100%;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+  #cursor, #cursor-ring { display: none; }
+
+  .noise { width: 100vw; overflow: hidden; }
+
+  nav { padding: 12px 16px; }
+  .nav-links a:not(.btn-nav-primary):not(.btn-nav-outline) { display: none; }
+
+  .hero-inner,
+  .feature-section,
+  .cta-inner { padding: 0 20px; }
+
+  .hero-inner,
+  .feature-section {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    direction: ltr;
+  }
+  .feature-section { padding: 60px 20px; }
+  .stats-inner {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 0 16px;
+    gap: 12px;
+    overflow: hidden;
+  }
+  .stat-num { font-size: 16px; }
+  .carousel-track { gap: 12px; }
+  .carousel-card {
+    width: 100%;
+  }
+
+  .cta-section { padding: 80px 20px; }
+  .cta-actions { flex-direction: column; }
+
+  footer {
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px 20px;
+    text-align: center;
+  }
+  .footer-links { flex-wrap: wrap; justify-content: center; }
+  * {
+    box-sizing: border-box;
+  }
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  .carousel-track {
+     overflow-x: auto;
+  }
+
+  .carousel-card {
+    flex: 0 0 85%;
+  }
+}
+@media (max-width: 768px) {
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    overflow-x: hidden !important;
+    width: 100%;
+  }
+
+  section,
+  div,
+  .container,
+  .hero-inner,
+  .feature-section,
+  .cards-grid,
+  .pricing-grid,
+  .stats-inner,
+  .cta-inner {
+    max-width: 100% !important;
+  }
+
+  .hero-inner,
+  .feature-section,
+  .pricing-grid,
+  .cards-grid,
+  .stats-inner,
+  .cta-inner {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 20px !important;
+  }
+
+  .feature-card,
+  .pricing-card,
+  .dashboard-card,
+  .carousel-card,
+  .stats-card,
+  .hero-card,
+  .mockup-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .hero-visual,
+  .hero-content,
+  .feature-left,
+  .feature-right {
+    width: 100% !important;
+  }
+
+  img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+
+  h1 {
+    font-size: 42px !important;
+    line-height: 1 !important;
+  }
+
+  h2 {
+    font-size: 30px !important;
+  }
+
+  p {
+    font-size: 15px !important;
+  }
+
+  nav {
+    padding: 12px !important;
+    overflow-x: auto;
+  }
+
+  .nav-links {
+    gap: 12px !important;
+    flex-wrap: nowrap;
+  }
+
+  .carousel-track {
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory;
+    gap: 16px;
+  }
+
+  .carousel-card {
+    flex: 0 0 85% !important;
+    scroll-snap-align: center;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+}
+.hero-inner,
+.feature-section,
+.cards-grid,
+.pricing-grid,
+.stats-inner,
+.cta-inner {
+  min-width: 0;
+}
+
+.feature-card,
+.pricing-card,
+.dashboard-card,
+.carousel-card,
+.stats-card,
+.hero-card,
+.mockup-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.carousel-track {
+  width: 100%;
+}
+
+section {
+  overflow-x: hidden;
+}
 
 }
