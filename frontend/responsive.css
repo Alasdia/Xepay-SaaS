@@ -725,3 +725,116 @@
   }
 
 }
+/* ───────── FINAL OVERFLOW FIX ───────── */
+
+@media (max-width:768px){
+
+  body,
+  html{
+    overflow-x:hidden !important;
+  }
+
+  /* Évite les colonnes desktop */
+
+  .plans-grid,
+  .feat-grid,
+  .feature-grid,
+  .comm-grid,
+  .how-grid,
+  .stats-inner,
+  .hero-inner{
+    display:flex !important;
+    flex-direction:column !important;
+  }
+
+  /* Toutes les cards */
+
+  .plan-card,
+  .feat-card,
+  .feature-card,
+  .hero-card,
+  .commission-card,
+  .how-card,
+  .arch-node{
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+
+    transform:none !important;
+  }
+
+  /* Évite les textes coupés */
+
+  h1,
+  h2,
+  h3,
+  p,
+  span,
+  li{
+    word-break:break-word !important;
+  }
+
+  /* Corrige les gros textes verticaux */
+
+  .hero-title,
+  .split-title,
+  .fc-title,
+  .reveal-text{
+    font-size:42px !important;
+    line-height:.9 !important;
+  }
+
+  /* Cartes pricing */
+
+  .plan-price .amount{
+    font-size:48px !important;
+  }
+
+  .plan-features{
+    overflow:hidden !important;
+  }
+
+  .plan-features li{
+    font-size:13px !important;
+    line-height:1.5 !important;
+  }
+
+  /* CTA */
+
+  .cta-strip,
+  .cta-section{
+    overflow:hidden !important;
+  }
+
+  /* TABLES */
+
+  .compare-section{
+    overflow-x:auto !important;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .compare-table{
+    min-width:720px !important;
+  }
+
+  /* Images / mockups */
+
+  img,
+  canvas,
+  svg{
+    max-width:100% !important;
+  }
+
+  /* Fix énormes espaces */
+
+  section{
+    overflow:hidden !important;
+  }
+
+  /* FOOTER */
+
+  footer{
+    overflow:hidden !important;
+  }
+
+}
