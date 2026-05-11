@@ -481,137 +481,205 @@
     align-items:stretch;
   }
 
-}/* =========================================
-   FINAL MOBILE FIX — XEPAY
-========================================= */
+}
+/* =========================
+   MOBILE RESPONSIVE
+========================= */
 
-@media screen and (max-width:768px){
-
-  /* GLOBAL */
-  *{
-    min-width:0 !important;
-    max-width:100%;
-    box-sizing:border-box;
-  }
+@media (max-width: 768px){
 
   body{
-    overflow-x:hidden !important;
+    cursor:auto;
   }
 
-  section{
-    overflow:hidden;
+  #cursor,
+  #cursor-ring{
+    display:none;
   }
 
-  /* FORCE COLUMN */
-  .hero-inner,
-  .feature-section,
-  .comm-grid,
-  .plans-grid,
-  .how-grid,
-  .stats-inner{
-    display:flex !important;
-    flex-direction:column !important;
-    align-items:center;
-    gap:24px;
-  }
-
-  /* FIX MOCKUPS */
-  .feature-mockup,
-  .feature-mockup-inner,
-  .hero-visual,
-  .hero-card{
-    width:100% !important;
-    max-width:100% !important;
-    min-width:0 !important;
-    transform:none !important;
-    left:auto !important;
-    right:auto !important;
-  }
-
-  /* FIX ABSOLUTE ELEMENTS */
-  .floating-card,
-  .absolute-card,
-  .orb,
-  .glow,
-  .halo,
-  .blur,
-  .circle{
-    display:none !important;
-  }
-
-  /* FIX CARDS */
-  .card,
-  .plan-card,
-  .commission-card,
-  .carousel-card{
-    width:100% !important;
-    min-width:0 !important;
-  }
-
-  /* FIX HUGE TEXT */
-  h1{
-    font-size:42px !important;
-    line-height:1 !important;
-    word-break:break-word;
-  }
-
-  h2{
-    font-size:34px !important;
-    line-height:1.1 !important;
-  }
-
-  h3{
-    font-size:24px !important;
-  }
-
-  p,
-  li,
-  span{
-    font-size:14px !important;
-    line-height:1.7 !important;
-  }
-
-  /* FIX BUTTONS */
-  .btn,
-  .btn-primary,
-  .btn-ghost,
-  .btn-nav,
-  button{
-    width:100%;
-  }
-
-  /* FIX TABLES */
-  table{
-    display:block;
-    overflow-x:auto;
-  }
-
-  /* FIX NAV */
   nav{
-    width:100%;
+    padding:16px;
+    flex-direction:column;
+    gap:14px;
   }
 
   .nav-links{
     width:100%;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:10px;
+  }
+
+  .nav-links a{
+    font-size:12px;
+    padding:8px 10px;
+  }
+
+  .btn-nav,
+  .btn-nav-outline{
+    width:100%;
+    text-align:center;
+  }
+
+  .page-hero{
+    padding:140px 20px 40px;
+  }
+
+  .page-hero h1{
+    font-size:48px;
+    line-height:1;
+  }
+
+  .page-hero p{
+    font-size:14px;
+    line-height:1.7;
+  }
+
+  .africa-badge{
+    flex-direction:column;
+    gap:12px;
+    padding:16px;
+  }
+
+  .feat-tabs{
+    width:100%;
+    overflow:auto;
+    padding:8px;
+  }
+
+  .feat-tab{
+    white-space:nowrap;
+    flex-shrink:0;
+  }
+
+  .feat-grid{
+    grid-template-columns:1fr;
+    padding:0 16px 80px;
+  }
+
+  .fc-span2{
+    grid-column:span 1;
+  }
+
+  .feat-card{
+    padding:22px;
+  }
+
+  .feat-card h3{
+    font-size:28px;
+  }
+
+  .fc-bignum{
+    font-size:48px;
+  }
+
+  .country-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .cta-strip{
+    margin:0 16px 60px;
+    padding:40px 24px;
+  }
+
+  .cta-strip h2{
+    font-size:42px;
+  }
+
+  .cta-btns{
+    flex-direction:column;
+  }
+
+  .btn-primary,
+  .btn-ghost{
+    width:100%;
     justify-content:center;
   }
 
-  /* FIX IMAGE */
-  img{
-    width:100%;
-    height:auto;
-    object-fit:cover;
+  footer{
+    padding:24px 16px;
+    flex-direction:column;
+    gap:20px;
+    text-align:center;
   }
 
-  /* REMOVE SIDE SPACING */
-  .container,
-  .hero,
-  .feature-section,
-  .plans-section,
-  .commission-section,
-  .cta-section{
-    padding-left:16px !important;
-    padding-right:16px !important;
+  .footer-links{
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:12px;
+  }
+
+  .pl-row,
+  .plan-row,
+  .txn-r,
+  .user-row,
+  .sec-row{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:10px;
+  }
+
+  .pl-right{
+    width:100%;
+    justify-content:space-between;
+  }
+
+  .fm-body{
+    padding:12px;
+  }
+
+  .code-block{
+    font-size:9px;
+    overflow:auto;
+  }
+
+}
+@media (max-width:768px){
+
+  .feat-card,
+  .fc-mockup,
+  .code-block{
+    overflow:hidden;
+  }
+
+  .feat-card{
+    width:100%;
+  }
+
+  .fm-body{
+    overflow-x:auto;
+  }
+
+  .page-hero h1{
+    font-size:56px;
+  }
+
+  .feat-card h3{
+    font-size:32px;
+  }
+
+  .country-grid{
+    grid-template-columns:1fr 1fr;
+  }
+
+}
+@media (max-width:768px){
+
+  .feat-tabs::-webkit-scrollbar{
+    display:none;
+  }
+
+  .feat-tabs{
+    -ms-overflow-style:none;
+    scrollbar-width:none;
+  }
+
+  .code-block{
+    white-space:nowrap;
+  }
+
+  .fc-mockup{
+    border-radius:14px;
   }
 
 }
