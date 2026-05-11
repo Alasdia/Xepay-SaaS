@@ -838,3 +838,121 @@
   }
 
 }
+/* ───────── SMALL MOBILE FIX ───────── */
+
+@media (max-width:400px){
+
+  /* GLOBAL */
+
+  html{
+    font-size:14px;
+  }
+
+  body{
+    overflow-x:hidden !important;
+  }
+
+  /* NAV */
+
+  nav{
+    padding:12px 14px !important;
+  }
+
+  .logo{
+    font-size:24px !important;
+  }
+
+  .btn-nav-outline,
+  .btn-nav-primary{
+    padding:7px 10px !important;
+    font-size:10px !important;
+  }
+
+  /* HERO */
+
+  .hero,
+  .page-hero{
+    padding-top:100px !important;
+  }
+
+  .hero h1,
+  .hero-title{
+    font-size:42px !important;
+    line-height:.92 !important;
+  }
+
+  .hero h2{
+    font-size:34px !important;
+  }
+
+  .hero-desc,
+  p{
+    font-size:13px !important;
+    line-height:1.6 !important;
+  }
+
+  /* BUTTONS */
+
+  .hero-actions,
+  .cta-actions{
+    gap:12px !important;
+  }
+
+  .btn-primary,
+  .btn-ghost{
+    padding:14px 16px !important;
+    font-size:12px !important;
+  }
+
+  /* CARDS */
+
+  .hero-card,
+  .feat-card,
+  .plan-card,
+  .commission-card{
+    padding:16px !important;
+    border-radius:18px !important;
+  }
+
+  /* BIG TITLES */
+
+  .feat-card h2,
+  .feat-card h3,
+  .fc-title,
+  .split-title,
+  .reveal-text{
+    font-size:28px !important;
+    line-height:.95 !important;
+  }
+
+  /* PRICING */
+
+  .plan-price .amount{
+    font-size:42px !important;
+  }
+
+  .comm-rate{
+    font-size:64px !important;
+  }
+
+  /* FEATURES TEXT */
+
+  .plan-features li,
+  .feat-card p{
+    font-size:12px !important;
+    line-height:1.5 !important;
+  }
+
+  /* CTA */
+
+  .cta-strip h2{
+    font-size:38px !important;
+  }
+
+  /* FOOTER */
+
+  footer{
+    padding:20px 14px !important;
+  }
+
+}
