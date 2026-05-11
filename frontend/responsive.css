@@ -221,3 +221,50 @@
   }
 
 }
+@media (max-width:768px){
+
+  /* GROS TITRES */
+  .hero-title,
+  .fc-title,
+  .split-title,
+  .reveal-text,
+  .feat-card h2,
+  .feat-card h3{
+    font-size:34px !important;
+    line-height:.9 !important;
+    letter-spacing:-1px !important;
+    word-break:break-word;
+  }
+
+  /* PETITS TEXTES */
+  .feat-card p,
+  .hero-card p,
+  .fc-sub,
+  .hero-sub{
+    font-size:13px !important;
+    line-height:1.5 !important;
+  }
+
+  /* CARDS */
+  .feat-card,
+  .hero-card{
+    padding:18px !important;
+    overflow:hidden !important;
+  }
+
+  /* ÉLÉMENTS FLOTTANTS */
+  .float-card,
+  .mini-widget,
+  .dashboard-box,
+  .metric-box{
+    transform:scale(.82) !important;
+    transform-origin:top left;
+  }
+
+  /* EMPÊCHE LES TEXTES DE SORTIR */
+  .feat-card *,
+  .hero-card *{
+    max-width:100% !important;
+  }
+
+}
