@@ -391,3 +391,94 @@
   }
 
 }
+/* =========================================
+   XEPAY MOBILE PATCH FIX
+========================================= */
+
+@media screen and (max-width:768px){
+
+  /* FIX OVERFLOW */
+  .hero-card,
+  .feature-mockup-inner,
+  .commission-card,
+  .plan-card,
+  .cta-strip{
+    width:100%;
+    max-width:100%;
+    overflow:hidden;
+  }
+
+  /* FIX SECTIONS */
+  .hero-inner,
+  .feature-section,
+  .comm-grid,
+  .plans-grid,
+  .how-grid{
+    overflow:hidden;
+  }
+
+  /* FIX CAROUSEL */
+  .carousel-track{
+    overflow-x:auto;
+    overflow-y:hidden;
+    gap:16px;
+    padding-bottom:10px;
+    scroll-snap-type:x mandatory;
+  }
+
+  .carousel-card{
+    flex:0 0 240px;
+    scroll-snap-align:start;
+  }
+
+  /* FIX TEXT */
+  .hero-desc,
+  .feature-text p,
+  .faq-a{
+    word-break:break-word;
+    overflow-wrap:break-word;
+  }
+
+  /* FIX HUGE CONTENT */
+  .feature-text,
+  .hero-copy,
+  .plans-header,
+  .cta-inner{
+    max-width:100%;
+  }
+
+  /* FIX TABLE */
+  .compare-table{
+    border-radius:18px;
+    overflow-x:auto;
+  }
+
+  /* FIX BUTTONS */
+  .hero-actions,
+  .cta-actions,
+  .cta-btns{
+    width:100%;
+  }
+
+  /* FIX VISUAL ELEMENTS */
+  .hero-visual,
+  .feature-mockup{
+    width:100%;
+    display:flex;
+    justify-content:center;
+  }
+
+  /* FIX PLAN PRICE */
+  .plan-price{
+    flex-wrap:wrap;
+    gap:10px;
+  }
+
+  /* FIX CARDS STACK */
+  .plans-grid,
+  .comm-grid,
+  .how-grid{
+    align-items:stretch;
+  }
+
+}
