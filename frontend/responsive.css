@@ -2185,3 +2185,31 @@ section {
 }
 
 }
+@media (max-width: 768px) {
+
+  .features-grid,
+  .cards-grid,
+  .pricing-grid,
+  .dashboard-grid,
+  .feature-section,
+  .hero-inner,
+  .stats-inner,
+  .cta-inner {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+  }
+
+  .feature-card,
+  .pricing-card,
+  .dashboard-card,
+  .carousel-card,
+  .stats-card,
+  .hero-card,
+  .mockup-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+}
