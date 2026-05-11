@@ -806,12 +806,12 @@
 }
 @media screen and (max-width:900px){
 
+  section,
+  div,
   .container,
   .wrapper,
   .hero,
-  .main,
-  section,
-  div{
+  .main{
     max-width:100%;
     overflow-x:hidden;
   }
