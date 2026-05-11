@@ -158,3 +158,66 @@
   }
 
 }
+
+@media (max-width: 768px){
+
+  /* HERO CARD */
+  .hero-card{
+    padding:18px !important;
+    min-height:auto !important;
+  }
+
+  .hero-card h1,
+  .hero-card h2,
+  .hero-card h3{
+    font-size:42px !important;
+    line-height:.92 !important;
+    word-break:break-word;
+  }
+
+  .hero-card p{
+    font-size:14px !important;
+    line-height:1.6 !important;
+  }
+
+  /* MINI UI */
+  .mini-chart,
+  .dashboard-widget,
+  .stat-widget,
+  .hero-widget{
+    width:100% !important;
+    min-width:0 !important;
+    overflow:hidden;
+  }
+
+  /* PETITS TEXTES */
+  .hero-badge,
+  .card-label,
+  .stat-label,
+  .mini-label{
+    font-size:9px !important;
+    letter-spacing:.08em;
+  }
+
+  /* CHIFFRES */
+  .card-balance,
+  .stat-value{
+    font-size:32px !important;
+    line-height:1 !important;
+  }
+
+  /* GRID HERO */
+  .hero-inner{
+    gap:28px !important;
+  }
+
+  .hero-visual{
+    width:100% !important;
+  }
+
+  /* Évite les débordements */
+  .hero-card *{
+    max-width:100%;
+  }
+
+}
