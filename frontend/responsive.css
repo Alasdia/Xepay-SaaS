@@ -490,3 +490,120 @@
   }
 
 }
+/* ───────── TARIF PAGE MOBILE ───────── */
+
+@media (max-width:768px){
+
+  .hero{
+    padding:120px 18px 60px !important;
+  }
+
+  .hero h1{
+    font-size:56px !important;
+    line-height:.9 !important;
+  }
+
+  .hero-sub{
+    font-size:14px !important;
+  }
+
+  .stripe-badge{
+    width:100%;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:8px;
+    padding:12px;
+  }
+
+  .arch-section,
+  .commission-section,
+  .plans-section,
+  .compare-section,
+  .how-section,
+  .faq-section{
+    padding-left:18px !important;
+    padding-right:18px !important;
+  }
+
+  /* FLOW */
+
+  .arch-flow{
+    flex-direction:column !important;
+    gap:16px !important;
+  }
+
+  .arch-arrow{
+    transform:rotate(90deg);
+  }
+
+  .arch-node{
+    width:100%;
+    min-width:0 !important;
+  }
+
+  /* COMMISSION */
+
+  .commission-card{
+    padding:28px 18px !important;
+  }
+
+  .comm-grid{
+    grid-template-columns:1fr !important;
+    gap:28px !important;
+  }
+
+  .comm-rate{
+    font-size:88px !important;
+  }
+
+  .comm-info h3{
+    font-size:34px !important;
+  }
+
+  /* PLANS */
+
+  .plans-grid{
+    grid-template-columns:1fr !important;
+  }
+
+  .plan-pro,
+  .plan-pro.visible{
+    transform:none !important;
+  }
+
+  .plan-card{
+    padding:28px 22px !important;
+  }
+
+  .plan-price .amount{
+    font-size:52px !important;
+  }
+
+  /* TABLE */
+
+  .compare-section{
+    overflow-x:auto;
+  }
+
+  .compare-table{
+    min-width:700px;
+  }
+
+  /* HOW */
+
+  .how-grid{
+    grid-template-columns:1fr !important;
+  }
+
+  /* CTA */
+
+  .cta-strip{
+    margin:0 18px 60px !important;
+    padding:44px 22px !important;
+  }
+
+  .cta-strip h2{
+    font-size:52px !important;
+  }
+
+}
