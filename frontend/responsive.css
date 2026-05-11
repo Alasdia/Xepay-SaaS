@@ -1,770 +1,322 @@
 /* =========================================
-   MOBILE RESPONSIVE — XEPAY
-   responsive.css
+   HOME PAGE — MOBILE
 ========================================= */
 
-/* ─────────────────────────
-   TABLETTES
-───────────────────────── */
-@media screen and (max-width: 1100px){
+@media screen and (max-width:768px){
 
-  nav{
-    padding:16px 24px;
-  }
-
-  .hero-inner,
-  .feature-section,
-  .comm-grid,
-  .plans-grid,
-  .how-grid{
-    grid-template-columns:1fr;
-  }
-
-  .hero-inner{
-    gap:60px;
-  }
-
-  .feature-section{
-    gap:50px;
-    padding:90px 24px;
-  }
-
-  .feature-section.reverse{
-    direction:ltr;
-  }
-
-  .feature-text,
-  .hero-desc{
-    max-width:100%;
-  }
-
-  .stats-inner{
-    grid-template-columns:repeat(2,1fr);
-    gap:24px;
-  }
-
-  .stat-item{
-    border-right:none;
-  }
-
-  .plans-grid{
-    gap:24px;
-  }
-
-  .how-grid{
-    gap:20px;
-  }
-
-  .compare-table{
-    display:block;
-    overflow-x:auto;
-    white-space:nowrap;
-  }
-
-  footer{
-    flex-direction:column;
-    gap:18px;
-    text-align:center;
-  }
-
-}
-
-/* ─────────────────────────
-   MOBILE
-───────────────────────── */
-@media screen and (max-width: 768px){
-
-  html,
-  body{
+  .home-page{
     overflow-x:hidden;
   }
 
-  body{
-    cursor:auto;
-  }
-
-  /* CURSOR */
-  #cursor,
-  #cursor-ring{
-    display:none;
-  }
-
-  /* NAVBAR */
-  nav{
-    padding:14px 18px;
-    flex-direction:column;
-    gap:14px;
-  }
-
-  .logo{
-    font-size:22px;
-  }
-
-  .nav-links{
-    flex-wrap:wrap;
-    justify-content:center;
-    gap:10px;
-  }
-
-  .nav-links a{
-    font-size:12px;
-    padding:8px 12px;
-  }
-
-  .btn-nav,
-  .btn-nav-outline,
-  .btn-nav-primary{
-    width:100%;
-    text-align:center;
-    justify-content:center;
-  }
-
-  /* HERO */
-  .hero{
-    padding:160px 20px 70px;
-    min-height:auto;
-  }
-
-  .hero-inner{
-    padding:0;
-    grid-template-columns:1fr;
-    gap:50px;
-  }
-
-  .hero h1{
-    font-size:clamp(54px,16vw,82px);
-    line-height:.95;
-  }
-
-  .hero-desc{
-    font-size:15px;
-    line-height:1.7;
-  }
-
-  .hero-actions{
-    flex-direction:column;
-    align-items:stretch;
-  }
-
-  .btn-primary,
-  .btn-ghost{
-    width:100%;
-    justify-content:center;
-    text-align:center;
-  }
-
-  .hero-stats{
-    flex-direction:column;
-    gap:18px;
-  }
-
-  .hero-visual{
-    animation:none;
-  }
-
-  .hero-card{
-    transform:none !important;
-  }
-
-  .hero-halo{
-    width:260px;
-    height:260px;
-  }
-
-  /* MOCKUPS */
-  .feature-mockup-inner{
-    transform:none !important;
-    animation:none !important;
-  }
-
-  .feature-mockup-inner:hover{
-    transform:none !important;
-  }
-
-  /* SECTIONS */
-  .feature-section,
-  .commission-section,
-  .plans-section,
-  .compare-section,
-  .faq-section,
-  .how-section,
-  .cta-section{
-    padding-left:20px;
-    padding-right:20px;
-  }
-
-  .feature-text h2,
-  .plans-header h2,
-  .cta-inner h2{
-    font-size:clamp(42px,14vw,64px);
-    line-height:.95;
-  }
-
-  .feature-text p,
-  .cta-inner p{
-    font-size:15px;
-  }
-
-  /* STATS */
-  .stats-inner{
-    grid-template-columns:1fr;
-    gap:22px;
-    padding:0 20px;
-  }
-
-  .stat-item{
-    padding:0;
-    border:none;
-  }
-
-  .stat-num{
-    font-size:32px;
-    text-align:center;
-  }
-
-  /* COMMISSION */
-  .commission-card{
-    padding:28px 20px;
-  }
-
-  .comm-rate{
-    font-size:82px;
-  }
-
-  .comm-info h3{
-    font-size:36px;
-  }
-
-  /* PLANS */
-  .plan-card{
-    padding:28px 22px;
-  }
-
-  .plan-pro{
-    transform:none !important;
-  }
-
-  .plan-pro.visible{
-    transform:none !important;
-  }
-
-  .plan-price .amount{
-    font-size:52px;
-  }
-
-  /* TABLE */
-  .compare-table{
-    font-size:12px;
-  }
-
-  .compare-table th,
-  .compare-table td{
-    padding:12px 14px;
-  }
-
-  /* HOW GRID */
-  .how-grid{
-    grid-template-columns:1fr;
-  }
-
-  /* CTA */
-  .cta-actions,
-  .cta-btns{
-    flex-direction:column;
-  }
-
-  .cta-strip{
-    margin:0 20px 60px;
-    padding:40px 22px;
-  }
-
-  /* FOOTER */
-  footer{
-    padding:24px 20px;
-  }
-
-  .footer-links{
-    flex-wrap:wrap;
-    justify-content:center;
-    gap:14px;
-  }
-
-  .footer-copy{
-    text-align:center;
-    line-height:1.7;
-  }
-
-  /* CAROUSEL */
-  .carousel-card{
-    width:260px;
-  }
-
-  .carousel-label{
-    padding:0 20px;
-  }
-
-  .carousel-label h3{
-    font-size:28px;
-  }
-
-  /* ARCHITECTURE FLOW */
-  .arch-flow{
-    flex-direction:column;
-    gap:20px;
-  }
-
-  .arch-arrow{
-    transform:rotate(90deg);
-  }
-
-  /* FAQ */
-  .faq-q{
-    font-size:14px;
-  }
-
-  .faq-a{
-    font-size:13px;
-  }
-
-}
-
-/* ─────────────────────────
-   PETITS MOBILES
-───────────────────────── */
-@media screen and (max-width: 480px){
-
-  nav{
-    padding:12px 14px;
-  }
-
-  .hero{
-    padding-top:150px;
-  }
-
-  .hero h1{
-    font-size:48px;
-  }
-
-  .hero-desc{
-    font-size:14px;
-  }
-
-  .btn-primary,
-  .btn-ghost{
-    padding:14px 18px;
-    font-size:13px;
-  }
-
-  .feature-text h2,
-  .plans-header h2,
-  .cta-inner h2{
-    font-size:42px;
-  }
-
-  .comm-rate{
-    font-size:68px;
-  }
-
-  .comm-info h3{
-    font-size:30px;
-  }
-
-  .plan-name{
-    font-size:32px;
-  }
-
-  .plan-price .amount{
-    font-size:44px;
-  }
-
-  .carousel-card{
-    width:220px;
-    padding:18px;
-  }
-
-  .hero-card,
-  .feature-mockup-inner,
-  .commission-card,
-  .plan-card,
-  .cta-strip{
-    border-radius:18px;
-  }
-
-}
-/* =========================================
-   XEPAY MOBILE PATCH FIX
-========================================= */
-
-@media screen and (max-width:768px){
-
-  /* FIX OVERFLOW */
-  .hero-card,
-  .feature-mockup-inner,
-  .commission-card,
-  .plan-card,
-  .cta-strip{
-    width:100%;
-    max-width:100%;
-    overflow:hidden;
-  }
-
-  /* FIX SECTIONS */
-  .hero-inner,
-  .feature-section,
-  .comm-grid,
-  .plans-grid,
-  .how-grid{
-    overflow:hidden;
-  }
-
-  /* FIX CAROUSEL */
-  .carousel-track{
-    overflow-x:auto;
-    overflow-y:hidden;
-    gap:16px;
-    padding-bottom:10px;
-    scroll-snap-type:x mandatory;
-  }
-
-  .carousel-card{
-    flex:0 0 240px;
-    scroll-snap-align:start;
-  }
-
-  /* FIX TEXT */
-  .hero-desc,
-  .feature-text p,
-  .faq-a{
-    word-break:break-word;
-    overflow-wrap:break-word;
-  }
-
-  /* FIX HUGE CONTENT */
-  .feature-text,
-  .hero-copy,
-  .plans-header,
-  .cta-inner{
-    max-width:100%;
-  }
-
-  /* FIX TABLE */
-  .compare-table{
-    border-radius:18px;
-    overflow-x:auto;
-  }
-
-  /* FIX BUTTONS */
-  .hero-actions,
-  .cta-actions,
-  .cta-btns{
-    width:100%;
-  }
-
-  /* FIX VISUAL ELEMENTS */
-  .hero-visual,
-  .feature-mockup{
-    width:100%;
+  .home-page .hero{
+    padding:150px 16px 70px;
+  }
+
+  .home-page .hero-inner,
+  .home-page .feature-section,
+  .home-page .comm-grid,
+  .home-page .plans-grid,
+  .home-page .how-grid,
+  .home-page .stats-inner{
     display:flex;
-    justify-content:center;
-  }
-
-  /* FIX PLAN PRICE */
-  .plan-price{
-    flex-wrap:wrap;
-    gap:10px;
-  }
-
-  /* FIX CARDS STACK */
-  .plans-grid,
-  .comm-grid,
-  .how-grid{
-    align-items:stretch;
-  }
-
-}
-/* =========================================
-   FINAL MOBILE FIX — XEPAY
-========================================= */
-
-@media screen and (max-width:768px){
-
-  /* GLOBAL */
-  *{
-    min-width:0 !important;
-    max-width:100%;
-    box-sizing:border-box;
-  }
-
-  body{
-    overflow-x:hidden !important;
-  }
-
-  section{
-    overflow:hidden;
-  }
-
-  /* FORCE COLUMN */
-  .hero-inner,
-  .feature-section,
-  .comm-grid,
-  .plans-grid,
-  .how-grid,
-  .stats-inner{
-    display:flex !important;
-    flex-direction:column !important;
-    align-items:center;
+    flex-direction:column;
     gap:24px;
   }
 
-  /* FIX MOCKUPS */
-  .feature-mockup,
-  .feature-mockup-inner,
-  .hero-visual,
-  .hero-card{
-    width:100% !important;
-    max-width:100% !important;
-    min-width:0 !important;
-    transform:none !important;
-    left:auto !important;
-    right:auto !important;
+  .home-page h1{
+    font-size:42px;
+    line-height:1;
   }
 
-  /* FIX ABSOLUTE ELEMENTS */
-  .floating-card,
-  .absolute-card,
-  .orb,
-  .glow,
-  .halo,
-  .blur,
-  .circle{
-    display:none !important;
+  .home-page h2{
+    font-size:34px;
+    line-height:1.1;
   }
 
-  /* FIX CARDS */
-  .card,
-  .plan-card,
-  .commission-card,
-  .carousel-card{
-    width:100% !important;
-    min-width:0 !important;
+  .home-page h3{
+    font-size:24px;
   }
 
-  /* FIX HUGE TEXT */
-  h1{
-    font-size:42px !important;
-    line-height:1 !important;
-    word-break:break-word;
+  .home-page .hero-desc,
+  .home-page p{
+    font-size:14px;
+    line-height:1.7;
   }
 
-  h2{
-    font-size:34px !important;
-    line-height:1.1 !important;
+  .home-page .hero-actions,
+  .home-page .cta-btns{
+    flex-direction:column;
   }
 
-  h3{
-    font-size:24px !important;
-  }
-
-  p,
-  li,
-  span{
-    font-size:14px !important;
-    line-height:1.7 !important;
-  }
-
-  /* FIX BUTTONS */
-  .btn,
-  .btn-primary,
-  .btn-ghost,
-  .btn-nav,
-  button{
-    width:100%;
-  }
-
-  /* FIX TABLES */
-  table{
-    display:block;
-    overflow-x:auto;
-  }
-
-  /* FIX NAV */
-  nav{
-    width:100%;
-  }
-
-  .nav-links{
+  .home-page .btn-primary,
+  .home-page .btn-ghost{
     width:100%;
     justify-content:center;
   }
 
-  /* FIX IMAGE */
-  img{
+  .home-page .hero-card,
+  .home-page .feature-mockup-inner,
+  .home-page .plan-card,
+  .home-page .commission-card,
+  .home-page .cta-strip{
     width:100%;
-    height:auto;
-    object-fit:cover;
+    max-width:100%;
+    border-radius:18px;
   }
 
-  /* REMOVE SIDE SPACING */
-  .container,
-  .hero,
-  .feature-section,
-  .plans-section,
-  .commission-section,
-  .cta-section{
-    padding-left:16px !important;
-    padding-right:16px !important;
-  }
-
-}
-/* =========================
-   MOBILE RESPONSIVE
-========================= */
-
-@media (max-width: 768px){
-
-  body{
-    cursor:auto;
-  }
-
-  #cursor,
-  #cursor-ring{
-    display:none;
-  }
-
-  nav{
-    padding:16px;
+  .home-page nav{
+    padding:14px 16px;
     flex-direction:column;
     gap:14px;
   }
 
-  .nav-links{
+  .home-page .nav-links{
+    width:100%;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+
+  .home-page footer{
+    flex-direction:column;
+    gap:18px;
+    text-align:center;
+    padding:24px 16px;
+  }
+
+}
+
+
+/* =========================================
+   FEATURES PAGE — MOBILE
+========================================= */
+
+@media screen and (max-width:768px){
+
+  .features-page{
+    overflow-x:hidden;
+  }
+
+  .features-page nav{
+    padding:14px 16px;
+    flex-direction:column;
+    gap:14px;
+  }
+
+  .features-page .nav-links{
     width:100%;
     flex-wrap:wrap;
     justify-content:center;
     gap:10px;
   }
 
-  .nav-links a{
-    font-size:12px;
-    padding:8px 10px;
-  }
-
-  .btn-nav,
-  .btn-nav-outline{
-    width:100%;
-    text-align:center;
-  }
-
-  .page-hero{
+  .features-page .page-hero{
     padding:140px 20px 40px;
   }
 
-  .page-hero h1{
+  .features-page .page-hero h1{
     font-size:48px;
     line-height:1;
   }
 
-  .page-hero p{
+  .features-page .page-hero p{
     font-size:14px;
     line-height:1.7;
   }
 
-  .africa-badge{
+  .features-page .africa-badge{
     flex-direction:column;
     gap:12px;
     padding:16px;
   }
 
-  .feat-tabs{
+  .features-page .feat-tabs{
     width:100%;
-    overflow:auto;
+    overflow-x:auto;
     padding:8px;
   }
 
-  .feat-tab{
-    white-space:nowrap;
-    flex-shrink:0;
-  }
-
-  .feat-grid{
+  .features-page .feat-grid{
     grid-template-columns:1fr;
     padding:0 16px 80px;
   }
 
-  .fc-span2{
+  .features-page .fc-span2{
     grid-column:span 1;
   }
 
-  .feat-card{
+  .features-page .feat-card{
     padding:22px;
+    width:100%;
+    overflow:hidden;
   }
 
-  .feat-card h3{
+  .features-page .feat-card h3{
     font-size:28px;
   }
 
-  .fc-bignum{
+  .features-page .fc-bignum{
     font-size:48px;
   }
 
-  .country-grid{
-    grid-template-columns:repeat(2,1fr);
+  .features-page .country-grid{
+    grid-template-columns:1fr 1fr;
   }
 
-  .cta-strip{
+  .features-page .pl-row,
+  .features-page .plan-row,
+  .features-page .txn-r,
+  .features-page .user-row,
+  .features-page .sec-row{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:10px;
+  }
+
+  .features-page .pl-right{
+    width:100%;
+    justify-content:space-between;
+  }
+
+  .features-page .fm-body{
+    padding:12px;
+    overflow-x:auto;
+  }
+
+  .features-page .code-block{
+    font-size:9px;
+    overflow-x:auto;
+  }
+
+  .features-page .cta-strip{
     margin:0 16px 60px;
     padding:40px 24px;
   }
 
-  .cta-strip h2{
+  .features-page .cta-strip h2{
     font-size:42px;
   }
 
-  .cta-btns{
+  .features-page .cta-btns{
     flex-direction:column;
   }
 
-  .btn-primary,
-  .btn-ghost{
+  .features-page .btn-primary,
+  .features-page .btn-ghost{
     width:100%;
     justify-content:center;
   }
 
-  footer{
+  .features-page footer{
     padding:24px 16px;
     flex-direction:column;
     gap:20px;
     text-align:center;
   }
 
-  .footer-links{
+  .features-page .footer-links{
     flex-wrap:wrap;
     justify-content:center;
     gap:12px;
   }
 
-  .pl-row,
-  .plan-row,
-  .txn-r,
-  .user-row,
-  .sec-row{
+}
+
+
+/* =========================================
+   PRICING PAGE — MOBILE
+========================================= */
+
+@media screen and (max-width:768px){
+
+  .pricing-page{
+    overflow-x:hidden;
+  }
+
+  .pricing-page nav{
+    padding:14px 16px;
     flex-direction:column;
-    align-items:flex-start;
+    gap:14px;
+  }
+
+  .pricing-page .nav-links{
+    width:100%;
+    flex-wrap:wrap;
+    justify-content:center;
     gap:10px;
   }
 
-  .pl-right{
+  .pricing-page .pricing-hero{
+    padding:140px 20px 50px;
+  }
+
+  .pricing-page .pricing-hero h1{
+    font-size:48px;
+    line-height:1;
+  }
+
+  .pricing-page .pricing-hero p{
+    font-size:14px;
+    line-height:1.7;
+  }
+
+  .pricing-page .plans-grid{
+    grid-template-columns:1fr;
+    gap:20px;
+    padding:0 16px 80px;
+  }
+
+  .pricing-page .plan-card{
     width:100%;
-    justify-content:space-between;
+    padding:24px;
+    border-radius:20px;
   }
 
-  .fm-body{
-    padding:12px;
+  .pricing-page .plan-price .amount{
+    font-size:48px;
   }
 
-  .code-block{
-    font-size:9px;
-    overflow:auto;
+  .pricing-page .compare-table{
+    display:block;
+    overflow-x:auto;
+    white-space:nowrap;
+    font-size:12px;
+  }
+
+  .pricing-page .compare-table th,
+  .pricing-page .compare-table td{
+    padding:12px 14px;
+  }
+
+  .pricing-page .cta-strip{
+    margin:0 16px 60px;
+    padding:40px 24px;
+  }
+
+  .pricing-page .cta-strip h2{
+    font-size:42px;
+  }
+
+  .pricing-page .cta-btns{
+    flex-direction:column;
+  }
+
+  .pricing-page .btn-primary,
+  .pricing-page .btn-ghost{
+    width:100%;
+    justify-content:center;
+  }
+
+  .pricing-page footer{
+    padding:24px 16px;
+    flex-direction:column;
+    gap:20px;
+    text-align:center;
+  }
+
+  .pricing-page .footer-links{
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:12px;
   }
 
 }
