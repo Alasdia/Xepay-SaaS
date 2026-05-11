@@ -2,7 +2,11 @@
    HOME PAGE — MOBILE
 ========================================= */
 
-@media screen and (max-width:768px){
+@media screen and (max-width:900px){
+
+  html{
+    -webkit-text-size-adjust:100%;
+  }
 
   .home-page{
     overflow-x:hidden;
@@ -90,7 +94,7 @@
    FEATURES PAGE — MOBILE
 ========================================= */
 
-@media screen and (max-width:768px){
+@media screen and (max-width:900px){
 
   .features-page{
     overflow-x:hidden;
@@ -300,7 +304,7 @@
 /* =========================
    MOBILE
 ========================= */
-@media screen and (max-width: 768px){
+@media screen and (max-width: 900px){
 
   html,
   body{
@@ -671,7 +675,7 @@
    FINAL CARD FIX — MOBILE
 ========================================= */
 
-@media screen and (max-width:768px){
+@media screen and (max-width:900px){
 
   /* GLOBAL */
   .pricing-page *{
