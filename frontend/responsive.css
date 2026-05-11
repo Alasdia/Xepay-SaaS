@@ -667,3 +667,129 @@
   }
 
 }
+/* =========================================
+   FINAL CARD FIX — MOBILE
+========================================= */
+
+@media screen and (max-width:768px){
+
+  /* GLOBAL */
+  .pricing-page *{
+    min-width:0 !important;
+  }
+
+  /* SECTIONS */
+  .pricing-page section,
+  .pricing-page div{
+    max-width:100%;
+  }
+
+  /* FIX GRID */
+  .pricing-page .plans-grid,
+  .pricing-page .how-grid,
+  .pricing-page .comm-grid{
+    display:flex !important;
+    flex-direction:column !important;
+    gap:18px !important;
+  }
+
+  /* FIX CARDS */
+  .pricing-page .plan-card,
+  .pricing-page .how-card,
+  .pricing-page .commission-card,
+  .pricing-page .arch-node{
+    width:100% !important;
+    max-width:100% !important;
+    overflow:hidden !important;
+    padding:22px !important;
+    border-radius:18px !important;
+  }
+
+  /* FIX PLAN PRO */
+  .pricing-page .plan-pro,
+  .pricing-page .plan-pro.visible{
+    transform:none !important;
+  }
+
+  /* FIX HUGE TEXT */
+  .pricing-page .plan-name{
+    font-size:28px !important;
+    line-height:1 !important;
+    word-break:break-word;
+  }
+
+  .pricing-page .plan-price .amount{
+    font-size:38px !important;
+    line-height:1 !important;
+  }
+
+  .pricing-page .plans-header h2,
+  .pricing-page .cta-strip h2,
+  .pricing-page .faq-title,
+  .pricing-page .compare-header h3{
+    font-size:34px !important;
+    line-height:1 !important;
+    word-break:break-word;
+  }
+
+  .pricing-page .comm-info h3{
+    font-size:28px !important;
+    line-height:1 !important;
+  }
+
+  /* FIX FEATURES LIST */
+  .pricing-page .plan-features li{
+    font-size:12px !important;
+    line-height:1.6 !important;
+    align-items:flex-start;
+  }
+
+  /* FIX TABLE */
+  .pricing-page .compare-table{
+    display:block;
+    overflow-x:auto;
+    white-space:nowrap;
+    border-radius:16px;
+  }
+
+  /* FIX CTA */
+  .pricing-page .cta-btns{
+    flex-direction:column;
+  }
+
+  .pricing-page .btn-primary,
+  .pricing-page .btn-ghost,
+  .pricing-page .plan-cta{
+    width:100%;
+    justify-content:center;
+    text-align:center;
+  }
+
+  /* FIX HOW CARDS */
+  .pricing-page .how-title{
+    font-size:20px !important;
+  }
+
+  .pricing-page .how-text{
+    font-size:12px !important;
+    line-height:1.7 !important;
+  }
+
+  /* FIX ARCH */
+  .pricing-page .arch-flow{
+    flex-direction:column;
+    gap:18px;
+  }
+
+  .pricing-page .arch-arrow{
+    transform:rotate(90deg);
+  }
+
+  /* FIX OVERFLOW */
+  .pricing-page img,
+  .pricing-page canvas{
+    max-width:100%;
+    height:auto;
+  }
+
+}
