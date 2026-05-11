@@ -22,7 +22,6 @@ import os
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text, extract
-from backend.services.rates import get_live_rate
 from backend.models import LinkDashboardResponse
 from backend.models import PayRequest, Wallet
 from backend.services.stripe_service import create_checkout_session
@@ -243,7 +242,7 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 @router.get("/pay/{token}")
 def get_payment(token: str):
-    from services.stripe_service import create_checkout_session
+    from backend.services.stripe_service import create_checkout_session
     db = SessionLocal()
 
     hashed = hashlib.sha256(token.encode()).hexdigest()

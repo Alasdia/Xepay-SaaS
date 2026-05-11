@@ -177,7 +177,6 @@ def get_transactions(
     # 🔹 récupérer liens
     links = db.query(Link).filter(
         Link.user_id == user.id,
-        Link.source == "links"
     ).all()
 
     # 🔹 récupérer paiements
@@ -262,7 +261,6 @@ def get_stats(
     # 🔹 Récupération des données
     links = db.query(Link).filter(
         Link.user_id == user.id,
-        Link.source == "links",
         Link.created_at >= start_month
     ).all()
 

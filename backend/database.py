@@ -3,7 +3,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import StaticPool
 
 
-DATABASE_URL = "postgresql://epay_user:JB2004%4025@localhost/epay"
+DATABASE_URL = "postgresql://epay_user:JB2004%4025@localhost/epay_db"
 
 engine = create_engine(
     DATABASE_URL,
