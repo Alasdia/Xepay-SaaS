@@ -14,7 +14,7 @@
     box-sizing:border-box;
     max-width:100%;
   }
-  
+
   .home-page{
     overflow-x:hidden;
   }
@@ -801,6 +801,24 @@
   .pricing-page canvas{
     max-width:100%;
     height:auto;
+  }
+
+}
+@media screen and (max-width:900px){
+
+  .container,
+  .wrapper,
+  .hero,
+  .main,
+  section,
+  div{
+    max-width:100%;
+    overflow-x:hidden;
+  }
+
+  button{
+    max-width:100%;
+    white-space:normal;
   }
 
 }
