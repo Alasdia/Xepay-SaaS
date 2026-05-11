@@ -33,7 +33,7 @@
   .carousel-card,
   .stats-card {
     width: 100% !important;
-    min-width: 100% !important;
+    min-width: unset !important;
   }
 
   h1 {
@@ -121,6 +121,18 @@
   .footer-links { flex-wrap: wrap; justify-content: center; }
   * {
     box-sizing: border-box;
+  }
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  .carousel-track {
+     overflow-x: auto;
+  }
+
+  .carousel-card {
+    flex: 0 0 85%;
   }
 
 }
