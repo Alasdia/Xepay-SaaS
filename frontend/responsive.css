@@ -1,824 +1,876 @@
-/* =========================================
-   HOME PAGE — MOBILE
-========================================= */
+/* =============================================
+   XEPAY — RESPONSIVE.CSS
+   Mobile-first, testé sur vrais appareils
+   Breakpoints : 480 · 768 · 1024
+============================================= */
 
-@media screen and (max-width:900px){
-
-  html,
-  body{
-    width:100%;
-    overflow-x:hidden;
-  }
-
-  *{
-    box-sizing:border-box;
-    max-width:100%;
-  }
-
-  .home-page{
-    overflow-x:hidden;
-  }
-
-  .home-page .hero{
-    padding:150px 16px 70px;
-  }
-
-  .home-page .hero-inner,
-  .home-page .feature-section,
-  .home-page .comm-grid,
-  .home-page .plans-grid,
-  .home-page .how-grid,
-  .home-page .stats-inner{
-    display:flex;
-    flex-direction:column;
-    gap:24px;
-  }
-
-  .home-page h1{
-    font-size:42px;
-    line-height:1;
-  }
-
-  .home-page h2{
-    font-size:34px;
-    line-height:1.1;
-  }
-
-  .home-page h3{
-    font-size:24px;
-  }
-
-  .home-page .hero-desc,
-  .home-page p{
-    font-size:14px;
-    line-height:1.7;
-  }
-
-  .home-page .hero-actions,
-  .home-page .cta-btns{
-    flex-direction:column;
-  }
-
-  .home-page .btn-primary,
-  .home-page .btn-ghost{
-    width:100%;
-    justify-content:center;
-  }
-
-  .home-page .hero-card,
-  .home-page .feature-mockup-inner,
-  .home-page .plan-card,
-  .home-page .commission-card,
-  .home-page .cta-strip{
-    width:100%;
-    max-width:100%;
-    border-radius:18px;
-  }
-
-  .home-page nav{
-    padding:14px 16px;
-    flex-direction:column;
-    gap:14px;
-  }
-
-  .home-page .nav-links{
-    width:100%;
-    flex-wrap:wrap;
-    justify-content:center;
-  }
-
-  .home-page footer{
-    flex-direction:column;
-    gap:18px;
-    text-align:center;
-    padding:24px 16px;
-  }
-
+/* ─── RESET GLOBAL MOBILE ─── */
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
-
-/* =========================================
-   FEATURES PAGE — MOBILE
-========================================= */
-
-@media screen and (max-width:900px){
-
-  .features-page{
-    overflow-x:hidden;
-  }
-
-  .features-page nav{
-    padding:14px 16px;
-    flex-direction:column;
-    gap:14px;
-  }
-
-  .features-page .nav-links{
-    width:100%;
-    flex-wrap:wrap;
-    justify-content:center;
-    gap:10px;
-  }
-
-  .features-page .page-hero{
-    padding:140px 20px 40px;
-  }
-
-  .features-page .page-hero h1{
-    font-size:48px;
-    line-height:1;
-  }
-
-  .features-page .page-hero p{
-    font-size:14px;
-    line-height:1.7;
-  }
-
-  .features-page .africa-badge{
-    flex-direction:column;
-    gap:12px;
-    padding:16px;
-  }
-
-  .features-page .feat-tabs{
-    width:100%;
-    overflow-x:auto;
-    padding:8px;
-  }
-
-  .features-page .feat-grid{
-    grid-template-columns:1fr;
-    padding:0 16px 80px;
-  }
-
-  .features-page .fc-span2{
-    grid-column:span 1;
-  }
-
-  .features-page .feat-card{
-    padding:22px;
-    width:100%;
-    overflow:hidden;
-  }
-
-  .features-page .feat-card h3{
-    font-size:28px;
-  }
-
-  .features-page .fc-bignum{
-    font-size:48px;
-  }
-
-  .features-page .country-grid{
-    grid-template-columns:1fr 1fr;
-  }
-
-  .features-page .pl-row,
-  .features-page .plan-row,
-  .features-page .txn-r,
-  .features-page .user-row,
-  .features-page .sec-row{
-    flex-direction:column;
-    align-items:flex-start;
-    gap:10px;
-  }
-
-  .features-page .pl-right{
-    width:100%;
-    justify-content:space-between;
-  }
-
-  .features-page .fm-body{
-    padding:12px;
-    overflow-x:auto;
-  }
-
-  .features-page .code-block{
-    font-size:9px;
-    overflow-x:auto;
-  }
-
-  .features-page .cta-strip{
-    margin:0 16px 60px;
-    padding:40px 24px;
-  }
-
-  .features-page .cta-strip h2{
-    font-size:42px;
-  }
-
-  .features-page .cta-btns{
-    flex-direction:column;
-  }
-
-  .features-page .btn-primary,
-  .features-page .btn-ghost{
-    width:100%;
-    justify-content:center;
-  }
-
-  .features-page footer{
-    padding:24px 16px;
-    flex-direction:column;
-    gap:20px;
-    text-align:center;
-  }
-
-  .features-page .footer-links{
-    flex-wrap:wrap;
-    justify-content:center;
-    gap:12px;
-  }
-
+/* ─── HAMBURGER BUTTON (caché par défaut) ─── */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.nav-hamburger:hover {
+  background: rgba(255,255,255,0.08);
+}
+.nav-hamburger span {
+  display: block;
+  width: 100%;
+  height: 1.5px;
+  background: rgba(255,255,255,0.8);
+  border-radius: 2px;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  transform-origin: center;
+}
+.nav-hamburger.open span:nth-child(1) {
+  transform: translateY(6.5px) rotate(45deg);
+}
+.nav-hamburger.open span:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+.nav-hamburger.open span:nth-child(3) {
+  transform: translateY(-6.5px) rotate(-45deg);
 }
 
-
-/* =========================================
-   XEPAY PRICING — RESPONSIVE
-   responsive.css
-========================================= */
-
-/* =========================
-   TABLETTES
-========================= */
-@media screen and (max-width: 1100px){
-
-  nav{
-    padding:16px 24px;
-  }
-
-  .hero,
-  .arch-section,
-  .commission-section,
-  .plans-section,
-  .compare-section,
-  .how-section,
-  .faq-section{
-    padding-left:24px;
-    padding-right:24px;
-  }
-
-  .cta-strip{
-    margin:0 24px 70px;
-    padding:50px 32px;
-  }
-
-  .disclaimer-strip{
-    margin:0 24px 50px;
-  }
-
-  .sglow{
-    margin:0 24px 50px;
-  }
-
-  .comm-grid{
-    grid-template-columns:1fr;
-    text-align:center;
-  }
-
-  .comm-info p{
-    max-width:100%;
-  }
-
-  .plans-grid{
-    grid-template-columns:1fr;
-    gap:24px;
-  }
-
-  .plan-pro,
-  .plan-pro.visible{
-    transform:none !important;
-  }
-
-  .compare-table{
-    display:block;
-    overflow-x:auto;
-    white-space:nowrap;
-  }
-
-  .how-grid{
-    grid-template-columns:1fr 1fr;
-  }
-
-  footer{
-    flex-direction:column;
-    gap:20px;
-    text-align:center;
-  }
-
-}
-
-/* =========================
-   MOBILE
-========================= */
-@media screen and (max-width: 900px){
-
-  html,
-  body{
-    overflow-x:hidden !important;
-  }
-
-  *{
-    min-width:0;
-    max-width:100%;
-    box-sizing:border-box;
-  }
-
-  body{
-    cursor:auto;
-  }
-
-  /* CURSOR */
-  #cursor,
-  #cursor-ring{
-    display:none;
-  }
+/* =============================================
+   TABLETTES — max-width: 1024px
+============================================= */
+@media screen and (max-width: 1024px) {
 
   /* NAV */
-  nav{
-    padding:14px 18px;
-    flex-direction:column;
-    gap:14px;
+  nav {
+    padding: 16px 24px;
   }
 
-  .logo{
-    font-size:22px;
+  /* HERO GRIDS */
+  .hero-inner {
+    grid-template-columns: 1fr !important;
+    gap: 48px;
+    padding: 0 24px;
   }
 
-  .nav-links{
-    width:100%;
-    flex-wrap:wrap;
-    justify-content:center;
-    gap:10px;
+  .hero-visual {
+    order: -1;
   }
 
-  .nav-links a{
-    font-size:12px;
-    padding:8px 12px;
+  /* FEATURE SECTIONS */
+  .feature-section {
+    grid-template-columns: 1fr !important;
+    padding: 80px 24px;
+    direction: ltr !important;
+    gap: 40px;
   }
 
-  .btn-nav,
-  .btn-nav-outline{
-    width:100%;
-    text-align:center;
+  .feature-section.reverse {
+    direction: ltr !important;
   }
 
-  /* HERO */
-  .hero{
-    padding:150px 20px 60px;
+  .feature-section.reverse > * {
+    direction: ltr !important;
   }
 
-  .hero h1{
-    font-size:clamp(52px,16vw,82px);
-    line-height:.95;
+  /* STATS BAR */
+  .stats-inner {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 24px;
+    padding: 0 24px;
   }
 
-  .hero-sub{
-    font-size:14px;
-    line-height:1.7;
-  }
-
-  .stripe-badge{
-    width:100%;
-    flex-direction:column;
-    gap:8px;
-    padding:14px;
-  }
-
-  /* ARCHITECTURE */
-  .arch-section{
-    padding:60px 20px;
-  }
-
-  .arch-flow{
-    flex-direction:column;
-    gap:20px;
-  }
-
-  .arch-arrow{
-    transform:rotate(90deg);
-    padding:0;
-  }
-
-  .arch-node{
-    width:100%;
-    min-width:0;
-  }
-
-  /* DISCLAIMER */
-  .disclaimer-strip{
-    margin:0 20px 50px;
-    padding:18px;
-    flex-direction:column;
-  }
-
-  .ds-text{
-    font-size:13px;
-  }
-
-  /* COMMISSION */
-  .commission-section{
-    padding:0 20px 60px;
-  }
-
-  .commission-card{
-    padding:28px 20px;
-  }
-
-  .comm-grid{
-    display:flex;
-    flex-direction:column;
-    gap:28px;
-  }
-
-  .comm-rate{
-    font-size:82px;
-  }
-
-  .comm-info h3{
-    font-size:34px;
-  }
-
-  .comm-info p{
-    font-size:14px;
-  }
-
-  .cb-row{
-    align-items:flex-start;
-  }
-
-  .ce-row{
-    gap:12px;
+  .stat-item:nth-child(2) {
+    border-right: none !important;
   }
 
   /* PLANS */
-  .plans-section{
-    padding:0 20px 70px;
-  }
-
-  .plans-header h2{
-    font-size:clamp(42px,14vw,64px);
-    line-height:.95;
-  }
-
-  .plans-header p{
-    font-size:14px;
-  }
-
-  .plans-grid{
-    display:flex;
-    flex-direction:column;
-    gap:20px;
-  }
-
-  .plan-card{
-    padding:28px 22px;
-  }
-
-  .plan-name{
-    font-size:34px;
-  }
-
-  .plan-price{
-    flex-wrap:wrap;
-    gap:8px;
-  }
-
-  .plan-price .amount{
-    font-size:50px;
-  }
-
-  .plan-features li{
-    font-size:13px;
+  .plans-grid {
+    grid-template-columns: 1fr !important;
   }
 
   .plan-pro,
-  .plan-pro.visible{
-    transform:none !important;
+  .plan-pro.visible {
+    transform: none !important;
   }
 
-  /* TABLE */
-  .compare-section{
-    padding:0 20px 70px;
+  /* HOW GRID */
+  .how-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
   }
 
-  .compare-header h3{
-    font-size:42px;
+  /* COMM GRID */
+  .comm-grid {
+    grid-template-columns: 1fr !important;
+    text-align: center;
   }
 
-  .compare-table{
-    display:block;
-    overflow-x:auto;
-    border-radius:16px;
-    font-size:12px;
+  /* COMPARE TABLE */
+  .compare-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
   }
 
-  .compare-table th,
-  .compare-table td{
-    padding:12px 14px;
+  /* CTA + SECTIONS */
+  .cta-section,
+  .cta-strip {
+    padding: 80px 24px;
+    margin: 0 0 60px;
   }
 
-  /* HOW */
-  .how-section{
-    padding:0 20px 70px;
+  .disclaimer-strip {
+    margin: 0 24px 60px;
   }
 
-  .how-grid{
-    grid-template-columns:1fr;
-  }
-
-  .how-card{
-    padding:24px;
-  }
-
-  .how-title{
-    font-size:22px;
-  }
-
-  /* FAQ */
-  .faq-section{
-    padding:0 20px 70px;
-  }
-
-  .faq-title{
-    font-size:42px;
-  }
-
-  .faq-q{
-    font-size:14px;
-    gap:14px;
-  }
-
-  .faq-a{
-    font-size:13px;
-    line-height:1.8;
-    word-break:break-word;
-  }
-
-  /* CTA */
-  .cta-strip{
-    margin:0 20px 60px;
-    padding:40px 22px;
-  }
-
-  .cta-strip h2{
-    font-size:48px;
-    line-height:.95;
-  }
-
-  .cta-strip p{
-    font-size:14px;
-  }
-
-  .cta-btns{
-    flex-direction:column;
-  }
-
-  .btn-primary,
-  .btn-ghost{
-    width:100%;
-    justify-content:center;
-    text-align:center;
+  .sglow {
+    margin: 0 24px 60px;
   }
 
   /* FOOTER */
-  footer{
-    padding:24px 20px;
-    flex-direction:column;
-    gap:18px;
-    text-align:center;
+  footer {
+    flex-direction: column;
+    gap: 20px;
+    text-align: center;
+    padding: 28px 24px;
   }
 
-  .footer-links{
-    flex-wrap:wrap;
-    justify-content:center;
-    gap:14px;
+  .footer-links {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
   }
-
-  .footer-copy{
-    line-height:1.7;
-  }
-
-  /* DIVIDER */
-  .sglow{
-    margin:0 20px 50px;
-  }
-
-  /* FIX OVERFLOW */
-  img,
-  canvas,
-  table,
-  .commission-card,
-  .plan-card,
-  .cta-strip,
-  .arch-node{
-    width:100%;
-    max-width:100%;
-  }
-
 }
 
-/* =========================
-   PETITS MOBILES
-========================= */
-@media screen and (max-width: 480px){
+/* =============================================
+   MOBILE — max-width: 768px
+============================================= */
+@media screen and (max-width: 768px) {
 
-  nav{
-    padding:12px 14px;
+  /* Désactiver curseur personnalisé */
+  body {
+    cursor: auto !important;
+    overflow-x: hidden;
   }
 
-  .hero{
-    padding-top:140px;
+  #cursor,
+  #cursor-ring {
+    display: none !important;
   }
 
-  .hero h1{
-    font-size:46px;
+  /* ── NAV HAMBURGER ── */
+  nav {
+    padding: 14px 18px;
+    flex-wrap: nowrap;
+    align-items: center;
+    position: relative;
   }
 
-  .hero-sub{
-    font-size:13px;
+  .nav-hamburger {
+    display: flex !important;
   }
 
-  .comm-rate{
-    font-size:66px;
+  .nav-links {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(2, 4, 8, 0.97);
+    backdrop-filter: blur(32px);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    z-index: 999;
+    padding: 80px 32px 40px;
   }
 
-  .comm-info h3{
-    font-size:28px;
+  .nav-links.open {
+    display: flex !important;
+  }
+
+  .nav-links a {
+    font-size: 18px !important;
+    padding: 14px 28px !important;
+    width: 100%;
+    text-align: center;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.75) !important;
+  }
+
+  .nav-links a:hover,
+  .nav-links a.active {
+    background: rgba(0,229,255,0.08) !important;
+    color: #fff !important;
+  }
+
+  .btn-nav-outline,
+  .btn-nav-primary,
+  .btn-nav {
+    width: 100% !important;
+    text-align: center !important;
+    justify-content: center;
+    padding: 14px 24px !important;
+    font-size: 14px !important;
+  }
+
+  /* Fermer le menu au clic en dehors */
+  .nav-close-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 998;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 120px 18px 60px !important;
+    min-height: auto;
+  }
+
+  .hero-inner {
+    grid-template-columns: 1fr !important;
+    padding: 0 !important;
+    gap: 36px;
+  }
+
+  .hero h1,
+  .page-hero h1 {
+    font-size: clamp(44px, 14vw, 72px) !important;
+    line-height: 0.95 !important;
+  }
+
+  .hero-desc,
+  .page-hero p,
+  .hero-sub {
+    font-size: 15px !important;
+    line-height: 1.7 !important;
+  }
+
+  .hero-actions,
+  .cta-actions,
+  .cta-btns {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  .btn-primary,
+  .btn-ghost {
+    width: 100% !important;
+    justify-content: center !important;
+    text-align: center !important;
+    padding: 16px 24px !important;
+    font-size: 14px !important;
+  }
+
+  .hero-stats {
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+
+  /* Hero card (mockup) */
+  .hero-card {
+    width: 100%;
+    border-radius: 16px;
+  }
+
+  .hcard-balance {
+    font-size: 38px !important;
+  }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    padding: 20px 0;
+  }
+
+  .stats-inner {
+    grid-template-columns: repeat(2, 1fr) !important;
+    padding: 0 18px !important;
+    gap: 16px;
+  }
+
+  .stat-item {
+    border-right: none !important;
+    padding: 0 8px !important;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-size: 22px !important;
+  }
+
+  /* ── FEATURE SECTIONS ── */
+  .feature-section {
+    grid-template-columns: 1fr !important;
+    padding: 60px 18px !important;
+    gap: 32px;
+    direction: ltr !important;
+  }
+
+  .feature-section.reverse {
+    direction: ltr !important;
+  }
+
+  .feature-section.reverse > * {
+    direction: ltr !important;
+  }
+
+  .feature-text h2 {
+    font-size: clamp(40px, 12vw, 62px) !important;
+  }
+
+  .feature-mockup-inner {
+    transform: none !important;
+    animation: none !important;
+    border-radius: 16px;
+  }
+
+  /* ── PAGE HERO (features/pricing) ── */
+  .page-hero {
+    padding: 120px 18px 40px !important;
+    text-align: center;
+  }
+
+  .page-hero h1 {
+    font-size: clamp(40px, 13vw, 68px) !important;
+    line-height: 0.95 !important;
+  }
+
+  /* ── AFRICA BADGE ── */
+  .africa-badge {
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 16px 20px !important;
+    text-align: center;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .africa-badge .sep {
+    display: none;
+  }
+
+  /* ── FEAT TABS ── */
+  .feat-tabs {
+    width: calc(100% - 0px) !important;
+    overflow-x: auto !important;
+    justify-content: flex-start !important;
+    padding: 6px !important;
+    margin-bottom: 40px;
+    scrollbar-width: none;
+  }
+
+  .feat-tabs::-webkit-scrollbar { display: none; }
+
+  .feat-tab {
+    white-space: nowrap;
+    padding: 8px 14px !important;
+    font-size: 10px !important;
+  }
+
+  /* ── FEAT GRID ── */
+  .feat-grid {
+    grid-template-columns: 1fr !important;
+    padding: 0 18px 80px !important;
+    gap: 14px;
+  }
+
+  .fc-span2 {
+    grid-column: span 1 !important;
+  }
+
+  .feat-card {
+    padding: 22px 18px !important;
+    border-radius: 18px;
+  }
+
+  .feat-card h3 {
+    font-size: 28px !important;
+  }
+
+  .country-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+
+  /* ── CAROUSEL ── */
+  .carousel-section {
+    padding: 60px 0;
+  }
+
+  .carousel-label {
+    padding: 0 18px;
+    margin-bottom: 28px;
+  }
+
+  .carousel-label h3 {
+    font-size: 22px !important;
+  }
+
+  .carousel-card {
+    width: 260px !important;
+  }
+
+  /* ── ARCHITECTURE ── */
+  .arch-section {
+    padding: 60px 18px !important;
+  }
+
+  .arch-flow {
+    flex-direction: column !important;
+    gap: 0 !important;
+    align-items: stretch;
+  }
+
+  .arch-node {
+    min-width: 0 !important;
+    width: 100%;
+    padding: 18px !important;
+    border-radius: 14px;
+    text-align: center;
+  }
+
+  .arch-arrow {
+    flex-direction: column !important;
+    align-items: center;
+    padding: 4px 0 !important;
+    margin: 0 !important;
+  }
+
+  .arch-arrow-line {
+    width: 1px !important;
+    height: 28px !important;
+    background: linear-gradient(180deg, rgba(0,229,255,.4), rgba(168,85,247,.4)) !important;
+  }
+
+  .arch-arrow-head {
+    transform: rotate(45deg) !important;
+    margin-top: -4px !important;
+    margin-left: 0 !important;
+  }
+
+  /* ── DISCLAIMER ── */
+  .disclaimer-strip {
+    margin: 0 18px 50px !important;
+    padding: 18px !important;
+    flex-direction: column;
+    gap: 10px;
+    border-radius: 14px;
+  }
+
+  .ds-text {
+    font-size: 13px !important;
+  }
+
+  /* ── COMMISSION ── */
+  .commission-section {
+    padding: 0 18px 60px !important;
+  }
+
+  .commission-card {
+    padding: 28px 18px !important;
+    border-radius: 20px;
+  }
+
+  .comm-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px;
+    text-align: center;
+  }
+
+  .comm-rate {
+    font-size: clamp(72px, 22vw, 112px) !important;
+  }
+
+  .comm-info h3 {
+    font-size: 30px !important;
+  }
+
+  .comm-info p {
+    font-size: 14px !important;
+    max-width: 100% !important;
+  }
+
+  .comm-breakdown {
+    text-align: left;
+  }
+
+  .cb-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .comm-example {
+    text-align: left;
+  }
+
+  /* ── PLANS ── */
+  .plans-section {
+    padding: 0 18px 70px !important;
+  }
+
+  .plans-header {
+    padding: 0 4px;
+  }
+
+  .plans-header h2 {
+    font-size: clamp(38px, 12vw, 58px) !important;
+    line-height: 0.95 !important;
+  }
+
+  .plans-header p {
+    font-size: 14px !important;
+  }
+
+  .plans-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px;
+  }
+
+  .plan-card {
+    padding: 26px 20px !important;
+    border-radius: 20px;
+  }
+
+  .plan-name {
+    font-size: 34px !important;
+  }
+
+  .plan-price .amount {
+    font-size: 52px !important;
+  }
+
+  .plan-pro,
+  .plan-pro.visible {
+    transform: none !important;
+  }
+
+  .plan-cta {
+    padding: 14px !important;
+    font-size: 14px !important;
+  }
+
+  /* ── COMPARE TABLE ── */
+  .compare-section {
+    padding: 0 18px 70px !important;
+  }
+
+  .compare-header h3 {
+    font-size: clamp(32px, 10vw, 52px) !important;
+  }
+
+  .compare-table {
+    display: block !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    border-radius: 14px;
+    font-size: 12px;
+  }
+
+  .compare-table th,
+  .compare-table td {
+    padding: 10px 14px !important;
+  }
+
+  /* ── HOW IT WORKS ── */
+  .how-section {
+    padding: 0 18px 70px !important;
+  }
+
+  .how-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .how-card {
+    padding: 22px 18px !important;
+    border-radius: 16px;
+  }
+
+  .how-title {
+    font-size: 22px !important;
+  }
+
+  .how-text {
+    font-size: 13px !important;
+  }
+
+  /* ── FAQ ── */
+  .faq-section {
+    padding: 0 18px 70px !important;
+  }
+
+  .faq-title {
+    font-size: clamp(36px, 11vw, 52px) !important;
+  }
+
+  .faq-q {
+    font-size: 14px !important;
+    gap: 12px;
+    padding: 18px 0;
+  }
+
+  .faq-a {
+    font-size: 13px !important;
+    line-height: 1.75 !important;
+  }
+
+  /* ── CTA SECTIONS ── */
+  .cta-section {
+    padding: 80px 18px !important;
+  }
+
+  .cta-strip {
+    margin: 0 18px 60px !important;
+    padding: 40px 20px !important;
+    border-radius: 20px;
+  }
+
+  .cta-inner h2,
+  .cta-strip h2 {
+    font-size: clamp(44px, 14vw, 68px) !important;
+    line-height: 0.93 !important;
+  }
+
+  .cta-inner p,
+  .cta-strip p {
+    font-size: 14px !important;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    padding: 24px 18px !important;
+    flex-direction: column !important;
+    gap: 18px !important;
+    text-align: center !important;
+  }
+
+  .footer-links {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 12px 18px !important;
+  }
+
+  .footer-links a {
+    font-size: 12px !important;
+  }
+
+  /* ── SGLOW / DIVIDERS ── */
+  .sglow,
+  .section-glow {
+    margin: 0 18px 50px !important;
+  }
+
+  /* ── SIGNUP / LOGIN PAGES ── */
+  .page {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    min-height: 100vh;
+    overflow: auto !important;
+  }
+
+  html, body {
+    height: auto !important;
+    overflow: auto !important;
+  }
+
+  /* Sur mobile les pages auth ont overflow:hidden — on le force */
+  body {
+    overflow-y: auto !important;
+  }
+
+  .left-panel {
+    display: none !important;
+  }
+
+  .right-panel {
+    padding: 24px 18px !important;
+    min-height: 100vh;
+    align-items: flex-start;
+    padding-top: 40px !important;
+  }
+
+  .login-card,
+  .signup-card {
+    max-width: 100% !important;
+    padding: 28px 20px 24px !important;
+    border-radius: 20px;
+  }
+
+  .card-title {
+    font-size: 30px !important;
+  }
+
+  .btn-google {
+    padding: 13px 16px !important;
+    font-size: 13px !important;
+  }
+
+  .input-wrap {
+    height: 50px !important;
+  }
+
+  .input-wrap input {
+    font-size: 15px !important; /* évite le zoom iOS */
+  }
+
+  .btn-submit,
+  .btn-primary {
+    padding: 15px !important;
+    font-size: 14px !important;
+  }
+}
+
+/* =============================================
+   PETITS MOBILES — max-width: 480px
+============================================= */
+@media screen and (max-width: 480px) {
+
+  nav {
+    padding: 12px 14px !important;
+  }
+
+  .logo {
+    font-size: 22px !important;
+  }
+
+  .hero h1,
+  .page-hero h1 {
+    font-size: 40px !important;
+  }
+
+  .hero-desc,
+  .hero-sub {
+    font-size: 14px !important;
+  }
+
+  .stats-inner {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+
+  .stat-num {
+    font-size: 18px !important;
+  }
+
+  .comm-rate {
+    font-size: 68px !important;
+  }
+
+  .plans-grid,
+  .how-grid {
+    gap: 12px !important;
+  }
+
+  .plan-card,
+  .how-card,
+  .feat-card {
+    padding: 20px 16px !important;
+    border-radius: 16px !important;
+  }
+
+  .plan-name {
+    font-size: 28px !important;
+  }
+
+  .plan-price .amount {
+    font-size: 44px !important;
   }
 
   .plans-header h2,
   .cta-strip h2,
-  .compare-header h3,
-  .faq-title{
-    font-size:38px;
+  .cta-inner h2,
+  .faq-title,
+  .compare-header h3 {
+    font-size: 36px !important;
+    line-height: 0.95 !important;
   }
 
-  .plan-price .amount{
-    font-size:42px;
+  .feature-text h2 {
+    font-size: 36px !important;
   }
 
-  .plan-name{
-    font-size:30px;
+  .carousel-card {
+    width: 240px !important;
+    padding: 18px !important;
   }
 
-  .btn-primary,
-  .btn-ghost,
-  .plan-cta{
-    padding:14px 18px;
-    font-size:13px;
+  .country-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px !important;
   }
 
-  .commission-card,
-  .plan-card,
-  .cta-strip,
-  .how-card,
-  .arch-node{
-    border-radius:18px;
+  .country-flag {
+    font-size: 16px !important;
   }
 
+  .login-card,
+  .signup-card {
+    padding: 22px 16px 20px !important;
+  }
+
+  .btn-submit {
+    font-size: 13px !important;
+  }
 }
-/* =========================================
-   FINAL CARD FIX — MOBILE
-========================================= */
 
-@media screen and (max-width:900px){
+/* =============================================
+   INJECTION DU HAMBURGER VIA JS
+   (à placer dans chaque page HTML, avant </body>)
 
-  /* GLOBAL */
-  .pricing-page *{
-    min-width:0 !important;
-  }
+   Copier ce bloc <script> dans chaque page :
 
-  /* SECTIONS */
-  .pricing-page section,
-  .pricing-page div{
-    max-width:100%;
-  }
+   <script>
+   (function() {
+     const nav = document.querySelector('nav');
+     const links = nav.querySelector('.nav-links');
+     if (!nav || !links) return;
 
-  /* FIX GRID */
-  .pricing-page .plans-grid,
-  .pricing-page .how-grid,
-  .pricing-page .comm-grid{
-    display:flex !important;
-    flex-direction:column !important;
-    gap:18px !important;
-  }
+     // Créer le bouton hamburger
+     const btn = document.createElement('button');
+     btn.className = 'nav-hamburger';
+     btn.setAttribute('aria-label', 'Menu');
+     btn.innerHTML = '<span></span><span></span><span></span>';
+     nav.appendChild(btn);
 
-  /* FIX CARDS */
-  .pricing-page .plan-card,
-  .pricing-page .how-card,
-  .pricing-page .commission-card,
-  .pricing-page .arch-node{
-    width:100% !important;
-    max-width:100% !important;
-    overflow:hidden !important;
-    padding:22px !important;
-    border-radius:18px !important;
-  }
+     // Bouton fermer (×) dans le menu
+     const closeBtn = document.createElement('button');
+     closeBtn.style.cssText = 'position:absolute;top:20px;right:20px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#fff;width:40px;height:40px;border-radius:10px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;';
+     closeBtn.innerHTML = '×';
+     links.style.position = 'relative';
+     links.insertBefore(closeBtn, links.firstChild);
 
-  /* FIX PLAN PRO */
-  .pricing-page .plan-pro,
-  .pricing-page .plan-pro.visible{
-    transform:none !important;
-  }
+     function open() {
+       btn.classList.add('open');
+       links.classList.add('open');
+       document.body.style.overflow = 'hidden';
+     }
+     function close() {
+       btn.classList.remove('open');
+       links.classList.remove('open');
+       document.body.style.overflow = '';
+     }
 
-  /* FIX HUGE TEXT */
-  .pricing-page .plan-name{
-    font-size:28px !important;
-    line-height:1 !important;
-    word-break:break-word;
-  }
+     btn.addEventListener('click', open);
+     closeBtn.addEventListener('click', close);
 
-  .pricing-page .plan-price .amount{
-    font-size:38px !important;
-    line-height:1 !important;
-  }
+     // Fermer sur clic d'un lien
+     links.querySelectorAll('a').forEach(a => a.addEventListener('click', close));
+   })();
+   </script>
 
-  .pricing-page .plans-header h2,
-  .pricing-page .cta-strip h2,
-  .pricing-page .faq-title,
-  .pricing-page .compare-header h3{
-    font-size:34px !important;
-    line-height:1 !important;
-    word-break:break-word;
-  }
-
-  .pricing-page .comm-info h3{
-    font-size:28px !important;
-    line-height:1 !important;
-  }
-
-  /* FIX FEATURES LIST */
-  .pricing-page .plan-features li{
-    font-size:12px !important;
-    line-height:1.6 !important;
-    align-items:flex-start;
-  }
-
-  /* FIX TABLE */
-  .pricing-page .compare-table{
-    display:block;
-    overflow-x:auto;
-    white-space:nowrap;
-    border-radius:16px;
-  }
-
-  /* FIX CTA */
-  .pricing-page .cta-btns{
-    flex-direction:column;
-  }
-
-  .pricing-page .btn-primary,
-  .pricing-page .btn-ghost,
-  .pricing-page .plan-cta{
-    width:100%;
-    justify-content:center;
-    text-align:center;
-  }
-
-  /* FIX HOW CARDS */
-  .pricing-page .how-title{
-    font-size:20px !important;
-  }
-
-  .pricing-page .how-text{
-    font-size:12px !important;
-    line-height:1.7 !important;
-  }
-
-  /* FIX ARCH */
-  .pricing-page .arch-flow{
-    flex-direction:column;
-    gap:18px;
-  }
-
-  .pricing-page .arch-arrow{
-    transform:rotate(90deg);
-  }
-
-  /* FIX OVERFLOW */
-  .pricing-page img,
-  .pricing-page canvas{
-    max-width:100%;
-    height:auto;
-  }
-
-}
-@media screen and (max-width:900px){
-
-  section,
-  div,
-  .container,
-  .wrapper,
-  .hero,
-  .main{
-    max-width:100%;
-    overflow-x:hidden;
-  }
-
-  button{
-    max-width:100%;
-    white-space:normal;
-  }
-
-}
+============================================= */
