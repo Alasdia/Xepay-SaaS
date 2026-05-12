@@ -172,15 +172,24 @@
 
   /* ── NAV HAMBURGER ── */
   nav {
-    padding: 14px 18px;
-    flex-wrap: nowrap;
-    align-items: center;
-    position: relative;
-  }
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 1000;
+}
 
-  .nav-hamburger {
-    display: flex !important;
-  }
+.logo {
+  z-index: 1001;
+}
+
+.nav-hamburger {
+  display: flex !important;
+  z-index: 1001;
+}
+
+  
 
   .nav-links {
     display: none;
