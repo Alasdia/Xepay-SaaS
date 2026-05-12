@@ -827,6 +827,60 @@
     font-size: 13px !important;
   }
 }
+/* ===== REAL MOBILE FIX ===== */
+
+@media screen and (max-width:768px){
+
+  .hero-inner,
+  .feature-section,
+  .stats-inner{
+    display:flex !important;
+    flex-direction:column !important;
+  }
+
+  .hero-visual,
+  .feature-mockup,
+  .feature-text{
+    width:100% !important;
+    max-width:100% !important;
+  }
+
+  .feature-mockup-inner,
+  .hero-card{
+    transform:none !important;
+    animation:none !important;
+  }
+
+  .feature-section{
+    padding:50px 18px !important;
+    gap:24px !important;
+  }
+
+  .hero{
+    padding:120px 18px 50px !important;
+  }
+
+  .hero h1{
+    font-size:52px !important;
+  }
+
+  .feature-text h2{
+    font-size:44px !important;
+  }
+
+  .carousel-track{
+    gap:14px !important;
+  }
+
+  .carousel-card{
+    width:240px !important;
+  }
+
+  body{
+    overflow-x:hidden !important;
+  }
+
+}
 
 /* =============================================
    INJECTION DU HAMBURGER VIA JS
