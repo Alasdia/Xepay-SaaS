@@ -15,13 +15,13 @@
 
   body{
     min-width:1440px;
-    zoom:0.42;
+    zoom:0.58;
   }
 
   /* Safari iPhone fallback */
   @supports not (zoom:1){
     body{
-      transform:scale(0.42);
+      transform:scale(0.58);
       transform-origin:top left;
       width:238%;
       min-width:1440px;
