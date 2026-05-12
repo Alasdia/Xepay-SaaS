@@ -698,5 +698,14 @@ function loginWithGoogle(){
   setTimeout(()=>{window.location.href=url},800);
 }
 </script>
+<script>
+const hamburger = document.querySelector('.nav-hamburger');
+const navLinks = document.querySelector('.nav-links');
+
+hamburger.addEventListener('click', () => {
+  navLinks.classList.toggle('open');
+  hamburger.classList.toggle('open');
+});
+</script>
 </body>
 </html>

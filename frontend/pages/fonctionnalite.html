@@ -606,5 +606,14 @@ const io=new IntersectionObserver(entries=>{
 },{threshold:.1});
 document.querySelectorAll('.reveal,.feat-card').forEach(el=>io.observe(el));
 </script>
+<script>
+const hamburger = document.querySelector('.nav-hamburger');
+const navLinks = document.querySelector('.nav-links');
+
+hamburger.addEventListener('click', () => {
+  navLinks.classList.toggle('open');
+  hamburger.classList.toggle('open');
+});
+</script>
 </body>
 </html>

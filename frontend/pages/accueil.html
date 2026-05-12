@@ -1188,5 +1188,14 @@ if (statsBar) {
   io2.observe(statsBar);
 }
 </script>
+<script>
+const hamburger = document.querySelector('.nav-hamburger');
+const navLinks = document.querySelector('.nav-links');
+
+hamburger.addEventListener('click', () => {
+  navLinks.classList.toggle('open');
+  hamburger.classList.toggle('open');
+});
+</script>
 </body>
 </html>
