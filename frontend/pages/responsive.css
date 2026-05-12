@@ -1,89 +1,935 @@
-/* =====================================
-   FORCE DESKTOP EXPERIENCE ON MOBILE
-===================================== */
+/* =============================================
+   XEPAY — RESPONSIVE.CSS
+   Mobile-first, testé sur vrais appareils
+   Breakpoints : 480 · 768 · 1024
+============================================= */
+
+/* ─── RESET GLOBAL MOBILE ─── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* ─── HAMBURGER BUTTON (caché par défaut) ─── */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.nav-hamburger:hover {
+  background: rgba(255,255,255,0.08);
+}
+.nav-hamburger span {
+  display: block;
+  width: 100%;
+  height: 1.5px;
+  background: rgba(255,255,255,0.8);
+  border-radius: 2px;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  transform-origin: center;
+}
+.nav-hamburger.open span:nth-child(1) {
+  transform: translateY(6.5px) rotate(45deg);
+}
+.nav-hamburger.open span:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+.nav-hamburger.open span:nth-child(3) {
+  transform: translateY(-6.5px) rotate(-45deg);
+}
+
+/* =============================================
+   TABLETTES — max-width: 1024px
+============================================= */
+@media screen and (max-width: 1024px) {
+
+  /* NAV */
+  nav {
+    padding: 16px 24px;
+  }
+
+  /* HERO GRIDS */
+  .hero-inner {
+    grid-template-columns: 1fr !important;
+    gap: 48px;
+    padding: 0 24px;
+  }
+
+  .hero-visual {
+    order: -1;
+  }
+
+  /* FEATURE SECTIONS */
+  .feature-section {
+    grid-template-columns: 1fr !important;
+    padding: 80px 24px;
+    direction: ltr !important;
+    gap: 40px;
+  }
+
+  .feature-section.reverse {
+    direction: ltr !important;
+  }
+
+  .feature-section.reverse > * {
+    direction: ltr !important;
+  }
+
+  /* STATS BAR */
+  .stats-inner {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 24px;
+    padding: 0 24px;
+  }
+
+  .stat-item:nth-child(2) {
+    border-right: none !important;
+  }
+
+  /* PLANS */
+  .plans-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .plan-pro,
+  .plan-pro.visible {
+    transform: none !important;
+  }
+
+  /* HOW GRID */
+  .how-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* COMM GRID */
+  .comm-grid {
+    grid-template-columns: 1fr !important;
+    text-align: center;
+  }
+
+  /* COMPARE TABLE */
+  .compare-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  /* CTA + SECTIONS */
+  .cta-section,
+  .cta-strip {
+    padding: 80px 24px;
+    margin: 0 0 60px;
+  }
+
+  .disclaimer-strip {
+    margin: 0 24px 60px;
+  }
+
+  .sglow {
+    margin: 0 24px 60px;
+  }
+
+  /* FOOTER */
+  footer {
+    flex-direction: column;
+    gap: 20px;
+    text-align: center;
+    padding: 28px 24px;
+  }
+
+  .footer-links {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+  }
+}
+
+/* =============================================
+   MOBILE — max-width: 768px
+============================================= */
+@media screen and (max-width: 768px) {
+
+  /* Désactiver curseur personnalisé */
+  body {
+    cursor: auto !important;
+    overflow-x: hidden;
+  }
+
+  #cursor,
+  #cursor-ring {
+    display: none !important;
+  }
+
+  /* ── NAV HAMBURGER ── */
+  nav {
+    padding: 14px 18px;
+    flex-wrap: nowrap;
+    align-items: center;
+    position: relative;
+  }
+
+  .nav-hamburger {
+    display: flex !important;
+  }
+
+  .nav-links {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(2, 4, 8, 0.97);
+    backdrop-filter: blur(32px);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    z-index: 999;
+    padding: 80px 32px 40px;
+  }
+
+  .nav-links.open {
+    display: flex !important;
+  }
+
+  .nav-links a {
+    font-size: 18px !important;
+    padding: 14px 28px !important;
+    width: 100%;
+    text-align: center;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.75) !important;
+  }
+
+  .nav-links a:hover,
+  .nav-links a.active {
+    background: rgba(0,229,255,0.08) !important;
+    color: #fff !important;
+  }
+
+  .btn-nav-outline,
+  .btn-nav-primary,
+  .btn-nav {
+    width: 100% !important;
+    text-align: center !important;
+    justify-content: center;
+    padding: 14px 24px !important;
+    font-size: 14px !important;
+  }
+
+  /* Fermer le menu au clic en dehors */
+  .nav-close-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 998;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 120px 18px 60px !important;
+    min-height: auto;
+  }
+
+  .hero-inner {
+    grid-template-columns: 1fr !important;
+    padding: 0 !important;
+    gap: 36px;
+  }
+
+  .hero h1,
+  .page-hero h1 {
+    font-size: clamp(44px, 14vw, 72px) !important;
+    line-height: 0.95 !important;
+  }
+
+  .hero-desc,
+  .page-hero p,
+  .hero-sub {
+    font-size: 15px !important;
+    line-height: 1.7 !important;
+  }
+
+  .hero-actions,
+  .cta-actions,
+  .cta-btns {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  .btn-primary,
+  .btn-ghost {
+    width: 100% !important;
+    justify-content: center !important;
+    text-align: center !important;
+    padding: 16px 24px !important;
+    font-size: 14px !important;
+  }
+
+  .hero-stats {
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+
+  /* Hero card (mockup) */
+  .hero-card {
+    width: 100%;
+    border-radius: 16px;
+  }
+
+  .hcard-balance {
+    font-size: 38px !important;
+  }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    padding: 20px 0;
+  }
+
+  .stats-inner {
+    grid-template-columns: repeat(2, 1fr) !important;
+    padding: 0 18px !important;
+    gap: 16px;
+  }
+
+  .stat-item {
+    border-right: none !important;
+    padding: 0 8px !important;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-size: 22px !important;
+  }
+
+  /* ── FEATURE SECTIONS ── */
+  .feature-section {
+    grid-template-columns: 1fr !important;
+    padding: 60px 18px !important;
+    gap: 32px;
+    direction: ltr !important;
+  }
+
+  .feature-section.reverse {
+    direction: ltr !important;
+  }
+
+  .feature-section.reverse > * {
+    direction: ltr !important;
+  }
+
+  .feature-text h2 {
+    font-size: clamp(40px, 12vw, 62px) !important;
+  }
+
+  .feature-mockup-inner {
+    transform: none !important;
+    animation: none !important;
+    border-radius: 16px;
+  }
+
+  /* ── PAGE HERO (features/pricing) ── */
+  .page-hero {
+    padding: 120px 18px 40px !important;
+    text-align: center;
+  }
+
+  .page-hero h1 {
+    font-size: clamp(40px, 13vw, 68px) !important;
+    line-height: 0.95 !important;
+  }
+
+  /* ── AFRICA BADGE ── */
+  .africa-badge {
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 16px 20px !important;
+    text-align: center;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .africa-badge .sep {
+    display: none;
+  }
+
+  /* ── FEAT TABS ── */
+  .feat-tabs {
+    width: calc(100% - 0px) !important;
+    overflow-x: auto !important;
+    justify-content: flex-start !important;
+    padding: 6px !important;
+    margin-bottom: 40px;
+    scrollbar-width: none;
+  }
+
+  .feat-tabs::-webkit-scrollbar { display: none; }
+
+  .feat-tab {
+    white-space: nowrap;
+    padding: 8px 14px !important;
+    font-size: 10px !important;
+  }
+
+  /* ── FEAT GRID ── */
+  .feat-grid {
+    grid-template-columns: 1fr !important;
+    padding: 0 18px 80px !important;
+    gap: 14px;
+  }
+
+  .fc-span2 {
+    grid-column: span 1 !important;
+  }
+
+  .feat-card {
+    padding: 22px 18px !important;
+    border-radius: 18px;
+  }
+
+  .feat-card h3 {
+    font-size: 28px !important;
+  }
+
+  .country-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+
+  /* ── CAROUSEL ── */
+  .carousel-section {
+    padding: 60px 0;
+  }
+
+  .carousel-label {
+    padding: 0 18px;
+    margin-bottom: 28px;
+  }
+
+  .carousel-label h3 {
+    font-size: 22px !important;
+  }
+
+  .carousel-card {
+    width: 260px !important;
+  }
+
+  /* ── ARCHITECTURE ── */
+  .arch-section {
+    padding: 60px 18px !important;
+  }
+
+  .arch-flow {
+    flex-direction: column !important;
+    gap: 0 !important;
+    align-items: stretch;
+  }
+
+  .arch-node {
+    min-width: 0 !important;
+    width: 100%;
+    padding: 18px !important;
+    border-radius: 14px;
+    text-align: center;
+  }
+
+  .arch-arrow {
+    flex-direction: column !important;
+    align-items: center;
+    padding: 4px 0 !important;
+    margin: 0 !important;
+  }
+
+  .arch-arrow-line {
+    width: 1px !important;
+    height: 28px !important;
+    background: linear-gradient(180deg, rgba(0,229,255,.4), rgba(168,85,247,.4)) !important;
+  }
+
+  .arch-arrow-head {
+    transform: rotate(45deg) !important;
+    margin-top: -4px !important;
+    margin-left: 0 !important;
+  }
+
+  /* ── DISCLAIMER ── */
+  .disclaimer-strip {
+    margin: 0 18px 50px !important;
+    padding: 18px !important;
+    flex-direction: column;
+    gap: 10px;
+    border-radius: 14px;
+  }
+
+  .ds-text {
+    font-size: 13px !important;
+  }
+
+  /* ── COMMISSION ── */
+  .commission-section {
+    padding: 0 18px 60px !important;
+  }
+
+  .commission-card {
+    padding: 28px 18px !important;
+    border-radius: 20px;
+  }
+
+  .comm-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px;
+    text-align: center;
+  }
+
+  .comm-rate {
+    font-size: clamp(72px, 22vw, 112px) !important;
+  }
+
+  .comm-info h3 {
+    font-size: 30px !important;
+  }
+
+  .comm-info p {
+    font-size: 14px !important;
+    max-width: 100% !important;
+  }
+
+  .comm-breakdown {
+    text-align: left;
+  }
+
+  .cb-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .comm-example {
+    text-align: left;
+  }
+
+  /* ── PLANS ── */
+  .plans-section {
+    padding: 0 18px 70px !important;
+  }
+
+  .plans-header {
+    padding: 0 4px;
+  }
+
+  .plans-header h2 {
+    font-size: clamp(38px, 12vw, 58px) !important;
+    line-height: 0.95 !important;
+  }
+
+  .plans-header p {
+    font-size: 14px !important;
+  }
+
+  .plans-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px;
+  }
+
+  .plan-card {
+    padding: 26px 20px !important;
+    border-radius: 20px;
+  }
+
+  .plan-name {
+    font-size: 34px !important;
+  }
+
+  .plan-price .amount {
+    font-size: 52px !important;
+  }
+
+  .plan-pro,
+  .plan-pro.visible {
+    transform: none !important;
+  }
+
+  .plan-cta {
+    padding: 14px !important;
+    font-size: 14px !important;
+  }
+
+  /* ── COMPARE TABLE ── */
+  .compare-section {
+    padding: 0 18px 70px !important;
+  }
+
+  .compare-header h3 {
+    font-size: clamp(32px, 10vw, 52px) !important;
+  }
+
+  .compare-table {
+    display: block !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    border-radius: 14px;
+    font-size: 12px;
+  }
+
+  .compare-table th,
+  .compare-table td {
+    padding: 10px 14px !important;
+  }
+
+  /* ── HOW IT WORKS ── */
+  .how-section {
+    padding: 0 18px 70px !important;
+  }
+
+  .how-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .how-card {
+    padding: 22px 18px !important;
+    border-radius: 16px;
+  }
+
+  .how-title {
+    font-size: 22px !important;
+  }
+
+  .how-text {
+    font-size: 13px !important;
+  }
+
+  /* ── FAQ ── */
+  .faq-section {
+    padding: 0 18px 70px !important;
+  }
+
+  .faq-title {
+    font-size: clamp(36px, 11vw, 52px) !important;
+  }
+
+  .faq-q {
+    font-size: 14px !important;
+    gap: 12px;
+    padding: 18px 0;
+  }
+
+  .faq-a {
+    font-size: 13px !important;
+    line-height: 1.75 !important;
+  }
+
+  /* ── CTA SECTIONS ── */
+  .cta-section {
+    padding: 80px 18px !important;
+  }
+
+  .cta-strip {
+    margin: 0 18px 60px !important;
+    padding: 40px 20px !important;
+    border-radius: 20px;
+  }
+
+  .cta-inner h2,
+  .cta-strip h2 {
+    font-size: clamp(44px, 14vw, 68px) !important;
+    line-height: 0.93 !important;
+  }
+
+  .cta-inner p,
+  .cta-strip p {
+    font-size: 14px !important;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    padding: 24px 18px !important;
+    flex-direction: column !important;
+    gap: 18px !important;
+    text-align: center !important;
+  }
+
+  .footer-links {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 12px 18px !important;
+  }
+
+  .footer-links a {
+    font-size: 12px !important;
+  }
+
+  /* ── SGLOW / DIVIDERS ── */
+  .sglow,
+  .section-glow {
+    margin: 0 18px 50px !important;
+  }
+
+  /* ── SIGNUP / LOGIN PAGES ── */
+  .page {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    min-height: 100vh;
+    overflow: auto !important;
+  }
+
+  html, body {
+    height: auto !important;
+    overflow: auto !important;
+  }
+
+  /* Sur mobile les pages auth ont overflow:hidden — on le force */
+  body {
+    overflow-y: auto !important;
+  }
+
+  .left-panel {
+    display: none !important;
+  }
+
+  .right-panel {
+    padding: 24px 18px !important;
+    min-height: 100vh;
+    align-items: flex-start;
+    padding-top: 40px !important;
+  }
+
+  .login-card,
+  .signup-card {
+    max-width: 100% !important;
+    padding: 28px 20px 24px !important;
+    border-radius: 20px;
+  }
+
+  .card-title {
+    font-size: 30px !important;
+  }
+
+  .btn-google {
+    padding: 13px 16px !important;
+    font-size: 13px !important;
+  }
+
+  .input-wrap {
+    height: 50px !important;
+  }
+
+  .input-wrap input {
+    font-size: 15px !important; /* évite le zoom iOS */
+  }
+
+  .btn-submit,
+  .btn-primary {
+    padding: 15px !important;
+    font-size: 14px !important;
+  }
+}
+
+/* =============================================
+   PETITS MOBILES — max-width: 480px
+============================================= */
+@media screen and (max-width: 480px) {
+
+  nav {
+    padding: 12px 14px !important;
+  }
+
+  .logo {
+    font-size: 22px !important;
+  }
+
+  .hero h1,
+  .page-hero h1 {
+    font-size: 40px !important;
+  }
+
+  .hero-desc,
+  .hero-sub {
+    font-size: 14px !important;
+  }
+
+  .stats-inner {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+
+  .stat-num {
+    font-size: 18px !important;
+  }
+
+  .comm-rate {
+    font-size: 68px !important;
+  }
+
+  .plans-grid,
+  .how-grid {
+    gap: 12px !important;
+  }
+
+  .plan-card,
+  .how-card,
+  .feat-card {
+    padding: 20px 16px !important;
+    border-radius: 16px !important;
+  }
+
+  .plan-name {
+    font-size: 28px !important;
+  }
+
+  .plan-price .amount {
+    font-size: 44px !important;
+  }
+
+  .plans-header h2,
+  .cta-strip h2,
+  .cta-inner h2,
+  .faq-title,
+  .compare-header h3 {
+    font-size: 36px !important;
+    line-height: 0.95 !important;
+  }
+
+  .feature-text h2 {
+    font-size: 36px !important;
+  }
+
+  .carousel-card {
+    width: 240px !important;
+    padding: 18px !important;
+  }
+
+  .country-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  .country-flag {
+    font-size: 16px !important;
+  }
+
+  .login-card,
+  .signup-card {
+    padding: 22px 16px 20px !important;
+  }
+
+  .btn-submit {
+    font-size: 13px !important;
+  }
+}
+/* ===== UNIVERSAL MOBILE OVERRIDE ===== */
 
 @media screen and (max-width:768px){
 
   html,
   body{
-    width:100%;
-    overflow-x:auto !important;
-    overflow-y:auto !important;
-    -webkit-overflow-scrolling:touch;
-    background:#020408;
+    width:100% !important;
+    overflow-x:hidden !important;
   }
 
   body{
-    min-width:1440px;
-    zoom:0.58;
-  }
-
-  /* Safari iPhone fallback */
-  @supports not (zoom:1){
-    body{
-      transform:scale(0.58);
-      transform-origin:top left;
-      width:238%;
-      min-width:1440px;
-    }
-  }
-
-  /* Disable broken mobile overrides */
-  *{
-    max-width:none !important;
+    cursor:auto !important;
   }
 
   #cursor,
-  #cursor-ring{
+  #cursor-ring,
+  canvas{
     display:none !important;
   }
 
-}
-@media screen and (max-width:768px){
-
-  /* CENTRAGE GLOBAL */
-  .hero-inner,
-  .feature-section,
-  .stats-inner,
-  .comm-grid,
-  .plans-grid,
-  .how-grid,
-  .feat-grid,
-  .cta-inner,
+  section,
+  div,
+  nav,
+  main,
   footer{
-    width:1100px !important;
-    margin:0 auto !important;
+    max-width:100% !important;
   }
 
-  /* HERO */
-  .hero{
-    padding-left:120px !important;
-    padding-right:120px !important;
+  /* FORCE ALL GRIDS TO STACK */
+  [class*="grid"],
+  [class*="inner"],
+  [class*="section"]{
+    grid-template-columns:1fr !important;
+    flex-direction:column !important;
   }
 
-  /* FEATURES */
-  .feature-section{
-    gap:120px !important;
-    align-items:center !important;
-  }
-
-  /* CARDS */
-  .hero-card,
-  .feature-mockup-inner,
-  .commission-card,
-  .plan-card{
+  /* DISABLE DESKTOP EFFECTS */
+  [class*="mockup"],
+  [class*="card"],
+  [class*="visual"]{
     transform:none !important;
+    animation:none !important;
+    max-width:100% !important;
   }
 
-  /* CTA */
-  .cta-strip{
-    width:1000px !important;
-    margin:0 auto 100px !important;
+  /* FIX OVERFLOW */
+  img,
+  video,
+  canvas{
+    max-width:100% !important;
+    height:auto !important;
   }
 
-  /* FOOTER */
-  footer{
-    padding-bottom:120px !important;
+  /* CAROUSEL */
+  .carousel-track{
+    width:auto !important;
+    animation:none !important;
   }
 
 }
+/* =============================================
+   INJECTION DU HAMBURGER VIA JS
+   (à placer dans chaque page HTML, avant </body>)
+
+   Copier ce bloc <script> dans chaque page :
+
+   <script>
+   (function() {
+     const nav = document.querySelector('nav');
+     const links = nav.querySelector('.nav-links');
+     if (!nav || !links) return;
+
+     // Créer le bouton hamburger
+     const btn = document.createElement('button');
+     btn.className = 'nav-hamburger';
+     btn.setAttribute('aria-label', 'Menu');
+     btn.innerHTML = '<span></span><span></span><span></span>';
+     nav.appendChild(btn);
+
+     // Bouton fermer (×) dans le menu
+     const closeBtn = document.createElement('button');
+     closeBtn.style.cssText = 'position:absolute;top:20px;right:20px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#fff;width:40px;height:40px;border-radius:10px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;';
+     closeBtn.innerHTML = '×';
+     links.style.position = 'relative';
+     links.insertBefore(closeBtn, links.firstChild);
+
+     function open() {
+       btn.classList.add('open');
+       links.classList.add('open');
+       document.body.style.overflow = 'hidden';
+     }
+     function close() {
+       btn.classList.remove('open');
+       links.classList.remove('open');
+       document.body.style.overflow = '';
+     }
+
+     btn.addEventListener('click', open);
+     closeBtn.addEventListener('click', close);
+
+     // Fermer sur clic d'un lien
+     links.querySelectorAll('a').forEach(a => a.addEventListener('click', close));
+   })();
+   </script>
+
+============================================= */
