@@ -1,9 +1,9 @@
+import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.pool import StaticPool
 
-
-DATABASE_URL = "postgresql://epay_user:JB2004%4025@localhost/epay_db"
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_engine(
     DATABASE_URL,
@@ -26,11 +26,9 @@ def init_db():
 
 def get_db():
     from backend.models import UserDB, Payment, Link
+
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
-
-    
-   
