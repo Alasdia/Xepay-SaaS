@@ -25,10 +25,6 @@ import stripe
 import secrets
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-print(stripe.Account.retrieve())
-print(stripe.Account.list(limit=1))
-
-print("KEY:", stripe.api_key)
 
 router = APIRouter()
 
