@@ -57,7 +57,7 @@ app.include_router(ai_router)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app.mount(
     "/static",
-    StaticFiles(directory=os.path.join(BASE_DIR, "html")),
+    StaticFiles(directory=os.path.join(BASE_DIR, "frontend/html")),
     name="static"
 )
 
