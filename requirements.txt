@@ -8,4 +8,4 @@ requests
 python-multipart
 pydantic
 passlib[bcrypt]
-bcrypt
+python-jose[cryptography]
