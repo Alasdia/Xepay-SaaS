@@ -16,7 +16,7 @@ from sqlalchemy.orm import joinedload
 
 
 router = APIRouter()
-conn = engine.connect()
+
 
 
 @router.get("/payments")
