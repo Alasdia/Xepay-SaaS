@@ -320,7 +320,7 @@ async function loadUser() {
     return
   }
 
-  const res = await fetch("http://api.alasdia.com/me/user-plan", {
+  const res = await fetch("https://api.alasdia.com/me/user-plan", {
     headers: {
       "Authorization": "Bearer " + token
     }
@@ -362,7 +362,7 @@ async function initStripe() {
     return
   }
 
-  const res = await fetch("http://api.alasdia.com/stripe/status", {
+  const res = await fetch("https://api.alasdia.com/stripe/status", {
     headers: {
       Authorization: "Bearer " + token
     }
@@ -435,7 +435,7 @@ if (!data.connected || data.needs_kyc) {
       btn.disabled = true
 
       try {
-        const res = await fetch("http://api.alasdia.com/onboarding", {
+        const res = await fetch("https://api.alasdia.com/onboarding", {
           method: "POST",
           headers: { Authorization: "Bearer " + token }
         })
@@ -461,7 +461,7 @@ if (!data.connected || data.needs_kyc) {
     btn.innerText = "Compléter vérification"
 
     btn.onclick = async () => {
-      const res = await fetch("http://api.alasdia.com/stripe/login-link", {
+      const res = await fetch("https://api.alasdia.com/stripe/login-link", {
         headers: { Authorization: "Bearer " + token }
       })
       const d = await res.json()
@@ -486,7 +486,7 @@ async function loadProfile() {
   }
 
   try {
-    const res = await fetch("http://api.alasdia.com/profile", {
+    const res = await fetch("https://api.alasdia.com/profile", {
       headers: {
         "Authorization": "Bearer " + token
       }
