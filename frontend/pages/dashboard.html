@@ -1086,9 +1086,21 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
-const token = localStorage.getItem("token")
+const oauthParams = new URLSearchParams(window.location.search);
+const urlToken = oauthParams.get("token");
+
+// Token venant de Google OAuth
+if (urlToken) {
+  localStorage.setItem("token", urlToken);
+
+  // nettoyer URL
+  window.history.replaceState({}, document.title, "/dashboard.html");
+}
+
+const token = localStorage.getItem("token");
+
 if (!token) {
-  window.location.replace("login.html")
+  window.location.replace("login.html");
 }
 </script>
 <script>
