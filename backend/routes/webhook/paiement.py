@@ -17,8 +17,6 @@ router = APIRouter()
 
 WEBHOOK_SECRET_PAYMENT = os.getenv("WEBHOOK_SECRET_PAYMENT") 
 
-
-
 @router.post("/webhook/payment")
 async def stripe_payment_webhook(request: Request, stripe_signature: str = Header(None, alias="stripe-signature")):
     print("🔥 FICHIER PAIEMENT CHARGÉ")

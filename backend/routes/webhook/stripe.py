@@ -13,7 +13,6 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 
 router = APIRouter()
 
-
 @router.post("/webhook/stripe")
 async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     payload = await request.body()
