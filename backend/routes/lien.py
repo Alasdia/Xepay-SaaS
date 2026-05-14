@@ -110,7 +110,7 @@ def create_link(
         name=data.name.strip() if data.name else "Lien de paiement",
         amount=data.amount,
         currency=data.currency,
-        url=f"http://127.0.0.1:8000/pay/{raw_token}",
+        url=f"http://api.alasdia.com/pay/{raw_token}",
         created_at=datetime.now(timezone.utc),
         active=True,
         expires_at=expires_at,
