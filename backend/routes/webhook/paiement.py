@@ -5,6 +5,7 @@ from backend.database import SessionLocal
 from backend.models import UserDB, Wallet
 from backend.models import Payment, WalletTransaction, Link, Profile
 from backend.models import Webhook, WebhookDeliveryLog
+import traceback
 import hmac
 import hashlib
 import json
