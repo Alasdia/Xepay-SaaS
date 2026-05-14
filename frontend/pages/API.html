@@ -696,7 +696,7 @@ function toggleSecret() {
 // WEBHOOKS
 async function loadWebhooks() {
   const token = localStorage.getItem("token")
-  const res = await fetch("http://127.0.0.1:8000/webhooks-api", {
+  const res = await fetch("http://api.alasdia.com/webhooks-api", {
     headers: { Authorization: "Bearer " + token }
   })
   const data = await res.json()
@@ -745,7 +745,7 @@ async function addWebhook() {
     .map(id => ({'ev1':'payment.success','ev2':'payment.failed','ev3':'withdrawal.done','ev4':'refund.issued'}[id]))
   if (!events.length) return alert('Sélectionnez un événement')
   const token = localStorage.getItem("token")
-  const res = await fetch("http://127.0.0.1:8000/webhooks-api", {
+  const res = await fetch("http://api.alasdia.com/webhooks-api", {
     method: "POST",
     headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
     body: JSON.stringify({ url, events })
@@ -763,7 +763,7 @@ async function addWebhook() {
 async function deleteWebhook(id, btn) {
   if (!confirm('Supprimer ?')) return
   const token = localStorage.getItem("token")
-  await fetch(`http://127.0.0.1:8000/webhooks-api/${id}`, {
+  await fetch(`http://api.alasdia.com/webhooks-api/${id}`, {
     method: "DELETE",
     headers: { Authorization: "Bearer " + token }
   })
@@ -773,7 +773,7 @@ async function deleteWebhook(id, btn) {
 
 async function testWebhook(id) {
   const token = localStorage.getItem("token")
-  await fetch(`http://127.0.0.1:8000/webhooks-api/${id}/test`, {
+  await fetch(`http://api.alasdia.com/webhooks-api/${id}/test`, {
     method: "POST",
     headers: { Authorization: "Bearer " + token }
   })
@@ -798,7 +798,7 @@ loadWebhooks()
 async function loadApiKeys() {
   const token = localStorage.getItem("token")
   
-  const res = await fetch("http://127.0.0.1:8000/api-keys", {
+  const res = await fetch("http://api.alasdia.com/api-keys", {
     headers: { Authorization: "Bearer " + token }
   })
   
@@ -819,7 +819,7 @@ async function regenKey() {
   
   const token = localStorage.getItem("token")
   
-  const res = await fetch("http://127.0.0.1:8000/api-keys/regenerate", {
+  const res = await fetch("http://api.alasdia.com/api-keys/regenerate", {
     method: "POST",
     headers: { Authorization: "Bearer " + token }
   })
@@ -863,7 +863,7 @@ async function loadLogs() {
 
   const limit = showAllLogs ? 50 : 5;
 
-  const res = await fetch(`http://127.0.0.1:8000/logs?limit=${limit}`, {
+  const res = await fetch(`http://api.alasdia.com/logs?limit=${limit}`, {
     headers: { Authorization: "Bearer " + token }
   })
 
@@ -904,7 +904,7 @@ async function loadStats() {
   const token = localStorage.getItem("token")
   console.log("TOKEN 👉", token)
 
-  const res = await fetch("http://127.0.0.1:8000/logs/stats", {
+  const res = await fetch("http://api.alasdia.com/logs/stats", {
       method: "GET",
       headers: {
         "Authorization": "Bearer " + token,
@@ -1016,7 +1016,7 @@ function showSecretPopup(secret) {
 async function loadCurrentUser() {
   const token = localStorage.getItem("token")
 
-  const res = await fetch("http://127.0.0.1:8000/me", {
+  const res = await fetch("http://api.alasdia.com/me", {
     headers: {
       Authorization: "Bearer " + token
     }
