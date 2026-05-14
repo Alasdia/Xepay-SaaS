@@ -680,7 +680,7 @@
 
   async function loadUsers() {
     try {
-      const res = await fetch("http://127.0.0.1:8000/users", {
+      const res = await fetch("http://api.alasdia.com/users", {
         headers: {
           Authorization: "Bearer " + localStorage.getItem("token")
         }
@@ -714,7 +714,7 @@
     const email = document.getElementById("f-email").value
     const role = document.getElementById("f-role").value
 
-    const res = await fetch("http://127.0.0.1:8000/invites", {
+    const res = await fetch("http://api.alasdia.cominvites", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -861,7 +861,7 @@
     const roles = ['Admin', 'Manager', 'Membre', 'Lecteur']
     const newRole = roles[(roles.indexOf(u.role) + 1) % roles.length]
 
-    await fetch(`http://127.0.0.1:8000/users/${u.id}/role`, {
+    await fetch(`http://api.alasdia.com/users/${u.id}/role`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -875,7 +875,7 @@
   async function toggleSuspend(i) {
     const u = users[i]
 
-    await fetch(`http://127.0.0.1:8000/users/${u.id}/toggle`, {
+    await fetch(`http://api.alasdia.com/users/${u.id}/toggle`, {
       method: "POST",
       headers: {
         Authorization: "Bearer " + localStorage.getItem("token")
@@ -887,7 +887,7 @@
   async function loadCurrentUser() {
     
     try {
-      const res = await fetch("http://127.0.0.1:8000/me", {
+      const res = await fetch("http://api.alasdia.com/me", {
         headers: {
           Authorization: "Bearer " + localStorage.getItem("token")
         }
@@ -928,7 +928,7 @@
 
     if (!confirm(`Supprimer ${u.name} ?`)) return
 
-    await fetch(`http://127.0.0.1:8000/users/${u.id}`, {
+    await fetch(`http://api.alasdia.com/users/${u.id}`, {
       method: "DELETE",
       headers: {
         Authorization: "Bearer " + localStorage.getItem("token")
@@ -945,7 +945,7 @@
     const role = document.getElementById("f-role").value
 
     try {
-        const res = await fetch("http://127.0.0.1:8000/users", {
+        const res = await fetch("http://api.alasdia.com/users", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

@@ -545,7 +545,7 @@
         return
       }
 
-      const res = await fetch("http://127.0.0.1:8000/me", {
+      const res = await fetch("http://api.alasdia.com/me", {
         headers: {
             Authorization: "Bearer " + token
         }
@@ -598,7 +598,7 @@
         }
 
         const res = await fetch(
-          `http://127.0.0.1:8000/links?limit=${limit}&offset=${offset}`, 
+          `http://api.alasdia.com/links?limit=${limit}&offset=${offset}`, 
           { headers: { "Authorization": "Bearer " + token } } 
         );
         
@@ -808,7 +808,7 @@
           payload.name = name
         }
         console.log("PAYLOAD ENVOYÉ:", JSON.stringify(payload));
-        const res = await fetch("http://127.0.0.1:8000/links", {
+        const res = await fetch("http://api.alasdia.com/links", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -855,7 +855,7 @@
       if (carte) carte.remove();
 
       try {
-        await fetch(`http://127.0.0.1:8000/links/${id}`, {
+        await fetch(`http://api.alasdia.com/links/${id}`, {
           method: "DELETE",
           headers: {
             "Authorization": "Bearer " + token
@@ -892,7 +892,7 @@
       }
 
       try {
-        const response = await fetch(`http://127.0.0.1:8000/archive/${id}`, {
+        const response = await fetch(`http://api.alasdia.com/archive/${id}`, {
           method: "POST",
           headers: {
             "Authorization": "Bearer " + token
@@ -947,7 +947,7 @@
 async function loadUser() {
   const token = localStorage.getItem("token")
 
-  const res = await fetch("http://127.0.0.1:8000/me/user-plan", {
+  const res = await fetch("http://api.alasdia.com/me/user-plan", {
     headers: {
       "Authorization": "Bearer " + token
     }
