@@ -1115,8 +1115,9 @@ if (!token) {
           })
 
           if (res.status === 401) {
-            localStorage.removeItem("token")
-            window.location.replace("login.html")
+            console.log("TOKEN =", localStorage.getItem("token"))
+            console.log("401 FROM /profile")
+
             return
           }
 
