@@ -171,6 +171,10 @@ def google_callback(code: str, db: Session = Depends(get_db)):
         stripe_account = stripe.Account.create(
             type="express",
             email=email,
+            capabilities={
+                "transfers": {"requested": True},
+                "card_payments": {"requested": True},
+            }
         )
 
         user = UserDB(
