@@ -8,6 +8,7 @@ requests
 python-multipart
 pydantic
 passlib[bcrypt]
+bcrypt==4.0.1
 python-jose[cryptography]
 jinja2
 httpx
