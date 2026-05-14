@@ -1096,7 +1096,7 @@ if (!token) {
     async function loadProfileHeader() {
       console.log(localStorage.getItem("token"))
         try {
-          const res = await fetch("http://api.alasdia.com/profile", {
+          const res = await fetch("http://alasdia.com/profile", {
             headers: {
               Authorization: "Bearer " + localStorage.getItem("token")
             }
@@ -1135,7 +1135,7 @@ if (!token) {
       try {
         const token = localStorage.getItem("token");
 
-        const res = await fetch("http://api.alasdia.com/me/plan", {
+        const res = await fetch("http://alasdia.com/me/plan", {
             headers: {
                 Authorization: "Bearer " + token
             }
@@ -1204,7 +1204,7 @@ if (!token) {
       try {
         const token = localStorage.getItem("token")
 
-        const res = await fetch("http://api.alasdia.com/stats", {
+        const res = await fetch("http://alasdia.com/stats", {
           headers: {
             Authorization: "Bearer " + token
           }
@@ -1223,7 +1223,7 @@ if (!token) {
           (data.pending_withdraw || 0).toLocaleString("fr-FR") + " XOF"
 
         // 📊 Progression
-        const planRes = await fetch("http://api.alasdia.com/me/plan", {
+        const planRes = await fetch("http://alasdia.com/me/plan", {
             headers: {
                 Authorization: "Bearer " + token
             }
@@ -1257,7 +1257,7 @@ if (!token) {
 
     async function chargerWallet() {
       try {
-        const res = await fetch("http://api.alasdia.com/wallet/me", {
+        const res = await fetch("http://alasdia.com/wallet/me", {
             headers: {
                 Authorization: "Bearer " + localStorage.getItem("token")
             }
@@ -1284,7 +1284,7 @@ if (!token) {
       const amount = document.getElementById("amount").value
       const currency = document.getElementById("currency").value
 
-      const res = await fetch("http://api.alasdia.com/links", {
+      const res = await fetch("http://alasdia.com/links", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1328,7 +1328,7 @@ if (!token) {
       const container = document.getElementById("links-container");
       if (!container) return;
 
-      fetch("http://api.alasdia.com/links/dashboard", {
+      fetch("http://alasdia.com/links/dashboard", {
         headers: {
           "Authorization": "Bearer " + localStorage.getItem("token")
         }
@@ -1403,7 +1403,7 @@ if (!token) {
     async function archiveLink(id) {
       const token = localStorage.getItem("token");
       try {
-        const res = await fetch(`http://api.alasdia.com/archive/${id}`, {
+        const res = await fetch(`http://alasdia.com/archive/${id}`, {
           method: "POST",
           headers: { "Authorization": "Bearer " + token }
         });
@@ -1418,7 +1418,7 @@ if (!token) {
     async function deleteLink(id) {
       const token = localStorage.getItem("token");
       try {
-        const res = await fetch(`http://api.alasdia.com/links/${id}`, {
+        const res = await fetch(`http://alasdia.com/links/${id}`, {
           method: "DELETE",
           headers: { "Authorization": "Bearer " + token }
         });
@@ -1489,7 +1489,7 @@ async function submitWithdraw() {
   btn.disabled = true;
 
   try {
-    const res = await fetch("http://api.alasdia.com/withdraw", {
+    const res = await fetch("http://alasdia.com/withdraw", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1537,7 +1537,7 @@ async function submitWithdraw() {
 
     console.log("WITHDRAW ID:", withdrawId);
 
-    const res2 = await fetch(`http://api.alasdia.com/withdraw/${withdrawId}/process`, {
+    const res2 = await fetch(`http://alasdia.com/withdraw/${withdrawId}/process`, {
       method: "POST",
       headers: {
         "Authorization": "Bearer " + localStorage.getItem("token")
@@ -1606,7 +1606,7 @@ function showToast(message, type = "success") {
 <script>
 window.archivedLink = async function(id) {
   try {
-    const res = await fetch(`http://api.alasdia.com/archive/${id}`, {
+    const res = await fetch(`http://alasdia.com/archive/${id}`, {
       method: "POST",
       headers: {
         "Authorization": "Bearer " + localStorage.getItem("token")
@@ -1636,7 +1636,7 @@ window.archivedLink = async function(id) {
 async function upgrade(plan) {
   const token = localStorage.getItem("token")
 
-  const res = await fetch("http://api.alasdia.com/create-checkout-session", {
+  const res = await fetch("http://alasdia.com/create-checkout-session", {
     method: "POST",
     headers: {
       "Authorization": "Bearer " + token,
@@ -1658,7 +1658,7 @@ async function upgrade(plan) {
    window.location.href = data.url
 }
 
-fetch("http://api.alasdia.com/wallet/me", {
+fetch("http://alasdia.com/wallet/me", {
   headers: {
     "Authorization": "Bearer " + token
   }
@@ -1730,7 +1730,7 @@ if (params.get("upgrade") === "1") {
 async function loadUser() {
   const token = localStorage.getItem("token")
 
-  const res = await fetch("http://api.alasdia.com/me/user-plan", {
+  const res = await fetch("http://alasdia.com/me/user-plan", {
     headers: {
       "Authorization": "Bearer " + token
     }
