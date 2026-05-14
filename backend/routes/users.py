@@ -175,7 +175,6 @@ def google_callback(code: str, db: Session = Depends(get_db)):
 
         user = UserDB(
             email=email,
-            stripe_account_id=stripe_account.id
         )
 
         db.add(user)
