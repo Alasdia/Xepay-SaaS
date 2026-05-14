@@ -167,10 +167,36 @@ def google_callback(code: str, db: Session = Depends(get_db)):
     user = db.query(UserDB).filter(UserDB.email == email).first()
 
     if not user:
-        user = UserDB(email=email)
+
+        stripe_account = stripe.Account.create(
+            type="express",
+            email=email,
+        )
+
+        user = UserDB(
+            email=email,
+            stripe_account_id=stripe_account.id
+        )
+
         db.add(user)
         db.commit()
         db.refresh(user)
+
+        profile = Profile(
+            user_id=user.id,
+            stripe_account_id=stripe_account.id
+        )
+
+        db.add(profile)
+        db.commit()
+
+        wallet = Wallet(
+            user_id=user.id,
+            balance=0
+        )
+
+        db.add(wallet)
+        db.commit()
 
     token = create_access_token({"sub": user.email})
 
