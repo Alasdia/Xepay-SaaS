@@ -172,7 +172,7 @@ def google_callback(code: str, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user)
 
-    token = create_access_token({"sub": str(user.id)})
+    token = create_access_token({"sub": user.email})
 
     return RedirectResponse(
         url=f"https://alasdia.com/dashboard.html?token={token}"
