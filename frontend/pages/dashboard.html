@@ -1281,7 +1281,7 @@ if (!token) {
         const balanceEl = document.getElementById("wallet-balance");
 
         balanceEl.innerText =
-            Number(data.balance || 0).toLocaleString("fr-FR", {
+            Number(data.available || 0).toLocaleString("fr-FR", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
             }) + " XOF";
