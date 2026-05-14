@@ -123,7 +123,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
-REDIRECT_URI = "http://127.0.0.1:8000/auth/google/callback"
+REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
 
 from fastapi.responses import RedirectResponse
 from fastapi import HTTPException
