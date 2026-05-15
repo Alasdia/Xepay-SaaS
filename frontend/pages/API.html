@@ -577,75 +577,309 @@ tbody tr td {
     </div>
   </div>
 
-  <!-- 🔥 WEBHOOK DOC -->
-    <div class="card-dark doc-card" style="margin-top:20px;">
-        
-        <h2>📘 Webhook API</h2>
-        <p style="opacity:0.7;">Recevez des événements en temps réel</p>
+<!-- 🌐 WEBHOOK API DOC -->
+<div class="card-dark doc-card" style="margin-top:24px; padding:28px; border-radius:18px;">
 
-        <hr style="margin:20px 0; opacity:0.1;">
+  <h2 style="margin-bottom:8px;">📡 Webhook API</h2>
+  <p style="opacity:0.75; margin-bottom:24px;">
+    Recevez des événements Xepay en temps réel.
+  </p>
 
-        <h3>📍 Endpoint</h3>
-        <pre>POST https://votre-site.com/api/webhook</pre>
+  <!-- Endpoint -->
+  <h3>📍 Endpoint</h3>
 
-        <h3>📦 Headers</h3>
-        <pre>
-  X-Signature: &lt;signature HMAC SHA256&gt;
-  Content-Type: application/json
-        </pre>
+  <div class="code-block">
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
 
-        <h3>📨 Payload</h3>
-        <pre>{
-    "event": "payment.success",
-    "data": {
-      "amount": 67000,
-      "currency": "XOF",
-      "user_id": "uuid",
-      "link_id": "uuid"
-    }
-  }</pre>
+<pre><code class="language-http">POST https://api.alasdia.com/webhooks</code></pre>
+  </div>
 
-        <h3>🔐 Vérification de signature (Node.js)</h3>
-        <pre>
-  const crypto = require("crypto");
+  <!-- Headers -->
+  <h3>📦 Headers</h3>
 
-  const signature = req.headers["x-signature"];
+  <div class="code-block">
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
 
-  const expected = crypto
-    .createHmac("sha256", SECRET)
-    .update(JSON.stringify(req.body))
-    .digest("hex");
+<pre><code class="language-http">X-Signature: sha256_signature
+X-Epay-Event: payment.success
+X-Epay-Timestamp: 1778878576
+Content-Type: application/json</code></pre>
+  </div>
 
-  if (expected !== signature) {
-    throw new Error("Invalid signature");
+  <!-- Webhook Secret -->
+  <h3>🔐 Webhook Secret</h3>
+
+  <div class="code-block">
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+
+<pre><code>whsec_xxxxxxxxxxxxxxxxx</code></pre>
+  </div>
+
+  <!-- Signature Formula -->
+  <h3>🧮 Signature</h3>
+
+  <p style="opacity:0.8; margin-bottom:14px;">
+    Xepay génère une signature HMAC SHA256 basée sur le body brut.
+  </p>
+
+  <div class="code-block">
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+
+<pre><code>signature = HMAC_SHA256(secret, raw_body)</code></pre>
+  </div>
+
+  <!-- Security -->
+  <div class="security-box">
+    ⚠️ Vérifiez toujours la signature avant de traiter un paiement.
+  </div>
+
+  <!-- Payload -->
+  <h3 style="margin-top:28px;">📨 Payload</h3>
+
+  <div class="code-block">
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+
+<pre><code class="language-json">{
+  "id": "evt_a5e4b117ffac459fbadda638a143e293",
+  "timestamp": 1778878576,
+  "event": "payment.success",
+  "data": {
+    "amount": 67000,
+    "currency": "XOF",
+    "user_id": "uuid",
+    "link_id": "uuid"
   }
-        </pre>
+}</code></pre>
+  </div>
 
-        <h3>🐍 Vérification (Python)</h3>
-        <pre>
-  import hmac
-  import hashlib
-  import json
+  <!-- Node -->
+  <h3>🟨 Vérification (Node.js)</h3>
 
-  signature = request.headers.get("X-Signature")
+  <div class="code-block">
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
 
-  expected = hmac.new(
+<pre><code class="language-javascript">const crypto = require("crypto");
+
+const signature = req.headers["x-signature"];
+
+const expected = crypto
+  .createHmac("sha256", SECRET)
+  .update(JSON.stringify(req.body))
+  .digest("hex");
+
+if (expected !== signature) {
+  throw new Error("Invalid signature");
+}
+
+res.status(200).json({
+  received: true
+});</code></pre>
+  </div>
+
+  <!-- Python -->
+  <h3>🐍 Vérification (Python)</h3>
+
+  <div class="code-block">
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+
+<pre><code class="language-python">import hmac
+import hashlib
+import json
+
+signature = request.headers.get("X-Signature")
+
+expected = hmac.new(
     SECRET.encode(),
     json.dumps(body).encode(),
     hashlib.sha256
-  ).hexdigest()
+).hexdigest()
 
-  if expected != signature:
+if expected != signature:
     raise Exception("Invalid signature")
-        </pre>
 
-        <h3>🧪 Test rapide</h3>
-        <p>Utilisez <strong>webhook.site</strong> pour vérifier les requêtes reçues.</p>
+return {
+    "received": True
+}</code></pre>
+  </div>
 
-    </div>
+  <!-- Retry -->
+  <h3>🔁 Retries automatiques</h3>
+
+  <table class="retry-table">
+    <tr>
+      <th>Tentative</th>
+      <th>Délai</th>
+    </tr>
+
+    <tr>
+      <td>1</td>
+      <td>Immédiat</td>
+    </tr>
+
+    <tr>
+      <td>2</td>
+      <td>30 secondes</td>
+    </tr>
+
+    <tr>
+      <td>3</td>
+      <td>5 minutes</td>
+    </tr>
+  </table>
+
+  <!-- Status -->
+  <h3 style="margin-top:28px;">📶 Réponses HTTP</h3>
+
+  <table class="retry-table">
+    <tr>
+      <th>Code</th>
+      <th>Description</th>
+    </tr>
+
+    <tr>
+      <td>200</td>
+      <td>Webhook reçu</td>
+    </tr>
+
+    <tr>
+      <td>400</td>
+      <td>Signature invalide</td>
+    </tr>
+
+    <tr>
+      <td>500</td>
+      <td>Erreur serveur</td>
+    </tr>
+  </table>
+
+  <!-- Events -->
+  <h3 style="margin-top:28px;">⚡ Événements disponibles</h3>
+
+  <table class="retry-table">
+    <tr>
+      <th>Event</th>
+      <th>Description</th>
+    </tr>
+
+    <tr>
+      <td>payment.success</td>
+      <td>Paiement confirmé</td>
+    </tr>
+
+    <tr>
+      <td>payment.failed</td>
+      <td>Paiement échoué</td>
+    </tr>
+
+    <tr>
+      <td>transfer.completed</td>
+      <td>Transfert envoyé</td>
+    </tr>
+  </table>
+
+  <!-- Test -->
+  <h3 style="margin-top:28px;">🧪 Test rapide</h3>
+
+  <p style="opacity:0.8;">
+    Utilisez <strong>webhook.site</strong> pour tester et inspecter les requêtes webhook.
+  </p>
 
 </div>
 
+<!-- Prism.js -->
+<link rel="stylesheet"
+href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism-tomorrow.css">
+
+<script src="https://cdn.jsdelivr.net/npm/prismjs/prism.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-python.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-json.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-http.min.js"></script>
+
+<!-- Styles -->
+<style>
+
+.doc-card {
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(12px);
+}
+
+.code-block {
+  position: relative;
+  margin-top: 12px;
+  margin-bottom: 26px;
+}
+
+.copy-btn {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  border: none;
+  padding: 7px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  background: #6c63ff;
+  color: white;
+  font-size: 12px;
+}
+
+pre {
+  padding: 22px;
+  border-radius: 16px;
+  overflow-x: auto;
+  font-size: 14px;
+  line-height: 1.6;
+  font-family: "JetBrains Mono", monospace;
+}
+
+.security-box {
+  margin-top: 18px;
+  background: rgba(255, 193, 7, 0.12);
+  border: 1px solid rgba(255,193,7,0.35);
+  padding: 16px;
+  border-radius: 14px;
+  color: #ffd86b;
+}
+
+.retry-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 14px;
+}
+
+.retry-table th,
+.retry-table td {
+  padding: 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  text-align: left;
+}
+
+.retry-table th {
+  opacity: 0.75;
+}
+
+</style>
+
+<!-- Copy Script -->
+<script>
+
+function copyCode(button) {
+
+  const code =
+    button.parentElement.querySelector("code").innerText;
+
+  navigator.clipboard.writeText(code);
+
+  button.innerText = "Copied";
+
+  setTimeout(() => {
+    button.innerText = "Copy";
+  }, 1500);
+}
+
+</script>
 <!-- MODAL -->
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
   <div class="modal-box">
