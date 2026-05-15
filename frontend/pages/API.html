@@ -705,27 +705,9 @@ return {
   <!-- Retry -->
   <h3>🔁 Retries automatiques</h3>
 
-  <table class="retry-table">
-    <tr>
-      <th>Tentative</th>
-      <th>Délai</th>
-    </tr>
-
-    <tr>
-      <td>1</td>
-      <td>Immédiat</td>
-    </tr>
-
-    <tr>
-      <td>2</td>
-      <td>30 secondes</td>
-    </tr>
-
-    <tr>
-      <td>3</td>
-      <td>5 minutes</td>
-    </tr>
-  </table>
+  <p style="opacity:0.8;">
+    Xepay tente automatiquement de renvoyer les webhooks échoués jusqu’à 3 fois avec un court délai entre chaque tentative.
+  </p>
 
   <!-- Status -->
   <h3 style="margin-top:28px;">📶 Réponses HTTP</h3>
