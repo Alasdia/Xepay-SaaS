@@ -8,6 +8,8 @@ from backend.models import Webhook, WebhookDeliveryLog
 import traceback
 import hmac
 import hashlib
+import uuid
+import time
 import json
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal, ROUND_DOWN
@@ -289,6 +291,8 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
 
                 try:
                     payload = {
+                        "id": f"evt_{uuid.uuid4().hex}",
+                        "timestamp": int(time.time()),
                         "event": event_type,
                         "data": {
                             "amount": amount_local,
@@ -324,6 +328,8 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                                 json=payload,
                                 headers={
                                     "X-Signature": signature,
+                                    "X-Epay-Event": event_type,
+                                    "X-Epay-Timestamp": str(payload["timestamp"])
                                 },
                                 timeout=5
                             )
