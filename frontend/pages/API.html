@@ -798,7 +798,7 @@ loadWebhooks()
 async function loadApiKeys() {
   const token = localStorage.getItem("token")
   
-  const res = await fetch("https://alasdia.com/api-keys", {
+  const res = await fetch("https://api.alasdia.com/api-keys", {
     headers: { Authorization: "Bearer " + token }
   })
   
