@@ -63,3 +63,183 @@ def export_csv(
             "Content-Disposition": "attachment; filename=transactions.csv"
         }
     )
+
+
+from fastapi.responses import FileResponse
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+import tempfile
+
+
+@router.get("/export/pdf")
+def export_pdf(
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    status: str = Query(None),
+    start_date: str = Query(None),
+    end_date: str = Query(None)
+):
+
+    query = db.query(Payment).filter(
+        Payment.user_id == user.id
+    )
+
+    if status:
+        query = query.filter(
+            Payment.status == status
+        )
+
+    if start_date:
+        query = query.filter(
+            Payment.created_at >= datetime.fromisoformat(start_date)
+        )
+
+    if end_date:
+        query = query.filter(
+            Payment.created_at <= datetime.fromisoformat(end_date)
+        )
+
+    transactions = query.all()
+
+    total_volume = sum(t.amount_local for t in transactions)
+
+    total_transactions = len(transactions)
+
+    fee_total = total_volume * 0.06
+
+    merchant_net = total_volume - fee_total
+
+    temp = tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=".pdf"
+    )
+
+    c = canvas.Canvas(temp.name, pagesize=letter)
+
+    width, height = letter
+
+    # HEADER
+    c.setFont("Helvetica-Bold", 28)
+    c.setFillColor(colors.HexColor("#1D4ED8"))
+    c.drawString(40, 760, "Xepay")
+
+    c.setFillColor(colors.black)
+
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(40, 720, "Rapport financier")
+
+    c.setFont("Helvetica", 11)
+
+    c.drawString(
+        40,
+        695,
+        f"Utilisateur : {user.email}"
+    )
+
+    c.drawString(
+        40,
+        675,
+        f"Date : {datetime.utcnow().strftime('%d/%m/%Y %H:%M')}"
+    )
+
+    # SUMMARY
+    c.setFont("Helvetica-Bold", 15)
+
+    c.drawString(40, 620, "Résumé")
+
+    c.setFont("Helvetica", 12)
+
+    c.drawString(
+        40,
+        590,
+        f"Transactions : {total_transactions}"
+    )
+
+    c.drawString(
+        40,
+        565,
+        f"Volume total : {total_volume:,.2f} XOF"
+    )
+
+    c.drawString(
+        40,
+        540,
+        f"Commissions Xepay : {fee_total:,.2f} XOF"
+    )
+
+    c.drawString(
+        40,
+        515,
+        f"Net marchand : {merchant_net:,.2f} XOF"
+    )
+
+    # TABLE HEADER
+    c.setFillColor(colors.HexColor("#1D4ED8"))
+
+    c.rect(40, 450, 520, 25, fill=1)
+
+    c.setFillColor(colors.white)
+
+    c.setFont("Helvetica-Bold", 11)
+
+    c.drawString(50, 458, "Date")
+    c.drawString(150, 458, "Client")
+    c.drawString(340, 458, "Montant")
+    c.drawString(470, 458, "Statut")
+
+    # TABLE CONTENT
+    y = 430
+
+    c.setFillColor(colors.black)
+
+    c.setFont("Helvetica", 10)
+
+    for t in transactions[:15]:
+
+        c.drawString(
+            50,
+            y,
+            t.created_at.strftime("%Y-%m-%d")
+        )
+
+        c.drawString(
+            150,
+            y,
+            t.client_email[:28]
+        )
+
+        c.drawString(
+            340,
+            y,
+            f"{t.amount_local:,.0f} XOF"
+        )
+
+        c.drawString(
+            470,
+            y,
+            t.status
+        )
+
+        y -= 22
+
+    # FOOTER
+    c.setStrokeColor(colors.HexColor("#1D4ED8"))
+
+    c.line(40, 80, 560, 80)
+
+    c.setFont("Helvetica", 10)
+
+    c.drawString(
+        40,
+        60,
+        "Xepay — Rapport généré automatiquement"
+    )
+
+    c.save()
+
+    return FileResponse(
+        temp.name,
+        media_type="application/pdf",
+        filename="rapport_xepay.pdf"
+    )
