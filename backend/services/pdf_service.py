@@ -18,6 +18,18 @@ def generate_invoice_pdf(payment):
     width, height = letter
     formatted_amount = f"{payment.amount:,.2f} {payment.currency}"
 
+    fee_amount = payment.amount * 0.06
+    merchant_amount = payment.amount - fee_amount
+
+    formatted_fee = f"{fee_amount:,.2f} {payment.currency}"
+    formatted_merchant = f"{merchant_amount:,.2f} {payment.currency}"
+
+    status_text = (
+        "Payé"
+        if payment.status == "paid"
+        else payment.status.capitalize()
+    )
+
     # =====================================
     # HEADER
     # =====================================
@@ -113,7 +125,7 @@ def generate_invoice_pdf(payment):
     c.drawString(
         320,
         575,
-        f"Statut : {payment.status}"
+        f"Statut : {status_text}"
     )
 
     c.drawString(
@@ -190,13 +202,13 @@ def generate_invoice_pdf(payment):
     c.drawRightString(
        470,
        315,
-       "Frais Stripe :"
+       "Frais de traitement :"
     )
 
     c.drawRightString(
        560,
        315,
-       "0.00 USD"
+       formatted_fee
     )
 
     # TOTAL
@@ -214,6 +226,22 @@ def generate_invoice_pdf(payment):
        560,
        270,
        formatted_amount
+    )
+
+    c.setFillColor(colors.black)
+
+    c.setFont("Helvetica", 11)
+
+    c.drawRightString(
+        470,
+        240,
+        "Montant net marchand :"
+    )
+
+    c.drawRightString(
+        560,
+        240,
+        formatted_merchant
     )
 
     c.setFillColor(colors.black)
@@ -246,7 +274,7 @@ def generate_invoice_pdf(payment):
     c.setStrokeColor(colors.HexColor("#1D4ED8"))
     c.line(40, 120, 560, 120)
 
-    c.setFillColor(colors.grey)
+    c.setFillColor(colors.HexColor("#4B5563"))
 
     c.setFont("Helvetica-Bold", 13)
     c.drawString(40, 90, "Xepay")
