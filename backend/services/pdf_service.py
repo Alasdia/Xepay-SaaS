@@ -8,7 +8,7 @@ UPLOAD_DIR = Path("uploads/invoices")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def generate_invoice_pdf(payment):
+def generate_invoice_pdf(payment, merchant_email):
 
     filename = f"invoice_{payment.id}.pdf"
     filepath = UPLOAD_DIR / filename
@@ -99,6 +99,11 @@ def generate_invoice_pdf(payment):
         40,
         600,
         f"Email : {payment.client_email}"
+    )
+    c.drawString(
+        40,
+        550,
+        f"Marchand : {merchant_email}"
     )
 
     c.drawString(
