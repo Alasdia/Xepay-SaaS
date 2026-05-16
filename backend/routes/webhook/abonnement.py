@@ -4,6 +4,7 @@ import os
 from backend.database import SessionLocal
 from backend.models import Payment, Link, Wallet
 from backend.services.wallet_service import create_wallet_transaction
+from backend.services.email_service import send_subscription_email
 from datetime import datetime, timezone
 from sqlalchemy import text
 from backend.models import UserDB
@@ -39,6 +40,11 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
 
         subscription = stripe.Subscription.retrieve(subscription_id)
 
+        invoice_id = subscription["latest_invoice"]
+        invoice = stripe.Invoice.retrieve(invoice_id)
+        invoice_pdf = invoice["invoice_pdf"]
+        hosted_invoice_url = invoice["hosted_invoice_url"]
+
         user_id = subscription["metadata"]["user_id"]
         plan = subscription["metadata"]["plan"]
 
@@ -52,6 +58,13 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
         if user:
             user.plan = plan
             db.commit()
+
+            send_subscription_email(
+                user.email,
+                plan,
+                invoice_pdf,
+                hosted_invoice_url
+            )
             print("✅ PLAN UPDATED")
 
         db.close()
