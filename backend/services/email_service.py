@@ -9,6 +9,9 @@ RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 
 def send_payment_email(to_email, pdf_path):
 
+    print("PDF PATH:", pdf_path)
+    print("PDF EXISTS:", os.path.exists(pdf_path))
+
     with open(pdf_path, "rb") as f:
         pdf_base64 = base64.b64encode(f.read()).decode("utf-8")
 
