@@ -1956,3 +1956,16 @@ nav {
     pointer-events: auto;
   }
 }
+@media (max-width: 768px) {
+
+  #sidebar,
+  .sidebar {
+    z-index: 10001 !important;
+  }
+
+  .sidebar-overlay {
+    z-index: 10000 !important;
+    backdrop-filter: none !important;
+  }
+
+}
