@@ -16,13 +16,13 @@ def generate_invoice_pdf(payment):
     c = canvas.Canvas(str(filepath), pagesize=letter)
 
     width, height = letter
-    formatted_amount = f"{payment.amount:,.2f} {payment.currency}"
+    formatted_amount = f"{payment.amount:,.2f} USD"
 
     fee_amount = payment.amount * 0.06
     merchant_amount = payment.amount - fee_amount
 
-    formatted_fee = f"{fee_amount:,.2f} {payment.currency}"
-    formatted_merchant = f"{merchant_amount:,.2f} {payment.currency}"
+    formatted_fee = f"{fee_amount:,.2f} USD"
+    formatted_merchant = f"{merchant_amount:,.2f} USD"
 
     status_text = (
         "Payé"
@@ -131,7 +131,7 @@ def generate_invoice_pdf(payment):
     c.drawString(
         320,
         550,
-        f"Devise : {payment.currency}"
+        f"Devise : USD"
     )
 
     # =====================================
