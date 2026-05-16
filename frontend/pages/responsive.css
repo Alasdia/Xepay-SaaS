@@ -2140,3 +2140,87 @@ nav {
 
   .event-tag { font-size: 9px !important; padding: 2px 5px !important; }
 }
+/* =========================================
+   FINAL MOBILE FIX — API PAGE
+========================================= */
+@media screen and (max-width: 768px) {
+
+  body {
+    overflow-x: hidden !important;
+  }
+
+  #sidebar {
+    position: fixed !important;
+    left: -280px !important;
+    top: 0 !important;
+    width: 260px !important;
+    height: 100vh !important;
+    z-index: 1050 !important;
+    transition: left .3s ease !important;
+  }
+
+  #sidebar.open {
+    left: 0 !important;
+  }
+
+  #main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 72px 14px 32px !important;
+    overflow-x: hidden !important;
+  }
+
+  .row,
+  .row.g-3,
+  .row.g-4 {
+    margin: 0 !important;
+  }
+
+  .row > div,
+  .row.g-3 > div,
+  .row.g-4 > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+    padding: 0 !important;
+    margin-bottom: 14px !important;
+  }
+
+  .card-dark,
+  .doc-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .key-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+
+  .key-value {
+    width: 100% !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+  }
+
+  pre {
+    width: 100% !important;
+    overflow-x: auto !important;
+    white-space: pre !important;
+  }
+
+  .table-wrapper {
+    overflow-x: auto !important;
+  }
+
+  .wh-table {
+    min-width: 520px !important;
+  }
+
+  .dash-hamburger {
+    display: flex !important;
+  }
+}
