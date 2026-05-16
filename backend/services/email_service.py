@@ -75,3 +75,6 @@ def send_merchant_notification(to_email, payment):
 
     print(response.status_code)
     print(response.text)
+    print("MERCHANT EMAIL SENT")
+    print(response.status_code)
+    print(response.text)
