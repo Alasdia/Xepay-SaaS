@@ -1,6 +1,9 @@
 import resend
 import os
 import base64
+from dotenv import load_dotenv
+
+load_dotenv()
 
 resend.api_key = os.getenv("RESEND_API_KEY")
 print("API KEY =", os.getenv("RESEND_API_KEY"))
