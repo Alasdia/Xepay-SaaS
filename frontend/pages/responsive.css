@@ -1891,38 +1891,3 @@ nav {
 }
 
 
-@media screen and (max-width: 768px) {
-
-  .dash-hamburger {
-    display: flex !important;
-
-    position: fixed !important;
-    top: 14px !important;
-    left: 14px !important;
-
-    z-index: 99999 !important;
-
-    width: 42px !important;
-    height: 42px !important;
-
-    align-items: center;
-    justify-content: center;
-
-    background: rgba(13, 27, 110, 0.95) !important;
-    border-radius: 12px !important;
-
-    border: 1px solid rgba(255,255,255,.12) !important;
-
-    backdrop-filter: blur(12px);
-  }
-
-  .dash-hamburger span {
-    display: block !important;
-    width: 20px !important;
-    height: 2px !important;
-    background: white !important;
-    margin: 3px 0 !important;
-    border-radius: 999px;
-  }
-
-}
