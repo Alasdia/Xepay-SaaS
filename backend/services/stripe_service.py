@@ -76,8 +76,8 @@ def create_checkout_session(
                 "quantity": 1,
             }],
 
-            success_url="https://alasdia.com/pages/success.html",
-            cancel_url="https://alasdia.com/pages/cancel.html",
+            success_url="https://alasdia.com/success.html",
+            cancel_url="https://alasdia.com/cancel.html",
         )
 
         return session.url
