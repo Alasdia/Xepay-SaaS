@@ -26,7 +26,8 @@ def send_payment_email(to_email, pdf_path):
         "attachments": [
             {
                 "path": pdf_path,
-                "filename": "facture.pdf"
+                "filename": "facture.pdf",
+                "content_type": "application/pdf"
             }
         ]
     })
