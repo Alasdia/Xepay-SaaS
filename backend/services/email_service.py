@@ -3,6 +3,7 @@ import os
 import base64
 
 resend.api_key = os.getenv("RESEND_API_KEY")
+print("API KEY =", os.getenv("RESEND_API_KEY"))
 
 def send_payment_email(to_email, pdf_path):
 
