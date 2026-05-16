@@ -1,5 +1,6 @@
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
 from pathlib import Path
 from datetime import datetime
 
@@ -14,73 +15,236 @@ def generate_invoice_pdf(payment):
 
     c = canvas.Canvas(str(filepath), pagesize=letter)
 
-    # =========================
+    width, height = letter
+
+    # =====================================
     # HEADER
-    # =========================
-    c.setFont("Helvetica-Bold", 26)
-    c.drawString(50, 780, "Xepay")
+    # =====================================
 
-    c.setFont("Helvetica", 14)
-    c.drawString(50, 755, "Payment Receipt")
+    c.setFont("Helvetica-Bold", 34)
+    c.setFillColor(colors.HexColor("#1D4ED8"))
 
-    # =========================
-    # LINE
-    # =========================
-    c.line(50, 740, 550, 740)
+    # 🔥 descendre un peu pour éviter coupure
+    c.drawString(40, 760, "Xepay")
 
-    # =========================
-    # PAYMENT DETAILS
-    # =========================
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(50, 700, "Payment Details")
+    c.setFillColor(colors.black)
 
-    c.setFont("Helvetica", 12)
+    c.setFont("Helvetica-Bold", 22)
+    c.drawString(40, 715, "Reçu de paiement")
 
-    c.drawString(50, 670, f"Payment ID : {payment.id}")
+    c.setFont("Helvetica", 13)
+    c.drawString(40, 690, "Merci pour votre confiance.")
 
-    c.drawString(
-        50,
-        645,
-        f"Amount : {payment.amount} {payment.currency}"
+    # =====================================
+    # INFOS FACTURE
+    # =====================================
+
+    c.setFont("Helvetica-Bold", 12)
+    c.setFillColor(colors.HexColor("#1D4ED8"))
+
+    c.drawRightString(
+        560,
+        760,
+        f"FACTURE #{payment.id}"
     )
 
-    c.drawString(
-        50,
-        620,
-        f"Client : {payment.client_email}"
-    )
+    c.setFillColor(colors.black)
 
-    c.drawString(
-        50,
-        595,
-        f"Status : {payment.status}"
-    )
+    c.setFont("Helvetica", 11)
 
-    c.drawString(
-        50,
-        570,
-        f"Date : {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"
-    )
-
-    # =========================
-    # FOOTER LINE
-    # =========================
-    c.line(50, 120, 550, 120)
-
-    # =========================
-    # FOOTER
-    # =========================
-    c.setFont("Helvetica", 10)
-
-    c.drawString(
-        50,
-        100,
-        "Powered by Xepay"
+    c.drawRightString(
+        560,
+        735,
+        f"Date : {datetime.utcnow().strftime('%d/%m/%Y')}"
     )
 
     c.drawRightString(
+        560,
+        715,
+        f"Heure : {datetime.utcnow().strftime('%H:%M UTC')}"
+    )
+
+    # =====================================
+    # LIGNE
+    # =====================================
+
+    c.setStrokeColor(colors.HexColor("#1D4ED8"))
+    c.line(40, 670, 560, 670)
+
+    # =====================================
+    # INFORMATIONS CLIENT
+    # =====================================
+
+    c.setFillColor(colors.black)
+
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(40, 630, "Informations client")
+
+    c.setFont("Helvetica", 12)
+
+    c.drawString(
+        40,
+        600,
+        f"Email : {payment.client_email}"
+    )
+
+    c.drawString(
+        40,
+        575,
+        "Pays : Sénégal"
+    )
+
+    # =====================================
+    # INFORMATIONS FACTURE
+    # =====================================
+
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(320, 630, "Informations de la facture")
+
+    c.setFont("Helvetica", 12)
+
+    c.drawString(
+        320,
+        600,
+        f"Numéro de paiement : {payment.id}"
+    )
+
+    c.drawString(
+        320,
+        575,
+        f"Statut : {payment.status}"
+    )
+
+    c.drawString(
+        320,
         550,
-        100,
+        f"Devise : {payment.currency}"
+    )
+
+    # =====================================
+    # DÉTAILS DU PAIEMENT
+    # =====================================
+
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(40, 500, "Détails du paiement")
+
+    # HEADER TABLE
+    c.setFillColor(colors.HexColor("#1D4ED8"))
+    c.rect(40, 455, 520, 30, fill=1)
+
+    c.setFillColor(colors.white)
+
+    c.setFont("Helvetica-Bold", 12)
+
+    c.drawString(50, 465, "Description")
+    c.drawString(300, 465, "Quantité")
+    c.drawString(400, 465, "Montant")
+
+    # TABLE CONTENT
+    c.setFillColor(colors.black)
+
+    c.setFont("Helvetica", 12)
+
+    c.drawString(
+        50,
+        425,
+        "Paiement via lien Xepay"
+    )
+
+    c.drawString(320, 425, "1")
+
+    c.drawString(
+        430,
+        425,
+        f"{payment.amount} {payment.currency}"
+    )
+
+    # LINE
+    c.setStrokeColor(colors.lightgrey)
+    c.line(40, 405, 560, 405)
+
+    # =====================================
+    # TOTAL
+    # =====================================
+
+    c.setFont("Helvetica-Bold", 14)
+
+    c.drawRightString(
+        470,
+        360,
+        "Montant payé :"
+    )
+
+    c.setFillColor(colors.HexColor("#16A34A"))
+
+    c.drawRightString(
+        560,
+        360,
+        f"{payment.amount} {payment.currency}"
+    )
+
+    c.setFillColor(colors.black)
+
+    # =====================================
+    # NOTES
+    # =====================================
+
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(40, 250, "Notes")
+
+    c.setFont("Helvetica", 11)
+
+    c.drawString(
+        40,
+        225,
+        "Ce document constitue un reçu de paiement."
+    )
+
+    c.drawString(
+        40,
+        205,
+        "Aucune TVA applicable."
+    )
+
+    # =====================================
+    # FOOTER
+    # =====================================
+
+    c.setStrokeColor(colors.HexColor("#1D4ED8"))
+    c.line(40, 120, 560, 120)
+
+    c.setFont("Helvetica-Bold", 13)
+    c.drawString(40, 90, "Xepay")
+
+    c.setFont("Helvetica", 10)
+
+    c.drawString(
+        40,
+        70,
+        "La solution simple et sécurisée"
+    )
+
+    c.drawString(
+        40,
+        55,
+        "pour recevoir des paiements."
+    )
+
+    c.drawRightString(
+        560,
+        90,
+        "Besoin d'aide ?"
+    )
+
+    c.drawRightString(
+        560,
+        70,
+        "support@xepay.ai"
+    )
+
+    c.drawRightString(
+        560,
+        55,
         "https://xepay.ai"
     )
 
