@@ -5,6 +5,8 @@ from backend.database import SessionLocal
 from backend.models import UserDB, Wallet
 from backend.models import Payment, WalletTransaction, Link, Profile
 from backend.models import Webhook, WebhookDeliveryLog
+from backend.services.pdf_service import generate_invoice_pdf
+from backend.services.email_service import send_payment_email
 import traceback
 import hmac
 import hashlib
@@ -244,6 +246,13 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
 
             db.add(payment)
             db.flush()
+
+            pdf_path = generate_invoice_pdf(payment)
+
+            send_payment_email(
+                email_client,
+                pdf_path
+            )
 
             now = datetime.now(timezone.utc)
 
