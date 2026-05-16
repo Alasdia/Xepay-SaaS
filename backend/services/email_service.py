@@ -41,3 +41,37 @@ def send_payment_email(to_email, pdf_path):
 
     print(response.status_code)
     print(response.text)
+
+def send_merchant_notification(to_email, payment):
+
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": "Xepay <onboarding@resend.dev>",
+            "to": [to_email],
+            "subject": "Nouveau paiement reçu",
+            "html": f"""
+                <h2>Nouveau paiement reçu ✅</h2>
+
+                <p>
+                    Vous avez reçu un paiement de
+                    <b>{payment.amount} {payment.currency}</b>
+                </p>
+
+                <p>
+                    Client : {payment.client_email}
+                </p>
+
+                <p>
+                    Statut : {payment.status}
+                </p>
+            """
+        }
+    )
+
+    print(response.status_code)
+    print(response.text)
