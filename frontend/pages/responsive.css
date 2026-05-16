@@ -1890,3 +1890,253 @@ nav {
   .chip { padding: 7px 12px !important; font-size: 12px !important; }
 }
 
+
+/* =============================================
+   API.html — RESPONSIVE TABLETTE + MOBILE
+   À coller dans le <style> de API.html
+============================================= */
+
+/* ─── HAMBURGER BUTTON ─── */
+.dash-hamburger {
+  display: none;
+  position: fixed;
+  top: 14px; left: 14px;
+  z-index: 1060;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 42px; height: 42px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(13,27,110,.97);
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,.5);
+}
+.dash-hamburger span {
+  display: block; width: 100%; height: 1.5px;
+  background: rgba(255,255,255,.85);
+  border-radius: 2px;
+  transition: all .3s cubic-bezier(.23,1,.32,1);
+  transform-origin: center;
+}
+.dash-hamburger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+.dash-hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.dash-hamburger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+/* ─── OVERLAY ─── */
+.sidebar-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.65);
+  backdrop-filter: blur(4px);
+  z-index: 1040;
+}
+.sidebar-overlay.active { display: block; }
+
+/* =============================================
+   TABLETTE — max-width: 1024px
+============================================= */
+@media screen and (max-width: 1024px) {
+
+  #sidebar { width: 220px !important; }
+
+  #main-content {
+    margin-left: 220px !important;
+    padding: 20px 24px !important;
+    width: calc(100% - 220px) !important;
+  }
+
+  /* Stats 2 colonnes */
+  .row.g-3 > .col-md-4 {
+    flex: 0 0 50%;
+    max-width: 50%;
+  }
+
+  /* Clés + Logs full width */
+  .row.g-3 > .col-md-6 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  /* Doc card */
+  .doc-card { padding: 20px !important; }
+
+  pre { font-size: 13px !important; }
+}
+
+/* =============================================
+   MOBILE — max-width: 768px
+============================================= */
+@media screen and (max-width: 768px) {
+
+  body { overflow-x: hidden; }
+
+  /* ── Sidebar drawer ── */
+  #sidebar {
+    position: fixed !important;
+    top: 0;
+    left: -280px !important;
+    width: 260px !important;
+    height: 100vh !important;
+    z-index: 1050 !important;
+    overflow-y: auto !important;
+    transition: left .3s cubic-bezier(.23,1,.32,1) !important;
+  }
+  #sidebar.open {
+    left: 0 !important;
+    box-shadow: 8px 0 40px rgba(0,0,0,.6) !important;
+  }
+
+  .dash-hamburger { display: flex !important; }
+
+  /* ── Main content full width ── */
+  #main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 72px 14px 32px !important;
+  }
+
+  /* ── Header ── */
+  #main-content > .mb-4:first-child h1 {
+    font-size: 18px !important;
+    line-height: 1.3;
+  }
+  #main-content > .mb-4:first-child p {
+    font-size: 13px !important;
+  }
+
+  /* ── Stats → 1 colonne ── */
+  .row.g-3 > .col-md-4,
+  .row.g-3 > .col-md-6 {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+
+  .card-dark { padding: 16px !important; border-radius: 14px !important; }
+
+  .stat-value { font-size: 28px !important; }
+
+  /* ── Clés API ── */
+  .key-row {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px !important;
+  }
+  .key-label { min-width: 60px !important; font-size: 11px !important; }
+  .key-value { font-size: 11px !important; max-width: calc(100% - 80px); }
+
+  .d-flex.gap-2.mt-3 {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  .btn-api { width: 100% !important; justify-content: center; }
+
+  /* ── Logs ── */
+  #logsContainer { max-height: 220px !important; }
+  .log-row { font-size: 11px !important; flex-wrap: wrap; gap: 6px; }
+  .log-path { font-size: 10px !important; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .btn-logs { width: 100% !important; text-align: center; margin-top: 10px; }
+
+  /* ── Webhooks table → scroll horizontal ── */
+  .table-wrapper {
+    overflow-x: auto !important;
+    max-height: unset !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .wh-table { min-width: 520px; font-size: 12px !important; }
+  .wh-table th, .wh-table td { padding: 10px 10px !important; }
+
+  /* Cacher colonne "Dernier envoi" sur mobile */
+  .wh-table th:nth-child(4),
+  .wh-table td:nth-child(4) { display: none; }
+
+  /* ── Header webhooks ── */
+  .d-flex.justify-content-between.align-items-center {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  /* ── Doc card ── */
+  .doc-card {
+    padding: 18px 14px !important;
+    border-radius: 16px !important;
+    max-height: unset !important;
+  }
+
+  .doc-card h2 { font-size: 18px !important; }
+  .doc-card h3 { font-size: 15px !important; margin-top: 20px !important; }
+
+  pre {
+    font-size: 11px !important;
+    padding: 14px !important;
+    border-radius: 12px !important;
+    overflow-x: auto !important;
+    white-space: pre !important;
+  }
+
+  .copy-btn {
+    padding: 5px 9px !important;
+    font-size: 10px !important;
+    top: 8px !important;
+    right: 8px !important;
+    border-radius: 7px !important;
+  }
+
+  .security-box {
+    font-size: 12px !important;
+    padding: 12px !important;
+  }
+
+  .retry-table th,
+  .retry-table td {
+    padding: 10px 10px !important;
+    font-size: 12px !important;
+  }
+
+  /* ── Modal webhook ── */
+  .modal-overlay .modal-box {
+    width: calc(100% - 28px) !important;
+    padding: 20px 16px !important;
+    border-radius: 16px !important;
+  }
+  .form-ctrl { font-size: 16px !important; }
+  .check-label { font-size: 13px !important; padding: 10px 12px !important; }
+
+  /* ── Secret modal ── */
+  .modal.hidden ~ * { display: none; }
+  .modal-content {
+    width: calc(100% - 32px) !important;
+    padding: 20px 16px !important;
+    border-radius: 16px !important;
+  }
+  .secret-box input { font-size: 13px !important; }
+
+  /* ── iOS no-zoom ── */
+  input, select, textarea { font-size: 16px !important; }
+}
+
+/* =============================================
+   TRÈS PETITS MOBILES — max-width: 480px
+============================================= */
+@media screen and (max-width: 480px) {
+
+  #main-content { padding: 66px 12px 28px !important; }
+
+  #main-content > .mb-4:first-child h1 { font-size: 16px !important; }
+
+  .card-dark { padding: 14px 12px !important; }
+  .stat-value { font-size: 24px !important; }
+  .card-title-small { font-size: 10px !important; }
+
+  .key-value { font-size: 10px !important; }
+
+  pre { font-size: 10px !important; padding: 12px !important; }
+
+  .retry-table th,
+  .retry-table td { padding: 8px !important; font-size: 11px !important; }
+
+  .event-tag { font-size: 9px !important; padding: 2px 5px !important; }
+}
