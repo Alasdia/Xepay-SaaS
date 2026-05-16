@@ -119,6 +119,18 @@ def export_pdf(
 
     width, height = letter
 
+    logo_path = "backend/static/logo.png"
+
+    c.drawImage(
+        logo_path,
+        40,
+        735,
+        width=70,
+        height=70,
+        preserveAspectRatio=True,
+        mask='auto'
+    )
+
     # HEADER
     c.setFont("Helvetica-Bold", 28)
     c.setFillColor(colors.HexColor("#1D4ED8"))
@@ -234,6 +246,14 @@ def export_pdf(
         40,
         60,
         "Xepay — Rapport généré automatiquement"
+    )
+
+    c.setFont("Helvetica", 9)
+
+    c.drawCentredString(
+        width / 2,
+        40,
+        "Generated securely by Xepay"
     )
 
     c.save()
