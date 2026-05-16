@@ -693,7 +693,7 @@ def create_invite(
     db.add(invite)
     db.commit()
 
-    invite_link = f"http://127.0.0.1:5500/accept-invite.html?token={token}"
+    invite_link = f"https://alasdia.com/accept-invite.html?token={token}"
 
     return {
         "message": "Invitation créée",
