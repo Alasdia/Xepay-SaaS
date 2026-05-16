@@ -22,7 +22,7 @@ def send_payment_email(to_email, pdf_path):
             "Content-Type": "application/json"
         },
         json={
-            "from": "Xepay <onboarding@resend.dev>",
+            "from": "Xepay <noreply@alasdia.com>",
             "to": [to_email],
             "subject": "Paiement reçu",
             "html": """
@@ -51,7 +51,7 @@ def send_merchant_notification(to_email, payment):
             "Content-Type": "application/json"
         },
         json={
-            "from": "Xepay <onboarding@resend.dev>",
+            "from": "Xepay <noreply@alasdia.com>",
             "to": [to_email],
             "subject": "Nouveau paiement reçu",
             "html": f"""
