@@ -78,3 +78,41 @@ def send_merchant_notification(to_email, payment):
     print("MERCHANT EMAIL SENT")
     print(response.status_code)
     print(response.text)
+
+def send_subscription_email(
+    to_email,
+    plan,
+    invoice_pdf,
+    hosted_invoice_url
+):
+
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": "Xepay <noreply@alasdia.com>",
+            "to": [to_email],
+            "subject": "Abonnement Xepay activé",
+            "html": f"""
+                <h2>Bienvenue sur Xepay 🚀</h2>
+                <p>
+                    Votre abonnement <b>{plan}</b> est maintenant actif.
+                </p>
+                <p>
+                    Télécharger votre facture :
+                </p>
+                <a href="{invoice_pdf}">
+                    Télécharger le PDF
+                </a>
+                <br><br>
+                <a href="{hosted_invoice_url}">
+                    Voir la facture Stripe
+                </a>
+            """
+        }
+    )
+    print(response.status_code)
+    print(response.text)
