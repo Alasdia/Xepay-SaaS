@@ -233,8 +233,8 @@ def create_onboarding_link(
 
     account_link = stripe.AccountLink.create(
         account=account.id,
-        refresh_url="http://alasdia.com/profil.html",
-        return_url="http://alasdia.com/profil.html",
+        refresh_url="http://alasdia.com/pages/profil.html",
+        return_url="http://alasdia.com/pages/profil.html",
         type="account_onboarding",
     )
 
