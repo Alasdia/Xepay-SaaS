@@ -13,3 +13,5 @@ python-jose[cryptography]
 jinja2
 httpx
 openai
+reportlab
+resend
