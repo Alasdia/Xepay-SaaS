@@ -16,6 +16,7 @@ def generate_invoice_pdf(payment):
     c = canvas.Canvas(str(filepath), pagesize=letter)
 
     width, height = letter
+    formatted_amount = f"{payment.amount:,.2f} {payment.currency}"
 
     # =====================================
     # HEADER
@@ -156,7 +157,7 @@ def generate_invoice_pdf(payment):
     c.drawString(
         430,
         425,
-        f"{payment.amount} {payment.currency}"
+        formatted_amount
     )
 
     # LINE
@@ -164,23 +165,55 @@ def generate_invoice_pdf(payment):
     c.line(40, 405, 560, 405)
 
     # =====================================
-    # TOTAL
+    # RÉSUMÉ FACTURE
     # =====================================
 
+    c.setStrokeColor(colors.lightgrey)
+
+    c.line(320, 330, 560, 330)
+    c.line(320, 300, 560, 300)
+
+    c.setFont("Helvetica", 12)
+
+    c.drawRightString(
+       470,
+       345,
+       "Sous-total :"
+    )
+
+    c.drawRightString(
+       560,
+       345,
+       formatted_amount
+    )
+
+    c.drawRightString(
+       470,
+       315,
+       "Frais Stripe :"
+    )
+
+    c.drawRightString(
+       560,
+       315,
+       "0.00 USD"
+    )
+
+    # TOTAL
     c.setFont("Helvetica-Bold", 14)
 
     c.drawRightString(
-        470,
-        360,
-        "Montant payé :"
+       470,
+       270,
+       "Montant payé :"
     )
 
     c.setFillColor(colors.HexColor("#16A34A"))
 
     c.drawRightString(
-        560,
-        360,
-        f"{payment.amount} {payment.currency}"
+       560,
+       270,
+       formatted_amount
     )
 
     c.setFillColor(colors.black)
@@ -212,6 +245,8 @@ def generate_invoice_pdf(payment):
 
     c.setStrokeColor(colors.HexColor("#1D4ED8"))
     c.line(40, 120, 560, 120)
+
+    c.setFillColor(colors.grey)
 
     c.setFont("Helvetica-Bold", 13)
     c.drawString(40, 90, "Xepay")
