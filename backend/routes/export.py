@@ -498,10 +498,10 @@ def export_pdf(
 
     c.drawImage(
         chart_temp.name,
-        625,
-        710,
-        width=150,
-        height=150,
+        470,
+        470,
+        width=100,
+        height=100,
         mask='auto'
     )
 
@@ -526,9 +526,9 @@ def export_pdf(
 
     c.roundRect(
         40,
-        630,
-        790,
-        70,
+        390,
+        540,
+        50,
         10,
         fill=1
     )
@@ -592,9 +592,9 @@ def export_pdf(
 
     c.roundRect(
         40,
-        560,
-        790,
-        40,
+        350,
+        540,
+        30,
         6,
         fill=1
     )
