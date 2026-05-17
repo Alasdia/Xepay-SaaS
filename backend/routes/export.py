@@ -372,10 +372,10 @@ def export_pdf(
 
     c.drawImage(
         chart_file.name,
-        340,
-        120,
-        width=140,
-        height=140
+        360,
+        300,
+        width=160,
+        height=160
     )
 
     c.save()
