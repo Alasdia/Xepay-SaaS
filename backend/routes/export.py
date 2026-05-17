@@ -336,9 +336,6 @@ def export_pdf(
         "Generated securely by Xepay"
     )
 
-    import matplotlib.pyplot as plt
-    import tempfile
-
     # ===== GRAPHIQUE =====
 
     labels = ["Payés", "En attente", "Échoués"]
