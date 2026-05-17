@@ -16,5 +16,3 @@ openai
 reportlab
 resend
 matplotlib
-weasyprint
-jinja2
