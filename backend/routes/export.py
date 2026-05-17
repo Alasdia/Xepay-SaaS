@@ -130,7 +130,7 @@ def export_pdf(
     ])
 
     paid_links = len(transactions)
-    
+
     conversion_rate = (
         (paid_links / total_links) * 100
         if total_links > 0 else 0
@@ -158,18 +158,6 @@ def export_pdf(
     c = canvas.Canvas(temp.name, pagesize=letter)
 
     width, height = letter
-
-    logo_path = "backend/static/logo.png"
-
-    c.drawImage(
-        logo_path,
-        40,
-        735,
-        width=70,
-        height=70,
-        preserveAspectRatio=True,
-        mask='auto'
-    )
 
     # HEADER
     c.setFont("Helvetica-Bold", 28)
