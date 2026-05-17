@@ -14,15 +14,16 @@ from backend.models import (
 
 import csv
 import io
+import os
+import base64
 import tempfile
 
 from datetime import datetime
 
 import matplotlib.pyplot as plt
 
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
-from reportlab.lib import colors
+from jinja2 import Environment, FileSystemLoader
+from weasyprint import HTML
 
 
 router = APIRouter()
@@ -104,42 +105,22 @@ def export_csv(
 
 
 # =========================================================
-# EXPORT PDF
+# EXPORT PDF PREMIUM
 # =========================================================
 
 @router.get("/export/pdf")
 def export_pdf(
     user=Depends(get_current_user),
-    db: Session = Depends(get_db),
-    status: str = Query(None),
-    start_date: str = Query(None),
-    end_date: str = Query(None)
+    db: Session = Depends(get_db)
 ):
 
-    # =====================================================
-    # QUERY
-    # =====================================================
+    # =========================================
+    # DATA
+    # =========================================
 
-    query = db.query(Payment).filter(
+    transactions = db.query(Payment).filter(
         Payment.user_id == user.id
-    )
-
-    if status:
-        query = query.filter(
-            Payment.status == status
-        )
-
-    if start_date:
-        query = query.filter(
-            Payment.created_at >= datetime.fromisoformat(start_date)
-        )
-
-    if end_date:
-        query = query.filter(
-            Payment.created_at <= datetime.fromisoformat(end_date)
-        )
-
-    transactions = query.all()
+    ).all()
 
     wallet = db.query(Wallet).filter(
         Wallet.user_id == user.id
@@ -149,23 +130,39 @@ def export_pdf(
         Link.user_id == user.id
     ).all()
 
-    # =====================================================
-    # ANALYTICS
-    # =====================================================
-
     total_links = len(links)
 
     active_links = len([
-        l for l in links
-        if l.active
+        l for l in links if l.active
     ])
 
-    paid_links = len(transactions)
+    paid_links = len([
+        t for t in transactions
+        if t.status == "paid"
+    ])
+
+    pending_links = len([
+        t for t in transactions
+        if t.status == "pending"
+    ])
+
+    failed_links = len([
+        t for t in transactions
+        if t.status == "failed"
+    ])
 
     conversion_rate = (
         (paid_links / total_links) * 100
         if total_links > 0 else 0
     )
+
+    total_volume = sum(
+        t.amount_local for t in transactions
+    )
+
+    fee_total = total_volume * 0.06
+
+    merchant_net = total_volume - fee_total
 
     wallet_balance = (
         wallet.available if wallet else 0
@@ -175,227 +172,52 @@ def export_pdf(
         wallet.pending if wallet else 0
     )
 
-    total_volume = sum(
-        t.amount_local for t in transactions
-    )
-
-    total_transactions = len(transactions)
-
-    fee_total = total_volume * 0.06
-
-    merchant_net = total_volume - fee_total
-
-    # =====================================================
-    # PDF
-    # =====================================================
-
-    temp = tempfile.NamedTemporaryFile(
-        delete=False,
-        suffix=".pdf"
-    )
-
-    c = canvas.Canvas(
-        temp.name,
-        pagesize=letter
-    )
-
-    width, height = letter
-
-    # =====================================================
-    # HEADER
-    # =====================================================
-
-    c.setFont("Helvetica-Bold", 28)
-
-    c.setFillColor(
-        colors.HexColor("#1D4ED8")
-    )
-
-    c.drawString(
-        40,
-        760,
-        "Xepay"
-    )
-
-    c.setFillColor(colors.black)
-
-    c.setFont("Helvetica-Bold", 18)
-
-    c.drawString(
-        40,
-        720,
-        "Rapport financier"
-    )
-
-    c.setFont("Helvetica", 11)
-
-    c.drawString(
-        40,
-        695,
-        f"Utilisateur : {user.email}"
-    )
-
-    c.drawString(
-        40,
-        675,
-        f"Date : {datetime.utcnow().strftime('%d/%m/%Y %H:%M')}"
-    )
-
-    # =====================================================
-    # SUMMARY
-    # =====================================================
-
-    c.setFont("Helvetica-Bold", 15)
-
-    c.drawString(
-        40,
-        620,
-        "Résumé"
-    )
-
-    c.setFont("Helvetica", 12)
-
-    c.drawString(
-        40,
-        590,
-        f"Transactions : {total_transactions}"
-    )
-
-    c.drawString(
-        40,
-        565,
-        f"Volume total : {total_volume:,.2f} XOF"
-    )
-
-    c.drawString(
-        40,
-        540,
-        f"Commissions Xepay : {fee_total:,.2f} XOF"
-    )
-
-    c.drawString(
-        40,
-        515,
-        f"Net marchand : {merchant_net:,.2f} XOF"
-    )
-
-    # =====================================================
-    # LINKS ANALYTICS
-    # =====================================================
-
-    c.setFont("Helvetica-Bold", 14)
-
-    c.drawString(
-        320,
-        620,
-        "Links Analytics"
-    )
-
-    c.setFont("Helvetica", 11)
-
-    c.drawString(
-        320,
-        595,
-        f"Liens créés : {total_links}"
-    )
-
-    c.drawString(
-        320,
-        575,
-        f"Liens actifs : {active_links}"
-    )
-
-    c.drawString(
-        320,
-        555,
-        f"Liens payés : {paid_links}"
-    )
-
-    c.drawString(
-        320,
-        535,
-        f"Conversion : {conversion_rate:.1f}%"
-    )
-
-    # =====================================================
-    # WALLET
-    # =====================================================
-
-    c.setFont("Helvetica-Bold", 14)
-
-    c.drawString(
-        320,
-        500,
-        "Wallet"
-    )
-
-    c.setFont("Helvetica", 11)
-
-    c.drawString(
-        320,
-        480,
-        f"Disponible : {wallet_balance:,.0f} XOF"
-    )
-
-    c.drawString(
-        320,
-        460,
-        f"En attente : {wallet_pending:,.0f} XOF"
-    )
-
-    # =====================================================
+    # =========================================
     # DONUT CHART
-    # =====================================================
+    # =========================================
 
-    paid_count = paid_links
-
-    pending_count = max(
-        active_links - paid_links,
-        0
-    )
-
-    failed_count = max(
-        total_links - active_links,
-        0
-    )
-
-    sizes = [
-        paid_count,
-        pending_count,
-        failed_count
+    values = [
+        paid_links,
+        pending_links,
+        failed_links
     ]
 
     colors_chart = [
-        "#22c55e",
-        "#facc15",
-        "#ef4444"
+        "#22C55E",
+        "#FACC15",
+        "#EF4444"
     ]
 
     fig, ax = plt.subplots(
-        figsize=(4, 4)
+        figsize=(5, 5)
     )
+
+    fig.patch.set_facecolor("#081F6B")
+
+    ax.set_facecolor("#081F6B")
 
     ax.pie(
-        sizes,
+        values,
         colors=colors_chart,
         startangle=90,
-        wedgeprops=dict(width=0.35)
+        wedgeprops=dict(
+            width=0.32,
+            edgecolor="#081F6B",
+            linewidth=8
+        )
     )
 
-    success_rate = (
-        (paid_count / total_links) * 100
-        if total_links > 0 else 0
-    )
+    # CENTER TEXT
 
     ax.text(
         0,
-        0.05,
-        f"{success_rate:.1f}%",
+        0.08,
+        f"{conversion_rate:.1f}%",
         ha="center",
         va="center",
-        fontsize=22,
-        fontweight="bold",
-        color="white"
+        fontsize=28,
+        color="white",
+        weight="bold"
     )
 
     ax.text(
@@ -404,251 +226,107 @@ def export_pdf(
         "Payés",
         ha="center",
         va="center",
-        fontsize=11,
+        fontsize=12,
         color="white"
-    )
-
-    fig.patch.set_facecolor(
-        "#0B1F5E"
-    )
-
-    ax.set_facecolor(
-        "#0B1F5E"
     )
 
     ax.axis("equal")
 
-    chart_file = tempfile.NamedTemporaryFile(
+    # SAVE TEMP IMAGE
+
+    chart_temp = tempfile.NamedTemporaryFile(
         delete=False,
         suffix=".png"
     )
 
     plt.savefig(
-        chart_file.name,
+        chart_temp.name,
         bbox_inches="tight",
-        transparent=False,
+        transparent=True,
         facecolor=fig.get_facecolor()
     )
 
     plt.close()
 
-    # =====================================================
-    # DONUT CARD
-    # =====================================================
+    # BASE64
 
-    c.setFillColor(
-        colors.HexColor("#0B1F5E")
-    )
+    with open(chart_temp.name, "rb") as image_file:
 
-    c.roundRect(
-        360,
-        470,
-        180,
-        180,
-        12,
-        fill=1
-    )
+        chart_base64 = base64.b64encode(
+            image_file.read()
+        ).decode("utf-8")
 
-    c.setFillColor(colors.white)
+    # =========================================
+    # HTML TEMPLATE
+    # =========================================
 
-    c.setFont(
-        "Helvetica-Bold",
-        12
-    )
-
-    c.drawString(
-        385,
-        625,
-        "Transactions Xepay"
-    )
-
-    c.drawImage(
-        chart_file.name,
-        375,
-        500,
-        width=120,
-        height=120
-    )
-
-    c.setFont(
-        "Helvetica",
-        10
-    )
-
-    # PAYÉS
-    c.setFillColor(
-        colors.HexColor("#22c55e")
-    )
-
-    c.circle(
-        500,
-        590,
-        4,
-        fill=1
-    )
-
-    c.setFillColor(colors.white)
-
-    c.drawString(
-        510,
-        586,
-        "Payés"
-    )
-
-    # EN ATTENTE
-    c.setFillColor(
-        colors.HexColor("#facc15")
-    )
-
-    c.circle(
-        500,
-        570,
-        4,
-        fill=1
-    )
-
-    c.setFillColor(colors.white)
-
-    c.drawString(
-        510,
-        566,
-        "En attente"
-    )
-
-    # ÉCHOUÉS
-    c.setFillColor(
-        colors.HexColor("#ef4444")
-    )
-
-    c.circle(
-        500,
-        550,
-        4,
-        fill=1
-    )
-
-    c.setFillColor(colors.white)
-
-    c.drawString(
-        510,
-        546,
-        "Échoués"
-    )
-
-    # =====================================================
-    # TABLE HEADER
-    # =====================================================
-
-    c.setFillColor(
-        colors.HexColor("#1D4ED8")
-    )
-
-    c.rect(
-        40,
-        390,
-        520,
-        25,
-        fill=1
-    )
-
-    c.setFillColor(colors.white)
-
-    c.setFont(
-        "Helvetica-Bold",
-        11
-    )
-
-    c.drawString(50, 398, "Date")
-    c.drawString(150, 398, "Client")
-    c.drawString(340, 398, "Montant")
-    c.drawString(470, 398, "Statut")
-
-    # =====================================================
-    # TABLE CONTENT
-    # =====================================================
-
-    y = 370
-
-    c.setFillColor(colors.black)
-
-    c.setFont(
-        "Helvetica",
-        10
-    )
-
-    for t in transactions[:15]:
-
-        c.drawString(
-            50,
-            y,
-            t.created_at.strftime("%Y-%m-%d")
+    env = Environment(
+        loader=FileSystemLoader(
+            "backend/templates"
         )
+    )
 
-        c.drawString(
-            150,
-            y,
-            t.client_email[:28]
+    template = env.get_template(
+        "report.html"
+    )
+
+    html_content = template.render(
+
+        user=user,
+
+        transactions=transactions[:10],
+
+        total_transactions=len(transactions),
+
+        total_volume=f"{total_volume:,.2f}",
+
+        fee_total=f"{fee_total:,.2f}",
+
+        merchant_net=f"{merchant_net:,.2f}",
+
+        total_links=total_links,
+
+        active_links=active_links,
+
+        paid_links=paid_links,
+
+        pending_links=pending_links,
+
+        failed_links=failed_links,
+
+        conversion_rate=f"{conversion_rate:.1f}",
+
+        wallet_balance=f"{wallet_balance:,.0f}",
+
+        wallet_pending=f"{wallet_pending:,.0f}",
+
+        chart_base64=chart_base64,
+
+        date=datetime.utcnow().strftime(
+            "%d/%m/%Y %H:%M"
         )
-
-        c.drawString(
-            340,
-            y,
-            f"{t.amount_local:,.0f} XOF"
-        )
-
-        c.drawString(
-            470,
-            y,
-            t.status
-        )
-
-        y -= 22
-
-    # =====================================================
-    # FOOTER
-    # =====================================================
-
-    c.setStrokeColor(
-        colors.HexColor("#1D4ED8")
     )
 
-    c.line(
-        40,
-        80,
-        560,
-        80
+    # =========================================
+    # GENERATE PDF
+    # =========================================
+
+    temp_pdf = tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=".pdf"
     )
 
-    c.setFont(
-        "Helvetica",
-        10
-    )
+    HTML(
+        string=html_content,
+        base_url=os.getcwd()
+    ).write_pdf(temp_pdf.name)
 
-    c.drawString(
-        40,
-        60,
-        "Xepay — Rapport généré automatiquement"
-    )
-
-    c.setFont(
-        "Helvetica",
-        9
-    )
-
-    c.drawCentredString(
-        width / 2,
-        40,
-        "Generated securely by Xepay"
-    )
-
-    # =====================================================
-    # SAVE PDF
-    # =====================================================
-
-    c.save()
+    # =========================================
+    # RESPONSE
+    # =========================================
 
     return FileResponse(
-        temp.name,
+        temp_pdf.name,
         media_type="application/pdf",
         filename="rapport_xepay.pdf"
     )

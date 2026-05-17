@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+
+<meta charset="UTF-8">
+
+<style>
+
+body{
+    font-family: Arial, sans-serif;
+    background:#ffffff;
+    padding:40px;
+    color:#111827;
+}
+
+/* =========================================
+LOGO
+========================================= */
+
+.logo{
+    font-size:48px;
+    font-weight:800;
+    color:#1D4ED8;
+    margin-bottom:10px;
+}
+
+.title{
+    font-size:42px;
+    font-weight:700;
+    margin-bottom:20px;
+}
+
+.meta{
+    margin-bottom:40px;
+    font-size:18px;
+    line-height:1.8;
+}
+
+/* =========================================
+TOP CARDS
+========================================= */
+
+.cards{
+    display:flex;
+    gap:20px;
+    margin-bottom:30px;
+}
+
+.card{
+    flex:1;
+    background:#ffffff;
+    border:1px solid #E5E7EB;
+    border-radius:22px;
+    padding:24px;
+    box-sizing:border-box;
+}
+
+.card h3{
+    margin-top:0;
+    margin-bottom:24px;
+    font-size:28px;
+    color:#0F172A;
+}
+
+.item{
+    margin-bottom:22px;
+    padding-bottom:14px;
+    border-bottom:1px solid #F1F5F9;
+    font-size:18px;
+    line-height:1.6;
+}
+
+.item:last-child{
+    border-bottom:none;
+    margin-bottom:0;
+}
+
+.green{
+    color:#22C55E;
+    font-weight:700;
+}
+
+.orange{
+    color:#F59E0B;
+    font-weight:700;
+}
+
+/* =========================================
+ANALYTICS CARD
+========================================= */
+
+.analytics{
+    background:#081F6B;
+    color:white;
+    border-radius:24px;
+    padding:30px;
+}
+
+.analytics h3{
+    color:white;
+    font-size:30px;
+    margin-bottom:20px;
+}
+
+.chart{
+    text-align:center;
+    margin-top:10px;
+}
+
+.chart img{
+    width:260px;
+}
+
+/* =========================================
+LEGEND
+========================================= */
+
+.legend{
+    margin-top:10px;
+}
+
+.legend-item{
+    display:flex;
+    align-items:center;
+    margin-bottom:12px;
+    font-size:17px;
+}
+
+.dot{
+    width:16px;
+    height:16px;
+    border-radius:50%;
+    margin-right:10px;
+}
+
+.green-dot{
+    background:#22C55E;
+}
+
+.yellow-dot{
+    background:#FACC15;
+}
+
+.red-dot{
+    background:#EF4444;
+}
+
+/* =========================================
+WALLET
+========================================= */
+
+.wallet{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    border:1px solid #E5E7EB;
+    border-radius:22px;
+    padding:26px;
+    margin-bottom:30px;
+}
+
+.wallet-block{
+    flex:1;
+}
+
+.wallet-title{
+    font-size:18px;
+    color:#6B7280;
+    margin-bottom:10px;
+}
+
+.wallet-value{
+    font-size:28px;
+    font-weight:700;
+}
+
+/* =========================================
+TABLE
+========================================= */
+
+.table-container{
+    border-radius:22px;
+    overflow:hidden;
+    border:1px solid #E5E7EB;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+thead{
+    background:#1D4ED8;
+    color:white;
+}
+
+th{
+    padding:20px;
+    text-align:left;
+    font-size:18px;
+}
+
+td{
+    padding:20px;
+    border-bottom:1px solid #F1F5F9;
+    font-size:16px;
+}
+
+tr:last-child td{
+    border-bottom:none;
+}
+
+/* =========================================
+STATUS BADGES
+========================================= */
+
+.badge{
+    padding:10px 16px;
+    border-radius:999px;
+    font-weight:700;
+    font-size:14px;
+}
+
+.badge-paid{
+    background:#DCFCE7;
+    color:#16A34A;
+}
+
+.badge-pending{
+    background:#FEF3C7;
+    color:#D97706;
+}
+
+.badge-failed{
+    background:#FEE2E2;
+    color:#DC2626;
+}
+
+/* =========================================
+FOOTER
+========================================= */
+
+.footer{
+    margin-top:40px;
+    border-top:2px solid #1D4ED8;
+    padding-top:20px;
+    text-align:center;
+    color:#1D4ED8;
+    font-size:18px;
+    font-style:italic;
+    font-weight:700;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<!-- ===================================== -->
+<!-- HEADER -->
+<!-- ===================================== -->
+
+<div class="logo">
+    Xepay
+</div>
+
+<div class="title">
+    Rapport financier
+</div>
+
+<div class="meta">
+    <div>
+        Utilisateur : {{ user.email }}
+    </div>
+
+    <div>
+        Date : {{ date }}
+    </div>
+</div>
+
+<!-- ===================================== -->
+<!-- TOP SECTION -->
+<!-- ===================================== -->
+
+<div class="cards">
+
+    <!-- SUMMARY -->
+
+    <div class="card">
+
+        <h3>
+            Résumé
+        </h3>
+
+        <div class="item">
+            Transactions<br>
+            <strong>{{ total_transactions }}</strong>
+        </div>
+
+        <div class="item">
+            Volume total<br>
+            <strong>{{ total_volume }} XOF</strong>
+        </div>
+
+        <div class="item">
+            Commissions Xepay<br>
+            <strong>{{ fee_total }} XOF</strong>
+        </div>
+
+        <div class="item">
+            Net marchand<br>
+            <strong class="green">
+                {{ merchant_net }} XOF
+            </strong>
+        </div>
+
+    </div>
+
+    <!-- LINKS -->
+
+    <div class="card">
+
+        <h3>
+            Links Analytics
+        </h3>
+
+        <div class="item">
+            Liens créés<br>
+            <strong>{{ total_links }}</strong>
+        </div>
+
+        <div class="item">
+            Liens actifs<br>
+            <strong>{{ active_links }}</strong>
+        </div>
+
+        <div class="item">
+            Liens payés<br>
+            <strong>{{ paid_links }}</strong>
+        </div>
+
+        <div class="item">
+            Conversion<br>
+            <strong class="green">
+                {{ conversion_rate }}%
+            </strong>
+        </div>
+
+    </div>
+
+    <!-- DONUT -->
+
+    <div class="card analytics">
+
+        <h3>
+            Transactions Xepay
+        </h3>
+
+        <div class="chart">
+
+            <img
+                src="data:image/png;base64,{{ chart_base64 }}"
+            >
+
+        </div>
+
+        <div class="legend">
+
+            <div class="legend-item">
+                <div class="dot green-dot"></div>
+                Payés : {{ conversion_rate }}%
+            </div>
+
+            <div class="legend-item">
+                <div class="dot yellow-dot"></div>
+                En attente
+            </div>
+
+            <div class="legend-item">
+                <div class="dot red-dot"></div>
+                Échoués
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ===================================== -->
+<!-- WALLET -->
+<!-- ===================================== -->
+
+<div class="wallet">
+
+    <div class="wallet-block">
+
+        <div class="wallet-title">
+            Disponible
+        </div>
+
+        <div class="wallet-value green">
+            {{ wallet_balance }} XOF
+        </div>
+
+    </div>
+
+    <div class="wallet-block">
+
+        <div class="wallet-title">
+            En attente
+        </div>
+
+        <div class="wallet-value orange">
+            {{ wallet_pending }} XOF
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ===================================== -->
+<!-- TABLE -->
+<!-- ===================================== -->
+
+<div class="table-container">
+
+<table>
+
+<thead>
+
+<tr>
+    <th>Date</th>
+    <th>Client</th>
+    <th>Montant</th>
+    <th>Statut</th>
+</tr>
+
+</thead>
+
+<tbody>
+
+{% for t in transactions %}
+
+<tr>
+
+    <td>
+        {{ t.created_at.strftime("%Y-%m-%d") }}
+    </td>
+
+    <td>
+        {{ t.client_email }}
+    </td>
+
+    <td>
+        {{ "{:,.0f}".format(t.amount_local) }} XOF
+    </td>
+
+    <td>
+
+        {% if t.status == "paid" %}
+
+            <span class="badge badge-paid">
+                Payé
+            </span>
+
+        {% elif t.status == "pending" %}
+
+            <span class="badge badge-pending">
+                En attente
+            </span>
+
+        {% else %}
+
+            <span class="badge badge-failed">
+                Échoué
+            </span>
+
+        {% endif %}
+
+    </td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+<!-- ===================================== -->
+<!-- FOOTER -->
+<!-- ===================================== -->
+
+<div class="footer">
+    Generated securely by Xepay
+</div>
+
+</body>
+</html>
