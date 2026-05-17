@@ -8,6 +8,15 @@ from backend.auth import get_current_user
 from backend.database import get_db
 from fastapi import Query
 from datetime import datetime
+from backend.models import (
+    Payment,
+    Link,
+    Profile,
+    Wallet,
+    WalletTransaction
+)
+
+import matplotlib.pyplot as plt
 
 router = APIRouter()
 
@@ -36,6 +45,7 @@ def export_csv(
         query = query.filter(Payment.created_at <= datetime.fromisoformat(end_date))
 
     transactions = query.all()
+
 
     output = io.StringIO()
     output.write("sep=;\n")
@@ -101,6 +111,39 @@ def export_pdf(
         )
 
     transactions = query.all()
+
+    wallet = db.query(Wallet).filter(
+        Wallet.user_id == user.id
+    ).first()
+
+    links = db.query(Link).filter(
+        Link.user_id == user.id
+    ).all()
+
+    # ===== LINKS ANALYTICS =====
+
+    total_links = len(links)
+
+    active_links = len([
+        l for l in links
+        if l.is_active
+    ])
+
+    paid_links = len([
+        l for l in links
+        if l.status == "paid"
+    ])
+
+    conversion_rate = (
+        (paid_links / total_links) * 100
+        if total_links > 0 else 0
+    )
+
+    # ===== WALLET =====
+
+    wallet_balance = wallet.available if wallet else 0
+
+    wallet_pending = wallet.pending if wallet else 0
 
     total_volume = sum(t.amount_local for t in transactions)
 
@@ -184,6 +227,58 @@ def export_pdf(
         40,
         515,
         f"Net marchand : {merchant_net:,.2f} XOF"
+    )
+
+    # ===== LINKS =====
+
+    c.setFont("Helvetica-Bold", 14)
+
+    c.drawString(320, 620, "Links Analytics")
+
+    c.setFont("Helvetica", 11)
+
+    c.drawString(
+        320,
+        595,
+        f"Liens créés : {total_links}"
+    )
+
+    c.drawString(
+        320,
+        575,
+        f"Liens actifs : {active_links}"
+    )
+
+    c.drawString(
+        320,
+        555,
+        f"Liens payés : {paid_links}"
+    )
+
+    c.drawString(
+        320,
+        535,
+        f"Conversion : {conversion_rate:.1f}%"
+    )
+
+    # ===== WALLET =====
+
+    c.setFont("Helvetica-Bold", 14)
+
+    c.drawString(320, 500, "Wallet")
+
+    c.setFont("Helvetica", 11)
+
+    c.drawString(
+        320,
+        480,
+        f"Disponible : {wallet_balance:,.0f} XOF"
+    )
+
+    c.drawString(
+        320,
+        460,
+        f"En attente : {wallet_pending:,.0f} XOF"
     )
 
     # TABLE HEADER
