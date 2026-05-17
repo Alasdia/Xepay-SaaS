@@ -348,7 +348,7 @@ def export_pdf(
 
     colors_chart = ["#22c55e", "#facc15", "#ef4444"]
 
-    plt.figure(figsize=(4, 4))
+    plt.figure(figsize=(2.2, 2.2))
 
     plt.pie(
         values,
@@ -372,10 +372,10 @@ def export_pdf(
 
     c.drawImage(
         chart_file.name,
-        180,
-        180,
-        width=250,
-        height=250
+        340,
+        120,
+        width=140,
+        height=140
     )
 
     c.save()
