@@ -22,7 +22,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import portrait
+from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 
 
@@ -255,10 +255,10 @@ def export_pdf(
 
     c = canvas.Canvas(
         pdf_temp.name,
-        pagesize=(900, 1200)
+        pagesize=letter
     )
 
-    width, height = (900, 1200)
+    width, height = letter
 
     # =====================================================
     # BACKGROUND
