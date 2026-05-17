@@ -126,14 +126,11 @@ def export_pdf(
 
     active_links = len([
         l for l in links
-        if l.is_active
+        if l.active
     ])
 
-    paid_links = len([
-        l for l in links
-        if l.status == "paid"
-    ])
-
+    paid_links = len(transactions)
+    
     conversion_rate = (
         (paid_links / total_links) * 100
         if total_links > 0 else 0
