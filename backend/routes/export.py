@@ -336,6 +336,51 @@ def export_pdf(
         "Generated securely by Xepay"
     )
 
+    import matplotlib.pyplot as plt
+    import tempfile
+
+    # ===== GRAPHIQUE =====
+
+    labels = ["Payés", "En attente", "Échoués"]
+
+    values = [
+        paid_links,
+        active_links - paid_links,
+        max(total_links - active_links, 0)
+    ]
+
+    colors_chart = ["#22c55e", "#facc15", "#ef4444"]
+
+    plt.figure(figsize=(4, 4))
+
+    plt.pie(
+        values,
+        labels=labels,
+        autopct='%1.1f%%',
+        colors=colors_chart
+    )
+
+    plt.title("Transactions Xepay")
+
+    chart_file = tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=".png"
+    )
+
+    plt.savefig(chart_file.name, bbox_inches="tight")
+
+    plt.close()
+
+    # ===== INSERTION PDF =====
+
+    c.drawImage(
+        chart_file.name,
+        180,
+        180,
+        width=250,
+        height=250
+    )
+
     c.save()
 
     return FileResponse(
