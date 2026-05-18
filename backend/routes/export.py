@@ -328,22 +328,6 @@ def export_pdf(
     # SUMMARY CARD
     # =====================================================
 
-    # SHADOW
-
-    c.setFillColor(
-        colors.HexColor("#EEF2FF")
-    )
-
-    c.roundRect(
-        45,
-        515,
-        170,
-        125,
-        12,
-        fill=1,
-        stroke=0
-    )
-
     # CARD
 
     c.setFillColor(colors.white)
@@ -436,22 +420,6 @@ def export_pdf(
     # =====================================================
     # LINKS CARD
     # =====================================================
-
-    # SHADOW
-
-    c.setFillColor(
-        colors.HexColor("#EEF2FF")
-    )
-
-    c.roundRect(
-        230,
-        515,
-        170,
-        125,
-        12,
-        fill=1,
-        stroke=0
-    )
 
     # CARD
 
