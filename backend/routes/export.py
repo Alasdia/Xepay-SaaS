@@ -392,32 +392,28 @@ def export_pdf(
 
     # CONTENT
 
-    c.setFillColor(colors.black)
+    c.drawString(55, 640, "Résumé")
 
-    c.setFont(
-        "Helvetica",
-        12
-    )
+    c.setFillColor(colors.black)
+    c.setFont("Helvetica", 10)
 
     c.drawString(
-        60,
-        555,
+        55,
+        615,
         f"Transactions : {len(transactions)}"
     )
 
     c.drawString(
-        60,
-        530,
+        55,
+        595,
         f"Volume total : {total_volume:,.0f} XOF"
     )
 
     c.drawString(
-        60,
-        490,
+        55,
+        575,
         f"Commissions : {fee_total:,.0f} XOF"
     )
-
-    # NET
 
     c.setFillColor(
         colors.HexColor("#22C55E")
@@ -425,15 +421,14 @@ def export_pdf(
 
     c.setFont(
         "Helvetica-Bold",
-        13
+        11
     )
 
     c.drawString(
-        60,
-        460,
+        55,
+        555,
         f"Net : {merchant_net:,.0f} XOF"
     )
-
     # =====================================================
     # LINKS CARD
     # =====================================================
@@ -502,32 +497,32 @@ def export_pdf(
 
     # CONTENT
 
-    c.setFillColor(colors.black)
-
-    c.setFont(
-        "Helvetica",
-        12
+    c.drawString(
+        240,
+        640,
+        "Links Analytics"
     )
 
+    c.setFillColor(colors.black)
+    c.setFont("Helvetica", 10)
+
     c.drawString(
-        310,
-        550,
+        240,
+        615,
         f"Créés : {total_links}"
     )
 
     c.drawString(
-        310,
-        520,
+        240,
+        595,
         f"Actifs : {active_links}"
     )
 
     c.drawString(
-        310,
-        490,
+        240,
+        575,
         f"Payés : {paid_links}"
     )
-
-    # CONVERSION
 
     c.setFillColor(
         colors.HexColor("#22C55E")
@@ -535,15 +530,14 @@ def export_pdf(
 
     c.setFont(
         "Helvetica-Bold",
-        13
+        11
     )
 
     c.drawString(
-        310,
-        460,
+        240,
+        555,
         f"Conversion : {conversion_rate:.1f}%"
     )
-
     # =====================================================
     # DONUT CARD
     # =====================================================
@@ -604,9 +598,9 @@ def export_pdf(
 
     c.roundRect(
         40,
-        390,
-        540,
-        50,
+        445,
+        515,
+        60,
         10,
         fill=0
     )
@@ -671,11 +665,10 @@ def export_pdf(
         11
     )
 
-    c.drawString(55, 360, "Date")
-    c.drawString(180, 360, "Client")
-    c.drawString(380, 360, "Montant")
-    c.drawString(640, 360, "Statut")
-
+    c.drawString(55, 413, "Date")
+    c.drawString(180, 413, "Client")
+    c.drawString(360, 413, "Montant")
+    c.drawString(500, 413, "Statut")
     # =====================================================
     # TABLE CONTENT
     # =====================================================
@@ -731,7 +724,7 @@ def export_pdf(
             )
 
             c.roundRect(
-                630,
+                500,
                 y - 5,
                 55,
                 18,
@@ -744,7 +737,7 @@ def export_pdf(
             )
 
             c.drawString(
-                508,
+                515,
                 y,
                 "Payé"
             )
