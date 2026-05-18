@@ -589,7 +589,7 @@ def export_pdf(
 
     c.drawString(
         55,
-        485,
+        455,
         "Wallet"
     )
 
@@ -599,8 +599,8 @@ def export_pdf(
     )
 
     c.drawString(
-        220,
-        485,
+        180,
+        455,
         f"Disponible : {wallet_balance:,.0f} XOF"
     )
 
@@ -609,8 +609,8 @@ def export_pdf(
     )
 
     c.drawString(
-        420,
-        485,
+        390,
+        455,
         f"En attente : {wallet_pending:,.0f} XOF"
     )
 
@@ -638,15 +638,15 @@ def export_pdf(
         11
     )
 
-    c.drawString(55, 413, "Date")
-    c.drawString(180, 413, "Client")
-    c.drawString(360, 413, "Montant")
-    c.drawString(500, 413, "Statut")
+    c.drawString(55, 383, "Date")
+    c.drawString(180, 383, "Client")
+    c.drawString(360, 383, "Montant")
+    c.drawString(500, 383, "Statut")
     # =====================================================
     # TABLE CONTENT
     # =====================================================
 
-    y = 385
+    y = 345
 
     # ROW LINE
 
@@ -656,9 +656,9 @@ def export_pdf(
 
     c.line(
         40,
-        y - 14,
-        740,
-        y - 14
+        y - 10,
+        550,
+        y - 10
     )
 
     for t in transactions[:10]:
@@ -683,7 +683,7 @@ def export_pdf(
         )
 
         c.drawString(
-            380,
+            360,
             y,
             f"{t.amount_local:,.0f} XOF"
         )
