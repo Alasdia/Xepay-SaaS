@@ -336,9 +336,9 @@ def export_pdf(
     c.roundRect(
         46,
         466,
-        230,
-        150,
-        14,
+        205,
+        125,
+        10,
         fill=1,
         stroke=0
     )
@@ -366,9 +366,9 @@ def export_pdf(
     c.roundRect(
         40,
         470,
-        230,
-        150,
-        14,
+        205,
+        125,
+        10,
         fill=0
     )
 
@@ -400,19 +400,19 @@ def export_pdf(
 
     c.drawString(
         60,
-        550,
+        555,
         f"Transactions : {len(transactions)}"
     )
 
     c.drawString(
         60,
-        520,
+        530,
         f"Volume total : {total_volume:,.0f} XOF"
     )
 
     c.drawString(
         60,
-        490,
+        505,
         f"Commissions : {fee_total:,.0f} XOF"
     )
 
@@ -429,7 +429,7 @@ def export_pdf(
 
     c.drawString(
         60,
-        460,
+        480,
         f"Net : {merchant_net:,.0f} XOF"
     )
 
@@ -446,9 +446,9 @@ def export_pdf(
     c.roundRect(
         296,
         466,
-        190,
-        150,
-        14,
+        165,
+        125,
+        10,
         fill=1,
         stroke=0
     )
@@ -476,9 +476,9 @@ def export_pdf(
     c.roundRect(
         290,
         470,
-        190,
-        150,
-        14,
+        165,
+        125,
+        10,
         fill=0
     )
 
