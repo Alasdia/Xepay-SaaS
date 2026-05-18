@@ -348,10 +348,10 @@ def export_pdf(
     c.setFillColor(colors.white)
 
     c.roundRect(
-        40,
+        55,
         470,
-        230,
-        150,
+        200,
+        145,
         14,
         fill=1,
         stroke=0
@@ -458,10 +458,10 @@ def export_pdf(
     c.setFillColor(colors.white)
 
     c.roundRect(
-        290,
+        275,
         470,
-        190,
-        150,
+        165,
+        145,
         14,
         fill=1,
         stroke=0
@@ -552,20 +552,20 @@ def export_pdf(
     )
 
     c.roundRect(
-        460,
-        430,
-        120,
-        180,
+        466,
+        445,
+        110,
+        165,
         14,
         fill=1
     )
 
     c.drawImage(
         chart_temp.name,
-        470,
-        470,
-        width=100,
-        height=100,
+        463,
+        485,
+        width=92,
+        height=92,
         mask='auto'
     )
 
@@ -657,7 +657,7 @@ def export_pdf(
     c.roundRect(
         40,
         350,
-        700,
+        540,
         30,
         6,
         fill=1
