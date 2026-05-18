@@ -290,7 +290,7 @@ def export_pdf(
 
     c.drawString(
         40,
-        740,
+        800,
         "Xepay"
     )
 
@@ -303,7 +303,7 @@ def export_pdf(
 
     c.drawString(
         40,
-        695,
+        760,
         "Rapport financier"
     )
 
@@ -314,13 +314,13 @@ def export_pdf(
 
     c.drawString(
         40,
-        660,
+        725,
         f"Utilisateur : {user.email}"
     )
 
     c.drawString(
         40,
-        635,
+        705,
         f"Date : {datetime.utcnow().strftime('%d/%m/%Y %H:%M')}"
     )
 
@@ -350,7 +350,7 @@ def export_pdf(
 
     c.roundRect(
         40,
-        540,
+        500,
         170,
         125,
         12,
@@ -459,7 +459,7 @@ def export_pdf(
 
     c.roundRect(
         225,
-        540,
+        500,
         170,
         125,
         12,
@@ -641,7 +641,7 @@ def export_pdf(
 
     c.drawString(
         420,
-        410,
+        470,
         f"En attente : {wallet_pending:,.0f} XOF"
     )
 
