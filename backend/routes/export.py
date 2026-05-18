@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 
 
@@ -255,10 +256,10 @@ def export_pdf(
 
     c = canvas.Canvas(
         pdf_temp.name,
-        pagesize=letter
+        pagesize=A4
     )
 
-    width, height = letter
+    width, height = A4
 
     # =====================================================
     # BACKGROUND
@@ -348,10 +349,10 @@ def export_pdf(
     c.setFillColor(colors.white)
 
     c.roundRect(
-        55,
-        470,
-        200,
-        145,
+        40,
+        540,
+        240,
+        170,
         14,
         fill=1,
         stroke=0
@@ -365,10 +366,10 @@ def export_pdf(
 
     c.roundRect(
         40,
-        470,
-        205,
-        125,
-        10,
+        540,
+        240,
+        170,
+        14,
         fill=0
     )
 
@@ -444,11 +445,11 @@ def export_pdf(
     )
 
     c.roundRect(
-        296,
-        466,
-        165,
-        125,
-        10,
+        310,
+        540,
+        240,
+        170,
+        14,
         fill=1,
         stroke=0
     )
@@ -458,10 +459,10 @@ def export_pdf(
     c.setFillColor(colors.white)
 
     c.roundRect(
-        275,
-        470,
-        165,
-        145,
+        310,
+        540,
+        240,
+        170,
         14,
         fill=1,
         stroke=0
@@ -552,20 +553,20 @@ def export_pdf(
     )
 
     c.roundRect(
-        466,
-        445,
-        110,
-        165,
+        570,
+        520,
+        180,
+        190,
         14,
         fill=1
     )
 
     c.drawImage(
         chart_temp.name,
-        463,
-        485,
-        width=92,
-        height=92,
+        595,
+        555,
+        width=120,
+        height=120,
         mask='auto'
     )
 
@@ -590,9 +591,9 @@ def export_pdf(
 
     c.roundRect(
         40,
-        390,
-        540,
-        50,
+        445,
+        710,
+        60,
         10,
         fill=1
     )
@@ -656,9 +657,9 @@ def export_pdf(
 
     c.roundRect(
         40,
-        350,
-        540,
-        30,
+        400,
+        710,
+        36,
         6,
         fill=1
     )
