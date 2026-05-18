@@ -384,7 +384,7 @@ def export_pdf(
     )
 
     c.drawString(
-        60,
+        52,
         590,
         "Résumé"
     )
@@ -400,7 +400,7 @@ def export_pdf(
 
     c.drawString(
         60,
-        555,
+        530,
         f"Transactions : {len(transactions)}"
     )
 
@@ -412,7 +412,7 @@ def export_pdf(
 
     c.drawString(
         60,
-        505,
+        580,
         f"Commissions : {fee_total:,.0f} XOF"
     )
 
@@ -474,7 +474,7 @@ def export_pdf(
     )
 
     c.roundRect(
-        290,
+        275,
         470,
         165,
         125,
