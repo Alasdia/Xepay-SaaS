@@ -519,8 +519,8 @@ def export_pdf(
     )
 
     c.roundRect(
-        395,
-        520,
+        405,
+        515,
         145,
         145,
         12,
@@ -529,8 +529,8 @@ def export_pdf(
 
     c.drawImage(
         chart_temp.name,
-        415,
-        545,
+        425,
+        540,
         width=100,
         height=100,
         mask='auto'
@@ -544,8 +544,8 @@ def export_pdf(
     )
 
     c.drawCentredString(
-        482,
-        640,
+        478,
+        635,
         "Transactions"
     )
 
@@ -557,11 +557,12 @@ def export_pdf(
 
     c.roundRect(
         40,
-        445,
-        710,
-        60,
-        10,
-        fill=1
+        425,
+        510,
+        55,
+        12,
+        fill=1,
+        stroke=0
     )
 
     c.setStrokeColor(
@@ -570,10 +571,10 @@ def export_pdf(
 
     c.roundRect(
         40,
-        445,
-        515,
-        60,
-        10,
+        425,
+        510,
+        55,
+        12,
         fill=0
     )
 
@@ -623,9 +624,9 @@ def export_pdf(
 
     c.roundRect(
         40,
-        400,
-        710,
-        36,
+        370,
+        510,
+        34,
         6,
         fill=1
     )
