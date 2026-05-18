@@ -351,9 +351,9 @@ def export_pdf(
     c.roundRect(
         40,
         540,
-        240,
         170,
-        14,
+        125,
+        12,
         fill=1,
         stroke=0
     )
@@ -367,9 +367,9 @@ def export_pdf(
     c.roundRect(
         40,
         540,
-        240,
         170,
-        14,
+        125,
+        12,
         fill=0
     )
 
@@ -445,11 +445,11 @@ def export_pdf(
     )
 
     c.roundRect(
-        310,
+        225,
         540,
-        240,
         170,
-        14,
+        125,
+        12,
         fill=1,
         stroke=0
     )
@@ -459,11 +459,11 @@ def export_pdf(
     c.setFillColor(colors.white)
 
     c.roundRect(
-        310,
+        225,
         540,
-        240,
         170,
-        14,
+        125,
+        12,
         fill=1,
         stroke=0
     )
@@ -475,11 +475,11 @@ def export_pdf(
     )
 
     c.roundRect(
-        290,
-        470,
-        165,
+        225,
+        540,
+        170,
         125,
-        10,
+        12,
         fill=0
     )
 
@@ -495,7 +495,7 @@ def export_pdf(
     )
 
     c.drawString(
-        310,
+        245,
         590,
         "Links Analytics"
     )
@@ -553,20 +553,20 @@ def export_pdf(
     )
 
     c.roundRect(
-        570,
+        410,
         520,
-        180,
-        190,
-        14,
+        145,
+        145,
+        12,
         fill=1
     )
 
     c.drawImage(
         chart_temp.name,
-        595,
-        555,
-        width=120,
-        height=120,
+        430,
+        545,
+        width=100,
+        height=100,
         mask='auto'
     )
 
@@ -578,8 +578,8 @@ def export_pdf(
     )
 
     c.drawCentredString(
-        520,
-        585,
+        482,
+        640,
         "Transactions"
     )
 
