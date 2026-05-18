@@ -327,16 +327,37 @@ def export_pdf(
     # SUMMARY CARD
     # =====================================================
 
+    # SHADOW
+
+    c.setFillColor(
+        colors.HexColor("#EEF2FF")
+    )
+
+    c.roundRect(
+        46,
+        466,
+        230,
+        150,
+        14,
+        fill=1,
+        stroke=0
+    )
+
+    # CARD
+
     c.setFillColor(colors.white)
 
     c.roundRect(
         40,
         470,
-        220,
-        140,
-        12,
-        fill=1
+        230,
+        150,
+        14,
+        fill=1,
+        stroke=0
     )
+
+    # BORDER
 
     c.setStrokeColor(
         colors.HexColor("#E5E7EB")
@@ -345,11 +366,13 @@ def export_pdf(
     c.roundRect(
         40,
         470,
-        220,
-        140,
-        12,
+        230,
+        150,
+        14,
         fill=0
     )
+
+    # TITLE
 
     c.setFillColor(
         colors.HexColor("#1D4ED8")
@@ -357,14 +380,16 @@ def export_pdf(
 
     c.setFont(
         "Helvetica-Bold",
-        16
+        18
     )
 
     c.drawString(
-        55,
-        580,
+        60,
+        590,
         "Résumé"
     )
+
+    # CONTENT
 
     c.setFillColor(colors.black)
 
@@ -374,30 +399,37 @@ def export_pdf(
     )
 
     c.drawString(
-        55,
-        545,
+        60,
+        550,
         f"Transactions : {len(transactions)}"
     )
 
     c.drawString(
-        55,
+        60,
         520,
         f"Volume total : {total_volume:,.0f} XOF"
     )
 
     c.drawString(
-        55,
-        495,
+        60,
+        490,
         f"Commissions : {fee_total:,.0f} XOF"
     )
+
+    # NET
 
     c.setFillColor(
         colors.HexColor("#22C55E")
     )
 
+    c.setFont(
+        "Helvetica-Bold",
+        13
+    )
+
     c.drawString(
-        55,
-        470,
+        60,
+        460,
         f"Net : {merchant_net:,.0f} XOF"
     )
 
@@ -405,29 +437,52 @@ def export_pdf(
     # LINKS CARD
     # =====================================================
 
+    # SHADOW
+
+    c.setFillColor(
+        colors.HexColor("#EEF2FF")
+    )
+
+    c.roundRect(
+        296,
+        466,
+        190,
+        150,
+        14,
+        fill=1,
+        stroke=0
+    )
+
+    # CARD
+
     c.setFillColor(colors.white)
 
     c.roundRect(
-        280,
+        290,
         470,
-        160,
-        140,
-        12,
-        fill=1
+        190,
+        150,
+        14,
+        fill=1,
+        stroke=0
     )
+
+    # BORDER
 
     c.setStrokeColor(
         colors.HexColor("#E5E7EB")
     )
 
     c.roundRect(
-        280,
+        290,
         470,
-        160,
-        140,
-        12,
+        190,
+        150,
+        14,
         fill=0
     )
+
+    # TITLE
 
     c.setFillColor(
         colors.HexColor("#1D4ED8")
@@ -435,47 +490,56 @@ def export_pdf(
 
     c.setFont(
         "Helvetica-Bold",
-        16
+        18
     )
 
     c.drawString(
-        295,
-        580,
+        310,
+        590,
         "Links Analytics"
     )
 
-    c.setFont(
-        "Helvetica",
-        11
-    )
+    # CONTENT
 
     c.setFillColor(colors.black)
 
+    c.setFont(
+        "Helvetica",
+        12
+    )
+
     c.drawString(
-        295,
-        545,
+        310,
+        550,
         f"Créés : {total_links}"
     )
 
     c.drawString(
-        295,
+        310,
         520,
         f"Actifs : {active_links}"
     )
 
     c.drawString(
-        295,
-        495,
+        310,
+        490,
         f"Payés : {paid_links}"
     )
+
+    # CONVERSION
 
     c.setFillColor(
         colors.HexColor("#22C55E")
     )
 
+    c.setFont(
+        "Helvetica-Bold",
+        13
+    )
+
     c.drawString(
-        295,
-        470,
+        310,
+        460,
         f"Conversion : {conversion_rate:.1f}%"
     )
 
@@ -593,7 +657,7 @@ def export_pdf(
     c.roundRect(
         40,
         350,
-        540,
+        700,
         30,
         6,
         fill=1
@@ -616,6 +680,19 @@ def export_pdf(
     # =====================================================
 
     y = 330
+
+    # ROW LINE
+
+    c.setStrokeColor(
+        colors.HexColor("#F1F5F9")
+    )
+
+    c.line(
+        40,
+        y - 14,
+        740,
+        y - 14
+    )
 
     for t in transactions[:10]:
 
