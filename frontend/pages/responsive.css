@@ -1891,61 +1891,37 @@ nav {
 }
 
 /* =========================================
-   UPGRADE MODAL — MOBILE FIX
+   MODAL PLANS — SCROLL MOBILE FIX
 ========================================= */
 @media screen and (max-width: 768px) {
 
-  /* modal plein écran propre */
-  .modal-upgrade {
-    max-width: 100% !important;
-    margin: 0 !important;
+  .modal,
+  .modal.show {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
   }
 
-  .modal-upgrade .modal-dialog {
-    margin: 0 !important;
-    max-width: 100% !important;
-    height: 100vh;
-  }
-
-  .modal-upgrade .modal-content {
-    border-radius: 0 !important;
+  .modal-dialog {
+    margin: 0 auto !important;
     min-height: 100vh;
-    overflow-y: auto;
-    padding-bottom: 40px;
+    display: flex;
+    align-items: flex-start !important;
+    padding: 20px 0;
   }
 
-  /* stack vertical */
-  .modal-upgrade .row {
-    flex-direction: column !important;
-    gap: 18px !important;
+  .modal-content {
+    max-height: none !important;
+    overflow: visible !important;
+    border-radius: 22px !important;
   }
 
-  /* cards full width */
-  .modal-upgrade .col-10,
-  .modal-upgrade .col-md-4 {
-    width: 100% !important;
-    max-width: 100% !important;
-    flex: 0 0 100% !important;
+  .modal-body {
+    overflow-y: visible !important;
   }
 
-  .modal-upgrade .card {
-    max-width: 100% !important;
-    width: 100% !important;
-    border-radius: 20px;
-  }
-
-  /* spacing */
-  .modal-upgrade .modal-body {
-    padding: 18px !important;
-  }
-
-  /* prix responsive */
-  .modal-upgrade h2 {
-    font-size: 42px !important;
-  }
-
-  /* boutons */
-  .modal-upgrade button {
-    width: 100%;
+  body.modal-open {
+    overflow-y: auto !important;
+    padding-right: 0 !important;
   }
 }
