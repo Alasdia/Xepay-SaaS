@@ -335,11 +335,11 @@ def export_pdf(
     )
 
     c.roundRect(
-        46,
-        466,
-        205,
+        45,
+        515,
+        170,
         125,
-        10,
+        12,
         fill=1,
         stroke=0
     )
@@ -444,8 +444,8 @@ def export_pdf(
     )
 
     c.roundRect(
-        225,
-        540,
+        230,
+        515,
         170,
         125,
         12,
