@@ -372,7 +372,6 @@ def export_pdf(
         12,
         fill=0
     )
-
     # TITLE
 
     c.setFillColor(
@@ -381,21 +380,23 @@ def export_pdf(
 
     c.setFont(
         "Helvetica-Bold",
-        18
+        14
     )
 
     c.drawString(
-        60,
-        590,
+        55,
+        640,
         "Résumé"
     )
 
     # CONTENT
 
-    c.drawString(55, 640, "Résumé")
-
     c.setFillColor(colors.black)
-    c.setFont("Helvetica", 10)
+
+    c.setFont(
+        "Helvetica",
+        10
+    )
 
     c.drawString(
         55,
@@ -415,13 +416,15 @@ def export_pdf(
         f"Commissions : {fee_total:,.0f} XOF"
     )
 
+    # NET
+
     c.setFillColor(
         colors.HexColor("#22C55E")
     )
 
     c.setFont(
         "Helvetica-Bold",
-        11
+        10
     )
 
     c.drawString(
@@ -429,6 +432,7 @@ def export_pdf(
         555,
         f"Net : {merchant_net:,.0f} XOF"
     )
+
     # =====================================================
     # LINKS CARD
     # =====================================================
@@ -486,16 +490,8 @@ def export_pdf(
 
     c.setFont(
         "Helvetica-Bold",
-        18
+        14
     )
-
-    c.drawString(
-        245,
-        590,
-        "Links Analytics"
-    )
-
-    # CONTENT
 
     c.drawString(
         240,
@@ -503,8 +499,14 @@ def export_pdf(
         "Links Analytics"
     )
 
+    # CONTENT
+
     c.setFillColor(colors.black)
-    c.setFont("Helvetica", 10)
+
+    c.setFont(
+        "Helvetica",
+        10
+    )
 
     c.drawString(
         240,
@@ -524,13 +526,15 @@ def export_pdf(
         f"Payés : {paid_links}"
     )
 
+    # CONVERSION
+
     c.setFillColor(
         colors.HexColor("#22C55E")
     )
 
     c.setFont(
         "Helvetica-Bold",
-        11
+        10
     )
 
     c.drawString(
@@ -673,7 +677,7 @@ def export_pdf(
     # TABLE CONTENT
     # =====================================================
 
-    y = 330
+    y = 385
 
     # ROW LINE
 
