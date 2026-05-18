@@ -673,7 +673,7 @@ def export_pdf(
     c.drawString(55, 360, "Date")
     c.drawString(180, 360, "Client")
     c.drawString(380, 360, "Montant")
-    c.drawString(500, 360, "Statut")
+    c.drawString(640, 360, "Statut")
 
     # =====================================================
     # TABLE CONTENT
@@ -730,7 +730,7 @@ def export_pdf(
             )
 
             c.roundRect(
-                495,
+                630,
                 y - 5,
                 55,
                 18,
