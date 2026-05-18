@@ -135,7 +135,7 @@ def withdraw(req: WithdrawRequest, db: Session = Depends(get_db), user=Depends(g
             400,
             detail={
                 "message": "Funds not yet available",
-                "next_available_at": next_available[0] if next_available else None
+                "next_available_at": next_available[0].isoformat() if next_available else None
             }
         )
 
