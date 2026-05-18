@@ -520,7 +520,7 @@ def export_pdf(
 
     c.roundRect(
         405,
-        515,
+        520,
         145,
         145,
         12,
@@ -530,7 +530,7 @@ def export_pdf(
     c.drawImage(
         chart_temp.name,
         425,
-        540,
+        545,
         width=100,
         height=100,
         mask='auto'
@@ -545,7 +545,7 @@ def export_pdf(
 
     c.drawCentredString(
         478,
-        635,
+        640,
         "Transactions"
     )
 
