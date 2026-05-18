@@ -350,7 +350,7 @@ def export_pdf(
 
     c.roundRect(
         40,
-        500,
+        520,
         170,
         125,
         12,
@@ -459,7 +459,7 @@ def export_pdf(
 
     c.roundRect(
         225,
-        500,
+        520,
         170,
         125,
         12,
@@ -551,7 +551,7 @@ def export_pdf(
     )
 
     c.roundRect(
-        410,
+        395,
         520,
         145,
         145,
@@ -561,7 +561,7 @@ def export_pdf(
 
     c.drawImage(
         chart_temp.name,
-        430,
+        415,
         545,
         width=100,
         height=100,
@@ -620,7 +620,7 @@ def export_pdf(
 
     c.drawString(
         55,
-        410,
+        485,
         "Wallet"
     )
 
@@ -631,7 +631,7 @@ def export_pdf(
 
     c.drawString(
         220,
-        410,
+        485,
         f"Disponible : {wallet_balance:,.0f} XOF"
     )
 
@@ -641,7 +641,7 @@ def export_pdf(
 
     c.drawString(
         420,
-        470,
+        485,
         f"En attente : {wallet_pending:,.0f} XOF"
     )
 
