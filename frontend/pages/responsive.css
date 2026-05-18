@@ -1890,4 +1890,62 @@ nav {
   .chip { padding: 7px 12px !important; font-size: 12px !important; }
 }
 
+/* =========================================
+   UPGRADE MODAL — MOBILE FIX
+========================================= */
+@media screen and (max-width: 768px) {
 
+  /* modal plein écran propre */
+  .modal-upgrade {
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .modal-upgrade .modal-dialog {
+    margin: 0 !important;
+    max-width: 100% !important;
+    height: 100vh;
+  }
+
+  .modal-upgrade .modal-content {
+    border-radius: 0 !important;
+    min-height: 100vh;
+    overflow-y: auto;
+    padding-bottom: 40px;
+  }
+
+  /* stack vertical */
+  .modal-upgrade .row {
+    flex-direction: column !important;
+    gap: 18px !important;
+  }
+
+  /* cards full width */
+  .modal-upgrade .col-10,
+  .modal-upgrade .col-md-4 {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+  }
+
+  .modal-upgrade .card {
+    max-width: 100% !important;
+    width: 100% !important;
+    border-radius: 20px;
+  }
+
+  /* spacing */
+  .modal-upgrade .modal-body {
+    padding: 18px !important;
+  }
+
+  /* prix responsive */
+  .modal-upgrade h2 {
+    font-size: 42px !important;
+  }
+
+  /* boutons */
+  .modal-upgrade button {
+    width: 100%;
+  }
+}
