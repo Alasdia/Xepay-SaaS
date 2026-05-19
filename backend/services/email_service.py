@@ -116,3 +116,64 @@ def send_subscription_email(
     )
     print(response.status_code)
     print(response.text)
+
+def send_invitation_email(
+    to_email,
+    invite_link,
+    inviter_email,
+    role
+):
+
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": "Xepay <noreply@alasdia.com>",
+            "to": [to_email],
+            "subject": "Invitation à rejoindre Xepay",
+            "html": f"""
+                <h2>Vous avez été invité sur Xepay 🚀</h2>
+
+                <p>
+                    <b>{inviter_email}</b>
+                    vous a invité à rejoindre son workspace.
+                </p>
+
+                <p>
+                    Rôle attribué :
+                    <b>{role}</b>
+                </p>
+
+                <br>
+
+                <a
+                    href="{invite_link}"
+                    style="
+                        background:#2563eb;
+                        color:white;
+                        padding:12px 20px;
+                        border-radius:8px;
+                        text-decoration:none;
+                        font-weight:bold;
+                    "
+                >
+                    Rejoindre Xepay
+                </a>
+
+                <br><br>
+
+                <p>
+                    Ou utilisez ce lien :
+                </p>
+
+                <p>{invite_link}</p>
+            """
+        }
+    )
+
+    print("INVITATION EMAIL")
+    print(response.status_code)
+    print(response.text)
