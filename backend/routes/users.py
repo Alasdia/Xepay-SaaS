@@ -573,10 +573,10 @@ def dashboard():
 
 
 @router.get("/users")
-def get_users(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+def get_users(x_workspace_id: str = Header(None), current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     print("CURRENT USER:", current_user.id)
 
-    workspace_id = current_user.id
+    workspace_id = x_workspace_id or current_user.id
 
     membership = db.query(WorkspaceUser).filter(
         WorkspaceUser.user_id == current_user.id
@@ -618,11 +618,12 @@ def get_users(current_user=Depends(get_current_user), db: Session = Depends(get_
 @router.post("/users")
 def create_user(
     data: dict,
+    x_workspace_id: str = Header(None),
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     # workspace = user.id (ton modèle actuel)
-    workspace_id = current_user.id
+    workspace_id = x_workspace_id or current_user.id
 
     # vérifier si user existe
     existing = db.query(UserDB).filter(
@@ -669,10 +670,11 @@ def create_user(
 @router.post("/invites")
 def create_invite(
     data: dict,
+    x_workspace_id: str = Header(None),
     db: Session = Depends(get_db),
     current_user: UserDB = Depends(get_current_user)
 ):
-    workspace_id = current_user.owner_id or current_user.id
+    workspace_id = x_workspace_id or current_user.id
     email = data.get("email")
     role = data.get("role", "member")
 
@@ -828,6 +830,7 @@ def register(data: dict, db: Session = Depends(get_db)):
 def update_role(
     user_id: str,
     data: dict,
+    x_workspace_id: str = Header(None),
     db: Session = Depends(get_db),
     current_user: UserDB = Depends(get_current_user)
 ):
@@ -837,7 +840,7 @@ def update_role(
     if not user:
         raise HTTPException(404, "User not found")
 
-    workspace_id = current_user.owner_id or current_user.id
+    workspace_id = x_workspace_id or current_user.id
 
     current_membership = db.query(WorkspaceUser).filter(
         WorkspaceUser.user_id == current_user.id,
@@ -886,6 +889,7 @@ def update_role(
 @router.post("/users/{user_id}/toggle")
 def toggle_user(
     user_id: str,
+    x_workspace_id: str = Header(None),
     db: Session = Depends(get_db),
     current_user: UserDB = Depends(get_current_user)
 ):
@@ -894,7 +898,7 @@ def toggle_user(
     if not user:
         raise HTTPException(404)
 
-    workspace_id = current_user.owner_id or current_user.id
+    workspace_id = x_workspace_id or current_user.id
 
     current_membership = db.query(WorkspaceUser).filter(
         WorkspaceUser.user_id == current_user.id,
@@ -939,6 +943,7 @@ def toggle_user(
 @router.delete("/users/{user_id}")
 def delete_user(
     user_id: str,
+    x_workspace_id: str = Header(None),
     db: Session = Depends(get_db),
     current_user: UserDB = Depends(get_current_user)
 ):
@@ -947,7 +952,7 @@ def delete_user(
     if not user:
         raise HTTPException(404)
 
-    workspace_id = current_user.owner_id or current_user.id
+    workspace_id = x_workspace_id or current_user.id
 
     current_membership = db.query(WorkspaceUser).filter(
         WorkspaceUser.user_id == current_user.id,
@@ -995,3 +1000,4 @@ def delete_user(
     db.commit()
 
     return {"message": "Utilisateur supprimé"}
+

@@ -584,6 +584,10 @@
       <p>Gérez votre équipe, les rôles et les permissions d'accès à votre espace marchand.</p>
     </div>
     <div style="display:flex; gap:10px;">
+
+        <select id="workspaceSwitcher">
+        </select>
+
       <button class="btn btn-primary" onclick="openModal('create')">＋ Ajouter un utilisateur</button>
     </div>
   </div>
@@ -949,7 +953,8 @@
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: "Bearer " + localStorage.getItem("token")
+                Authorization: "Bearer " + localStorage.getItem("token"),
+                "X-Workspace-Id": localStorage.getItem("workspace_id")
             },
             body: JSON.stringify({
                 name: name,
@@ -985,6 +990,9 @@
         minute: "2-digit"
       })
     }, 60000)
+</script>
+<script>
+
 </script>
 
 <script>
