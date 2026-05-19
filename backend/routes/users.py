@@ -19,6 +19,7 @@ from fastapi.responses import RedirectResponse
 import os, shutil
 from fastapi.responses import FileResponse
 from fastapi import FastAPI, Request
+from backend.services.email_service import send_invitation_email
 import requests
 import os
 import stripe
@@ -233,8 +234,8 @@ def create_onboarding_link(
 
     account_link = stripe.AccountLink.create(
         account=account.id,
-        refresh_url="http://alasdia.com/pages/profil.html",
-        return_url="http://alasdia.com/pages/profil.html",
+        refresh_url="http://alasdia.com/profil.html",
+        return_url="http://alasdia.com/profil.html",
         type="account_onboarding",
     )
 
@@ -694,6 +695,13 @@ def create_invite(
     db.commit()
 
     invite_link = f"https://alasdia.com/accept-invite.html?token={token}"
+
+    send_invitation_email(
+        to_email=email,
+        invite_link=invite_link,
+        inviter_email=current_user.email,
+        role=role
+    )
 
     return {
         "message": "Invitation créée",
