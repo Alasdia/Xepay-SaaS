@@ -57,7 +57,28 @@ def signup(user: User, db: Session = Depends(get_db)):
         print("👉 BEFORE FLUSH")
 
         db.flush()
-        print("✅ AFTER FLUSH")
+        
+        if user.invite_token:
+
+            token_hash = hashlib.sha256(
+                user.invite_token.encode()
+            ).hexdigest()
+
+            invite = db.query(WorkspaceInvite).filter(
+                WorkspaceInvite.token_hash == token_hash,
+                WorkspaceInvite.used == False
+            ).first()
+
+            if invite:
+                membership = WorkspaceUser(
+                    user_id=new_user.id,
+                    workspace_id=invite.workspace_id,
+                    role=invite.role
+                )
+
+                db.add(membership)
+
+                invite.used = True
 
         try:
             print("🚀 SIGNUP START")
@@ -694,7 +715,7 @@ def create_invite(
     db.add(invite)
     db.commit()
 
-    invite_link = f"https://alasdia.com/accept-invite.html?token={token}"
+    invite_link = f"https://api.alasdia.com/invite/accept?token={token}"
 
     send_invitation_email(
         to_email=email,
@@ -708,13 +729,12 @@ def create_invite(
         "invite_link": invite_link
     }
 
-@router.post("/invites/accept")
+@router.get("/invites/accept")
 def accept_invite(
-    data: dict,
+    token: str,
     db: Session = Depends(get_db)
 ):
 
-    token = data.get("token")
 
     if not token:
         raise HTTPException(400, "Token requis")
@@ -761,24 +781,20 @@ def accept_invite(
 
         db.commit()
 
-        # 🔥 login direct
-        token = create_access_token({
+        jwt_token = create_access_token({
             "sub": existing_user.email
         })
 
-        return {
-            "type": "existing_user",
-            "access_token": token
-        }
-
+        return RedirectResponse(
+            url=f"https://alasdia.com/multi-users.html?token={jwt_token}"
+        )
     # ==================================================
     # CAS 2 → NOUVEL UTILISATEUR
     # ==================================================
 
-    return {
-        "type": "new_user",
-        "email": invite.email
-    }
+    return RedirectResponse(
+        url=f"https://alasdia.com/signup.html?token={token}"
+    )
 
 @router.post("/auth/register")
 def register(data: dict, db: Session = Depends(get_db)):

@@ -14,6 +14,7 @@ from sqlalchemy import Index
 class User(BaseModel):
     email: str
     password: str
+    invite_token: Optional[str] = None
 
 class ProfileRequest(BaseModel):
     full_name: str
@@ -200,6 +201,8 @@ class WorkspaceUser(Base):
     user_id = Column(String, ForeignKey("users.id"))
     workspace_id = Column(String, ForeignKey("users.id"))
     role = Column(String, default="member")
+
+
 
 class WorkspaceInvite(Base):
     __tablename__ = "workspace_invites"
