@@ -713,11 +713,11 @@ def accept_invite(
     data: dict,
     db: Session = Depends(get_db)
 ):
-    token = data.get("token")
-    password = data.get("password")
 
-    if not token or not password:
-        raise HTTPException(400, "Token et mot de passe requis")
+    token = data.get("token")
+
+    if not token:
+        raise HTTPException(400, "Token requis")
 
     token_hash = hashlib.sha256(token.encode()).hexdigest()
 
@@ -732,35 +732,53 @@ def accept_invite(
     if invite.expires_at < datetime.utcnow():
         raise HTTPException(400, "Invitation expirée")
 
-    # vérifier si user existe déjà
-    existing_user = db.query(UserDB).filter(UserDB.email == invite.email).first()
+    # 🔥 vérifier si user existe déjà
+    existing_user = db.query(UserDB).filter(
+        UserDB.email == invite.email
+    ).first()
 
+    # ==================================================
+    # CAS 1 → USER EXISTANT
+    # ==================================================
     if existing_user:
-        user = existing_user
-    else:
-        user = UserDB(
-            email=invite.email,
-            password=hash_password(password)
-        )
-        db.add(user)
+
+        already_member = db.query(WorkspaceUser).filter(
+            WorkspaceUser.user_id == existing_user.id,
+            WorkspaceUser.workspace_id == invite.workspace_id
+        ).first()
+
+        if not already_member:
+
+            membership = WorkspaceUser(
+                user_id=existing_user.id,
+                workspace_id=invite.workspace_id,
+                role=invite.role
+            )
+
+            db.add(membership)
+
+        invite.used = True
+
         db.commit()
-        db.refresh(user)
 
-    # créer membership
-    membership = WorkspaceUser(
-        user_id=user.id,
-        workspace_id=invite.workspace_id,
-        role=invite.role
-    )
-    db.add(membership)
+        # 🔥 login direct
+        token = create_access_token({
+            "sub": existing_user.email
+        })
 
-    # marquer invitation utilisée
-    invite.used = True
+        return {
+            "type": "existing_user",
+            "access_token": token
+        }
 
-    db.commit()
+    # ==================================================
+    # CAS 2 → NOUVEL UTILISATEUR
+    # ==================================================
 
-    return {"message": "Compte activé"}
-
+    return {
+        "type": "new_user",
+        "email": invite.email
+    }
 @router.post("/auth/register")
 def register(data: dict, db: Session = Depends(get_db)):
 
