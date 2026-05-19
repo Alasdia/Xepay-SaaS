@@ -24,7 +24,7 @@ class LogMiddleware(BaseHTTPMiddleware):
             "/webhook",
             "/pay",
             "/ai",
-            "/invites/accept",
+            "/invite/accept",
         ]
         print("PATH:", request.url.path)
 
