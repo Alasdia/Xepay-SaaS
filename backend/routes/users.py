@@ -779,6 +779,7 @@ def accept_invite(
         "type": "new_user",
         "email": invite.email
     }
+
 @router.post("/auth/register")
 def register(data: dict, db: Session = Depends(get_db)):
 
