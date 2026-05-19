@@ -927,6 +927,40 @@
       el.style.opacity = "0.6"
     }
   }
+
+  async function loadWorkspaces() {
+
+  const res = await fetch("https://api.alasdia.com/users", {
+    headers: {
+      Authorization: "Bearer " + localStorage.getItem("token")
+    }
+  })
+
+  const currentUser = await res.json()
+
+  const select = document.getElementById("workspaceSwitcher")
+
+  // exemple temporaire
+  // plus tard tu chargeras les vrais workspaces via API
+
+  const workspaceId = currentUser[0]?.id
+
+  select.innerHTML = `
+    <option value="${workspaceId}">
+      Workspace principal
+    </option>
+  `
+
+  // sauvegarde auto
+  localStorage.setItem("workspace_id", workspaceId)
+
+  select.addEventListener("change", () => {
+    localStorage.setItem("workspace_id", select.value)
+    loadUsers()
+  })
+}
+
+loadWorkspaces()
   async function deleteUser(i) {
     const u = users[i]
 
