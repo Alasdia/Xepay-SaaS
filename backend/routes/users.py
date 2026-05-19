@@ -715,7 +715,7 @@ def create_invite(
     db.add(invite)
     db.commit()
 
-    invite_link = f"https://api.alasdia.com/invite/accept?token={token}"
+    invite_link = f"https://api.alasdia.com/invites/accept?token={token}"
 
     send_invitation_email(
         to_email=email,
