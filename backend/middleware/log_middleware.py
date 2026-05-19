@@ -23,7 +23,8 @@ class LogMiddleware(BaseHTTPMiddleware):
             "/openapi.json",
             "/webhook",
             "/pay",
-            "/ai"
+            "/ai",
+            "/invites/accept",
         ]
         print("PATH:", request.url.path)
 
