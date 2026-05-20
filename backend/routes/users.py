@@ -1001,3 +1001,34 @@ def delete_user(
 
     return {"message": "Utilisateur supprimé"}
 
+@router.get("/workspaces/me")
+def get_my_workspaces(
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+
+    memberships = db.query(WorkspaceUser).filter(
+        WorkspaceUser.user_id == current_user.id
+    ).all()
+
+    workspaces = []
+
+    for membership in memberships:
+
+        owner = db.query(UserDB).filter(
+            UserDB.id == membership.workspace_id
+        ).first()
+
+        workspace_name = (
+            f"{owner.email.split('@')[0]} Workspace"
+            if owner else
+            "Workspace"
+        )
+
+        workspaces.append({
+            "id": membership.workspace_id,
+            "name": workspace_name,
+            "role": membership.role
+        })
+
+    return workspaces

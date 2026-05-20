@@ -930,37 +930,52 @@
 
   async function loadWorkspaces() {
 
-  const res = await fetch("https://api.alasdia.com/users", {
-    headers: {
-      Authorization: "Bearer " + localStorage.getItem("token")
+    try {
+
+      const res = await fetch("https://api.alasdia.com/workspaces/me", {
+        headers: {
+          Authorization: "Bearer " + localStorage.getItem("token")
+        }
+      })
+
+      const workspaces = await res.json()
+
+      console.log("WORKSPACES:", workspaces)
+
+      const select = document.getElementById("workspaceSwitcher")
+
+      select.innerHTML = workspaces.map(w => `
+        <option value="${w.id}">
+          ${w.name}
+        </option>
+      `).join("")
+
+      const savedWorkspace = localStorage.getItem("workspace_id")
+
+      if (
+        savedWorkspace &&
+        workspaces.some(w => String(w.id) === savedWorkspace)
+      ) {
+        select.value = savedWorkspace
+      } else if (workspaces.length > 0) {
+        select.value = workspaces[0].id
+        localStorage.setItem("workspace_id", workspaces[0].id)
+      }
+
+      select.addEventListener("change", () => {
+
+        localStorage.setItem("workspace_id", select.value)
+
+        loadUsers()
+      })
+
+    } catch (err) {
+
+      console.error("Erreur loadWorkspaces:", err)
     }
-  })
-
-  const currentUser = await res.json()
-
-  const select = document.getElementById("workspaceSwitcher")
-
-  // exemple temporaire
-  // plus tard tu chargeras les vrais workspaces via API
-
-  const workspaceId = currentUser[0]?.id
-
-  select.innerHTML = `
-    <option value="${workspaceId}">
-      Workspace principal
-    </option>
-  `
-<!-- test -->
-  // sauvegarde auto
-  localStorage.setItem("workspace_id", workspaceId)
-
-  select.addEventListener("change", () => {
-    localStorage.setItem("workspace_id", select.value)
-    loadUsers()
-  })
-}
-
-loadWorkspaces()
+  }
+  loadWorkspaces()
+  
   async function deleteUser(i) {
     const u = users[i]
 
