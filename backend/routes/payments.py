@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from backend.auth import get_current_user
 from backend.models import Payment, Link
 from backend.models import UserDB
-from fastapi import Header, HTTPException
 import os
 from typing import Optional
 from sqlalchemy.orm import joinedload
@@ -168,7 +167,6 @@ def test_wallet():
 def get_transactions(
     db: Session = Depends(get_db),
     user: UserDB = Depends(get_current_user),
-    workspace_id: str = Header(..., alias="X-Workspace-Id"),
     status: Optional[str] = None,
     offset: int = 0,
     limit: int = 10
@@ -179,20 +177,19 @@ def get_transactions(
     # 🔹 récupérer liens
     links = db.query(Link).filter(
         Link.user_id == user.id,
-        Link.workspace_id == workspace_id
     ).all()
 
     # 🔹 récupérer paiements
     payments = (
         db.query(Payment)
         .options(joinedload(Payment.link))
-        .filter(Payment.user_id == user.id,Payment.workspace_id == workspace_id)
+        .filter(Payment.user_id == user.id)
         .all()
     )
     print("STATUS DEMANDÉ:", status)
 
     if status and status != "Tous":
-        payments = [p for p in payments if p.status == status]
+        payments = payments.filter(Payment.status == status)
     print("STATUS FILTER:", status)
     print("PAYMENTS COUNT:", len(payments))
     
