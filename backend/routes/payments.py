@@ -192,7 +192,7 @@ def get_transactions(
     print("STATUS DEMANDÉ:", status)
 
     if status and status != "Tous":
-        payments = payments.filter(Payment.status == status)
+        payments = [p for p in payments if p.status == status]
     print("STATUS FILTER:", status)
     print("PAYMENTS COUNT:", len(payments))
     
