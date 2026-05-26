@@ -684,9 +684,14 @@
 
   async function loadUsers() {
     try {
+      
+      const workspaceId = localStorage.getItem("workspace_id")
+      console.log("WORKSPACE ACTIVE =", workspaceId)
+      
       const res = await fetch("https://api.alasdia.com/users", {
         headers: {
-          Authorization: "Bearer " + localStorage.getItem("token")
+          Authorization: "Bearer " + localStorage.getItem("token"),
+          "X-Workspace-Id": workspaceId
         }
       })
 
@@ -960,13 +965,13 @@
       } else if (workspaces.length > 0) {
         select.value = workspaces[0].id
         localStorage.setItem("workspace_id", workspaces[0].id)
+        await loadUsers()
       }
 
       select.addEventListener("change", () => {
 
         localStorage.setItem("workspace_id", select.value)
 
-        loadUsers()
       })
 
     } catch (err) {
