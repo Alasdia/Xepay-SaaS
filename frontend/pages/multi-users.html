@@ -968,10 +968,19 @@
         await loadUsers()
       }
 
-      select.addEventListener("change", () => {
+      select.addEventListener("change", async () => {
 
-        localStorage.setItem("workspace_id", select.value)
+        const workspaceId = select.value
 
+        console.log("SWITCH TO:", workspaceId)
+
+        localStorage.setItem("workspace_id", workspaceId)
+
+        users = []
+
+        renderTable()
+
+        await loadUsers()
       })
 
     } catch (err) {
