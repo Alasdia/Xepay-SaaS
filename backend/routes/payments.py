@@ -168,7 +168,7 @@ def test_wallet():
 def get_transactions(
     db: Session = Depends(get_db),
     user: UserDB = Depends(get_current_user),
-    workspace_id: int = Header(..., alias="X-Workspace-Id"),
+    workspace_id: str = Header(..., alias="X-Workspace-Id"),
     status: Optional[str] = None,
     offset: int = 0,
     limit: int = 10
