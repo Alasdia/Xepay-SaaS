@@ -1211,7 +1211,8 @@ if (!token) {
         // 📊 Progression
         const planRes = await fetch("https://api.alasdia.com/me/plan", {
             headers: {
-                Authorization: "Bearer " + token
+                Authorization: "Bearer " + token,
+                "X-Workspace-Id": localStorage.getItem("workspace_id")
             }
         })
 
