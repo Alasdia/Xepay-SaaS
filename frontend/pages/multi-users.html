@@ -42,149 +42,138 @@
 
   .mono { font-family: 'JetBrains Mono', monospace; }
   
-  
-#sidebar {
-  width: 290px;
+  #sidebar {
+  width: 260px;
   background: linear-gradient(180deg, #101652 0%, #0b1138 100%);
   position: fixed;
   top: 0;
   bottom: 0;
   left: 0;
   z-index: 100;
-
-  padding: 28px 18px;
-
-  display: flex;
-  flex-direction: column;
-
+  padding: 20px;
   overflow-y: auto;
 }
 
-/* MENU */
-#sidebar .nav {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  margin-top: 18px;
+#sidebar::-webkit-scrollbar {
+  width: 6px;
 }
 
-/* ITEM */
-#sidebar .nav-item {
-  width: 100%;
+#sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 3px;
 }
 
-/* LINK */
-#sidebar .nav-link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  width: 100%;
-
-  padding: 16px 18px;
-
-  border-radius: 14px;
-
-  color: rgba(255,255,255,0.88);
-
+.nav-link {
+  color: rgba(255,255,255,0.8);
+  border-radius: 8px;
+  transition: 0.2s;
+  padding: 12px 14px;
+  display: block;
   text-decoration: none;
-  font-weight: 600;
-
-  transition: all .25s ease;
 }
 
-/* HOVER */
-#sidebar .nav-link:hover {
-  background: rgba(255,255,255,0.08);
-  transform: translateX(4px);
+.nav-link:hover {
+  background: rgba(255,255,255,0.1);
   color: white;
 }
 
-/* ACTIVE */
-#sidebar .nav-link.active-link {
-  background: rgba(255,255,255,0.14);
-  box-shadow: 0 0 20px rgba(255,255,255,0.08);
+.nav-link.active-link {
+  background: rgba(255,255,255,0.15);
+  color: white;
+  border-radius: 8px;
 }
 
-/* BADGE */
-#sidebar .badge-web3 {
-  margin-left: 12px;
-  flex-shrink: 0;
-}
+  .sidebar::-webkit-scrollbar { width: 6px; }
+  .sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15);
+    border-radius: 3px;
+  }
 
-/* CARD */
-#sidebar .card {
-  margin-top: 28px;
-  padding: 18px !important;
-}
-
-/* LOGOUT */
-#sidebar .nav-link.text-center {
-  margin-top: 14px;
-}
-.badge-web3 {
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+  .nav-item .left { display: flex; align-items: center; gap: 10px; }
+.badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
 
-  padding: 6px 14px;
+  padding: 5px 12px;
   border-radius: 999px;
 
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.5px;
 
   position: relative;
   overflow: hidden;
 
-  width: fit-content;
+  backdrop-filter: blur(6px);
 }
-
-/* PRO */
-.badge-web3.pro {
-  color: #22d3ee;
-  background: rgba(34,211,238,0.08);
-  border: 1px solid rgba(34,211,238,0.4);
-
+/* ===== FREE (VERT) ===== */
+.badge.free {
+  color: #22c55e;
+  background: linear-gradient(
+    135deg,
+    rgba(34,197,94,0.15),
+    rgba(34,197,94,0.05)
+  );
+  border: 1px solid rgba(34,197,94,0.4);
   box-shadow:
-    0 0 8px rgba(34,211,238,0.4),
-    0 0 20px rgba(34,211,238,0.2);
+    0 0 10px rgba(34,197,94,0.5),
+    inset 0 0 6px rgba(34,197,94,0.2);
+}
+/* ===== PRO (cyan Web3 propre) ===== */
+.badge.pro {
+  color: #a855f7;
+  background: linear-gradient(
+    135deg,
+    rgba(168,85,247,0.15),
+    rgba(168,85,247,0.05)
+  );
+  border: 1px solid rgba(168,85,247,0.4);
+  box-shadow:
+    0 0 12px rgba(168,85,247,0.6),
+    inset 0 0 8px rgba(168,85,247,0.25);
 }
 
-/* BUSINESS */
-.badge-web3.business {
+/* ===== BUSINESS (gold premium clean) ===== */
+.badge.business {
   color: #facc15;
-  background: rgba(250,204,21,0.08);
+  background: linear-gradient(
+    135deg,
+    rgba(250,204,21,0.2),
+    rgba(250,204,21,0.05)
+  );
   border: 1px solid rgba(250,204,21,0.5);
-
   box-shadow:
-    0 0 10px rgba(250,204,21,0.5),
-    0 0 25px rgba(250,204,21,0.25);
+    0 0 12px rgba(250,204,21,0.6),
+    inset 0 0 8px rgba(250,204,21,0.25);
 }
-
-/* SHIMMER */
-.badge-web3::after {
+/* ===== LIGHT SWEEP EFFECT ===== */
+.badge::before {
   content: "";
-
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: -60%;
+
+  width: 40%;
+  height: 100%;
 
   background: linear-gradient(
     120deg,
     transparent,
-    rgba(255,255,255,0.5),
+    rgba(255,255,255,0.6),
     transparent
   );
 
-  transform: translateX(-100%);
-  animation: shimmer 2.5s infinite;
+  transform: skewX(-20deg);
+  animation: shine 3s infinite;
 }
 
-@keyframes shimmer {
-  100% {
-    transform: translateX(100%);
-  }
+@keyframes shine {
+  0% { left: -60%; }
+  100% { left: 120%; }
 }  
+  
   /* ---------- Main ---------- */
   main {
     flex: 1;
@@ -527,117 +516,34 @@
 <body>
 
 <!-- Sidebar -->
-<div id="sidebar" class="d-flex flex-column p-3">
-
-  <div class="mb-4 mt-2">
-    <h4 class="text-white fw-bold">⚡ Xepay</h4>
-    <small class="text-white-50">
-      Tableau de bord marchand
-    </small>
+<aside id="sidebar" class="sidebar">
+  <div class="brand">
+    <div class="bolt"></div>
+    <h1>Xepay</h1>
   </div>
+  <p class="brand-sub">Tableau de bord marchand</p>
 
   <div class="mb-4">
-    <span id="badge-plan" class="badge-web3 pro">
-      PRO
-    </span>
+    <span id="badge-plan" class="badge pro">PRO</span>
   </div>
 
-  <ul class="nav nav-pills flex-column gap-1">
+  <a class="nav-item" href="dashboard.html"><span class="left">🏠 Accueil</span></a>
+  <a class="nav-item" href="transactions.html"><span class="left">💳 Transactions</span></a>
+  <a class="nav-item" href="liens.html"><span class="left">🔗 Mes liens de paiement</span></a>
+  <a class="nav-item" href="API.html"><span class="left">⚙️ API Access</span><span class="badge pro">PRO</span></a>
+  <a class="nav-item active" href="multi-users.html"><span class="left">👥 Multi-utilisateurs</span><span class="badge business">BUSINESS</span></a>
+  <a class="nav-item" href="profil.html"><span class="left">👤 Profil / KYC</span></a>
+  <a class="nav-item" href="sécurité.html"><span class="left">🔒 Sécurité</span></a>
 
-    <li class="nav-item">
-      <a href="./dashboard.html"
-         class="nav-link text-white">
-        🏠 Accueil
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a href="./transactions.html"
-         class="nav-link text-white">
-        💳 Transactions
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a href="./liens.html"
-         class="nav-link text-white">
-        🔗 Mes liens de paiement
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a href="API.html"
-         class="nav-link text-white-50 d-flex justify-content-between">
-        ⚙️ API Access
-
-        <span class="badge-web3 pro">
-          Pro
-        </span>
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a href="multi-users.html"
-         class="nav-link text-white active-link d-flex justify-content-between">
-
-        <span>
-          👥 Multi-utilisateurs
-        </span>
-
-        <span class="badge-web3 business">
-          Business
-        </span>
-
-      </a>
-    </li>
-
-    <li class="nav-item mt-2">
-      <a href="./profil.html"
-         class="nav-link text-white">
-        👤 Profil / KYC
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a href="./sécurité.html"
-         class="nav-link text-white">
-        🔒 Sécurité
-      </a>
-    </li>
-
-  </ul>
-
-  <div class="mt-auto">
-
-    <div class="card border-0 p-3"
-         style="
-           background: rgba(255,255,255,0.1);
-           border-radius: 12px;
-         ">
-
-      <p class="text-white mb-2"
-         style="font-size:0.85rem;">
-        Débloquez plus de fonctionnalités
-      </p>
-
-      <button
-        class="btn btn-warning btn-sm w-100 fw-bold">
-        ⚡ Upgrader
-      </button>
-
-    </div>
-
-    <a href="login.html"
-       onclick="logout()"
-       class="nav-link text-white-50 mt-3 text-center fw-bold">
-
-      🚪 Déconnexion
-
-    </a>
-
+  <div class="upsell">
+    <p><strong>Débloquez plus de fonctionnalités</strong></p>
+    <button>⚡ Upgrader</button>
   </div>
+  <a href="login.html" (onclick="logout())" class="nav-link text-white-50 mt-3 text-center fw-bold">
+    🚪 Déconnexion
+  </a>
+</aside>
 
-</div>
 <!-- Main -->
 <main>
   <div class="header">
