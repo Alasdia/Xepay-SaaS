@@ -7,8 +7,12 @@ from backend.models import PaymentCreate, PaymentResponse
 from fastapi import Depends
 from sqlalchemy.orm import Session
 from backend.auth import get_current_user
+from backend.services.workspace_service import (
+    get_workspace_owner_id
+)
 from backend.models import Payment, Link
 from backend.models import UserDB
+from fastapi import Header
 import os
 from typing import Optional
 from sqlalchemy.orm import joinedload
@@ -167,23 +171,33 @@ def test_wallet():
 def get_transactions(
     db: Session = Depends(get_db),
     user: UserDB = Depends(get_current_user),
+    workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    ),
     status: Optional[str] = None,
     offset: int = 0,
     limit: int = 10
 ):
+    owner_id = get_workspace_owner_id(
+        user,
+        workspace_id,
+        db
+    )
+
     print("CURRENT USER:", user.id)
     now = datetime.now(timezone.utc)
 
     # 🔹 récupérer liens
     links = db.query(Link).filter(
-        Link.user_id == user.id,
+        Link.user_id == owner_id,
     ).all()
 
     # 🔹 récupérer paiements
     payments = (
         db.query(Payment)
         .options(joinedload(Payment.link))
-        .filter(Payment.user_id == user.id)
+        .filter(Payment.user_id == owner_id)
         .all()
     )
     print("STATUS DEMANDÉ:", status)
@@ -252,21 +266,31 @@ def get_transactions(
 @router.get("/stats")
 def get_stats(
     db: Session = Depends(get_db),
-    user: UserDB = Depends(get_current_user)
+    user: UserDB = Depends(get_current_user),
+    workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    )
 ):
+    owner_id = get_workspace_owner_id(
+        user,
+        workspace_id,
+        db
+    )
+
     now = datetime.now(timezone.utc)
 
     start_month = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
 
     # 🔹 Récupération des données
     links = db.query(Link).filter(
-        Link.user_id == user.id,
+        Link.user_id == owner_id,
         Link.created_at >= start_month
     ).all()
 
     payments = (
       db.query(Payment)
-      .filter(Payment.user_id == user.id)
+      .filter(Payment.user_id == owner_id)
       .all()
     ) 
     
@@ -281,7 +305,7 @@ def get_stats(
     total_received = sum(p.amount_local if p.amount_local not in (None, 0) else p.amount for p in paid_payments)
 
     pending_withdraw = db.query(Withdrawal).filter(
-        Withdrawal.user_id == user.id,
+        Withdrawal.user_id == owner_id,
         Withdrawal.status == "pending"
     ).all()
 
