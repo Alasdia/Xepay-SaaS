@@ -7,6 +7,10 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from backend.models import Link
 from fastapi import Depends
+from backend.services.workspace_service import (
+    get_workspace_owner_id
+)
+from fastapi import Header
 from backend.database import get_db, SessionLocal
 from backend.models import LinkCreate
 from backend.models import Link, Payment
@@ -175,13 +179,23 @@ def get_links(
     limit: int = 10,
     offset: int = 0,
     db: Session = Depends(get_db),
-    user: UserDB = Depends(get_current_user)
+    user: UserDB = Depends(get_current_user),
+    workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    )
 ):  
     print("USER ID:", user.id)
 
+    owner_id = get_workspace_owner_id(
+        user,
+        workspace_id,
+        db
+    )
+
     links = (
         db.query(Link)
-        .filter(Link.user_id == user.id)
+        .filter(Link.user_id == owner_id)
         .filter(Link.source == "links")
         .filter(Link.deleted == False)
         .filter(Link.archived == False) 
