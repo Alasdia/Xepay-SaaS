@@ -3,6 +3,9 @@ from sqlalchemy.orm import Session
 from backend.database import engine, get_db
 from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, PlanUpdate, Link
 from backend.auth import get_current_user
+from backend.services.workspace_service import (
+    get_workspace_owner_id
+)
 from backend.security import verify_password, create_access_token
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import text
@@ -232,21 +235,33 @@ def google_callback(code: str, db: Session = Depends(get_db)):
 @router.post("/onboarding")
 def create_onboarding_link(
     current_user: UserDB = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    )
 ):
-    
-    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+    owner_id = get_workspace_owner_id(
+        current_user,
+        workspace_id,
+        db
+    )
+
+    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
 
     if not profile:
-        profile = Profile(user_id=current_user.id)
+        profile = Profile(user_id=owner_id)
         db.add(profile)
         db.commit()
         db.refresh(profile)
 
     if not profile.stripe_account_id:
+        workspace_user = db.query(UserDB).filter(
+            UserDB.id == owner_id
+        ).first()
         account = stripe.Account.create(
             type="express",
-            email=current_user.email,
+            email=workspace_user.email,
         )
         profile.stripe_account_id = account.id
         db.commit()
@@ -263,9 +278,22 @@ def create_onboarding_link(
     return {"url": account_link.url}
 
 @router.get("/stripe/login-link")
-def get_login_link(current_user: UserDB = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_login_link(
+    current_user: UserDB = Depends(get_current_user), 
+    db: Session = Depends(get_db),
+    workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    )
+):
 
-    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+    owner_id = get_workspace_owner_id(
+        current_user,
+        workspace_id,
+        db
+    )
+
+    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
 
     if not profile or not profile.stripe_account_id:
         raise HTTPException(status_code=400, detail="No Stripe account")
@@ -279,12 +307,21 @@ def get_login_link(current_user: UserDB = Depends(get_current_user), db: Session
 @router.get("/stripe/status")
 def stripe_status(
     current_user: UserDB = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    )
 ):
+    owner_id = get_workspace_owner_id(
+        current_user,
+        workspace_id,
+        db
+    )
 
     print("🔥 STRIPE STATUS HIT 🔥")
 
-    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
 
     # ❌ pas de compte Stripe
     if not profile or not profile.stripe_account_id:
@@ -325,12 +362,6 @@ def stripe_status(
         }
     }
 
-@router.get("/me")
-def get_me(current_user = Depends(get_current_user)):
-    return {
-        "email": current_user.email,
-        "plan": current_user.plan
-    }
 
 @router.post("/change-password")
 def change_password(
@@ -379,14 +410,24 @@ def change_password(
 def get_me(
     request: Request,
     user = Depends(get_current_user), 
-    db: Session = Depends(get_db)):
+    db: Session = Depends(get_db),
+    workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    )
+):
+    owner_id = get_workspace_owner_id(
+        user,
+        workspace_id,
+        db
+    )
 
     # 🔹 garantir wallet (idempotent)
-    wallet = db.query(Wallet).filter(Wallet.user_id == user.id).first()
+    wallet = db.query(Wallet).filter(Wallet.user_id == owner_id).first()
 
     if not wallet:
         wallet = Wallet(
-            user_id=user.id,
+            user_id=owner_id,
             balance=0,
             created_at=datetime.now(timezone.utc)
         )
@@ -453,15 +494,25 @@ def update_kyc_status(
 @router.get("/profile")
 def get_profile(
     current_user: UserDB = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    )
 ):
+    
+    owner_id = get_workspace_owner_id(
+        current_user,
+        workspace_id,
+        db
+    )
     print("ROUTE PROFILE LOADED")
     
-    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
 
     if not profile:
         profile = Profile(
-            user_id=current_user.id,
+            user_id=owner_id,
             full_name=None,
             phone=None,
         )
@@ -481,9 +532,19 @@ def get_profile(
 @router.get("/me/user-plan")
 def get_my_plan(
     current_user=Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    )
 ):
-    user = db.query(UserDB).filter(UserDB.email == current_user.email).first()
+    owner_id = get_workspace_owner_id(
+        current_user,
+        workspace_id,
+        db
+    )
+
+    user = db.query(UserDB).filter(UserDB.id == owner_id).first()
 
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable")
@@ -496,16 +557,28 @@ def get_my_plan(
 @router.get("/me/plan")
 def get_plan(
     db: Session = Depends(get_db),
-    user: UserDB = Depends(get_current_user)
+    user: UserDB = Depends(get_current_user),
+    workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    )
 ):
+    owner_id = get_workspace_owner_id(
+        user,
+        workspace_id,
+        db
+    )
     
     PLAN_LIMITS = {
         "free": {"paid": 10, "links": 30},
         "pro": {"paid": 100, "links": 200},
         "business": {"paid": None, "links": None}
     }
+    workspace_user = db.query(UserDB).filter(
+        UserDB.id == owner_id
+    ).first()
 
-    plan = getattr(user, "plan", "free")
+    plan = getattr(workspace_user, "plan", "free")
     limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
     
     now = datetime.now(timezone.utc)
@@ -519,7 +592,7 @@ def get_plan(
 
 
     links_count = db.query(Link).filter(
-        Link.user_id == user.id,
+        Link.user_id == owner_id,
         Link.created_at >= start,
         Link.created_at < end
     ).count()
@@ -527,7 +600,7 @@ def get_plan(
     paid_count = (
       db.query(Payment.link_id)
         .join(Link, Payment.link_id == Link.id)
-        .filter(Link.user_id == user.id)
+        .filter(Link.user_id == owner_id)
         .filter(Payment.status.in_(["paid", "success", "réussi"]))
         .filter(Payment.created_at >= start)
         .filter(Payment.created_at < end)
@@ -546,9 +619,19 @@ def get_plan(
 def change_plan(
     data: PlanUpdate,
     current_user=Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    )
 ):
-    user = db.query(UserDB).filter(UserDB.email == current_user.email).first()
+    owner_id = get_workspace_owner_id(
+        current_user,
+        workspace_id,
+        db
+    )
+
+    user = db.query(UserDB).filter(UserDB.id == owner_id).first()
 
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable")
