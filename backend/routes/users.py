@@ -439,6 +439,7 @@ def get_me(
 
     return {
         "email": user.email,
+        "plan": getattr(user, "plan", "free"),
         "wallet": {
             "balance": wallet.balance,
             "created_at": wallet.created_at
