@@ -1720,7 +1720,8 @@ async function loadUser() {
 
   const res = await fetch("https://api.alasdia.com/me/user-plan", {
     headers: {
-      "Authorization": "Bearer " + token
+      "Authorization": "Bearer " + token,
+      "X-Workspace-Id": localStorage.getItem("workspace_id")
     }
   })
 
@@ -1736,7 +1737,8 @@ async function loadPlan() {
 
     const res = await fetch("https://api.alasdia.com/me/plan", {
       headers: {
-        Authorization: "Bearer " + token
+        Authorization: "Bearer " + token,
+        "X-Workspace-Id": localStorage.getItem("workspace_id")
       }
     });
 
