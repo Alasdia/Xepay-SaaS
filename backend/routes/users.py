@@ -437,9 +437,13 @@ def get_me(
     user_agent = request.headers.get("user-agent", "Inconnu")
     ip = request.client.host if request.client else "Inconnue"
 
+    workspace_owner = db.query(UserDB).filter(
+        UserDB.id == owner_id
+    ).first()
+
     return {
         "email": user.email,
-        "plan": getattr(user, "plan", "free"),
+        "plan": getattr(workspace_owner, "plan", "free"),
         "wallet": {
             "balance": wallet.balance,
             "created_at": wallet.created_at
