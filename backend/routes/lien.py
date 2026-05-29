@@ -39,14 +39,24 @@ print(Link.__table__.columns.keys())
 def create_link(
     data: LinkCreate, 
     db: Session = Depends(get_db),
-    user: UserDB = Depends(get_current_user)
+    user: UserDB = Depends(get_current_user),
+        workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    )
 ):
+    
+    owner_id = get_workspace_owner_id(
+        user,
+        workspace_id,
+        db
+    )
 
     current_month = datetime.now(timezone.utc).month
     current_year = datetime.now(timezone.utc).year
 
     links_count = db.query(Link).filter(
-        Link.user_id == user.id,
+        Link.user_id == owner_id,
         extract("month", Link.created_at) == current_month,
         extract("year", Link.created_at) == current_year
     ).count()
@@ -63,7 +73,7 @@ def create_link(
     paid_count = (
         db.query(Payment.link_id)
         .join(Link, Payment.link_id == Link.id)
-        .filter(Link.user_id == user.id)
+        .filter(Link.user_id == owner_id)
         .filter(Payment.status.in_(["paid", "success", "réussi"]))
         .filter(Payment.created_at >= start)
         .filter(Payment.created_at < end)
@@ -109,7 +119,7 @@ def create_link(
     link = Link(
         id=internal_id,
         token=hashed_token,
-        user_id=user.id,
+        user_id=owner_id,
         email=user.email,
         name=data.name.strip() if data.name else "Lien de paiement",
         amount=data.amount,
@@ -130,12 +140,22 @@ def create_link(
 @router.get("/links/dashboard")
 def get_dashboard_links(
     db: Session = Depends(get_db),
-    user: UserDB = Depends(get_current_user)
+    user: UserDB = Depends(get_current_user),
+    workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    )
 ):
+    owner_id = get_workspace_owner_id(
+        user,
+        workspace_id,
+        db
+    )
+
     now = datetime.now(timezone.utc)
     links = (
         db.query(Link)
-        .filter(Link.user_id == user.id)
+        .filter(Link.user_id == owner_id)
         .filter(Link.source == "dashboard")
         .filter(Link.archived == False)
         .filter(Link.deleted == False)
@@ -147,7 +167,7 @@ def get_dashboard_links(
 
     paid_links_count = db.query(Payment)\
         .join(Link, Payment.link_id == Link.id)\
-        .filter(Link.user_id == user.id)\
+        .filter(Link.user_id == owner_id)\
         .filter(Payment.status == "paid")\
         .filter(Payment.created_at >= start_month)\
         .count()
@@ -351,11 +371,21 @@ def create_checkout(
 def delete_link(
     id: str, 
     db: Session = Depends(get_db),
-    user: UserDB = Depends(get_current_user)
+    user: UserDB = Depends(get_current_user),
+    workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    )
 ):
+    owner_id = get_workspace_owner_id(
+        user,
+        workspace_id,
+        db
+    )
+
     link = db.query(Link).filter(
         Link.id == id, 
-        Link.user_id == user.id
+        Link.user_id == owner_id
     ).first()
 
     if not link:
@@ -370,11 +400,22 @@ def delete_link(
 def archive_link(
     id: str,
     db: Session = Depends(get_db),
-    user: UserDB = Depends(get_current_user)
+    user: UserDB = Depends(get_current_user),
+    workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    )
 ):
+    
+    owner_id = get_workspace_owner_id(
+        user,
+        workspace_id,
+        db
+    )
+
     lien = db.query(Link).filter(
         Link.id == id,
-        Link.user_id == user.id
+        Link.user_id == owner_id
     ).first()
 
     if not lien:

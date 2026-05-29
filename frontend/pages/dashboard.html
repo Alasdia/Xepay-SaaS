@@ -1080,7 +1080,8 @@ if (!token) {
         try {
           const res = await fetch("https://api.alasdia.com/profile", {
             headers: {
-              Authorization: "Bearer " + localStorage.getItem("token")
+              Authorization: "Bearer " + localStorage.getItem("token"),
+              "X-Workspace-Id": localStorage.getItem("workspace_id")
             }
           })
 
@@ -1120,7 +1121,8 @@ if (!token) {
 
         const res = await fetch("https://api.alasdia.com/me/plan", {
             headers: {
-                Authorization: "Bearer " + token
+                Authorization: "Bearer " + token,
+                "X-Workspace-Id": localStorage.getItem("workspace_id")
             }
         });
 
@@ -1189,7 +1191,8 @@ if (!token) {
 
         const res = await fetch("https://api.alasdia.com/stats", {
           headers: {
-            Authorization: "Bearer " + token
+            Authorization: "Bearer " + token,
+            "X-Workspace-Id": localStorage.getItem("workspace_id")
           }
         })
 
@@ -1242,7 +1245,8 @@ if (!token) {
       try {
         const res = await fetch("https://api.alasdia.com/wallet/me", {
             headers: {
-                Authorization: "Bearer " + localStorage.getItem("token")
+                Authorization: "Bearer " + localStorage.getItem("token"),
+                "X-Workspace-Id": localStorage.getItem("workspace_id")
             }
         });
 
@@ -1271,7 +1275,8 @@ if (!token) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer " + localStorage.getItem("token")
+          "Authorization": "Bearer " + localStorage.getItem("token"),
+          "X-Workspace-Id": localStorage.getItem("workspace_id")
         },
         body: JSON.stringify({
           amount: amount,
@@ -1313,7 +1318,8 @@ if (!token) {
 
       fetch("https://api.alasdia.com/links/dashboard", {
         headers: {
-          "Authorization": "Bearer " + localStorage.getItem("token")
+          "Authorization": "Bearer " + localStorage.getItem("token"),
+          "X-Workspace-Id": localStorage.getItem("workspace_id")
         }
       })
       .then(res => res.json())
@@ -1388,7 +1394,9 @@ if (!token) {
       try {
         const res = await fetch(`https://api.alasdia.com/archive/${id}`, {
           method: "POST",
-          headers: { "Authorization": "Bearer " + token }
+          headers: { "Authorization": "Bearer " + token,
+            "X-Workspace-Id": localStorage.getItem("workspace_id")
+          }
         });
         if (!res.ok) throw new Error("Erreur archivage");
         loadLinks(); // rafraîchit la liste
@@ -1403,7 +1411,10 @@ if (!token) {
       try {
         const res = await fetch(`https://api.alasdia.com/links/${id}`, {
           method: "DELETE",
-          headers: { "Authorization": "Bearer " + token }
+          headers: { 
+            "Authorization": "Bearer " + token, 
+            "X-Workspace-Id": localStorage.getItem("workspace_id") 
+          }
         });
         if (!res.ok) throw new Error("Erreur suppression");
         loadLinks(); // rafraîchit la liste
@@ -1476,7 +1487,8 @@ async function submitWithdraw() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Bearer " + localStorage.getItem("token")
+        "Authorization": "Bearer " + localStorage.getItem("token"),
+        "X-Workspace-Id": localStorage.getItem("workspace_id")
       },
       body: JSON.stringify({
         amount: parseFloat(document.getElementById("withdrawAmount").value),
@@ -1523,7 +1535,8 @@ async function submitWithdraw() {
     const res2 = await fetch(`https://api.alasdia.com/withdraw/${withdrawId}/process`, {
       method: "POST",
       headers: {
-        "Authorization": "Bearer " + localStorage.getItem("token")
+        "Authorization": "Bearer " + localStorage.getItem("token"),
+        "X-Workspace-Id": localStorage.getItem("workspace_id")
       }
     });
 
@@ -1592,7 +1605,8 @@ window.archivedLink = async function(id) {
     const res = await fetch(`https://api.alasdia.com/archive/${id}`, {
       method: "POST",
       headers: {
-        "Authorization": "Bearer " + localStorage.getItem("token")
+        "Authorization": "Bearer " + localStorage.getItem("token"),
+        "X-Workspace-Id": localStorage.getItem("workspace_id")
       }
     });
 
@@ -1643,7 +1657,8 @@ async function upgrade(plan) {
 
 fetch("https://api.alasdia.com/wallet/me", {
   headers: {
-    "Authorization": "Bearer " + token
+    "Authorization": "Bearer " + token,
+    "X-Workspace-Id": localStorage.getItem("workspace_id")
   }
 })
 .then(res => res.json())
@@ -1715,7 +1730,8 @@ async function loadUser() {
 
   const res = await fetch("https://api.alasdia.com/me/user-plan", {
     headers: {
-      "Authorization": "Bearer " + token
+      "Authorization": "Bearer " + token,
+      "X-Workspace-Id": localStorage.getItem("workspace_id")
     }
   })
 
