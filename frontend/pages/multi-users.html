@@ -874,7 +874,8 @@
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        Authorization: "Bearer " + localStorage.getItem("token")
+        Authorization: "Bearer " + localStorage.getItem("token"),
+        "X-Workspace-Id": localStorage.getItem("workspace_id")
       },
       body: JSON.stringify({ role: newRole })
     })
@@ -887,7 +888,8 @@
     await fetch(`https://api.alasdia.com/users/${u.id}/toggle`, {
       method: "POST",
       headers: {
-        Authorization: "Bearer " + localStorage.getItem("token")
+        Authorization: "Bearer " + localStorage.getItem("token"),
+        "X-Workspace-Id": localStorage.getItem("workspace_id")
       }
     })
 
@@ -898,7 +900,8 @@
     try {
       const res = await fetch("https://api.alasdia.com/me", {
         headers: {
-          Authorization: "Bearer " + localStorage.getItem("token")
+          Authorization: "Bearer " + localStorage.getItem("token"),
+          "X-Workspace-Id": localStorage.getItem("workspace_id")
         }
       })
 
@@ -939,7 +942,8 @@
 
       const res = await fetch("https://api.alasdia.com/workspaces/me", {
         headers: {
-          Authorization: "Bearer " + localStorage.getItem("token")
+          Authorization: "Bearer " + localStorage.getItem("token"),
+          "X-Workspace-Id": localStorage.getItem("workspace_id")
         }
       })
 
@@ -998,7 +1002,8 @@
     await fetch(`https://api.alasdia.com/users/${u.id}`, {
       method: "DELETE",
       headers: {
-        Authorization: "Bearer " + localStorage.getItem("token")
+        Authorization: "Bearer " + localStorage.getItem("token"),
+        "X-Workspace-Id": localStorage.getItem("workspace_id")
       }
     })
 
