@@ -322,7 +322,8 @@ async function loadUser() {
 
   const res = await fetch("https://api.alasdia.com/me/user-plan", {
     headers: {
-      "Authorization": "Bearer " + token
+      "Authorization": "Bearer " + token,
+      "X-Workspace-Id": localStorage.getItem("workspace_id")
     }
   })
 
@@ -364,7 +365,8 @@ async function initStripe() {
 
   const res = await fetch("https://api.alasdia.com/stripe/status", {
     headers: {
-      Authorization: "Bearer " + token
+      Authorization: "Bearer " + token,
+      "X-Workspace-Id": localStorage.getItem("workspace_id")
     }
   })
 
@@ -437,7 +439,10 @@ if (!data.connected || data.needs_kyc) {
       try {
         const res = await fetch("https://api.alasdia.com/onboarding", {
           method: "POST",
-          headers: { Authorization: "Bearer " + token }
+          headers: { 
+            Authorization: "Bearer " + token,
+            "X-Workspace-Id": localStorage.getItem("workspace_id")
+          }
         })
 
         const d = await res.json()
@@ -462,7 +467,10 @@ if (!data.connected || data.needs_kyc) {
 
     btn.onclick = async () => {
       const res = await fetch("https://api.alasdia.com/stripe/login-link", {
-        headers: { Authorization: "Bearer " + token }
+        headers: { 
+          Authorization: "Bearer " + token,
+          "X-Workspace-Id": localStorage.getItem("workspace_id")
+        }
       })
       const d = await res.json()
       window.location.href = d.url
@@ -488,7 +496,8 @@ async function loadProfile() {
   try {
     const res = await fetch("https://api.alasdia.com/profile", {
       headers: {
-        "Authorization": "Bearer " + token
+        "Authorization": "Bearer " + token,
+        "X-Workspace-Id": localStorage.getItem("workspace_id")
       }
     })
 
