@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 import uuid
 from backend.database import get_db
 from backend.models import Wallet, Withdrawal, WithdrawRequest, WalletTransaction
 from backend.auth import get_current_user
+from backend.services.workspace_service import (
+    get_workspace_owner_id
+)
 from sqlalchemy import func
 from backend.models import Payment, Link, UserDB, Profile
 from fastapi import Request
@@ -23,9 +26,21 @@ router = APIRouter()
 print("🔥 FICHIER CHARGÉ 🔥")
 
 @router.get("/wallet/me")
-def get_wallet(db: Session = Depends(get_db), user=Depends(get_current_user)):
+def get_wallet(
+    db: Session = Depends(get_db), 
+    user=Depends(get_current_user),
+    workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    )
+):
+    owner_id = get_workspace_owner_id(
+        user,
+        workspace_id,
+        db
+    )
 
-    wallet = db.query(Wallet).filter(Wallet.user_id == user.id).first()
+    wallet = db.query(Wallet).filter(Wallet.user_id == owner_id).first()
 
     if not wallet:
         raise HTTPException(404, "Wallet not found")
@@ -33,7 +48,7 @@ def get_wallet(db: Session = Depends(get_db), user=Depends(get_current_user)):
     now = datetime.now(timezone.utc)
 
     txs = db.query(WalletTransaction).filter(
-        WalletTransaction.user_id == user.id
+        WalletTransaction.user_id == owner_id
     ).all()
 
     for tx in txs:
@@ -45,7 +60,7 @@ def get_wallet(db: Session = Depends(get_db), user=Depends(get_current_user)):
 
     next_available = db.query(WalletTransaction.available_at)\
         .filter(
-            WalletTransaction.user_id == user.id,
+            WalletTransaction.user_id == owner_id,
             WalletTransaction.type == "deposit",
             WalletTransaction.available_at != None
         )\
@@ -64,10 +79,20 @@ def get_wallet(db: Session = Depends(get_db), user=Depends(get_current_user)):
 @router.get("/wallet/history")
 def get_wallet_history(
     db: Session = Depends(get_db),
-    user = Depends(get_current_user)):
+    user = Depends(get_current_user),
+    workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    )
+):
+    owner_id = get_workspace_owner_id(
+        user,
+        workspace_id,
+        db
+    )
     
     txs = db.query(WalletTransaction)\
-        .filter(WalletTransaction.user_id == user.id)\
+        .filter(WalletTransaction.user_id == owner_id)\
         .order_by(WalletTransaction.created_at.desc())\
         .all()
 
@@ -86,13 +111,27 @@ def get_wallet_history(
     }
         
 @router.post("/withdraw")
-def withdraw(req: WithdrawRequest, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def withdraw(
+    req: WithdrawRequest, 
+    db: Session = Depends(get_db), 
+    user=Depends(get_current_user),
+    workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    )
+):
+    owner_id = get_workspace_owner_id(
+        user,
+        workspace_id,
+        db
+    )
+
     print("ROUTE /withdraw appelée")
 
     from backend.services.wallet_service import create_wallet_transaction
 
     wallet = db.query(Wallet)\
-        .filter(Wallet.user_id == user.id)\
+        .filter(Wallet.user_id == owner_id)\
         .with_for_update()\
         .first()
 
@@ -107,7 +146,7 @@ def withdraw(req: WithdrawRequest, db: Session = Depends(get_db), user=Depends(g
 
     next_available = db.query(WalletTransaction.available_at)\
         .filter(
-            WalletTransaction.user_id == user.id,
+            WalletTransaction.user_id == owner_id,
             WalletTransaction.type == "deposit",
             WalletTransaction.status == "success",
             WalletTransaction.available_at > now
@@ -116,11 +155,11 @@ def withdraw(req: WithdrawRequest, db: Session = Depends(get_db), user=Depends(g
         .first()
 
     print("DEBUG TX:")
-    for tx in db.query(WalletTransaction).filter(WalletTransaction.user_id == user.id).all():
+    for tx in db.query(WalletTransaction).filter(WalletTransaction.user_id == owner_id).all():
         print(tx.type, tx.status, tx.amount, tx.available_at)
 
     available_amount = db.query(func.sum(WalletTransaction.amount)).filter(
-        WalletTransaction.user_id == user.id,
+        WalletTransaction.user_id == owner_id,
         WalletTransaction.type == "deposit",
         WalletTransaction.status == "success",
         WalletTransaction.available_at <= now
@@ -139,20 +178,20 @@ def withdraw(req: WithdrawRequest, db: Session = Depends(get_db), user=Depends(g
             }
         )
 
-    print(f"[WITHDRAW BEFORE] user={user.id} available={wallet.available} pending={wallet.pending}")
+    print(f"[WITHDRAW BEFORE] owner={owner_id} available={wallet.available} pending={wallet.pending}")
 
     # 🔒 lock les fonds
     wallet.available -= req.amount
     wallet.pending += req.amount
 
-    print(f"[WITHDRAW AFTER] user={user.id} available={wallet.available} pending={wallet.pending}")
+    print(f"[WITHDRAW AFTER] owner={owner_id} available={wallet.available} pending={wallet.pending}")
 
     ref = f"wd_{uuid.uuid4()}"
 
-    print(f"[NEW WITHDRAW] user={user.id} amount={req.amount} ref={ref}")
+    print(f"[NEW WITHDRAW] owner={owner_id} amount={req.amount} ref={ref}")
 
     withdrawal = Withdrawal(
-        user_id=user.id,
+        user_id=owner_id,
         wallet_id=wallet.id,
         amount=req.amount,
         status="pending",
@@ -161,7 +200,7 @@ def withdraw(req: WithdrawRequest, db: Session = Depends(get_db), user=Depends(g
     
     create_wallet_transaction(
         db=db,
-        user_id=user.id,
+        user_id=owner_id,
         wallet_id=wallet.id,
         amount=req.amount,
         type="withdraw",
