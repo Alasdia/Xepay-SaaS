@@ -90,6 +90,16 @@
   overflow: hidden;
   width: fit-content;
 }
+/* FREE */
+.badge-web3.free {
+  color: #ffffff;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.18);
+
+  box-shadow:
+    0 0 8px rgba(255,255,255,0.12),
+    0 0 18px rgba(255,255,255,0.06);
+}
 /* PRO */
 .badge-web3.pro {
   color: #22d3ee;
@@ -931,7 +941,7 @@
   function renderPlanBadge(plan) {
     const el = document.getElementById("badge-plan")
 
-    el.className = "badge"
+    el.className = "badge-web3"
 
     if (plan === "pro") {
       el.classList.add("pro")
