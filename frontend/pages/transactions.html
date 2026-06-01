@@ -1217,7 +1217,7 @@
 
         const status = mapStatus[raw] || ""
 
-        const url = `/transactions?offset=${offset}&limit=${limit}` + (status ? `&status=${status}` : "")
+        const url = `//api.alasdia.com/transactions?offset=${offset}&limit=${limit}` + (status ? `&status=${status}` : "")
 
         const res = await fetch(url, {
           headers: {
