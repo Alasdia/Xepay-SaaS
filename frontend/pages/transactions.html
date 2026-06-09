@@ -1133,8 +1133,8 @@
       }
 
       vide.classList.add('d-none')
-      document.getElementById('nb-transactions').textContent =
-        `${data.length} transaction${data.length > 1 ? 's' : ''}`
+      document.getElementById("nb-transactions").textContent =
+        `${transactions.length} transaction${transactions.length > 1 ? "s" : ""}`
 
       const html = data.map(t => {
         const amount = (t.amount_local ?? t.amount);
@@ -1353,7 +1353,7 @@
 
         renderStatusChart(
           stats.paid_count || 0,
-          stats.pending_link || 0,
+          stats.pending_links || 0,
           stats.failed_links || 0
         )
 
