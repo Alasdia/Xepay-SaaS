@@ -622,6 +622,10 @@ def change_plan(
     )
 
     user = db.query(UserDB).filter(UserDB.id == owner_id).first()
+    print("===== CHANGE PLAN =====")
+    print("USER:", user.email)
+    print("OLD PLAN:", user.plan)
+    print("NEW PLAN:", data.plan)
 
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable")
@@ -639,7 +643,12 @@ def change_plan(
         user.plan_started_at = now
         user.plan_expires_at = now + timedelta(days=30)
 
+        print("START:", user.plan_started_at)
+        print("END:", user.plan_expires_at)
+
     db.commit()
+
+    print("COMMIT DONE")
 
     return {
         "message": "Plan mis à jour",
