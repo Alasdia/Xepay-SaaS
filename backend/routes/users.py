@@ -563,13 +563,8 @@ def get_plan(
     
     now = datetime.now(timezone.utc)
 
-    start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
-
-    if now.month == 12:
-        end = datetime(now.year + 1, 1, 1, tzinfo=timezone.utc)
-    else:
-        end = datetime(now.year, now.month + 1, 1, tzinfo=timezone.utc)
-
+    start = now - timedelta(days=30)
+    end = now
 
     links_count = db.query(Link).filter(
         Link.user_id == owner_id,
@@ -598,7 +593,7 @@ def get_plan(
             "CREATED_AT:",
             l.created_at
         )
-        
+
     return {
         "plan": plan,
         "links_used": links_count,
