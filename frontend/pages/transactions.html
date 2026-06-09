@@ -1217,7 +1217,7 @@
 
         const status = mapStatus[raw] || ""
 
-        const url = `//api.alasdia.com/transactions?offset=${offset}&limit=${limit}` + (status ? `&status=${status}` : "")
+        const url = `//https://api.alasdia.com/transactions?offset=${offset}&limit=${limit}` + (status ? `&status=${status}` : "")
 
         const res = await fetch(url, {
           headers: {
@@ -1225,7 +1225,8 @@
             "X-Workspace-Id": localStorage.getItem("workspace_id")
           }
         })
-
+        console.log("OFFSET =", offset)
+        console.log("DATA =", data)
         const data = await res.json()
 
         transactions = [...transactions, ...data]
