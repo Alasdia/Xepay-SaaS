@@ -561,10 +561,13 @@ def get_plan(
     plan = getattr(workspace_user, "plan", "free")
     limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
     
-    now = datetime.now(timezone.utc)
+    start = workspace_user.plan_started_at
+    end = workspace_user.plan_expires_at
 
-    start = now - timedelta(days=30)
-    end = now
+    if not start or not end:
+        now = datetime.now(timezone.utc)
+        start = now - timedelta(days=30)
+        end = now 
 
     links_count = db.query(Link).filter(
         Link.user_id == owner_id,
@@ -629,6 +632,13 @@ def change_plan(
         raise HTTPException(status_code=400, detail="Plan invalide")
 
     user.plan = data.plan
+
+    if data.plan in ["pro", "business"]:
+        now = datetime.now(timezone.utc)
+
+        user.plan_started_at = now
+        user.plan_expires_at = now + timedelta(days=30)
+
     db.commit()
 
     return {
