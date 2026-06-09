@@ -411,11 +411,11 @@
     backdrop-filter: blur(6px);
     display: none;
     align-items: center; justify-content: center;
-    z-index: 100;
+    z-index: 9999;
     padding: 20px;
   }
   .modal-backdrop.show { display: flex; }
-  .modal {
+  .custom-modal {
     background: var(--bg-panel);
     border-radius: 18px;
     width: 100%;
@@ -669,7 +669,7 @@
 
 <!-- Modal : Ajouter / Inviter -->
 <div class="modal-backdrop" id="modal">
-  <div class="modal">
+  <div class="custom-modal">
     <h2 id="modal-title">Inviter un utilisateur</h2>
     <p class="subtitle">
       L'utilisateur recevra un email pour rejoindre votre espace.
