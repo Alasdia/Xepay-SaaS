@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request, Header, HTTPException
 import stripe
 import os
+from datetime import timedelta
 from backend.database import SessionLocal
 from backend.models import Payment, Link, Wallet
 from backend.services.wallet_service import create_wallet_transaction
@@ -56,7 +57,12 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
         user = db.query(UserDB).filter(UserDB.id == user_id).first()
 
         if user:
+            now = datetime.now(timezone.utc)
+
             user.plan = plan
+            user.plan_started_at = now
+            user.plan_expires_at = now + timedelta(days=30)
+
             db.commit()
 
             send_subscription_email(
