@@ -1227,7 +1227,10 @@
         })
         console.log("OFFSET =", offset)
         const data = await res.json()
-        console.log("DATA =", data)
+        console.log(
+          "OFFSET =", offset,
+          data.map(t => t.email)
+        )
 
         transactions = [...transactions, ...data]
         afficherTransactions(transactions)
