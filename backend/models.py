@@ -186,6 +186,8 @@ class UserDB(Base):
     token = Column(String)
     is_deleted = Column(Boolean, default=False)
     plan = Column(String, default="free")
+    plan_started_at = Column(DateTime(timezone=True), nullable=True)
+    plan_expires_at = Column(DateTime(timezone=True), nullable=True)
     api_key_public = Column(String, nullable=True)
     api_key_secret = Column(String, nullable=True)
     links = relationship("Link", back_populates="user", uselist=True)
