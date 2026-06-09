@@ -587,11 +587,18 @@ def get_plan(
         .distinct()
     )   .count()
 
-    print("START =", start)
-    print("END =", end)
-    print("LINKS COUNT =", links_count)
-    print("PAID COUNT =", paid_count)
+    links = db.query(Link).all()
 
+    for l in links:
+        print(
+            "LINK:",
+            l.id,
+            "USER_ID:",
+            l.user_id,
+            "CREATED_AT:",
+            l.created_at
+        )
+        
     return {
         "plan": plan,
         "links_used": links_count,
