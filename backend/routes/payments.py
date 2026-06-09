@@ -255,9 +255,10 @@ def get_transactions(
     if status and status != "Tous":
         transactions = [t for t in transactions if t["status"] == status]
 
-    print("FINAL TRANSACTIONS:", len(transactions))
     for t in transactions:
        print(t)
+
+    transactions = transactions[offset:offset + limit]
     
     return transactions
 
