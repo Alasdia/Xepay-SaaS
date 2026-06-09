@@ -587,6 +587,11 @@ def get_plan(
         .distinct()
     )   .count()
 
+    print("START =", start)
+    print("END =", end)
+    print("LINKS COUNT =", links_count)
+    print("PAID COUNT =", paid_count)
+
     return {
         "plan": plan,
         "links_used": links_count,
