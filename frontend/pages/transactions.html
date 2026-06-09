@@ -1314,7 +1314,8 @@
         stats.pending_links || 0,
         stats.failed_links || 0
       );
-
+      console.log("PLAN =", window.GLOBAL_PLAN)
+      console.log("STATS =", window.LAST_STATS)
       const paid = window.GLOBAL_PLAN?.paid_count ?? 0;
       const paidLimit = window.GLOBAL_PLAN?.paid_limit ?? 0;
 
