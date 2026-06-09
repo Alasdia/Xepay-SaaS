@@ -10,6 +10,7 @@ from backend.auth import get_current_user
 from backend.services.workspace_service import (
     get_workspace_owner_id
 )
+from datetime import timedelta
 from backend.models import Payment, Link
 from backend.models import UserDB
 from fastapi import Header
@@ -281,12 +282,12 @@ def get_stats(
 
     now = datetime.now(timezone.utc)
 
-    start_month = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
+    start_period = now - timedelta(days=30)
 
     # 🔹 Récupération des données
     links = db.query(Link).filter(
         Link.user_id == owner_id,
-        Link.created_at >= start_month
+        Link.created_at >= start_period
     ).all()
 
     payments = (
