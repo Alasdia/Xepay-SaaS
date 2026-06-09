@@ -7,6 +7,18 @@ def get_workspace_owner_id(
     workspace_id,
     db
 ):
+    print("========== WORKSPACE DEBUG ==========")
+    print("CURRENT USER ID:", current_user.id)
+    print("WORKSPACE ID:", workspace_id)
+
+    memberships = db.query(WorkspaceUser).all()
+    for m in memberships:
+        print(
+            "MEMBERSHIP:",
+            m.user_id,
+            m.workspace_id,
+            m.role
+        )
 
     # ✅ aucun workspace choisi
     if not workspace_id:
