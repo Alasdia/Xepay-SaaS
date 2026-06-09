@@ -471,31 +471,6 @@ def delete_account(
         raise HTTPException(status_code=500, detail=str(e))
     
 
-
-@router.put("/admin/kyc/{profile_id}")
-def update_kyc_status(
-    profile_id: int,
-    status: str,
-    db: Session = Depends(get_db)
-):
-    profile = db.query(Profile).filter(Profile.id == profile_id).first()
-
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profil introuvable")
-
-    if status not in ["approved", "rejected"]:
-        raise HTTPException(status_code=400, detail="Statut invalide")
-
-    profile.kyc_status = status
-    db.commit()
-    db.refresh(profile)
-
-    return {
-        "message": f"KYC mis à jour : {status}",
-        "profile_id": profile.id,
-        "kyc_status": profile.kyc_status
-    }
-
 @router.get("/profile")
 def get_profile(
     current_user: UserDB = Depends(get_current_user),
