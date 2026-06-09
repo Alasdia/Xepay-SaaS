@@ -1217,7 +1217,7 @@
 
         const status = mapStatus[raw] || ""
 
-        const url = `//https://api.alasdia.com/transactions?offset=${offset}&limit=${limit}` + (status ? `&status=${status}` : "")
+        const url = `https://api.alasdia.com/transactions?offset=${offset}&limit=${limit}` + (status ? `&status=${status}` : "")
 
         const res = await fetch(url, {
           headers: {
@@ -1226,8 +1226,8 @@
           }
         })
         console.log("OFFSET =", offset)
-        console.log("DATA =", data)
         const data = await res.json()
+        console.log("DATA =", data)
 
         transactions = [...transactions, ...data]
         afficherTransactions(transactions)
@@ -1245,11 +1245,6 @@
       isLoading = false;
       loader.classList.add("d-none");
     }
-    document.getElementById("filter-statut").addEventListener("change", () => {
-      offset = 0
-      transactions = []
-      chargerTransactions()
-    })
 
     async function rafraichir(btn) {
       try {
