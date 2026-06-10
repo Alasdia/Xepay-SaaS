@@ -406,28 +406,37 @@
 
   /* ---------- Modal ---------- */
   .modal-backdrop {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.85);
-    backdrop-filter: blur(6px);
-    display: none;
-    align-items: center; justify-content: center;
-    z-index: 9999;
-    padding: 20px;
-  }
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.modal-backdrop.show {
+  display: flex;
+}
+
+.custom-modal {
+  width: 100%;
+  max-width: 520px;
+  padding: 30px;
+
+  background: #141a4d; /* bleu plein */
+  border: 2px solid #2b4fff;
+  border-radius: 20px;
+
+  box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+
+  opacity: 1;
+  backdrop-filter: none;
+  position: relative;
+  z-index: 10000;
+}
   .modal-backdrop.show { display: flex; }
-  .custom-modal {
-    background: var(--bg-panel);
-    border-radius: 18px;
-    width: 100%;
-    max-width: 480px;
-    position: relative;
-    opacity: 1;
-    z-index: 10000;
-    padding: 28px;
-    border: 1px solid var(--border);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-    animation: pop 0.25s ease-out;
-  }
+  
   @keyframes pop {
     from { transform: scale(0.94); opacity: 0; }
     to   { transform: scale(1); opacity: 1; }
