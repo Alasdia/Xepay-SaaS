@@ -407,21 +407,18 @@
 
   /* ---------- Modal ---------- */
   /* Modal */
-  */
-.modal-backdrop {
+  .modal-backdrop {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100vw;
   height: 100vh;
+  margin: 0;
   background: rgba(0, 0, 0, 0.85);
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 999999;
-  isolation: isolate;
+  z-index: 99999;
 }
-
 
 .modal-backdrop.show {
   display: flex;
@@ -885,17 +882,11 @@
 
   // ---------- Modal ----------
   function openModal() {
-    const modal = document.getElementById('modal');
-    // Téléporte au niveau du <body> pour échapper aux stacking contexts
-    document.body.appendChild(modal);
-    modal.classList.add('show');
-    document.body.style.overflow = 'hidden';
+    document.getElementById('modal').classList.add('show');
   }
 
   function closeModal() {
-    const modal = document.getElementById('modal');
-    modal.classList.remove('show');
-    document.body.style.overflow = '';
+    document.getElementById('modal').classList.remove('show');
     document.getElementById('user-form').reset();
   }
   
