@@ -415,25 +415,26 @@
     padding: 20px;
   }
   .modal-backdrop.show { display: flex; }
-  .custom-modal {
-    background: var(--bg-panel);
-    border-radius: 18px;
-    width: 100%;
-    max-width: 480px;
-    position: relative;
-    opacity: 1;
-    z-index: 10000;
-    padding: 28px;
-    border: 1px solid var(--border);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-    animation: pop 0.25s ease-out;
-  }
-  @keyframes pop {
+.custom-modal {
+  background: #141a4d;
+  width: 100%;
+  max-width: 550px;
+  padding: 32px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow:
+    0 30px 80px rgba(0,0,0,0.8),
+    0 0 40px rgba(34,211,238,0.25);
+
+  position: relative;
+  z-index: 10001;
+  opacity: 1;
+}  @keyframes pop {
     from { transform: scale(0.94); opacity: 0; }
     to   { transform: scale(1); opacity: 1; }
   }
-  .modal h2 { font-size: 20px; margin-bottom: 4px; }
-  .modal .subtitle { color: var(--text-dim); font-size: 13px; margin-bottom: 24px; }
+  .custom-modal h2 { font-size: 20px; margin-bottom: 4px; }
+  .custom-modal .subtitle { color: var(--text-dim); font-size: 13px; margin-bottom: 24px; }
 
   .tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--bg-deep); padding: 4px; border-radius: 10px; }
   .tab {
