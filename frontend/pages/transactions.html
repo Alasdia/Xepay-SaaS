@@ -587,7 +587,10 @@
       color: white;
       box-shadow: none;
     }
-
+    .modal-upgrade {
+      max-width: 900px;
+      width: 95%;
+    }
     #etat-vide { color: rgba(255,255,255,0.5); }
     #etat-vide p { color: rgba(255,255,255,0.7); }
 
@@ -1937,7 +1940,13 @@ window.onload = () => {
 </script>
 <script>
   function showUpgradeModal() {
-  const modal = new bootstrap.Modal(document.getElementById("modalUpgrade"));
+  const modal = new bootstrap.Modal(
+    document.getElementById("modalUpgrade"),
+    {
+      backdrop: "static",
+      keyboard: false
+    }
+  );
   modal.show();
 }
 </script>
