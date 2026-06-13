@@ -130,6 +130,10 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
     user = db.query(UserDB).filter(UserDB.email == email).first()
 
+    workspace_user = db.query(WorkspaceUser).filter(
+        WorkspaceUser.user_id == user.id
+    ).first()
+
     if user and user.is_deleted:
         raise HTTPException(status_code=403, detail="Compte désactivé")
 
@@ -140,7 +144,8 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
     return {
         "access_token": token,
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "workspace_id": workspace_user.workspace_id
     }
 
 
