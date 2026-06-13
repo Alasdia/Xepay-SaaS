@@ -414,9 +414,11 @@
   align-items: center;
   justify-content: center;
 
-  background: rgba(0,0,0,0.92);
-  backdrop-filter: blur(70px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(5, 10, 30, 0.35);
+
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+
   z-index: 99999;
 }
 .modal-backdrop.show {
@@ -505,17 +507,6 @@
 .custom-modal p,
 .custom-modal label {
   color: rgba(255,255,255,0.9);
-}
-
-.custom-modal input,
-.custom-modal select {
-  background: rgb(255, 255, 255);
-  color: white;
-  border: 1px solid rgba(255,255,255,0.25);
-}
-
-.custom-modal input::placeholder {
-  color: rgb(0, 0, 0);
 }
 
   @keyframes pop {
