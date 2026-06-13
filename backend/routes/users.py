@@ -137,15 +137,21 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
     user = db.query(UserDB).filter(UserDB.email == email).first()
 
-    workspace_user = db.query(WorkspaceUser).filter(
-        WorkspaceUser.user_id == user.id
-    ).first()
-
     if user and user.is_deleted:
         raise HTTPException(status_code=403, detail="Compte désactivé")
 
     if not user or not verify_password(password, user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    workspace_user = db.query(WorkspaceUser).filter(
+        WorkspaceUser.user_id == user.id
+    ).first()
+
+    if not workspace_user:
+        raise HTTPException(
+          status_code=404,
+          detail="Workspace introuvable"
+        )
 
     token = create_access_token({"sub": user.email})
 
