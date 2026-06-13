@@ -641,7 +641,7 @@
         </div>
 
         <!-- Logout -->
-        <a href="login.html" onclick="logout" class="nav-link text-white-50 mt-3 text-center fw-bold">
+        <a href="login.html" onclick="logout()" class="nav-link text-white-50 mt-3 text-center fw-bold">
             🚪 Déconnexion
         </a>
     </div>
@@ -1425,26 +1425,6 @@ if (!token) {
     }
     const createBtn = document.getElementById("createBtn")
 
-    createBtn.addEventListener("click", (e) => {
-        if (data.used >= data.limit) {
-            e.preventDefault()
-
-            // fermer modal create
-            const createModal = bootstrap.Modal.getInstance(
-                document.getElementById("createLinkModal")
-            )
-            createModal.hide()
-
-            // ouvrir modal upgrade
-            const upgradeModal = new bootstrap.Modal(
-                document.getElementById("modalUpgrade")
-            )
-            upgradeModal.show()
-        } else {
-            // logique normale (créer lien)
-            createPayment()
-        }
-    })
     const withdrawBtn = document.getElementById("withdrawBtn")
 
     withdrawBtn.addEventListener("click", (e) => {
@@ -1768,7 +1748,7 @@ loadUser()
 </script>
 <script>
   function logout() {
-    localStorage.removeItem("token")
+    localStorage.clear();
     window.location.href = "login.html"
   }
 </script>
