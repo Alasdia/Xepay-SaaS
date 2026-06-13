@@ -414,9 +414,9 @@
   align-items: center;
   justify-content: center;
 
-  background: rgba(5, 10, 30, 0.15);
-  backdrop-filter: blur(12px) brightness(0.6);
-  -webkit-backdrop-filter: blur(12px) brightness(0.6);
+  background: rgba(0, 0, 20, 0.55);
+  backdrop-filter: blur(18px) brightness(0.35);
+  -webkit-backdrop-filter: blur(18px) brightness(0.35);
 
   z-index: 99999;
 }
@@ -431,21 +431,21 @@
   max-width: 560px;
   padding: 34px;
 
-  background:
+  background: 
     linear-gradient(
       145deg,
-      #000000 0%,
-      #000000 50%,
-      #000000 100%
-    );
+      #0b1138 0%,
+      #141a4d 60%,
+      #1e246a 100%
+  );
 
   border-radius: 24px;
 
-  border: 1px solid rgba(34,211,238,0.35);
+  border: 1px solid rgba(255,255,255,0.12);
 
   box-shadow:
-    0 30px 100px rgba(0,0,0,.8),
-    0 0 60px rgba(34,211,238,.35);
+    0 25px 60px rgba(0,0,0,.66),
+    0 0 25px rgba(34,211,238,.18);
 
   animation: modalPop .35s ease;
 }
@@ -536,9 +536,10 @@
 .field { margin-bottom: 16px; }
 .field label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; font-weight: 600; }
 .field input,
-.field select { width: 100%; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.25); color: white; backdrop-filter: blur(8px); }
+.field select { width: 100%; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,0.05); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.25); color: white; backdrop-filter: blur(8px); }
 .field input:focus, .field select:focus { outline: 2px solid var(--accent-cyan); }
 .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.field input::placeholder { color: rgba(255,255,255,0.65); }
 
   /* ---------- Responsive ---------- */
   @media (max-width: 960px) {
