@@ -335,7 +335,12 @@
       background: rgba(0, 255, 136, 0.05) !important;
       border: 1px solid rgba(0, 255, 136, 0.04);
     }
-
+    .locked-page #main-content {
+      filter: blur(8px);
+      pointer-events: none;
+      user-select: none;
+      opacity: 0.6;
+    }
     .btn-copy-actif {
       background: rgba(0, 255, 136, 0.15);
       color: #00ff88;
@@ -595,6 +600,104 @@
       </div>
     </div>
   </div>
+  <!-- MODAL UPGRADE -->
+<div class="modal fade" id="modalUpgrade" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-upgrade">
+        <div class="modal-content border-0"
+            style="background: #0d1b6e; color: white;">
+
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-bold">⚡ Choisir un plan ePay</h5>
+                <button type="button" class="btn-close btn-close-white"
+                    data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="row g-2 justify-content-center">
+
+                <!-- FREE -->
+                <div class=" col-10 col-md-4">
+                    <div class="card h-100 border-0 p-3 text-center"
+                            style="background: rgba(255,255,255,0.08); border-radius:16px;">
+                        <h6 class="text-success fw-bold">🟢 Free</h6>
+                        <h2 class="fw-bold">0 <small style="font-size:1rem;">XOF</small></h2>
+                        <small class="text-white-50">/ mois</small>
+                        <hr class="border-secondary">
+                        <ul class="list-unstyled text-start small">
+                            <li>✅ 10 transactions/mois</li>
+                            <li>✅ 30 lien de paiement</li>
+                            <li>✅ Historique basique</li>
+                            <li>❌ Export CSV</li>
+                            <li>❌ API Access</li>
+                            <li>❌ Multi-utilisateurs</li>
+                        </ul>
+                        <button class="btn btn-outline-success btn-sm mt-auto"
+                            disabled>Plan actuel</button>
+                    </div>
+                </div>
+
+                <!-- PRO -->
+                <div class=" col-10 col-md-4">
+                    <div class="card h-100 border-0 p-3 text-center position-relative"
+                        style="background: rgba(99,102,241,0.3);
+                            border: 2px solid #6366f1 !important;
+                            border-radius:16px;">
+                        <!-- Badge populaire -->
+                        <span class="badge bg-warning text-dark position-absolute"
+                            style="top: -10px; left: 50%; transform: translateX(-50%);">
+                                ⭐ Populaire
+                        </span>
+                        <h6 class="text-purple fw-bold" style="color:#a78bfa;">🟣 Pro</h6>
+                        <h2 class="fw-bold">15 500 <small style="font-size:1rem;">XOF</small></h2>
+                        <small class="text-white-50">/ mois</small>
+                        <hr class="border-secondary">
+                        <ul class="list-unstyled text-start small">
+                            <li>✅ 100 transactions/mois</li>
+                            <li>✅ Liens illimités</li>
+                            <li>✅ Export CSV/PDF</li>
+                            <li>✅ Notifications SMS + email</li>
+                            <li>✅ API Access</li>
+                            <li>❌ Multi-utilisateurs</li>
+                        </ul>
+                        <button 
+                            type="button"
+                            class="btn btn-sm mt-auto text-white fw-bold"
+                                style="background:#6366f1;"
+                                onclick="upgrade('pro')">
+                            Choisir Pro
+                        </button>
+                    </div>
+                </div>
+
+                <!-- BUSINESS -->
+                <div class=" col-10 col-md-4">
+                    <div class="card h-100 border-0 p-3 text-center"
+                            style="background: rgba(255,255,255,0.08); border-radius:16px;">
+                        <h6 class="text-warning fw-bold">🟡 Business</h6>
+                        <h2 class="fw-bold">36 000 <small style="font-size:1rem;">XOF</small></h2>
+                        <small class="text-white-50">/ mois</small>
+                        <hr class="border-secondary">
+                        <ul class="list-unstyled text-start small">
+                            <li>✅ Transactions illimitées</li>
+                            <li>✅ Liens illimités</li>
+                            <li>✅ Tout le plan Pro</li>
+                            <li>✅ Multi-utilisateurs</li>
+                            <li>✅ Webhook personnalisé</li>
+                            <li>✅ Support prioritaire</li>
+                        </ul>
+                        <button
+                          type="button"
+                          class="btn btn-warning btn-sm mt-auto fw-bold"
+                          onclick="upgrade('business')">
+                            Choisir Business
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
@@ -616,10 +719,11 @@
       const user = await res.json()
 
       if (user.plan === "free") {
-        window.location.href = "dashboard.html"
+        document.body.classList.add("locked-page");
+        showUpgradeModal();
+        return;
       }
     })
-
 
     let links = []
     let offset = 0;
@@ -1081,6 +1185,11 @@ loadUser()
 })();
 </script>
 
-
+<script>
+  function showUpgradeModal() {
+  const modal = new bootstrap.Modal(document.getElementById("modalUpgrade"));
+  modal.show();
+}
+</script>
 </body>
 </html>
