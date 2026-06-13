@@ -966,10 +966,7 @@
     const user = await res.json();
 
     if (user.plan !== "business") {
-      const modal = new bootstrap.Modal(
-        document.getElementById("modalUpgrade")
-      );
-      modal.show();
+      showUpgradeModal();
       return false;
     }
     return true;
@@ -1339,10 +1336,16 @@
         console.error("Erreur:", err)
     }
   }
-  console.log("🚀 INIT")
-  loadCurrentUser()
-  loadUsers()
-  checkBusinessAccess()
+  async function init() {
+    await loadCurrentUser();
+
+    const allowed = await checkBusinessAccess();
+
+    if (allowed) {
+      await loadUsers();
+    }
+  }
+  init();
 
   setInterval(() => {
     const now = new Date()
