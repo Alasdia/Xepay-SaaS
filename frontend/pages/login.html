@@ -658,6 +658,7 @@ async function login() {
     if (data.access_token) {
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('email', email);
+      localStorage.setItem("workspace_id", data.workspace_id);
 
       btn.classList.add('success');
       btn.innerHTML = `
