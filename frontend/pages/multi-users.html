@@ -415,7 +415,8 @@
   justify-content: center;
 
   background: rgba(0,0,0,0.92);
-  backdrop-filter: none;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   z-index: 99999;
 }
 .modal-backdrop.show {
@@ -424,6 +425,7 @@
 
 .custom-modal {
   position: relative;
+  color: white;
   width: 90%;
   max-width: 560px;
   padding: 34px;
@@ -453,13 +455,13 @@
   border-radius: 24px;
   padding: 1px;
 
-  background:
-    linear-gradient(
-      120deg,
-      #22d3ee,
-      #a855f7,
-      #22d3ee
-    );
+    background: linear-gradient(
+    145deg,
+    #101b6b 0%,
+    #2038d0 50%,
+    #0b1455 100%
+  );
+
 
   background-size: 200% 100%;
 
@@ -493,19 +495,29 @@
 }
 
 /* Texte */
-.custom-modal h2,
-.custom-modal p,
-.custom-modal label {
-    color: white;
+
+.custom-modal h2 {
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 800;
 }
 
-/* Inputs */
+.custom-modal p,
+.custom-modal label {
+  color: rgba(255,255,255,0.9);
+}
+
 .custom-modal input,
 .custom-modal select {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(0,0,0,0.25);
   color: white;
-  border: 1px solid rgba(100, 149, 237, 0.4);
+  border: 1px solid rgba(255,255,255,0.25);
 }
+
+.custom-modal input::placeholder {
+  color: rgba(255,255,255,0.6);
+}
+
   @keyframes pop {
     from { transform: scale(0.94); opacity: 0; }
     to   { transform: scale(1); opacity: 1; }
