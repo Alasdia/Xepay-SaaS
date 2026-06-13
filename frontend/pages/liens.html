@@ -359,7 +359,10 @@
     .status-pending {
       color: orange;
     }
-
+    .modal-upgrade {
+      max-width: 900px;
+      width: 95%;
+    }
     .status-active {
       color: #00d4ff;
     }
@@ -1187,7 +1190,13 @@ loadUser()
 
 <script>
   function showUpgradeModal() {
-  const modal = new bootstrap.Modal(document.getElementById("modalUpgrade"));
+  const modal = new bootstrap.Modal(
+    document.getElementById("modalUpgrade"),
+    {
+      backdrop: "static",
+      keyboard: false
+    }
+  );
   modal.show();
 }
 </script>
