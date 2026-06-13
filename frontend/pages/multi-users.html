@@ -410,32 +410,91 @@
   .modal-backdrop {
   position: fixed;
   inset: 0;
-  width: 100vw;
-  height: 100vh;
-  margin: 0;
-  background: rgba(0, 0, 0, 0.85);
   display: none;
   align-items: center;
   justify-content: center;
+
+  background:
+    radial-gradient(circle at center,
+      rgba(34,211,238,0.08),
+      rgba(0,0,0,0.85)
+    );
+
+  backdrop-filter: blur(12px);
   z-index: 99999;
 }
-
 .modal-backdrop.show {
   display: flex;
 }
 
 .custom-modal {
   position: relative;
-  z-index: 100000;
   width: 90%;
-  max-width: 520px;
-  margin: auto;
-  padding: 30px;
-  background: linear-gradient(135deg, #1a237e, #1565c0) !important;
-  border-radius: 20px;
-  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.85), 0 0 40px rgba(21, 101, 192, 0.4);
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  max-width: 560px;
+  padding: 34px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #162061 0%,
+      #1d2b87 50%,
+      #0f1550 100%
+    );
+
+  border-radius: 24px;
+
+  border: 1px solid rgba(34,211,238,0.35);
+
+  box-shadow:
+    0 30px 100px rgba(0,0,0,.8),
+    0 0 60px rgba(34,211,238,.35);
+
+  animation: modalPop .35s ease;
+}
+.custom-modal::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 24px;
+  padding: 1px;
+
+  background:
+    linear-gradient(
+      120deg,
+      #22d3ee,
+      #a855f7,
+      #22d3ee
+    );
+
+  background-size: 200% 100%;
+
+  animation: borderMove 3s linear infinite;
+
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform:
+      translateY(20px)
+      scale(.94);
+  }
+
+  to {
+    opacity: 1;
+    transform:
+      translateY(0)
+      scale(1);
+  }
 }
 
 /* Texte */
