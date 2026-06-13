@@ -81,14 +81,15 @@ def signup(user: User, db: Session = Depends(get_db)):
                 db.add(membership)
                 invite.used = True
             
-            else:
-                membership = WorkspaceUser(
-                    user_id=new_user.id,
-                    workspace_id=new_user.id,
-                    role="owner"
-                )
-
-                db.add(membership)
+        else:
+            print("OWNER WORKSPACE FLOW")
+            membership = WorkspaceUser(
+                user_id=new_user.id,
+                workspace_id=new_user.id,
+                role="owner"
+            )
+            db.add(membership)
+            print("WORKSPACE OBJECT ADDED")
 
         try:
             print("🚀 SIGNUP START")
@@ -138,6 +139,7 @@ def signup(user: User, db: Session = Depends(get_db)):
 
 @router.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    print("🚀 LOGIN hit")
 
     email = form_data.username
     password = form_data.password
