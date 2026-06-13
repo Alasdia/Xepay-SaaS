@@ -88,7 +88,14 @@ def signup(user: User, db: Session = Depends(get_db)):
             print("👉 Creating Stripe account for:", new_user.email)
             account = stripe.Account.create(
                 type="express",
-                email=new_user.email
+                email=new_user.email,
+                settings={
+                  "payouts": {
+                    "schedule": {
+                      "interval": "manual"
+                    }
+                  }
+                }
             )
 
             print("✅ STRIPE ACCOUNT CREATED:", account.id)
