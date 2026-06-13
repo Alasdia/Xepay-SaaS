@@ -78,10 +78,17 @@ def signup(user: User, db: Session = Depends(get_db)):
                     workspace_id=invite.workspace_id,
                     role=invite.role
                 )
+                db.add(membership)
+                invite.used = True
+            
+            else:
+                membership = WorkspaceUser(
+                    user_id=new_user.id,
+                    workspace_id=new_user.id,
+                    role="owner"
+                )
 
                 db.add(membership)
-
-                invite.used = True
 
         try:
             print("🚀 SIGNUP START")
