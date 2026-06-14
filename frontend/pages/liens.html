@@ -1228,6 +1228,7 @@ async function loadUser() {
 
   console.log("USER:", user)
   window.GLOBAL_PLAN = user
+  console.log("GLOBAL PLAN =", window.GLOBAL_PLAN)
 
   updatePlanUI(user.plan)
   updateUpgradeModal(user.plan)
