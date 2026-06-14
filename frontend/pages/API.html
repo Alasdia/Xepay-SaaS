@@ -275,23 +275,12 @@ tbody tr td {
   background: rgba(255,255,255,0.2);
   border-radius: 4px;
 }
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
 .hidden {
   display: none;
 }
 
-.modal-content {
+.secret-modal-content {
   background: #1e1e2f;
   padding: 25px;
   border-radius: 12px;
@@ -326,7 +315,7 @@ tbody tr td {
   color: #ff9800;
   font-size: 13px;
 }
-.modal-overlay {
+.webhook-modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
@@ -339,7 +328,7 @@ tbody tr td {
     z-index: 999;
 }
 
-.modal-box {
+.webhook-modal-box {
     background: #1e1e2f;
     padding: 25px;
     border-radius: 12px;
@@ -1504,11 +1493,11 @@ function copyPopupSecret() {
     navigator.clipboard.writeText(text)
 }
 function closePopup() {
-    document.querySelector(".modal-overlay").remove()
+    document.querySelector(".webhhook-modal-overlay").remove()
 }
 </script>
 <div id="secretModal" class="secret-modal hidden">
-  <div class="modal-content">
+  <div class="secret-modal-content">
     <h3>🔐 Secret Webhook</h3>
 
     <p class="warning">
