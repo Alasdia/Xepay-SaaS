@@ -2033,6 +2033,8 @@ window.onload = () => {
 <script>
 function showUpgradeModal(feature = null) {
 
+  const plan = window.GLOBAL_PLAN?.plan;
+
   updateUpgradeModal(plan, feature);
 
   const modal = new bootstrap.Modal(
