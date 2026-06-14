@@ -1494,11 +1494,12 @@ function checkAccess(requiredPlan, feature = null) {
     };
 
     if (levels[plan] >= levels[requiredPlan]) {
+      return;
+    } 
+    document.body.classList.add("locked-page");
 
-    } else {
-      document.body.classList.add("locked-page");
-      showUpgradeModal();
-    }
+    showUpgradeModal(feature);
+
 }
 
 function copyPopupSecret() {
