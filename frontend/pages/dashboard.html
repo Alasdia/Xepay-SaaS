@@ -701,7 +701,7 @@
         </li>
         <li class="nav-item">
             <a href="multi-users.html" class="nav-link text-white-50 d-flex justify-content-between"
-                onclick="event.preventDefault(); showUpgradeModal();">
+                onclick="event.preventDefault(); showUpgradeModal('multi-users');">
                     👥 Multi-utilisateurs
                 <span class="badge bg-danger">Business</span>
             </a>
@@ -1456,8 +1456,15 @@ document.querySelectorAll(".upgrade-btn").forEach(btn => {
   btn.addEventListener("click", showUpgradeModal);
 });
 
-function showUpgradeModal() {
-  const modal = new bootstrap.Modal(document.getElementById("modalUpgrade"));
+function showUpgradeModal(feature = null) {
+  const plan = localStorage.getItem("plan");
+
+  updateUpgradeModal(plan, feature);
+
+  const modal = new bootstrap.Modal(
+    document.getElementById("modalUpgrade")
+  );
+
   modal.show();
 }
 </script>
@@ -1762,7 +1769,43 @@ function checkApiAccess(event) {
     showUpgradeModal();
 }
 </script>
+<script>
+function updateUpgradeModal(plan, feature) {
 
+  document.querySelectorAll(".plan-card")
+    .forEach(card => {
+      card.classList.remove("plan-disabled");
+    });
+
+  // Cas Multi-utilisateurs
+  if (feature === "multi-users") {
+
+    document.querySelector(".plan-starter")
+      .classList.add("plan-disabled");
+
+    document.querySelector(".plan-pro")
+      .classList.add("plan-disabled");
+
+    return;
+  }
+
+  // Cas normal : flouter le plan actuel
+  if (plan === "free") {
+    document.querySelector(".plan-starter")
+      .classList.add("plan-disabled");
+  }
+
+  if (plan === "pro") {
+    document.querySelector(".plan-pro")
+      .classList.add("plan-disabled");
+  }
+
+  if (plan === "business") {
+    document.querySelector(".plan-business")
+      .classList.add("plan-disabled");
+  }
+}
+</script>
 <script>
   function logout() {
     localStorage.clear();
