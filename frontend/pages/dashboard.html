@@ -602,14 +602,14 @@
         <!-- Fonctionnalité verrouillée (Free) -->
         <li class="nav-item">
             <a href="API.html" class="nav-link text-white-50 d-flex justify-content-between"
-                onclick="showUpgradeModal('api')">
+                onclick="event.preventDefault(); showUpgradeModal();">
                     ⚙️ API Access
                 <span class="badge bg-warning text-dark">Pro</span>
             </a>
         </li>
         <li class="nav-item">
             <a href="multi-users.html" class="nav-link text-white-50 d-flex justify-content-between"
-                onclick="showUpgradeModal('team')">
+                onclick="event.preventDefault(); showUpgradeModal();">
                     👥 Multi-utilisateurs
                 <span class="badge bg-danger">Business</span>
             </a>
