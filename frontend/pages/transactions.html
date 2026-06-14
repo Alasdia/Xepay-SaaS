@@ -707,7 +707,7 @@
       </li>
       <li class="nav-item">
         <a href="API.html" class="nav-link text-white-50 d-flex justify-content-between"
-          onclick="event.preventDefault(); showUpgradeModal();">
+          onclick="checkApiAccess(event)">
           ⚙️ API Access
           <span class="badge-web3 pro">Pro</span>
         </a>
@@ -2078,6 +2078,19 @@ function updateUpgradeModal(plan, feature) {
     document.querySelector(".plan-business")
       .classList.add("plan-disabled");
   }
+}
+</script>
+<script>
+function checkApiAccess(event) {
+  const plan = window.GLOBAL_PLAN?.plan;
+
+  if (plan === "pro" || plan === "business") {
+    window.location.href = "API.html";
+    return;
+  }
+
+  event.preventDefault();
+  showUpgradeModal("api");
 }
 </script>
 <script>
