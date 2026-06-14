@@ -495,16 +495,18 @@ tbody tr td {
 
         <!-- Fonctionnalité verrouillée (Free) -->
         <li class="nav-item">
-            <a href="API.html" class="nav-link text-white-50 d-flex justify-content-between"
-                onclick="showUpgradeModal()">
-                    ⚙️ API Access
+            <a href="#"
+              class="nav-link text-white-50 d-flex justify-content-between"
+              onclick="checkAccess('pro', 'API.html')">
+              ⚙️ API Access
                 <span class="badge pro">PRO</span>
             </a>
         </li>
         <li class="nav-item">
-            <a href="multi-users.html" class="nav-link text-white-50 d-flex justify-content-between"
-                onclick="showUpgradeModal()">
-                    👥 Multi-utilisateurs
+            <a href="#"
+              class="nav-link text-white-50 d-flex justify-content-between"
+              onclick="checkAccess('business', 'multi-users.html')">
+                👥 Multi-utilisateurs
                 <span class="badge business">BUSINESS</span>
             </a>
         </li>
@@ -1479,8 +1481,24 @@ async function initPlan() {
   const user = await loadCurrentUser()
   renderPlanBadge(user.plan)
 }
-
 initPlan()
+
+function checkAccess(requiredPlan, page) {
+    const plan = localStorage.getItem("plan");
+
+    const levels = {
+        free: 0,
+        pro: 1,
+        business: 2
+    };
+
+    if (levels[plan] >= levels[requiredPlan]) {
+        window.location.href = page;
+    } else {
+        showUpgradeModal();
+    }
+}
+
 function copyPopupSecret() {
     const text = document.getElementById("popupSecret").textContent
     navigator.clipboard.writeText(text)
