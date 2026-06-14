@@ -1494,7 +1494,7 @@ function checkAccess(requiredPlan, feature = null) {
     };
 
     if (levels[plan] >= levels[requiredPlan]) {
-        window.location.href = page;
+
     } else {
       document.body.classList.add("locked-page");
       showUpgradeModal();
@@ -1557,28 +1557,34 @@ function showUpgradeModal(feature = null) {
       card.classList.remove("plan-disabled");
     });
 
-  if (feature === "multi-users") {
+  if (feature === "API.html") {
     document.querySelector(".plan-starter")
-      .classList.add("plan-disabled");
+        .classList.add("plan-disabled");
+
+  } else if (feature === "multi-users") {
+
+    document.querySelector(".plan-starter")
+        .classList.add("plan-disabled");
 
     document.querySelector(".plan-pro")
-      .classList.add("plan-disabled");
+        .classList.add("plan-disabled");
+
   } else {
     const plan = localStorage.getItem("plan");
 
     if (plan === "free") {
-      document.querySelector(".plan-starter")
-        .classList.add("plan-disabled");
+        document.querySelector(".plan-starter")
+            .classList.add("plan-disabled");
     }
 
     if (plan === "pro") {
-      document.querySelector(".plan-pro")
-        .classList.add("plan-disabled");
+        document.querySelector(".plan-pro")
+            .classList.add("plan-disabled");
     }
 
     if (plan === "business") {
-      document.querySelector(".plan-business")
-        .classList.add("plan-disabled");
+        document.querySelector(".plan-business")
+            .classList.add("plan-disabled");
     }
   }
 
