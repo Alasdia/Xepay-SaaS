@@ -1227,6 +1227,7 @@ async function loadUser() {
   const user = await res.json()
 
   console.log("USER:", user)
+  window.GLOBAL_PLAN = user
 
   updatePlanUI(user.plan)
   updateUpgradeModal(user.plan)
