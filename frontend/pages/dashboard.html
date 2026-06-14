@@ -46,12 +46,8 @@
         .modal-backdrop {
             z-index: 99990 !important;
         }
-        .modal-content {
-            background: #0f172a;
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
-        }
+#createLinkModal .modal-content,
+#withdrawModal .modal-content { background: #0f172a; color: white; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 20px 60px rgba(0,0,0,0.45); }
         .modal-header,
         .modal-footer {
           border: none;
@@ -80,12 +76,8 @@
           box-shadow: none;
         }
         /* Glow + modern modal */
-        .modal-content {
-          border-radius: 16px;
-          overflow: hidden;
-          background: linear-gradient(135deg, #0f172a, #1e3a8a);
-        }
-
+#createLinkModal .modal-content,
+#withdrawModal .modal-content { border-radius: 16px; overflow: hidden; background: linear-gradient(135deg, #0f172a, #1e3a8a); }
         /* Footer propre */
         .modal-footer {
           border-top: none;
@@ -110,11 +102,8 @@
         .modal-dialog {
             max-width: 500px;
         }
-        .modal-content{
-            border-radius: 14px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
+#createLinkModal .modal-content,
+#withdrawModal .modal-content { border-radius: 14px; max-height: 90vh; overflow-y: auto; }
         /* INPUTS PLUS GRANDS */
         .modal .form-control,
         .modal .form-select {
@@ -655,6 +644,7 @@
 #modalUpgrade .modal-content { max-height: 90vh; overflow-y: auto; }
 .modal-backdrop { background: rgba(0,0,0,0.6) !important; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 #modalUpgrade .modal-content { background: #020408 !important; }
+.plan-card { opacity: 1 !important; }
 /* Responsive mobile */
 @media (max-width: 992px) { #modalUpgrade .modal-dialog { width: 100%; margin: 0; max-width: 100%; } #modalUpgrade .modal-body { padding: 20px; } .plans-section { padding: 0 15px 40px; } .plans-grid { grid-template-columns: 1fr; gap: 20px; } }
 @media (max-width: 576px) { .plan-name { font-size: 28px; } .plan-price .amount { font-size: 40px; } .plan-features li { font-size: 12px; } }
