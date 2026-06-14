@@ -921,57 +921,6 @@
 </div>
 
 
-
-
-    <!-- Lien rapide + Derniers paiements -->
-    <div class="row g-3">
-        <div class="col-md-4">
-            <div class="card-epay p-3 h-100 d-flex flex-column justify-content-between">
-                <div>
-                    <h6 class="fw-bold mb-2">🔗 Mon lien de paiement</h6>
-                    <code class="text-warning" style="font-size:0.8rem; word-break:break-all;">
-                        https://epay.sn/pay/abc123xyz
-                    </code>
-                </div>
-                <button class="btn btn-outline-warning btn-sm mt-3 w-100"
-                        onclick="navigator.clipboard.writeText('https://epay.sn/pay/abc123xyz'); alert('✅ Copié !')">
-                  📋 Copier mon lien
-                </button>
-            </div>
-        </div>
-        <div class="col-md-8">
-            <div class="card-epay p-3">
-                <div class="d-flex justify-content-between mb-3">
-                    <h6 class="fw-bold">💳 Derniers paiements</h6>
-                    <a href="transactions.html" class="text-warning" style="font-size:0.85rem;">Voir tout →</a>
-                </div>
-                <table class="table table-sm align-middle" style="color:white;">
-                    <thead>
-                        <tr style="color:rgba(255,255,255,0.4); font-size:0.75rem;">
-                            <th>Client</th><th>Montant</th><th>Statut</th><th>Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr style="border-color:rgba(255,255,255,0.05)">
-                            <td>Jean Dupont</td>
-                            <td>150 EUR</td>
-                            <td><span class="badge" style="background:rgba(16,185,129,0.2); color:#10b981;">✅ Réussi</span></td>
-                            <td><small class="text-white-50">30/03/2025</small></td>
-                        </tr>
-                        <tr style="border-color:rgba(255,255,255,0.05)">
-                            <td>Sarah Connor</td>
-                            <td>80 USD</td>
-                            <td><span class="badge" style="background:rgba(245,158,11,0.2); color:#f59e0b;">⏳ En attente</span></td>
-                            <td><small class="text-white-50">29/03/2025</small></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    </div>
-</div>
-
 <div class="modal fade" id="withdrawModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content bg-dark text-white">
@@ -990,20 +939,6 @@
           <input type="number" id="withdrawAmount" class="form-control" placeholder="Ex: 5000">
         </div>
 
-        <div class="mb-3">
-          <label class="form-label">Opérateur</label>
-          <select id="withdrawOperator" class="form-control">
-            <option value="wave">Wave</option>
-            <option value="orange">Orange Money</option>
-            <option value="free">Free Money</option>
-          </select>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label">Numéro</label>
-          <input type="text" id="withdrawPhone" class="form-control" placeholder="+221 77...">
-        </div>
-
       </div>
 
       <!-- FOOTER -->
@@ -1018,6 +953,7 @@
 <div id="toast" class="custom-toast">
   ✅ Retrait envoyé
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 const oauthParams = new URLSearchParams(window.location.search);
