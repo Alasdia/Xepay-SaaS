@@ -498,7 +498,7 @@ tbody tr td {
         <li class="nav-item">
             <a href="#"
               class="nav-link text-white-50 d-flex justify-content-between"
-              onclick="checkAccess('pro', 'API.html')">
+              onclick="event.preventDefault(); checkAccess('pro', 'API.html')">
               ⚙️ API Access
                 <span class="badge pro">PRO</span>
             </a>
@@ -506,7 +506,7 @@ tbody tr td {
         <li class="nav-item">
             <a href="#"
               class="nav-link text-white-50 d-flex justify-content-between"
-              onclick="checkAccess('business', 'multi-users.html')">
+              onclick="event.preventDefault(); checkAccess('pro', 'API.html')">
                 👥 Multi-utilisateurs
                 <span class="badge business">BUSINESS</span>
             </a>
