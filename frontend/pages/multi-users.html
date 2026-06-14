@@ -615,9 +615,6 @@
 #modalUpgrade .modal-content { background: radial-gradient(circle at top, rgba(0,229,255,.08), transparent 35%), linear-gradient(180deg, #020408 0%, #06090f 100%); color: white; border: 1px solid rgba(255,255,255,.08); border-radius: 24px; overflow: hidden; box-shadow: 0 0 60px rgba(0,0,0,.7), 0 0 30px rgba(0,229,255,.12); backdrop-filter: blur(20px); }
 #modalUpgrade .modal-body { padding: 40px; }
 #modalUpgrade .btn-close { filter: invert(1); }
-#modalUpgrade .modal-dialog {  max-height: 90vh; }
-#modalUpgrade .modal-content { max-height: 90vh; overflow: hidden; }
-#modalUpgrade .modal-body { max-height: calc(90vh - 80px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .reveal { opacity: 0; transform: translateY(20px); }
 .reveal.visible { opacity: 1; transform: translateY(0); transition: all .6s ease; }
 .section-eyebrow { color: var(--cyan); font-size: 12px; letter-spacing: .25em; text-transform: uppercase; font-weight: 700; margin-bottom: 18px; }
@@ -1397,8 +1394,8 @@ function showUpgradeModal() {
   });
 
   const modal = new bootstrap.Modal(modalEl, {
-    backdrop: "static",
-    keyboard: false
+    backdrop: true,
+    keyboard: true
   });
 
   modal.show();
