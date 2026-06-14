@@ -26,6 +26,10 @@
   --cyan: #22d3ee;
   --violet: #a855f7;
   --gold: #facc15;
+  --font-d: "DM Sans", sans-serif;
+  --font-m: "Space Mono", monospace;
+  --font-b: "DM Sans", sans-serif;
+  --white: #ffffff;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1493,7 +1497,7 @@ function copyPopupSecret() {
     navigator.clipboard.writeText(text)
 }
 function closePopup() {
-    document.querySelector(".webhhook-modal-overlay").remove()
+    document.querySelector(".webhook-modal-overlay").remove()
 }
 </script>
 <div id="secretModal" class="secret-modal hidden">
