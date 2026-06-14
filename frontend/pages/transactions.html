@@ -714,7 +714,7 @@
       </li>
       <li class="nav-item">
         <a href="multi-users.html" class="nav-link text-white-50 d-flex justify-content-between"
-          onclick="event.preventDefault(); showUpgradeModal();">
+          onclick="event.preventDefault(); showUpgradeModal('multi-users.html');">
           👥 Multi-utilisateurs
           <span class="badge-web3 business">Business</span>
         </a>
@@ -2031,25 +2031,37 @@ window.onload = () => {
 
 </script>
 <script>
-  function showUpgradeModal() {
+function showUpgradeModal(feature = null) {
+
+  updateUpgradeModal(currentPlan, feature);
+
   const modal = new bootstrap.Modal(
-    document.getElementById("modalUpgrade"),
-    {
-      backdrop: true,
-      keyboard: true
-    }
+    document.getElementById("modalUpgrade")
   );
+
   modal.show();
 }
 </script>
 <script>
-function updateUpgradeModal(plan) {
+function updateUpgradeModal(plan, feature) {
 
   document.querySelectorAll(".plan-card")
     .forEach(card => {
       card.classList.remove("plan-disabled");
     });
 
+  // Cas Multi-utilisateurs => seul Business doit rester disponible
+  if (feature === "multi-users") {
+    document.querySelector(".plan-starter")
+      .classList.add("plan-disabled");
+
+    document.querySelector(".plan-pro")
+      .classList.add("plan-disabled");
+
+    return;
+  }
+
+  // Cas normal : on floute le plan actuel
   if (plan === "free") {
     document.querySelector(".plan-starter")
       .classList.add("plan-disabled");
