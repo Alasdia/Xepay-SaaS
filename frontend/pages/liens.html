@@ -515,7 +515,7 @@
         <span class="badge pro">PRO</span>
       </a></li>
       <li><a href="multi-users.html" class="nav-link text-white-50 d-flex justify-content-between"
-            onclick="event.preventDefault(); showUpgradeModal('multi-users.html');">
+            onclick="event.preventDefault(); showUpgradeModal('multi-users');">
         👥 Multi-utilisateurs
         <span class="badge business">BUSINESS</span>
       </a></li>
@@ -1324,7 +1324,7 @@ function updateUpgradeModal(plan, feature) {
 <script>
 function showUpgradeModal(feature = null) {
 
-  updateUpgradeModal(currentPlan, feature);
+  updateUpgradeModal(plan, feature);
 
   const modal = new bootstrap.Modal(
     document.getElementById("modalUpgrade")
