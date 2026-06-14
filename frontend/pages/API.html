@@ -506,7 +506,7 @@ tbody tr td {
         <li class="nav-item">
             <a href="#"
               class="nav-link text-white-50 d-flex justify-content-between"
-              onclick="event.preventDefault(); checkAccess('business', 'multi-users.html')">
+              onclick="event.preventDefault(); checkAccess('business', 'multi-users')">
                 👥 Multi-utilisateurs
                 <span class="badge business">BUSINESS</span>
             </a>
@@ -865,7 +865,7 @@ return {
             <div class="plans-grid">
 
             <!-- STARTER -->
-            <div class="plan-card plan-starter reveal plan-disabled" style="transition-delay:.04s">
+            <div class="plan-card plan-starter reveal" style="transition-delay:.04s">
               <div class="plan-tag tag-default">Free</div>
               <div class="plan-name">FREE</div>
               <div class="plan-price">
@@ -1484,7 +1484,7 @@ async function initPlan() {
 }
 initPlan()
 
-function checkAccess(requiredPlan, page) {
+function checkAccess(requiredPlan, feature = null) {
     const plan = localStorage.getItem("plan");
 
     const levels = {
@@ -1550,7 +1550,38 @@ function closePopup() {
 })();
 </script>
 <script>
-function showUpgradeModal() {
+function showUpgradeModal(feature = null) {
+
+  document.querySelectorAll(".plan-card")
+    .forEach(card => {
+      card.classList.remove("plan-disabled");
+    });
+
+  if (feature === "multi-users") {
+    document.querySelector(".plan-starter")
+      .classList.add("plan-disabled");
+
+    document.querySelector(".plan-pro")
+      .classList.add("plan-disabled");
+  } else {
+    const plan = localStorage.getItem("plan");
+
+    if (plan === "free") {
+      document.querySelector(".plan-starter")
+        .classList.add("plan-disabled");
+    }
+
+    if (plan === "pro") {
+      document.querySelector(".plan-pro")
+        .classList.add("plan-disabled");
+    }
+
+    if (plan === "business") {
+      document.querySelector(".plan-business")
+        .classList.add("plan-disabled");
+    }
+  }
+
   const modal = new bootstrap.Modal(
     document.getElementById("modalUpgrade")
   );
