@@ -643,16 +643,20 @@
 #modalUpgrade .btn-close { filter: invert(1); }
 #modalUpgrade .modal-content { background: #020408; border: 1px solid rgba(0,229,255,.15); border-radius: 24px; color: white; }
 #modalUpgrade { z-index: 999999 !important; }
-#modalUpgrade .modal-dialog { max-width: 1300px !important; width: 95%; margin: 1rem auto; }
+#modalUpgrade .modal-dialog { max-width: 1300px; width: 95%; margin: 1rem auto; }
+#modalUpgrade .modal-content { max-height: 90vh; overflow-y: auto; overflow-x: hidden; }
+.plans-section { padding: 0 20px 30px; }
 #modalUpgrade .modal-content { position: relative; z-index: 999999; overflow: visible; }
 .plan-disabled { filter: blur(3px) brightness(0.55); opacity: 0.6; pointer-events: none; position: relative; user-select: none; }
 .plan-disabled::after { content: "Plan actuel"; position: absolute; inset: 0; display: flex;align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: white; background: rgba(0,0,0,0.25); backdrop-filter: blur(2px); }
 .section-eyebrow { color: var(--cyan); font-size: 12px; letter-spacing: .25em; text-transform: uppercase; font-weight: 700; margin-bottom: 18px; }
 .locked-page #main-content {filter: blur(8px); pointer-events: none; user-select: none; opacity: 0.6; }
 #modalUpgrade .modal-content { background: #020408; border: 1px solid rgba(0,229,255,.15); border-radius: 24px; color: white;}
+#modalUpgrade .modal-content { max-height: 90vh; overflow-y: auto; }
 .modal-backdrop { background: rgba(0,0,0,0.6) !important; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 /* Responsive mobile */
-@media (max-width: 900px) { .plans-grid { grid-template-columns: 1fr; } .plans-section { padding: 0 10px 30px; } }
+@media (max-width: 992px) { #modalUpgrade .modal-dialog { width: 100%; margin: 0; max-width: 100%; } #modalUpgrade .modal-body { padding: 20px; } .plans-section { padding: 0 15px 40px; } .plans-grid { grid-template-columns: 1fr; gap: 20px; } }
+@media (max-width: 576px) { .plan-name { font-size: 28px; } .plan-price .amount { font-size: 40px; } .plan-features li { font-size: 12px; } }
 
 </style>
 </head>
@@ -869,7 +873,7 @@
 </div>
 
 <div class="modal fade" id="createLinkModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-xl">
     <div class="modal-content">
 
       <div class="modal-header">
@@ -955,10 +959,10 @@
                 <li><div class="pf-check pf-check-on">✓</div><div>Dashboard temps réel</div></li>
                 <li><div class="pf-check pf-check-on">✓</div><div>Notifications email</div></li>
                 <li><div class="pf-check pf-check-on">✓</div><div>Compte Stripe Connect individuel</div></li>
-                <li><div class="pf-check pf-check-off">—</div><div style="color:var(--muted)">Historique des transactions</div></li>
-                <li><div class="pf-check pf-check-off">—</div><div style="color:var(--muted)">Statistiques avancées</div></li>
-                <li><div class="pf-check pf-check-off">—</div><div style="color:var(--muted)">Export CSV</div></li>
-                <li><div class="pf-check pf-check-off">—</div><div style="color:var(--muted)">Multi-utilisateurs</div></li>
+                <li><div class="pf-check pf-check-off">—</div><div style="color:var(--text-muted)">Historique des transactions</div></li>
+                <li><div class="pf-check pf-check-off">—</div><div style="color:var(--text-muted)">Statistiques avancées</div></li>
+                <li><div class="pf-check pf-check-off">—</div><div style="color:var(--text-muted)">Export CSV</div></li>
+                <li><div class="pf-check pf-check-off">—</div><div style="color:var(--text-muted)">Multi-utilisateurs</div></li>
               </ul>
               <a href="#" class="plan-cta cta-default">Plan actuel</a>
             </div>
