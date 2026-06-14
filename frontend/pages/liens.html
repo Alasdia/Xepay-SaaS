@@ -1229,6 +1229,8 @@ async function loadUser() {
   console.log("USER:", user)
 
   updatePlanUI(user.plan)
+  updateUpgradeModal(user.plan)
+  
 }
 
 function updatePlanUI(plan) {
@@ -1257,6 +1259,30 @@ loadUser()
   function logout() {
   localStorage.removeItem("token")
   window.location.href = "login.html"
+}
+</script>
+<script>
+function updateUpgradeModal(plan) {
+
+  document.querySelectorAll(".plan-card")
+    .forEach(card => {
+      card.classList.remove("plan-disabled");
+    });
+
+  if (plan === "free") {
+    document.querySelector(".plan-starter")
+      .classList.add("plan-disabled");
+  }
+
+  if (plan === "pro") {
+    document.querySelector(".plan-pro")
+      .classList.add("plan-disabled");
+  }
+
+  if (plan === "business") {
+    document.querySelector(".plan-business")
+      .classList.add("plan-disabled");
+  }
 }
 </script>
 
