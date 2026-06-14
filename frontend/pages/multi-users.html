@@ -621,6 +621,7 @@
 #modalUpgrade .modal-body { padding: 40px; }
 #modalUpgrade .btn-close { filter: invert(1); }
 .reveal { opacity: 0; transform: translateY(20px); }
+.plans-grid.two-plans { grid-template-columns: repeat(2, 1fr); }
 .reveal.visible { opacity: 1; transform: translateY(0); transition: all .6s ease; }
 .section-eyebrow { color: var(--cyan); font-size: 12px; letter-spacing: .25em; text-transform: uppercase; font-weight: 700; margin-bottom: 18px; }
 #modalUpgrade .modal-content { background: #020408; border: 1px solid rgba(0,229,255,.15); border-radius: 24px; color: white;}
@@ -863,7 +864,7 @@
             <div class="plans-grid">
 
             <!-- STARTER -->
-            <div class="plan-card plan-starter reveal" style="transition-delay:.04s">
+            <div class="plan-card plan-starter reveal" style="transition-delay:.04s" data-plan="free">
               <div class="plan-tag tag-default">Free</div>
               <div class="plan-name">FREE</div>
               <div class="plan-price">
@@ -893,7 +894,7 @@
             </div>
 
             <!-- PRO -->
-            <div class="plan-card plan-pro reveal" style="transition-delay:.08s">
+            <div class="plan-card plan-pro reveal" style="transition-delay:.08s" data-plan="pro">
               <div class="plan-pro-badge">POPULAIRE</div>
               <div class="plan-tag tag-pro">Pro</div>
               <div class="plan-name" style="background:linear-gradient(90deg,var(--cyan),#a5f3ff);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent">PRO</div>
@@ -924,7 +925,7 @@
             </div>
 
             <!-- BUSINESS -->
-            <div class="plan-card plan-business reveal" style="transition-delay:.12s">
+            <div class="plan-card plan-business reveal" style="transition-delay:.12s" data-plan="business">
               <div class="plan-tag tag-biz">Business</div>
               <div class="plan-name" style="background:linear-gradient(90deg,var(--gold),#ffd97d);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent">BUSINESS</div>
               <div class="plan-price">
@@ -1391,27 +1392,57 @@
 </script>
 <script>
 function showUpgradeModal() {
-  const modalEl = document.getElementById("modalUpgrade");
 
-  // Reset animation
+  const modalEl = document.getElementById("modalUpgrade");
+  const grid = modalEl.querySelector(".plans-grid");
+
+  const freeCard = modalEl.querySelector('[data-plan="free"]');
+  const proCard = modalEl.querySelector('[data-plan="pro"]');
+  const businessCard = modalEl.querySelector('[data-plan="business"]');
+
+  // Reset
+  [freeCard, proCard, businessCard].forEach(card => {
+    card.style.display = "block";
+  });
+
+  grid.classList.remove("two-plans");
+
+  // Cas utilisateur PRO
+  if (currentPlan === "pro") {
+
+    freeCard.style.display = "none";
+    grid.classList.add("two-plans");
+  }
+
+  // Cas utilisateur BUSINESS
+  if (currentPlan === "business") {
+
+    return;
+  }
+
+  // Animation
   modalEl.querySelectorAll(".reveal").forEach(el => {
     el.classList.remove("visible");
   });
 
-  const modal = new bootstrap.Modal(modalEl, {
-    backdrop: true,
-    keyboard: true
-  });
-
+  const modal = new bootstrap.Modal(modalEl);
   modal.show();
 
-  // Lance l'animation après l'ouverture
   setTimeout(() => {
-    modalEl.querySelectorAll(".reveal").forEach((el, index) => {
-      setTimeout(() => {
-        el.classList.add("visible");
-      }, index * 150);
-    });
+
+    modalEl.querySelectorAll(".reveal")
+      .forEach((el, index) => {
+
+        if (el.style.display !== "none") {
+
+          setTimeout(() => {
+            el.classList.add("visible");
+          }, index * 150);
+
+        }
+
+      });
+
   }, 300);
 }
 </script>
