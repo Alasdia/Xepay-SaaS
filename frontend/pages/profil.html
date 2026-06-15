@@ -723,10 +723,10 @@ async function initStripe() {
 
   btn.classList.remove("btn-warning", "btn-success")
 
-  if (!data.connected || data.needs_kyc) {
-    btn.classList.add("btn-warning")
+  if (!data.connected || data.needs_kyc || data.future_requirements) {
+    btn.classList.add("btn-warning");
   } else {
-    btn.classList.add("btn-success")
+    btn.classList.add("btn-success");
   }
 
   // 1. PAS onboard
@@ -786,10 +786,21 @@ async function initStripe() {
     badge.innerText = "Opérationnel";
     badge.classList.add("status-warn");
 
-    btn.innerText = "Vérification finale incomplète";
-    btn.disabled = true;
-  }
+    btn.innerText = "Compléter la vérification finale";
+    btn.disabled = false;
 
+    btn.onclick = async () => {
+        const res = await fetch("https://api.alasdia.com/stripe/login-link", {
+            headers: {
+                Authorization: "Bearer " + token,
+                "X-Workspace-Id": localStorage.getItem("workspace_id")
+            }
+        });
+
+        const d = await res.json();
+        window.location.href = d.url;
+    };
+  }
   else {
     badge.innerText = "Entièrement vérifié";
     badge.classList.add("status-ok");
