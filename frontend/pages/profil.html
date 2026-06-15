@@ -567,13 +567,19 @@ function updatePlanUI(plan) {
 
 function updateKycProgress(data) {
 
-  if (!data.connected) {
+  if (!data.connected || !data.stripe?.requirements) {
     setProgress(0);
     return;
   }
 
-  const totalFields = data.requirements.eventually_due.length;
-  const missingFields = data.requirements.currently_due.length;
+  const requirements = data.stripe.requirements;
+
+  const totalFields = requirements.eventually_due.length;
+  if (totalFields === 0) {
+    setProgress(100);
+    return;
+  }
+  const missingFields = requirements.currently_due.length;
 
   const completed = totalFields - missingFields;
 
