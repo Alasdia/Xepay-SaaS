@@ -178,7 +178,7 @@
             <!-- Fonctionnalité verrouillée (Free) -->
             <li class="nav-item">
                 <a href="API.html" class="nav-link text-white-50 d-flex justify-content-between"
-                    onclick="showUpgradeModal('api')">
+                     onclick="checkApiAccess(event)">
                         ⚙️ API Access
                         <span class="badge bg-warning text-dark">Pro</span>
                 </a>
@@ -618,6 +618,8 @@ async function loadUser() {
 
   const user = await res.json()
 
+  localStorage.setItem("plan", user.plan);
+
   console.log("USER:", user)
 
   updatePlanUI(user.plan)
@@ -674,6 +676,18 @@ loadUser()
   overlay.addEventListener("click", close);
   sidebar.querySelectorAll("a").forEach(a => a.addEventListener("click", close));
 })();
+</script>
+<script>
+function checkApiAccess(event) {
+    const plan = localStorage.getItem("plan");
+
+    if (plan === "pro" || plan === "business") {
+        return; // accès autorisé
+    }
+
+    event.preventDefault(); // bloque la navigation
+    showUpgradeModal();
+}
 </script>
 
 <!-- <script src="auth.js"></script> -->
