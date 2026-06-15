@@ -590,9 +590,44 @@ function setProgress(percent) {
   const bar = document.getElementById("kyc-progress-bar");
   const text = document.getElementById("kyc-progress-text");
 
+  // Mise à jour du pourcentage
   bar.style.width = percent + "%";
   text.innerText = percent + "%";
 
+
+  // Nettoyage des anciennes couleurs Bootstrap
+  bar.classList.remove(
+    "bg-danger",
+    "bg-warning",
+    "bg-success"
+  );
+
+  text.classList.remove(
+    "text-danger",
+    "text-warning",
+    "text-success"
+  );
+
+
+  // Couleur selon la progression
+  if (percent < 40) {
+
+    // Profil très incomplet
+    bar.classList.add("bg-danger");
+    text.classList.add("text-danger");
+
+  } else if (percent < 80) {
+
+    // Profil en cours
+    bar.classList.add("bg-warning");
+    text.classList.add("text-warning");
+
+  } else {
+
+    // Profil presque ou totalement prêt
+    bar.classList.add("bg-success");
+    text.classList.add("text-success");
+  }
 }
 
 async function initStripe() {
