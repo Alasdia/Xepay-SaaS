@@ -379,7 +379,10 @@ def stripe_status(
         "connected": is_ready,
         "needs_kyc": (
             len(account.requirements.currently_due) > 0
-            or len(account.requirements.eventually_due) > 0
+        ),
+
+        "future_requirements": (
+            len(account.requirements.eventually_due) > 0
         ),
 
         "stripe": {

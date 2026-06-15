@@ -569,8 +569,8 @@ function updateKycProgress(data) {
 
   let percent = 0;
 
-  // 1. Compte Stripe connecté
-  if (data.connected) {
+  // 1. Compte Stripe créé
+  if (data.stripe) {
     percent += 25;
   }
 
@@ -590,11 +590,8 @@ function updateKycProgress(data) {
     percent += 25;
   }
 
-  // 4. KYC bloquant terminé
-  if (
-    data.stripe.requirements &&
-    data.stripe.requirements.currently_due.length === 0
-  ) {
+  // 4. Aucun KYC bloquant
+  if (!data.needs_kyc) {
     percent += 25;
   }
 
