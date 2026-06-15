@@ -567,29 +567,39 @@ function updatePlanUI(plan) {
 
 function updateKycProgress(data) {
 
-  if (!data.connected || !data.stripe?.requirements) {
-    setProgress(0);
+  let percent = 0;
+
+  // 1. Compte Stripe connecté
+  if (data.connected) {
+    percent += 25;
+  }
+
+  // Si le compte Stripe n'existe pas encore
+  if (!data.stripe) {
+    setProgress(percent);
     return;
   }
 
-  const requirements = data.stripe.requirements;
-
-  const totalFields = requirements.eventually_due.length;
-  if (totalFields === 0) {
-    setProgress(100);
-    return;
+  // 2. Paiements activés
+  if (data.stripe.charges_enabled) {
+    percent += 25;
   }
-  const missingFields = requirements.currently_due.length;
 
-  const completed = totalFields - missingFields;
+  // 3. Retraits activés
+  if (data.stripe.payouts_enabled) {
+    percent += 25;
+  }
 
-  const percent = Math.round(
-    (completed / totalFields) * 100
-  );
+  // 4. KYC bloquant terminé
+  if (
+    data.stripe.requirements &&
+    data.stripe.requirements.currently_due.length === 0
+  ) {
+    percent += 25;
+  }
 
   setProgress(percent);
 }
-
 
 function setProgress(percent) {
 
