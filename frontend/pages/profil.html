@@ -131,6 +131,10 @@
         background: rgba(239,68,68,0.2);
         color: #ef4444;
       }
+      .status-pending {
+        background: rgba(255,193,7,0.2);
+        color: #ffc107;
+      }
       .card-epay:hover {
         transform: translateY(-6px);
         box-shadow: 0 12px 40px rgba(0,0,0,0.6);
@@ -634,7 +638,7 @@ function setProgress(percent) {
     bar.classList.add("bg-danger");
     text.classList.add("text-danger");
 
-  } else if (percent < 80) {
+  } else if (percent < 100) {
 
     // Profil en cours
     bar.classList.add("bg-warning");
@@ -642,7 +646,7 @@ function setProgress(percent) {
 
   } else {
 
-    // Profil presque ou totalement prêt
+    // Profil entièrement vérifié
     bar.classList.add("bg-success");
     text.classList.add("text-success");
   }
@@ -730,7 +734,7 @@ async function initStripe() {
   }
 
   // 1. PAS onboard
-  badge.classList.remove("status-warn", "status-ok")
+  badge.classList.remove("status-warn","stauts-pendind", "status-ok")
 
   if (!data.connected) {
     badge.innerText = "Non configuré"
@@ -767,7 +771,7 @@ async function initStripe() {
 
   else if (data.needs_kyc) {
     badge.innerText = "Vérification requise"
-    badge.classList.add("status-warn")
+    badge.classList.add("status-pending")
     btn.innerText = "Compléter vérification"
 
     btn.onclick = async () => {
@@ -784,7 +788,7 @@ async function initStripe() {
 
   else if (data.future_requirements) {
     badge.innerText = "Opérationnel";
-    badge.classList.add("status-warn");
+    badge.classList.add("status-pending");
 
     btn.innerText = "Compléter la vérification finale";
     btn.disabled = false;
