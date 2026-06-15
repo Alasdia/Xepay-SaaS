@@ -571,10 +571,10 @@ function updateKycProgress(data) {
 
   // 1. Compte Stripe créé
   if (data.stripe) {
-    percent += 25;
+    percent += 20;
   }
 
-  // Si le compte Stripe n'existe pas encore
+  // Pas de compte Stripe
   if (!data.stripe) {
     setProgress(percent);
     return;
@@ -582,17 +582,22 @@ function updateKycProgress(data) {
 
   // 2. Paiements activés
   if (data.stripe.charges_enabled) {
-    percent += 25;
+    percent += 20;
   }
 
   // 3. Retraits activés
   if (data.stripe.payouts_enabled) {
-    percent += 25;
+    percent += 20;
   }
 
-  // 4. Aucun KYC bloquant
+  // 4. Aucun KYC obligatoire actuellement
   if (!data.needs_kyc) {
-    percent += 25;
+    percent += 20;
+  }
+
+  // 5. Aucun KYC futur prévu par Stripe
+  if (!data.future_requirements) {
+    percent += 20;
   }
 
   setProgress(percent);
@@ -691,14 +696,24 @@ async function initStripe() {
     `
   }
 
-  else {
+  else if (!data.future_requirements) {
     mainAlert.innerHTML = `
       <div class="alert mb-4" style="background:rgba(34,197,94,0.15);
         border:1px solid rgba(34,197,94,0.3);
         border-radius:12px;">
         ✅ Compte entièrement vérifié
       </div>
-    `
+    `;
+  }
+
+  else {
+    mainAlert.innerHTML = `
+      <div class="alert mb-4" style="background:rgba(255,193,7,0.15);
+        border:1px solid rgba(255,193,7,0.3);
+        border-radius:12px;">
+        ⚠️ Compte opérationnel, vérification finale incomplète
+      </div>
+    `;
   }
 
   const btn = document.getElementById("stripe-action-btn")
@@ -708,7 +723,7 @@ async function initStripe() {
 
   btn.classList.remove("btn-warning", "btn-success")
 
-if (!data.connected || data.needs_kyc) {
+  if (!data.connected || data.needs_kyc) {
     btn.classList.add("btn-warning")
   } else {
     btn.classList.add("btn-success")
@@ -767,11 +782,24 @@ if (!data.connected || data.needs_kyc) {
     }
   }
 
+  else if (!data.future_requirements) {
+    mainAlert.innerHTML = `
+      <div class="alert mb-4" style="background:rgba(34,197,94,0.15);
+        border:1px solid rgba(34,197,94,0.3);
+        border-radius:12px;">
+        ✅ Compte entièrement vérifié
+      </div>
+    `;
+  }
+
   else {
-    badge.innerText = "Actif"
-    badge.classList.add("status-ok")
-    btn.innerText = "Compte opérationnel ✅"
-    btn.disabled = true
+    mainAlert.innerHTML = `
+      <div class="alert mb-4" style="background:rgba(255,193,7,0.15);
+        border:1px solid rgba(255,193,7,0.3);
+        border-radius:12px;">
+        ⚠️ Compte opérationnel, vérification finale incomplète
+      </div>
+    `;
   }
 }
 
