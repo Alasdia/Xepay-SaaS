@@ -1065,6 +1065,8 @@ const oauthParams = new URLSearchParams(window.location.search);
 
 const urlToken = oauthParams.get("token");
 const workspaceId = oauthParams.get("workspace_id");
+console.log("Workspace ID reçu dans l'URL :", workspaceId);
+console.log("Est null ?", workspaceId === null);
 
 // Connexion via Google OAuth
 if (urlToken) {
@@ -1079,7 +1081,6 @@ if (urlToken) {
   if (workspaceId) {
     localStorage.setItem("workspace_id", workspaceId);
   }
-
   // Nettoie l'URL
   window.history.replaceState({}, document.title, "/dashboard.html");
 }
