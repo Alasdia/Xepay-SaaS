@@ -318,9 +318,12 @@
     <div class="text-end">
       <small class="text-white-50">Profil complété</small>
       <div class="progress mt-1" style="width:150px; height:6px;">
-        <div class="progress-bar bg-warning" style="width:30%"></div>
+        <div id="kyc-progress-bar" class="progress-bar bg-warning" style="width:0%"></div>
       </div>
-      <small class="text-warning">30%</small>
+
+      <small id="kyc-progress-text" class="text-warning">
+        0%
+      </small>
   </div>
 </div>
 
@@ -562,6 +565,36 @@ function updatePlanUI(plan) {
     console.log("PLAN UI UPDATED:", plan)
 }
 
+function updateKycProgress(data) {
+
+  if (!data.connected) {
+    setProgress(0);
+    return;
+  }
+
+  const totalFields = data.requirements.eventually_due.length;
+  const missingFields = data.requirements.currently_due.length;
+
+  const completed = totalFields - missingFields;
+
+  const percent = Math.round(
+    (completed / totalFields) * 100
+  );
+
+  setProgress(percent);
+}
+
+
+function setProgress(percent) {
+
+  const bar = document.getElementById("kyc-progress-bar");
+  const text = document.getElementById("kyc-progress-text");
+
+  bar.style.width = percent + "%";
+  text.innerText = percent + "%";
+
+}
+
 async function initStripe() {
   const token = localStorage.getItem("token")
 
@@ -583,6 +616,8 @@ async function initStripe() {
   }
 
   const data = await res.json()
+
+  updateKycProgress(data);
 
   console.log("STRIPE DATA:", data)
 
