@@ -1597,6 +1597,34 @@ function showUpgradeModal(feature = null) {
 }
 </script>
 <script>
+async function upgrade(plan) {
+  const token = localStorage.getItem("token");
+
+  const res = await fetch(
+    "https://api.alasdia.com/create-checkout-session",
+    {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + token,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        plan: plan
+      })
+    }
+  );
+
+  const data = await res.json();
+
+  if (!res.ok || !data.url) {
+    alert("Erreur lors de l'ouverture de Stripe");
+    return;
+  }
+
+  window.location.href = data.url;
+}
+</script>
+<script>
 document
   .getElementById("modalUpgrade")
   .addEventListener("shown.bs.modal", () => {
