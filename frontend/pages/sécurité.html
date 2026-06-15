@@ -871,6 +871,44 @@ loadUser()
 })();
 </script>
 <script>
+function updateUpgradeModal(plan, feature) {
+
+  document.querySelectorAll(".plan-card")
+    .forEach(card => {
+      card.classList.remove("plan-disabled");
+    });
+
+  // Cas Multi-utilisateurs
+  if (feature === "multi-users") {
+
+    document.querySelector(".plan-starter")
+      .classList.add("plan-disabled");
+
+    document.querySelector(".plan-pro")
+      .classList.add("plan-disabled");
+
+    return;
+  }
+
+  // Cas normal : flouter le plan actuel
+  if (plan === "free") {
+    document.querySelector(".plan-starter")
+      .classList.add("plan-disabled");
+  }
+
+  if (plan === "pro") {
+    document.querySelector(".plan-pro")
+      .classList.add("plan-disabled");
+  }
+
+  if (plan === "business") {
+    document.querySelector(".plan-business")
+      .classList.add("plan-disabled");
+  }
+}
+</script>
+
+<script>
 function showUpgradeModal(feature = null) {
   const plan = localStorage.getItem("plan");
 
