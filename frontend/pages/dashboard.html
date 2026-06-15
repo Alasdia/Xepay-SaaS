@@ -1062,14 +1062,25 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 const oauthParams = new URLSearchParams(window.location.search);
+
 const urlToken = oauthParams.get("token");
 const workspaceId = oauthParams.get("workspace_id");
 
-// Token venant de Google OAuth
+// Connexion via Google OAuth
 if (urlToken) {
+
+  // Nettoie l'ancien utilisateur
+  localStorage.clear();
+
+  // Sauvegarde le nouveau token
   localStorage.setItem("token", urlToken);
 
-  // nettoyer URL
+  // Sauvegarde le bon workspace
+  if (workspaceId) {
+    localStorage.setItem("workspace_id", workspaceId);
+  }
+
+  // Nettoie l'URL
   window.history.replaceState({}, document.title, "/dashboard.html");
 }
 
@@ -1078,6 +1089,7 @@ const token = localStorage.getItem("token");
 if (!token) {
   window.location.replace("login.html");
 }
+
 </script>
 <script>
     
