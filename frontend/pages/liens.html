@@ -851,13 +851,12 @@
       if (isLoading) return;
       isLoading = true;
 
-        const email = localStorage.getItem("email")
         const token = localStorage.getItem("token")
 
         console.log("Email connecté =", email)
         console.log("TOKEN =", token)
 
-        if (!email || !token) {
+        if (!token) {
           window.location.href = "login.html"
           return
         }
