@@ -265,7 +265,7 @@ def google_callback(code: str, db: Session = Depends(get_db)):
     token = create_access_token({"sub": user.email})
 
     return RedirectResponse(
-        url=f"https://alasdia.com/dashboard.html?token={token}"
+        url=f"https://alasdia.com/dashboard.html?token={token}&workspace_id={user.id}"
     )
 
 @router.post("/onboarding")

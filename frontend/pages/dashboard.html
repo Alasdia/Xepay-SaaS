@@ -1063,6 +1063,7 @@
 <script>
 const oauthParams = new URLSearchParams(window.location.search);
 const urlToken = oauthParams.get("token");
+const workspaceId = oauthParams.get("workspace_id");
 
 // Token venant de Google OAuth
 if (urlToken) {
