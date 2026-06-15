@@ -44,6 +44,10 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 
     account = stripe.Account.retrieve(stripe_id)
 
+    print("===== STRIPE ACCOUNT =====")
+    print(account.to_dict())
+    print("==========================")
+
     profile = db.query(Profile).filter(
         Profile.stripe_account_id == stripe_id
     ).first()
