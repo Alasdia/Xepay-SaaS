@@ -237,6 +237,15 @@ def google_callback(code: str, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user)
 
+        membership = WorkspaceUser(
+            user_id=user.id,
+            workspace_id=user.id,
+            role="owner"
+        )
+
+        db.add(membership)
+        db.commit()
+
         profile = Profile(
             user_id=user.id,
             stripe_account_id=stripe_account.id
