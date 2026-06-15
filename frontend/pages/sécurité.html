@@ -132,8 +132,89 @@
           color: rgba(255,255,255,0.5);
           cursor: pointer;
         }
-    
-    </style>
+/* ── PLANS ── */
+.plans-section{position:relative;z-index:2;max-width:1300px;margin:0 auto;padding:0 48px 100px}
+.plans-header{text-align:center;margin-bottom:52px}
+.plans-header h2{font-family:var(--font-d);font-size:clamp(48px,5vw,76px);letter-spacing:.04em;line-height:.95;margin-bottom:14px}
+.plans-header h2 span{background:linear-gradient(90deg,var(--cyan),var(--violet));background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.plans-header p{font-size:15px;color:var(--muted);line-height:1.7;max-width:480px;margin:0 auto}
+
+.plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
+.plan-card{border-radius:22px;padding:36px 32px;background:rgba(6,12,22,.88);border:1px solid var(--border);position:relative;overflow:hidden;transition:transform .3s,box-shadow .3s,border-color .3s;opacity:0;transform:translateY(24px)}
+.plan-card.visible{opacity:1;transform:translateY(0);transition:opacity .65s ease,transform .65s ease,box-shadow .3s,border-color .3s}
+.plan-card:hover{transform:translateY(-6px);box-shadow:0 32px 80px rgba(0,0,0,.5)}
+.plan-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;opacity:0;transition:opacity .3s}
+.plan-card:hover::before{opacity:1}
+
+/* STARTER */
+.plan-starter{border-color:rgba(255,255,255,.09)}
+.plan-starter::before{background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent)}
+.plan-starter:hover{border-color:rgba(255,255,255,.16)}
+
+/* PRO - featured */
+.plan-pro{border-color:rgba(0,229,255,.28);background:linear-gradient(160deg,rgba(0,229,255,.06) 0%,rgba(168,85,247,.05) 100%);transform:translateY(-8px) !important}
+.plan-pro.visible{transform:translateY(-8px) !important}
+.plan-pro:hover{transform:translateY(-14px) !important;box-shadow:0 40px 100px rgba(0,0,0,.6),0 0 60px rgba(0,229,255,.1) !important}
+.plan-pro::before{background:linear-gradient(90deg,transparent,rgba(0,229,255,.5),rgba(168,85,247,.4),transparent);opacity:1}
+.plan-pro-badge{position:absolute;top:16px;right:16px;padding:4px 12px;border-radius:999px;background:linear-gradient(135deg,var(--cyan),var(--violet));color:#000;font-family:var(--font-m);font-size:9px;font-weight:700;letter-spacing:.1em}
+
+/* BUSINESS */
+.plan-business{border-color:rgba(240,180,41,.2)}
+.plan-business::before{background:linear-gradient(90deg,transparent,rgba(240,180,41,.3),transparent)}
+.plan-business:hover{border-color:rgba(240,180,41,.32)}
+
+.plan-tag{display:inline-block;padding:4px 10px;border-radius:999px;font-family:var(--font-m);font-size:9px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:16px}
+.tag-default{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border)}
+.tag-pro    {background:rgba(0,229,255,.1);color:var(--cyan);border:1px solid rgba(0,229,255,.25)}
+.tag-biz    {background:rgba(240,180,41,.1);color:var(--gold);border:1px solid rgba(240,180,41,.25)}
+
+.plan-name{font-family:var(--font-d);font-size:38px;letter-spacing:.06em;margin-bottom:4px;line-height:1}
+.plan-price{margin:18px 0;display:flex;align-items:baseline;gap:4px}
+.plan-price .amount{font-family:var(--font-d);font-size:60px;letter-spacing:.02em;line-height:1}
+.plan-price .currency{font-family:var(--font-m);font-size:20px;color:var(--muted);margin-bottom:4px}
+.plan-price .period{font-family:var(--font-m);font-size:12px;color:var(--muted);align-self:flex-end;padding-bottom:8px;letter-spacing:.06em}
+.plan-price-note{font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:.08em;margin-bottom:20px}
+.plan-divider{height:1px;background:var(--border);margin:20px 0}
+
+.plan-features{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
+.plan-features li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:rgba(255,255,255,.72);line-height:1.5}
+.pf-check{width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;margin-top:1px}
+.pf-check-on {background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.25);color:var(--cyan)}
+.pf-check-gold{background:rgba(240,180,41,.1);border:1px solid rgba(240,180,41,.25);color:var(--gold)}
+.pf-check-off{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--border)}
+.pf-limit{font-family:var(--font-m);font-size:10px;color:var(--muted);margin-left:28px;margin-top:2px}
+
+.plan-cta{display:block;width:100%;padding:14px;border-radius:12px;text-align:center;font-weight:700;font-size:14px;letter-spacing:.05em;text-decoration:none;transition:all .3s;cursor:pointer;border:none;font-family:var(--font-b)}
+.cta-default{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--white)}
+.cta-default:hover{background:rgba(255,255,255,.09);transform:translateY(-2px)}
+.cta-primary{background:linear-gradient(135deg,var(--cyan),var(--violet));color:#000;box-shadow:0 8px 32px rgba(0,229,255,.25)}
+.cta-primary:hover{box-shadow:0 14px 44px rgba(0,229,255,.4);transform:translateY(-2px)}
+.cta-gold{background:rgba(240,180,41,.1);border:1px solid rgba(240,180,41,.28);color:var(--gold)}
+.cta-gold:hover{background:rgba(240,180,41,.18);transform:translateY(-2px)}
+#modalUpgrade .modal-dialog { max-width: 1300px; width: 95%; }
+#modalUpgrade .modal-content { background: radial-gradient(circle at top, rgba(0,229,255,.08), transparent 35%), linear-gradient(180deg, #020408 0%, #06090f 100%); color: white; border: 1px solid rgba(255,255,255,.08); border-radius: 24px; overflow: hidden; box-shadow: 0 0 60px rgba(0,0,0,.7), 0 0 30px rgba(0,229,255,.12); backdrop-filter: blur(20px); }
+#modalUpgrade .modal-body { padding: 40px; }
+#modalUpgrade .btn-close { filter: invert(1); }
+#modalUpgrade .modal-content { background: #020408; border: 1px solid rgba(0,229,255,.15); border-radius: 24px; color: white; }
+#modalUpgrade { z-index: 999999 !important; }
+#modalUpgrade .modal-dialog { max-width: 1300px; width: 95%; margin: 1rem auto; }
+#modalUpgrade .modal-content { max-height: 90vh; overflow-y: auto; overflow-x: hidden; }
+.plans-section { padding: 0 20px 30px; }
+#modalUpgrade .modal-content { position: relative; z-index: 999999; overflow: visible; }
+.plan-disabled { filter: blur(3px) brightness(0.55); opacity: 0.6; pointer-events: none; position: relative; user-select: none; }
+.plan-disabled::after { content: "Plan actuel"; position: absolute; inset: 0; display: flex;align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: white; background: rgba(0,0,0,0.25); backdrop-filter: blur(2px); }
+.section-eyebrow { color: var(--cyan); font-size: 12px; letter-spacing: .25em; text-transform: uppercase; font-weight: 700; margin-bottom: 18px; }
+.locked-page #main-content {filter: blur(8px); pointer-events: none; user-select: none; opacity: 0.6; }
+#modalUpgrade .modal-content { background: #020408; border: 1px solid rgba(0,229,255,.15); border-radius: 24px; color: white;}
+#modalUpgrade .modal-content { max-height: 90vh; overflow-y: auto; }
+.modal-backdrop { background: rgba(0,0,0,0.6) !important; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+#modalUpgrade .modal-content { background: #020408 !important; }
+.plan-card { opacity: 1 !important; }
+/* Responsive mobile */
+@media (max-width: 992px) { #modalUpgrade .modal-dialog { width: 100%; margin: 0; max-width: 100%; } #modalUpgrade .modal-body { padding: 20px; } .plans-section { padding: 0 15px 40px; } .plans-grid { grid-template-columns: 1fr; gap: 20px; } }
+@media (max-width: 576px) { .plan-name { font-size: 28px; } .plan-price .amount { font-size: 40px; } .plan-features li { font-size: 12px; } }
+
+</style>
 </head>
 <body class="d-flex" style="margin: 0; padding: 0;">
 
@@ -430,6 +511,118 @@
     </div>
    </div>
 </div>
+<!-- ── PLANS ── -->
+<div class="modal fade" id="modalUpgrade">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-body">
+        <section class="plans-section">
+          <div class="plans-header reveal">
+            <div class="section-eyebrow">Abonnements SaaS</div>
+              <h2>CHOISISSEZ VOTRE<br><span>PLAN DE GESTION</span></h2>
+              <p>La commission de 6% s'applique à tous les plans. L'abonnement détermine vos outils de gestion et vos limites opérationnelles.</p>
+            </div>
+
+            <div class="plans-grid">
+
+            <!-- STARTER -->
+            <div class="plan-card plan-starter reveal plan-disabled" style="transition-delay:.04s">
+              <div class="plan-tag tag-default">Free</div>
+              <div class="plan-name">FREE</div>
+              <div class="plan-price">
+                <div class="amount">0</div>
+                <div class="currency">xof</div>
+                <div class="period">/ mois</div>
+              </div>
+              <div class="plan-price-note">+ 6% par paiement réussi</div>
+              <div class="plan-divider"></div>
+              <ul class="plan-features">
+                <li>
+                  <div class="pf-check pf-check-on">✓</div>
+                  <div>
+                    <div>Liens de paiement</div>
+                    <div class="pf-limit">Jusqu'à 10 liens actifs</div>
+                  </div>
+                </li>
+                <li><div class="pf-check pf-check-on">✓</div><div>Dashboard temps réel</div></li>
+                <li><div class="pf-check pf-check-on">✓</div><div>Notifications email</div></li>
+                <li><div class="pf-check pf-check-on">✓</div><div>Compte Stripe Connect individuel</div></li>
+                <li><div class="pf-check pf-check-off">—</div><div style="color:var(--text-muted)">Historique des transactions</div></li>
+                <li><div class="pf-check pf-check-off">—</div><div style="color:var(--text-muted)">Statistiques avancées</div></li>
+                <li><div class="pf-check pf-check-off">—</div><div style="color:var(--text-muted)">Export CSV</div></li>
+                <li><div class="pf-check pf-check-off">—</div><div style="color:var(--text-muted)">Multi-utilisateurs</div></li>
+              </ul>
+              <a href="#" class="plan-cta cta-default">Plan actuel</a>
+            </div>
+
+            <!-- PRO -->
+            <div class="plan-card plan-pro reveal" style="transition-delay:.08s">
+              <div class="plan-pro-badge">POPULAIRE</div>
+              <div class="plan-tag tag-pro">Pro</div>
+              <div class="plan-name" style="background:linear-gradient(90deg,var(--cyan),#a5f3ff);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent">PRO</div>
+              <div class="plan-price">
+                <div class="amount" style="background:linear-gradient(90deg,var(--cyan),var(--violet));background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent">15500</div>
+                <div class="currency" style="color:var(--cyan)">xof</div>
+                <div class="period">/ mois</div>
+              </div>
+              <div class="plan-price-note">+ 6% par paiement réussi</div>
+              <div class="plan-divider" style="background:rgba(0,229,255,.15)"></div>
+              <ul class="plan-features">
+                <li>
+                  <div class="pf-check pf-check-on">✓</div>
+                  <div>
+                    <div>Liens de paiement</div>
+                    <div class="pf-limit">Jusqu'à 100 liens actifs</div>
+                  </div>
+                </li>
+                <li><div class="pf-check pf-check-on">✓</div><div>Dashboard temps réel</div></li>
+                <li><div class="pf-check pf-check-on">✓</div><div>Historique complet des transactions</div></li>
+                <li><div class="pf-check pf-check-on">✓</div><div><strong>Statistiques avancées</strong></div></li>
+                <li><div class="pf-check pf-check-on">✓</div><div><strong>Export CSV</strong></div></li>
+                <li><div class="pf-check pf-check-on">✓</div><div><strong>Notifications avancées</strong> (email + SMS)</div></li>
+                <li><div class="pf-check pf-check-on">✓</div><div><strong>Suivi et monitoring améliorés</strong></div></li>
+                <li><div class="pf-check pf-check-off">—</div><div style="color:var(--muted)">Multi-utilisateurs</div></li>
+              </ul>
+              <a href="#" class="plan-cta cta-primary" onclick="upgrade('pro'); return false;">Passer au Pro →</a>
+            </div>
+
+            <!-- BUSINESS -->
+            <div class="plan-card plan-business reveal" style="transition-delay:.12s">
+              <div class="plan-tag tag-biz">Business</div>
+              <div class="plan-name" style="background:linear-gradient(90deg,var(--gold),#ffd97d);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent">BUSINESS</div>
+              <div class="plan-price">
+                <div class="amount" style="color:var(--gold)">36000</div>
+                <div class="currency" style="color:var(--gold)">xof</div>
+                <div class="period">/ mois</div>
+              </div>
+              <div class="plan-price-note">+ 6% par paiement réussi</div>
+              <div class="plan-divider" style="background:rgba(240,180,41,.15)"></div>
+              <ul class="plan-features">
+                <li>
+                  <div class="pf-check pf-check-gold">✓</div>
+                  <div>
+                    <div>Liens de paiement</div>
+                    <div class="pf-limit">Illimités</div>
+                  </div>
+                </li>
+                <li><div class="pf-check pf-check-gold">✓</div><div>Tout le plan Pro inclus</div></li>
+                <li><div class="pf-check pf-check-gold">✓</div><div><strong>Multi-utilisateurs</strong></div></li>
+                <li><div class="pf-check pf-check-gold">✓</div><div><strong>Rôles et permissions</strong> (admin, agent, lecture)</div></li>
+                <li><div class="pf-check pf-check-gold">✓</div><div><strong>Outils d'équipe</strong></div></li>
+                <li><div class="pf-check pf-check-gold">✓</div><div><strong>Volumes élevés</strong> — limites étendues</div></li>
+                <li><div class="pf-check pf-check-gold">✓</div><div><strong>Support prioritaire</strong> dédié</div></li>
+                <li><div class="pf-check pf-check-gold">✓</div><div>KYB entreprise accompagné</div></li>
+              </ul>
+              <a href="#" class="plan-cta cta-gold" onclick="upgrade('business'); return false;">Choisir Business →</a>
+            </div>
+
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
   function togglePwd(id) {
@@ -678,6 +871,19 @@ loadUser()
 })();
 </script>
 <script>
+function showUpgradeModal(feature = null) {
+  const plan = localStorage.getItem("plan");
+
+  updateUpgradeModal(plan, feature);
+
+  const modal = new bootstrap.Modal(
+    document.getElementById("modalUpgrade")
+  );
+
+  modal.show();
+}
+</script>
+<script>
 function checkApiAccess(event) {
     const plan = localStorage.getItem("plan");
 
@@ -689,6 +895,7 @@ function checkApiAccess(event) {
     showUpgradeModal();
 }
 </script>
+
 
 <!-- <script src="auth.js"></script> -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
