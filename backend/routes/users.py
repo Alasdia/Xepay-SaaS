@@ -623,6 +623,30 @@ def verify_2fa(
         "message": "2FA activée avec succès"
     }
 
+@router.post("/2fa/disable")
+def disable_2fa(
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+
+    if not current_user.two_factor_enabled:
+        raise HTTPException(
+            status_code=400,
+            detail="Le 2FA est déjà désactivé"
+        )
+
+    # Désactiver le 2FA
+    current_user.two_factor_enabled = False
+    current_user.two_factor_phone = None
+    current_user.two_factor_code = None
+    current_user.two_factor_code_expires_at = None
+
+    db.commit()
+
+    return {
+        "message": "2FA désactivée avec succès"
+    }
+
 @router.get("/me/user-plan")
 def get_my_plan(
     current_user=Depends(get_current_user),
