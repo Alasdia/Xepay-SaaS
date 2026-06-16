@@ -24,6 +24,7 @@ from backend.routes.logs import router as logs_router
 from backend.routes.wallet import router as wallet_router
 from backend.routes.webhook.stripe import router as stripe_router
 from backend.routes.app import router as ai_router
+from backend.auth import router as auth_router
 
 
 app = FastAPI()
