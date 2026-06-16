@@ -19,6 +19,9 @@ class User(BaseModel):
 class TwoFASetupRequest(BaseModel):
     phone: str
 
+class TwoFAVerifyRequest(BaseModel):
+    code: str
+
 class ProfileRequest(BaseModel):
     full_name: str
     email: str
