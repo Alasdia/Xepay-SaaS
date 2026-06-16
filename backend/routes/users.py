@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.database import engine, get_db
-from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, PlanUpdate, Link, TwoFASetupRequest
+from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, PlanUpdate, Link, TwoFASetupRequest, TwoFAVerifyRequest
 from backend.auth import get_current_user
 from backend.services.workspace_service import (
     get_workspace_owner_id
@@ -574,6 +574,53 @@ def setup_2fa(
 
     return {
         "message": "Code de vérification envoyé"
+    }
+
+@router.post("/2fa/verify")
+def verify_2fa(
+    data: TwoFAVerifyRequest,
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    
+    if not current_user.two_factor_code:
+        raise HTTPException(
+            status_code=400,
+            detail="Aucun code à vérifier"
+        )
+
+    # Vérifier le code
+    if current_user.two_factor_code != data.code:
+        raise HTTPException(
+            status_code=400,
+            detail="Code incorrect"
+        )
+
+    # Vérifier qu'un code existe
+    if not current_user.two_factor_code_expires_at:
+        raise HTTPException(
+            status_code=400,
+            detail="Aucun code de vérification en attente"
+        )
+
+    # Vérifier expiration
+    if current_user.two_factor_code_expires_at < datetime.utcnow():
+        raise HTTPException(
+            status_code=400,
+            detail="Code expiré"
+        )
+
+    # Activer le 2FA
+    current_user.two_factor_enabled = True
+
+    # Nettoyer le code utilisé
+    current_user.two_factor_code = None
+    current_user.two_factor_code_expires_at = None
+
+    db.commit()
+
+    return {
+        "message": "2FA activée avec succès"
     }
 
 @router.get("/me/user-plan")
