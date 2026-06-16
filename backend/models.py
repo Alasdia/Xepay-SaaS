@@ -38,6 +38,11 @@ class PaymentCreate(BaseModel):
     amount: float
     status: str
 
+class SecurityAlertsRequest(BaseModel):
+    alert_login: bool
+    alert_payment: bool
+    alert_suspect: bool
+
 class LinkCreate(BaseModel):
     name: Optional[str] = None
     amount: float
@@ -204,6 +209,9 @@ class UserDB(Base):
     links = relationship("Link", back_populates="user", uselist=True)
     wallet = relationship("Wallet", back_populates="user", uselist=False)
     webhooks = relationship("Webhook", back_populates="user")
+    alert_login = Column(Boolean, default=True)
+    alert_payment = Column(Boolean, default=True)
+    alert_suspect = Column(Boolean, default=True)
 
 
 
