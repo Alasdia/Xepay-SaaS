@@ -177,3 +177,54 @@ def send_invitation_email(
     print("INVITATION EMAIL")
     print(response.status_code)
     print(response.text)
+
+def send_login_alert_email(email, device, ip):
+
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": "Xepay <noreply@alasdia.com>",
+            "to": [email],
+            "subject": "Nouvelle connexion à votre compte Xepay",
+            "html": f"""
+                <h2>Nouvelle connexion détectée 🔐</h2>
+
+                <p>
+                    Une connexion à votre compte Xepay a été détectée.
+                </p>
+
+                <p>
+                    <b>Appareil :</b> {device}
+                </p>
+
+                <p>
+                    <b>Adresse IP :</b> {ip}
+                </p>
+
+                <br>
+
+                <p>
+                    Si c'était vous, aucune action n'est nécessaire.
+                </p>
+
+                <p>
+                    Si vous ne reconnaissez pas cette activité,
+                    changez immédiatement votre mot de passe et activez la double authentification.
+                </p>
+
+                <br>
+
+                <p>
+                    L'équipe Xepay.
+                </p>
+            """
+        }
+    )
+
+    print("LOGIN ALERT EMAIL")
+    print(response.status_code)
+    print(response.text)
