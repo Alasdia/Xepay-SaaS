@@ -808,34 +808,39 @@
 
   chargerUtilisateurConnecte();
 
-  function chargerAlertes() {
-    const login = localStorage.getItem("alert-login");
-    const payment = localStorage.getItem("alert-payment");
-    const suspect = localStorage.getItem("alert-suspect");
+  async function chargerAlertes() {
 
-    if (login !== null) {
-      document.getElementById("alert-login").checked = login === "true";
-    }
+    const token = localStorage.getItem("token");
 
-    if (payment !== null) {
-      document.getElementById("alert-payment").checked = payment === "true";
-    }
+    const res = await fetch(
+      "https://api.alasdia.com/security/alerts",
+      {
+        headers: {
+          "Authorization": "Bearer " + token
+        }
+      }
+    );
 
-    if (suspect !== null) {
-      document.getElementById("alert-suspect").checked = suspect === "true";
-    }
+    const data = await res.json();
 
-    document.getElementById("alert-login").addEventListener("change", function () {
-      localStorage.setItem("alert-login", this.checked);
-    });
+    document.getElementById("alert-login").checked =
+      data.alert_login;
 
-    document.getElementById("alert-payment").addEventListener("change", function () {
-      localStorage.setItem("alert-payment", this.checked);
-    });
+    document.getElementById("alert-payment").checked =
+      data.alert_payment;
 
-    document.getElementById("alert-suspect").addEventListener("change", function () {
-      localStorage.setItem("alert-suspect", this.checked);
-    });
+    document.getElementById("alert-suspect").checked =
+      data.alert_suspect;
+
+
+    document.getElementById("alert-login")
+      .addEventListener("change", sauvegarderAlertes);
+
+    document.getElementById("alert-payment")
+      .addEventListener("change", sauvegarderAlertes);
+
+    document.getElementById("alert-suspect")
+      .addEventListener("change", sauvegarderAlertes);
   }
   chargerAlertes();
 
