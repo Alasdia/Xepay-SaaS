@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.database import engine, get_db
-from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, PlanUpdate, Link
+from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, PlanUpdate, Link, SecurityAlertsRequest
 from backend.auth import get_current_user
 from backend.services.workspace_service import (
     get_workspace_owner_id
@@ -170,6 +170,34 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         "workspace_id": workspace_user.workspace_id
     }
 
+
+@router.get("/security/alerts")
+def get_security_alerts(
+    current_user: UserDB = Depends(get_current_user)
+):
+
+    return {
+        "alert_login": current_user.alert_login,
+        "alert_payment": current_user.alert_payment,
+        "alert_suspect": current_user.alert_suspect
+    }
+
+@router.post("/security/alerts")
+def update_security_alerts(
+    data: SecurityAlertsRequest,
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+
+    current_user.alert_login = data.alert_login
+    current_user.alert_payment = data.alert_payment
+    current_user.alert_suspect = data.alert_suspect
+
+    db.commit()
+
+    return {
+        "message": "Préférences de sécurité mises à jour"
+    }
 
 
 CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
