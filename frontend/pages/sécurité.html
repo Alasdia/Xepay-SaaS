@@ -844,6 +844,35 @@
   }
   chargerAlertes();
 
+  async function sauvegarderAlertes() {
+    const token = localStorage.getItem("token");
+
+    try { 
+      const res = await fetch("https://api.alasdia.com/security/alerts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({
+          alert_login: document.getElementById("alert-login").checked,
+          alert_payment: document.getElementById("alert-payment").checked,
+          alert_suspect: document.getElementById("alert-suspect").checked
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.detail || "Erreur");
+      }
+
+      console.log("Alertes sauvegardées :", data);
+    } catch (error) {
+      console.error("Erreur sauvegarde alertes :", error);
+    }
+  }
+
   async function supprimerCompte() {
     const confirmation = confirm("Voulez-vous vraiment supprimer votre compte ?");
 
