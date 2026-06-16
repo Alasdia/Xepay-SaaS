@@ -1036,17 +1036,60 @@ function checkApiAccess(event) {
 }
 </script>
 <script>
-function toggle2FA(enabled) {
+async function toggle2FA(enabled) {
 
+  const toggle = document.getElementById("toggle-2fa");
+
+  // ACTIVATION
   if (enabled) {
+
     const modal = new bootstrap.Modal(
       document.getElementById("twoFaModal")
     );
 
     modal.show();
+    return;
+  }
+
+  // DÉSACTIVATION
+  const token = localStorage.getItem("token");
+
+  try {
+
+    const res = await fetch(
+      "https://api.alasdia.com/2fa/disable",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + token
+        }
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.detail || "Erreur");
+    }
+
+    alert("2FA désactivée avec succès");
+
+    toggle.checked = false;
+
+    document.getElementById("2fa-active").style.display = "none";
+
+    document.getElementById("2fa-inactive").style.display = "block";
+
+  } catch(err) {
+
+    console.error(err);
+
+    alert("Impossible de désactiver la 2FA");
+
+    // remet le switch sur ON
+    toggle.checked = true;
   }
 }
-
 
 async function send2FA() {
 
@@ -1110,6 +1153,9 @@ async function verify2FA() {
 
 
   if (!res.ok) {
+
+    document.getElementById("toggle-2fa").checked = false;
+
     alert("Code invalide");
     return;
   }
@@ -1126,6 +1172,61 @@ async function verify2FA() {
     document.getElementById("twoFaModal")
   ).hide();
 }
+</script>
+<script>
+async function load2FAStatus() {
+
+  const token = localStorage.getItem("token");
+
+  if (!token) return;
+
+  try {
+
+    const res = await fetch(
+      "https://api.alasdia.com/profile",
+      {
+        headers: {
+          "Authorization": "Bearer " + token,
+          "X-Workspace-Id": localStorage.getItem("workspace_id")
+        }
+      }
+    );
+
+    const data = await res.json();
+
+    console.log("2FA STATUS:", data);
+
+    const toggle = document.getElementById("toggle-2fa");
+
+    if (data.two_factor_enabled) {
+
+      toggle.checked = true;
+
+      document.getElementById("2fa-active").style.display = "block";
+
+      document.getElementById("2fa-inactive").style.display = "none";
+
+    } else {
+
+      toggle.checked = false;
+
+      document.getElementById("2fa-active").style.display = "none";
+
+      document.getElementById("2fa-inactive").style.display = "block";
+
+    }
+
+  } catch(err) {
+
+    console.error("Erreur chargement 2FA :", err);
+
+  }
+}
+
+
+// lancer au chargement de la page
+load2FAStatus();
+
 </script>
 
 <!-- <script src="auth.js"></script> -->
