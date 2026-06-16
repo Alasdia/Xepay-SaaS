@@ -52,6 +52,7 @@ app.include_router(logs_router)
 app.include_router(wallet_router)
 app.include_router(stripe_router)
 app.include_router(ai_router)
+app.include_router(auth_router)
 
 
 
