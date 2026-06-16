@@ -23,7 +23,7 @@ from fastapi.responses import RedirectResponse
 import os, shutil
 from fastapi.responses import FileResponse
 from fastapi import FastAPI, Request
-from backend.services.email_service import send_invitation_email
+from backend.services.email_service import send_invitation_email, send_login_alert_email
 import requests
 import os
 import stripe
