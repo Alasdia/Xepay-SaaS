@@ -7,7 +7,6 @@ from backend.services.workspace_service import (
     get_workspace_owner_id
 )
 from backend.security import verify_password, create_access_token
-from services.email_service import send_login_alert_email
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import text
 from datetime import datetime, timezone
