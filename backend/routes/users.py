@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.database import engine, get_db
-from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, PlanUpdate, Link
+from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, PlanUpdate, Link, TwoFASetupRequest
 from backend.auth import get_current_user
 from backend.services.workspace_service import (
     get_workspace_owner_id
@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 from backend.security import hash_password
 from fastapi import Request
+import random
 import hashlib
 from datetime import datetime, timedelta
 from backend.models import WorkspaceUser, Profile, WorkspaceInvite
@@ -544,9 +545,36 @@ def get_profile(
     return {
         "full_name": profile.full_name,
         "email": current_user.email,
-        "phone": profile.phone
+        "phone": profile.phone,
+        "two_factor_enabled": current_user.two_factor_enabled,
+        "two_factor_phone": current_user.two_factor_phone
     }
 
+
+@router.post("/2fa/setup")
+def setup_2fa(
+    data: TwoFASetupRequest,
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+
+    # Générer OTP à 6 chiffres
+    code = str(random.randint(100000, 999999))
+
+    current_user.two_factor_phone = data.phone
+    current_user.two_factor_code = code
+    current_user.two_factor_code_expires_at = (
+        datetime.utcnow() + timedelta(minutes=5)
+    )
+
+    db.commit()
+
+    # TODO: envoyer SMS via Twilio, Orange, etc.
+    print("OTP 2FA:", code)
+
+    return {
+        "message": "Code de vérification envoyé"
+    }
 
 @router.get("/me/user-plan")
 def get_my_plan(

@@ -16,6 +16,9 @@ class User(BaseModel):
     password: str
     invite_token: Optional[str] = None
 
+class TwoFASetupRequest(BaseModel):
+    phone: str
+
 class ProfileRequest(BaseModel):
     full_name: str
     email: str
@@ -171,6 +174,7 @@ class Profile(Base):
     user_id = Column(String, ForeignKey("users.id"), unique=True)
     full_name = Column(String)
     phone = Column(String)
+    phone_verified = Column(Boolean, default=False)
     stripe_account_id = Column(String, nullable=True, index=True)
     
 
@@ -180,6 +184,10 @@ class UserDB(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     email = Column(String, index=True, unique=True)
     password = Column(String)
+    two_factor_enabled = Column(Boolean, default=False)
+    two_factor_phone = Column(String, nullable=True)
+    two_factor_code = Column(String, nullable=True)
+    two_factor_code_expires_at = Column(DateTime, nullable=True)
     status = Column(String, default="active")
     last_login = Column(DateTime, nullable=True)
     owner_id = Column(String, ForeignKey("users.id"), nullable=True)
