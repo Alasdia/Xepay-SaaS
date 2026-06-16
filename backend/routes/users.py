@@ -7,6 +7,7 @@ from backend.services.workspace_service import (
     get_workspace_owner_id
 )
 from backend.security import verify_password, create_access_token
+from services.email_service import send_login_alert_email
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import text
 from datetime import datetime, timezone
@@ -138,7 +139,11 @@ def signup(user: User, db: Session = Depends(get_db)):
     
 
 @router.post("/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(
+    request: Request,
+    form_data: OAuth2PasswordRequestForm = Depends(), 
+    db: Session = Depends(get_db)
+):
     print("🚀 LOGIN hit")
 
     email = form_data.username
@@ -161,8 +166,21 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
           status_code=404,
           detail="Workspace introuvable"
         )
+    ip = request.client.host
+
+    device = request.headers.get(
+        "user-agent",
+        "Appareil inconnu"
+    )
 
     token = create_access_token({"sub": user.email})
+
+    if user.alert_login:
+        send_login_alert_email(
+            email=user.email,
+            device=device,
+            ip=ip
+        )
 
     return {
         "access_token": token,
