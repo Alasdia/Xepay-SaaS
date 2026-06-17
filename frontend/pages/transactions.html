@@ -714,7 +714,7 @@
       </li>
       <li class="nav-item">
         <a href="multi-users.html" class="nav-link text-white-50 d-flex justify-content-between"
-          onclick="event.preventDefault(); showUpgradeModal('multi-users');">
+          onclick="checkMultiUsersAccess(event)">
           👥 Multi-utilisateurs
           <span class="badge-web3 business">Business</span>
         </a>
@@ -2091,6 +2091,20 @@ function checkApiAccess(event) {
 
   event.preventDefault();
   showUpgradeModal("api");
+}
+function checkMultiUsersAccess(event) {
+
+    const plan = localStorage.getItem("plan");
+
+    console.log("PLAN =", plan);
+
+    if (plan === "business") {
+        return;
+    }
+
+    event.preventDefault();
+
+    showUpgradeModal("multi-users");
 }
 </script>
 <script>
