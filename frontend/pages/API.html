@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>ePay — API Access</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+<link
+rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="responsive.css">
 <style>
@@ -70,7 +73,7 @@ body { background: #ffffff; color: #111827; min-height: 100vh; overflow-x: hidde
 .key-label { font-size: 12px; color: #6b7280; min-width: 65px; }
 .key-value { font-family: monospace; font-size: 12px; color: #6b7280; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .key-value:hover { color: #facc15; }
-.key-value.secret { color: rgba(255,255,255,0.4); letter-spacing: 2px; }
+.key-value.secret { color: #111827; letter-spacing: 2px; }
 .icon-btn { background: #6b7280; border: none; cursor: pointer; color: #6b7280; padding: 4px 8px; border-radius: 6px; font-size: 13px; }
 .icon-btn:hover { background: #f3f4f6; color: #facc15; }
 
@@ -224,7 +227,7 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
 
     <!-- Logo -->
     <div class="mb-4 mt-2">
-      <h4 class="fw-bold">⚡ Xepay</h4>
+      <h4 class="fw-bold"><i class="fa-solid fa-bolt"></i> Xepay</h4>
       <small class="muted">Tableau de bord marchand</small>
     </div>
 
@@ -238,18 +241,18 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
         <li class="nav-item">
             <a href="dashboard.html"
                 class="nav-link">
-                    🏠 Accueil
+                  <i class="fa-solid fa-house"></i> Accueil
             </a>
         </li>
         <li class="nav-item">
             <a href="transactions.html"
                 class="nav-link">
-                    💳 Transactions
+                    <i class="fa-solid fa-credit-card"></i> Transactions
             </a>
         </li>
         <li class="nav-item">
             <a href="liens.html" class="nav-link">
-                🔗 Mes liens de paiement
+                <i class="fa-solid fa-link"></i> Mes liens de paiement
             </a>
         </li>
 
@@ -258,7 +261,7 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
             <a href="#"
               class="nav-link text-white-50 active-link d-flex justify-content-between"
               onclick="event.preventDefault(); checkAccess('pro', 'API.html')">
-              ⚙️ API Access
+              <i class="fa-solid fa-code"></i> API Access
                 <span class="badge pro">PRO</span>
             </a>
         </li>
@@ -266,19 +269,19 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
             <a href="multi-users.html"
               class="nav-link d-flex justify-content-between"
               onclick="checkMultiUsersAccess(event)">
-                👥 Multi-utilisateurs
+                <i class="fa-solid fa-users"></i> Multi-utilisateurs
                 <span class="badge business">BUSINESS</span>
             </a>
         </li>
 
         <li class="nav-item mt-2">
             <a href="profil.html" class="nav-link">
-                👤 Profil / KYC
+                <i class="fa-solid fa-user"></i> Profil / KYC
             </a>
         </li>
         <li class="nav-item">
             <a href="sécurité.html" class="nav-link">
-                🔒 Sécurité
+                <i class="fa-solid fa-shield-halved"></i> Sécurité
             </a>
         </li>
     </ul>
@@ -298,7 +301,7 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
 
         <!-- Logout -->
         <a href="login.html" onclick="logout" class="nav-link mt-3 text-center fw-bold">
-            🚪 Déconnexion
+            <i class="fa-solid fa-right-from-bracket"></i> Déconnexion
         </a>
     </div>
 </div>
@@ -308,7 +311,7 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
 
   <!-- HEADER -->
   <div class="mb-4">
-    <h1 style="font-size:24px;font-weight:700;">⚙️ API Access <span class="badge pro">PRO</span></h1>
+    <h1 style="font-size:24px;font-weight:700;"><i class="fa-solid fa-code"></i> API Access <span class="badge pro">PRO</span></h1>
     <p class="muted" style="font-size:14px;margin-top:6px;">Gérez vos clés API et configurez vos webhooks pour intégrer ePay dans vos applications.</p>
   </div>
 
@@ -341,21 +344,21 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
   <div class="row g-3 mb-4">
     <div class="col-md-6">
       <div class="card-dark">
-        <div class="card-title-small">🔑 Clés API</div>
+        <div class="card-title-small"><i class="fa-solid fa-key"></i> Clés API</div>
         <div class="key-row">
           <span class="key-label">Publique</span>
           <span class="key-value" id="pubKey">pk_live_aXz8Km3nQpRt7wYdLs</span>
-          <button class="icon-btn" onclick="copyKey('pubKey')">📋</button>
+          <button class="icon-btn" onclick="copyKey('pubKey')"><i class="fa-regular fa-copy"></i></button>
         </div>
         <div class="key-row">
           <span class="key-label">Secrète</span>
           <span class="key-value secret" id="secKey">••••••••••••••••</span>
-          <button class="icon-btn" id="toggleBtn" onclick="toggleSecret()">👁</button>
-          <button class="icon-btn" onclick="copyKey('secKey')">📋</button>
+          <button class="icon-btn" id="toggleBtn" onclick="toggleSecret()"><i class="fa-regular fa-eye"></i></button>
+          <button class="icon-btn" onclick="copyKey('secKey')"><i class="fa-regular fa-copy"></i></button>
         </div>
         <div class="d-flex gap-2 mt-3">
-          <button class="btn-api btn-blue" onclick="regenKey()">🔄 Régénérer</button>
-          <button class="btn-api btn-out" onclick="copyKey('pubKey')">📋 Copier</button>
+          <button class="btn-api btn-blue" onclick="regenKey()"><i class="fa-solid fa-rotate"></i> Régénérer</button>
+          <button class="btn-api btn-out" onclick="copyKey('pubKey')"><i class="fa-regular fa-copy"></i> Copier</button>
         </div>
         <div style="margin-top:14px;padding-top:12px;border-top:1px solid #2a2f5e;font-size:12px;">
           <span class="muted">⚠️ Dernière utilisation :</span><br>
@@ -365,7 +368,7 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
     </div>
     <div class="col-md-6">
       <div class="card-dark">
-        <div class="card-title-small">📋 Logs récents</div>
+        <div class="card-title-small"><i class="fa-regular fa-copy"></i> Logs récents</div>
         <div id="logsContainer"></div>
         <button onclick="toggleLogs()" id="toggleLogsBtn" class="btn-logs">
           Voir tous les logs →
@@ -379,7 +382,7 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
   <!-- WEBHOOKS -->
   <div class="card-dark">
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <div class="card-title-small mb-0">🔗 Webhooks</div>
+      <div class="card-title-small mb-0"><i class="fa-solid fa-link"></i> Webhooks</div>
       <button class="btn-api btn-blue" onclick="openModal()" style="padding:7px 14px;font-size:12px;">+ Ajouter</button>
     </div>
     <div class="table-wrapper">
@@ -391,21 +394,21 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
           <td><span class="event-tag">payment.success</span><span class="event-tag">payment.failed</span></td>
           <td><span class="badge-active">● Actif</span></td>
           <td class="muted" style="font-size:12px;">Il y a 2 min</td>
-          <td><button class="icon-btn" onclick="testWebhook(this)">🧪</button> <button class="icon-btn" onclick="deleteWebhook(this)">🗑</button></td>
+          <td><button class="icon-btn" onclick="testWebhook(this)"><i class="fa-solid fa-vial"></i></button> <button class="icon-btn" onclick="deleteWebhook(this)"><i class="fa-solid fa-trash"></i></button></td>
         </tr>
         <tr>
           <td class="url-mono">https://erp.monentreprise.ci/pay</td>
           <td><span class="event-tag">withdrawal.done</span></td>
           <td><span class="badge-active">● Actif</span></td>
           <td class="muted" style="font-size:12px;">Hier 18:44</td>
-          <td><button class="icon-btn" onclick="testWebhook(this)">🧪</button> <button class="icon-btn" onclick="deleteWebhook(this)">🗑</button></td>
+          <td><button class="icon-btn" onclick="testWebhook(this)"><i class="fa-solid fa-vial"></i></button> <button class="icon-btn" onclick="deleteWebhook(this)"><i class="fa-solid fa-trash"></i></button></td>
         </tr>
         <tr>
           <td class="url-mono">https://staging.monsite.com/hook</td>
           <td><span class="event-tag">payment.success</span></td>
           <td><span class="badge-inactive">● Inactif</span></td>
           <td class="muted" style="font-size:12px;">Il y a 5 jours</td>
-          <td><button class="icon-btn" onclick="testWebhook(this)">🧪</button> <button class="icon-btn" onclick="deleteWebhook(this)">🗑</button></td>
+          <td><button class="icon-btn" onclick="testWebhook(this)"><i class="fa-solid fa-vial"></i></button> <button class="icon-btn" onclick="deleteWebhook(this)"><i class="fa-solid fa-trash"></i></button></td>
         </tr>
       </tbody>
     </table>
@@ -415,13 +418,13 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
 <!-- 🌐 WEBHOOK API DOC -->
 <div class="card-dark doc-card" style="margin-top:24px; padding:28px; border-radius:18px;">
 
-  <h2 style="margin-bottom:8px;">📡 Webhook API</h2>
+  <h2 style="margin-bottom:8px;"><i class="fa-solid fa-satellite-dish"></i> Webhook API</h2>
   <p style="opacity:0.75; margin-bottom:24px;">
     Recevez des événements Xepay en temps réel.
   </p>
 
   <!-- Endpoint -->
-  <h3>📍 Endpoint</h3>
+  <h3><i class="fa-solid fa-location-dot"></i>  Endpoint</h3>
 
   <div class="code-block">
     <button class="copy-btn" onclick="copyCode(this)">Copy</button>
@@ -430,7 +433,7 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
   </div>
 
   <!-- Headers -->
-  <h3>📦 Headers</h3>
+  <h3><i class="fa-solid fa-box"></i> Headers</h3>
 
   <div class="code-block">
     <button class="copy-btn" onclick="copyCode(this)">Copy</button>
@@ -442,7 +445,7 @@ Content-Type: application/json</code></pre>
   </div>
 
   <!-- Webhook Secret -->
-  <h3>🔐 Webhook Secret</h3>
+  <h3><i class="fa-solid fa-lock"></i> Webhook Secret</h3>
 
   <div class="code-block">
     <button class="copy-btn" onclick="copyCode(this)">Copy</button>
@@ -451,7 +454,7 @@ Content-Type: application/json</code></pre>
   </div>
 
   <!-- Signature Formula -->
-  <h3>🧮 Signature</h3>
+  <h3><i class="fa-solid fa-shield"></i> Signature</h3>
 
   <p style="opacity:0.8; margin-bottom:14px;">
     Xepay génère une signature HMAC SHA256 basée sur le body brut.
@@ -465,11 +468,11 @@ Content-Type: application/json</code></pre>
 
   <!-- Security -->
   <div class="security-box">
-    ⚠️ Vérifiez toujours la signature avant de traiter un paiement.
+    <i class="fa-brands fa-python"></i>Vérifiez toujours la signature avant de traiter un paiement.
   </div>
 
   <!-- Payload -->
-  <h3 style="margin-top:28px;">📨 Payload</h3>
+  <h3 style="margin-top:28px;"><i class="fa-solid fa-file-code"></i> Payload</h3>
 
   <div class="code-block">
     <button class="copy-btn" onclick="copyCode(this)">Copy</button>
@@ -488,7 +491,7 @@ Content-Type: application/json</code></pre>
   </div>
 
   <!-- Node -->
-  <h3>🟨 Vérification (Node.js)</h3>
+  <h3><i class="fa-brands fa-node-js"></i> Vérification (Node.js)</h3>
 
   <div class="code-block">
     <button class="copy-btn" onclick="copyCode(this)">Copy</button>
@@ -512,7 +515,7 @@ res.status(200).json({
   </div>
 
   <!-- Python -->
-  <h3>🐍 Vérification (Python)</h3>
+  <h3><i class="fa-brands fa-python"></i> Vérification (Python)</h3>
 
   <div class="code-block">
     <button class="copy-btn" onclick="copyCode(this)">Copy</button>
@@ -538,14 +541,14 @@ return {
   </div>
 
   <!-- Retry -->
-  <h3>🔁 Retries automatiques</h3>
+  <h3><i class="fa-solid fa-rotate"></i> Retries automatiques</h3>
 
   <p style="opacity:0.8;">
     Xepay tente automatiquement de renvoyer les webhooks échoués jusqu’à 3 fois avec un court délai entre chaque tentative.
   </p>
 
   <!-- Status -->
-  <h3 style="margin-top:28px;">📶 Réponses HTTP</h3>
+  <h3 style="margin-top:28px;"><i class="fa-solid fa-file-lines"></i> Réponses HTTP</h3>
 
   <table class="retry-table">
     <tr>
@@ -600,7 +603,7 @@ return {
   </table>
 
   <!-- Test -->
-  <h3 style="margin-top:28px;">🧪 Test rapide</h3>
+  <h3 style="margin-top:28px;"><i class="fa-solid fa-flask"></i> Test rapide</h3>
 
   <p style="opacity:0.8;">
     Utilisez <strong>webhook.site</strong> pour tester et inspecter les requêtes webhook.
