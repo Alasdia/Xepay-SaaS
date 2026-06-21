@@ -15,28 +15,15 @@
   --gold: #f0b429;
 
   --white: #ffffff;
-  --muted: rgba(255,255,255,.55);
+  --muted: #6b7280;
   --border: rgba(255,255,255,.12);
 
   --font-d: Arial, sans-serif;
   --font-m: Arial, sans-serif;
   --font-b: Arial, sans-serif;
 }
-      body {
-        background: #080f3f !important;
-        color: white !important;
-      }
-
-      #main-content {
-        background: #080f3f;
-      }
-
-      .card-epay {
-        background: rgba(255,255,255,0.08) !important;
-        border: none !important;
-        border-radius: 16px;
-        color: white;
-      }
+body { background: #f8fafc !important; color: #111827 !important; }
+#main-content { background: #f8fafc !important; }
 
       .form-control,
       .form-select {
@@ -74,12 +61,7 @@
       .form-control::placeholder { 
         color: rgba(255,255,255,0.3) !important; 
       }
-      .card-epay {
-        background: rgba(255,255,255,0.08);
-        border: none;
-        border-radius: 16px;
-        color: white;
-      }
+      
       .plan-badge {
         display: inline-flex;
         align-items: center;
@@ -102,19 +84,15 @@
         height: 8px;
         border-radius: 50%;
       }
-      .card-epay {
-        background: rgba(255,255,255,0.06);
-        backdrop-filter: blur(12px);
-        border-radius: 16px;
-        border: 1px solid rgba(255,255,255,0.08);
-        box-shadow: 0 8px 30px rgba(0,0,0,0.4);
-        transition: transform 0.2s ease;
-      }
+.card-epay { background: #ffffff; backdrop-filter: none; border-radius: 16px; border: 1px solid #e5e7eb; box-shadow: 0 2px 12px rgba(0,0,0,0.0.5); transition: transform 0.2s ease; }
+.card-epay:hover { transform: translateY(-4px); border-color: #f0b429; box-shadow: 0 8px 25px rgba(240,180,41,.15); }
+.nav-link{ color:#111827 !important; border-radius:12px; transition:.2s; }
+.nav-link:hover{ background:#f0b429 !important; color:#111827 !important; }
 
-      .card-epay:hover {
-        transform: translateY(-4px);
-      }
-
+.active-link{
+  background:#f0b429 !important;
+  color:#111827 !important;
+}
       .status-badge {
         padding: 5px 12px;
         border-radius: 999px;
@@ -135,10 +113,7 @@
         background: rgba(255,193,7,0.2);
         color: #ffc107;
       }
-      .card-epay:hover {
-        transform: translateY(-6px);
-        box-shadow: 0 12px 40px rgba(0,0,0,0.6);
-      }
+      
 /* ── PLANS ── */
 .plans-section{position:relative;z-index:2;max-width:1300px;margin:0 auto;padding:0 48px 100px}
 .plans-header{text-align:center;margin-bottom:52px}
@@ -228,12 +203,12 @@
     
 <!-- SIDEBAR -->
   <div id="sidebar" class="d-flex flex-column p-3"
-    style="width: 260px; min-height: 100vh; background: #0d1b6e; position: fixed;">
+    style="width: 260px; min-height: 100vh; background: #ffffff; border-right: 1px solid #e5e7eb; position: fixed;">
 
     <!-- Logo -->
     <div class="mb-4 mt-2">
-      <h4 class="text-white fw-bold">⚡ Xepay</h4>
-        <small class="text-white-50">Tableau de bord marchand</small>
+      <h4 class="fw-bold">⚡ Xepay</h4>
+        <small class="text-muted">Tableau de bord marchand</small>
     </div>
 
     <!-- Badge plan -->
@@ -247,32 +222,32 @@
       <ul class="nav nav-pills flex-column gap-1">
         <li class="nav-item">
           <a href="./dashboard.html"
-            class="nav-link text-white active-link">
+            class="nav-link text-dark active-link">
             🏠 Accueil
           </a>
         </li>
         <li class="nav-item">
           <a href="./transactions.html"
-            class="nav-link text-white">
+            class="nav-link text-dark">
               💳 Transactions
           </a>
         </li>
         <li class="nav-item">
-          <a href="./liens.html" class="nav-link text-white">
+          <a href="./liens.html" class="nav-link text-dark">
             🔗 Mes liens de paiement
           </a>
         </li>
 
         <!-- Fonctionnalité verrouillée (Free) -->
         <li class="nav-item">
-          <a href="API.html" class="nav-link text-white-50 d-flex justify-content-between"
+          <a href="API.html" class="nav-link text-muted d-flex justify-content-between"
             onclick="checkApiAccess(event)">
               ⚙️ API Access
             <span class="badge bg-warning text-dark">Pro</span>
           </a>
         </li>
         <li class="nav-item">
-          <a href="multi-users.html" class="nav-link text-white-50 d-flex justify-content-between"
+          <a href="multi-users.html" class="nav-link text-muted d-flex justify-content-between"
             onclick="showUpgradeModal('team')">
             👥 Multi-utilisateurs
             <span class="badge bg-danger">Business</span>
@@ -280,12 +255,12 @@
         </li>
 
         <li class="nav-item mt-2">
-          <a href="./profil.html" class="nav-link text-white">
+          <a href="./profil.html" class="nav-link text-dark">
             👤 Profil / KYC
           </a>
         </li>
         <li class="nav-item">
-          <a href="./sécurité.html" class="nav-link text-white">
+          <a href="./sécurité.html" class="nav-link text-dark">
             🔒 Sécurité
           </a>
         </li>
@@ -295,7 +270,7 @@
       <div class="mt-auto">
         <div class="card border-0 p-3"
           style="background: rgba(255,255,255,0.1); border-radius: 12px;">
-          <p class="text-white mb-2" style="font-size: 0.85rem;">
+          <p class="text-dark mb-2" style="font-size: 0.85rem;">
             Débloquez plus de fonctionnalités
           </p>
           <button class="btn btn-warning btn-sm w-100 fw-bold upgrade-btn"
@@ -305,7 +280,7 @@
         </div>
 
         <!-- Logout -->
-        <a href="login.html" onclick="logout()" class="nav-link text-white-50 mt-3 text-center fw-bold">
+        <a href="login.html" onclick="logout()" class="nav-link text-muted mt-3 text-center fw-bold">
           🚪 Déconnexion
         </a>
       </div>
