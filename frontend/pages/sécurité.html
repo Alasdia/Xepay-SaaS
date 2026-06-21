@@ -26,8 +26,8 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
   --font-b: Arial, sans-serif;
 }
 body { background: #ffffff; min-height: 100vh; color: #111827; position: relative; overflow-x: hidden; min-height: 100vh; }
-#sidebar { width: 220px; min-height: 100vh; background: #ffffff; border-right: 1px solid #e5e7eb; position: fixed; top: 0; left: 0; z-index: 100; padding: 20px; display: flex; flex-direction: column; }
-#main-content { margin-left: 220px; padding: 28px 32px;  width: calc(100% - 220px); min-width: 0; flex: 1; }
+#sidebar { width: 260px; min-height: 100vh; background: #ffffff; border-right: 1px solid #e5e7eb; position: fixed; top: 0; left: 0; z-index: 100; padding: 20px; display: flex; flex-direction: column; min-width: 260px; }
+#main-content { margin-left: 260px; padding: 28px 32px;  width: calc(100% - 260px); min-width: 0; flex: 1; }
 .card-epay { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; color: #111827; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
 .card-epay:hover{ border-color:#f0b429; box-shadow:0 8px 24px rgba(240,180,41,.08); transform:translateY(-2px); }
 .form-control,
@@ -173,7 +173,7 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
     
     <!-- SIDEBAR -->
     <div id="sidebar" class="d-flex flex-column p-3"
-        style="width: 220px; min-height: 100vh; background: #ffffff; position: fixed;">
+        style="width: 260px; min-width: 260px; min-height: 100vh; background: #ffffff; position: fixed;">
 
         <!-- Logo -->
         <div class="mb-4 mt-2">
@@ -256,7 +256,7 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
             </div>
         </div>
 
-        <div id="main-content" class="w-100" style="margin-left:220px; padding:28px 32px; min-width: 0;">
+        <div id="main-content" class="w-100" style="margin-left:260px; padding:28px 32px; min-width: 0;">
 
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
