@@ -44,20 +44,15 @@ body { background: #ffffff; color: #6b7280; min-height: 100vh; overflow-x: hidde
 #sidebar h4 { color: #374151 !important; }
 #sidebar p,
 #sidebar small { color: #9ca3af !important; }
-#sidebar .nav-link { color: #6b7280; }
-#sidebar .nav-link { transition: .2s; }
-#sidebar .nav-link:hover { color: #facc15 !important; }
 #sidebar .card { transition: all .25s ease; cursor: pointer; }
 #sidebar .card:hover { border: 1px solid #facc15 !important; background: #fffdf5 !important; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(250,204,21,.25); }
 #main-content { height: auto !important; min-height: auto !important; display: block; margin-left: 260px; padding: 28px 40px; width: calc(100% - 260px); position: relative; z-index: 1; }
-
-.nav-link { margin: 0 !important; text-decoration: none; padding: 10px 18px; border: none; border-radius: 12px; color: #6b7280; background: transparent; transition: all 0.25s ease; display: inline-flex; font-weight: 500; align-items: center; font-size: 1rem; }
-.nav-link:hover { background: #f3f4f6; color: #facc15; }
-.nav-link.active-link { background: transparent; color: #facc15 !important; border-radius: 12px; font-weight: 700; }
-.nav-link.active-link i{ color:#facc15 !important; }
-.nav-link{ display:flex; align-items:center; gap:12px; }
-.nav-link i{ width:18px; text-align:center; }
-
+#sidebar .nav-link{ color:#374151 !important; border-radius:12px; transition:all .2s ease; display:flex; align-items:center; gap:8px; }
+#sidebar .nav-link:hover{ background:transparent !important; color:#f0b429 !important; font-weight:500; }
+#sidebar .nav-link.active-link{ background:transparent !important; color:#f0b429 !important; font-size: 600; }
+#sidebar .nav-link:hover i{ color:#f0b429 !important; }
+#sidebar .nav-link.active-link i{ color:#f0b429 !important; }
+#sidebar .logout-link{ justify-content:center; }
 .plan-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: white; border: none; }
 .warning-icon{ font-size:10px; margin-right:5px; color:#facc15; opacity:.65; }
 .card-title-small i,
@@ -268,7 +263,7 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
         <!-- Fonctionnalité verrouillée (Free) -->
         <li class="nav-item">
             <a href="#"
-              class="nav-link text-muted active-link"
+              class="nav-link text-muted active-link d-flex justify-content-between"
               onclick="event.preventDefault(); checkAccess('pro', 'API.html')">
               <i class="fa-solid fa-code"></i> API Access
                 <span class="badge pro">PRO</span>
@@ -276,7 +271,7 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
         </li>
         <li class="nav-item">
             <a href="multi-users.html"
-              class="nav-link text-muted"
+              class="nav-link d-flex justify-content-between text-muted"
               onclick="checkMultiUsersAccess(event)">
                 <i class="fa-solid fa-users"></i> Multi-utilisateurs
                 <span class="badge business">BUSINESS</span>
@@ -309,7 +304,7 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
         </div>
 
         <!-- Logout -->
-        <a href="login.html" onclick="logout" class="nav-link mt-3 text-center fw-bold">
+        <a href="login.html" onclick="logout" class="nav-link logout-link mt-3 fw-bold">
             <i class="fa-solid fa-right-from-bracket"></i> Déconnexion
         </a>
     </div>
