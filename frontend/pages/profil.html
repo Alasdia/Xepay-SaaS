@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>dashboard - Xepay</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>dashboard - Xepay</title>
+<link
+rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
 <link rel="stylesheet" href="responsive.css">
 
 <style>
@@ -24,6 +27,11 @@
 }
 body { background: #f8fafc !important; color: #111827 !important; }
 #main-content { background: #f8fafc !important; }
+#sidebar .nav-link{ color:#374151 !important; border-radius:12px; transition:all .2s ease; display:flex; align-items:center; gap:8px; }
+#sidebar .nav-link:hover{ background:#f0b429 !important; color:#111827 !important; }
+#sidebar .nav-link.active-link{ background:#f0b429 !important; color:#111827 !important; }
+#sidebar .nav-link:hover i,
+#sidebar .nav-link.active-link i{ color:#111827 !important; }
 
       .form-control,
       .form-select {
@@ -86,8 +94,7 @@ body { background: #f8fafc !important; color: #111827 !important; }
       }
 .card-epay { background: #ffffff; backdrop-filter: none; border-radius: 16px; border: 1px solid #e5e7eb; box-shadow: 0 2px 12px rgba(0,0,0,0.0.5); transition: transform 0.2s ease; }
 .card-epay:hover { transform: translateY(-4px); border-color: #f0b429; box-shadow: 0 8px 25px rgba(240,180,41,.15); }
-.nav-link{ color:#111827 !important; border-radius:12px; transition:.2s; }
-.nav-link:hover{ background:#f0b429 !important; color:#111827 !important; }
+
 
 .active-link{
   background:#f0b429 !important;
@@ -207,7 +214,7 @@ body { background: #f8fafc !important; color: #111827 !important; }
 
     <!-- Logo -->
     <div class="mb-4 mt-2">
-      <h4 class="fw-bold">⚡ Xepay</h4>
+      <h4 class="fw-bold"><i class="fa-solid fa-bolt"></i> Xepay</h4>
         <small class="text-muted">Tableau de bord marchand</small>
     </div>
 
@@ -223,18 +230,18 @@ body { background: #f8fafc !important; color: #111827 !important; }
         <li class="nav-item">
           <a href="./dashboard.html"
             class="nav-link text-dark active-link">
-            🏠 Accueil
+            <i class="fa-solid fa-house"></i> Accueil
           </a>
         </li>
         <li class="nav-item">
           <a href="./transactions.html"
             class="nav-link text-dark">
-              💳 Transactions
+               <i class="fa-solid fa-credit-card"></i> Transactions
           </a>
         </li>
         <li class="nav-item">
           <a href="./liens.html" class="nav-link text-dark">
-            🔗 Mes liens de paiement
+            <i class="fa-solid fa-link"></i> Mes liens de paiement
           </a>
         </li>
 
@@ -242,26 +249,26 @@ body { background: #f8fafc !important; color: #111827 !important; }
         <li class="nav-item">
           <a href="API.html" class="nav-link text-muted d-flex justify-content-between"
             onclick="checkApiAccess(event)">
-              ⚙️ API Access
+              <i class="fa-solid fa-code"></i> API Access
             <span class="badge bg-warning text-dark">Pro</span>
           </a>
         </li>
         <li class="nav-item">
           <a href="multi-users.html" class="nav-link text-muted d-flex justify-content-between"
             onclick="showUpgradeModal('team')">
-            👥 Multi-utilisateurs
+             <i class="fa-solid fa-users"></i> Multi-utilisateurs
             <span class="badge bg-danger">Business</span>
           </a>
         </li>
 
         <li class="nav-item mt-2">
           <a href="./profil.html" class="nav-link text-dark">
-            👤 Profil / KYC
+            <i class="fa-solid fa-user"></i> Profil / KYC
           </a>
         </li>
         <li class="nav-item">
           <a href="./sécurité.html" class="nav-link text-dark">
-            🔒 Sécurité
+            <i class="fa-solid fa-shield-halved"></i> Sécurité
           </a>
         </li>
       </ul>
@@ -281,7 +288,7 @@ body { background: #f8fafc !important; color: #111827 !important; }
 
         <!-- Logout -->
         <a href="login.html" onclick="logout()" class="nav-link text-muted mt-3 text-center fw-bold">
-          🚪 Déconnexion
+          <i class="fa-solid fa-right-from-bracket"></i> Déconnexion
         </a>
       </div>
   </div>
@@ -290,12 +297,12 @@ body { background: #f8fafc !important; color: #111827 !important; }
   <!-- Header -->
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-      <h4 class="fw-bold mb-1">👤 Profil / KYC</h4>
-      <small class="text-white-50">Complétez votre profil pour activer les paiements</small>
+      <h4 class="fw-bold mb-1"><i class="fa-solid fa-code"></i> Profil / KYC</h4>
+      <small class="text-muted">Complétez votre profil pour activer les paiements</small>
     </div>
     <!-- Indicateur complétion -->
     <div class="text-end">
-      <small class="text-white-50">Profil complété</small>
+      <small class="text-muted">Profil complété</small>
       <div class="progress mt-1" style="width:150px; height:6px;">
         <div id="kyc-progress-bar" class="progress-bar bg-warning" style="width:0%"></div>
       </div>
@@ -323,7 +330,7 @@ body { background: #f8fafc !important; color: #111827 !important; }
       </span>
     </div>
 
-    <p class="text-white-50 small mb-3">
+    <p class="text-muted small mb-3">
       Configurez Stripe pour activer les paiements internationaux.
     </p>
 
@@ -338,17 +345,17 @@ body { background: #f8fafc !important; color: #111827 !important; }
 <!-- CARD RETRAIT -->
 <div class="col-md-6">
   <div class="card-epay p-4 h-100">
-    <h6 class="fw-bold mb-3">💳 Retraits</h6>
+    <h6 class="fw-bold mb-3"><i class="fa-solid fa-credit-card"></i> Retraits</h6>
 
-    <p class="text-white-50 small mb-2">
+    <p class="text-muted small mb-2">
       Les fonds sont envoyés via Stripe vers :
     </p>
 
     <div class="text-warning small">
-      ⚠️ Les retraits ne sont disponibles que vers des comptes bancaires internationaux (Europe / US).
+      <i class="fa-solid fa-triangle-exclamation warning-icon"></i> Les retraits ne sont disponibles que vers des comptes bancaires internationaux (Europe / US).
     </div>
 
-    <div class="text-white-50 small mt-1">
+    <div class="text-muted small mt-1">
       Les méthodes locales (Mobile Money, banques africaines) ne sont pas supportées actuellement.
     </div>
   </div>
@@ -358,23 +365,23 @@ body { background: #f8fafc !important; color: #111827 !important; }
 <div class="col-md-12">
   <div class="card-epay p-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <h6 class="fw-bold mb-0">👤 Profil</h6>
+      <h6 class="fw-bold mb-0"><i class="fa-solid fa-user"></i> Profil</h6>
       <button class="btn btn-outline-light btn-sm">Modifier</button>
     </div>
 
     <div class="row">
       <div class="col-md-4">
-        <small class="text-white-50">Nom</small>
+        <small class="text-muted">Nom</small>
         <div id="profile-name">—</div>
       </div>
 
       <div class="col-md-4">
-        <small class="text-white-50">Email</small>
+        <small class="text-muted">Email</small>
         <div id="profile-email">—</div>
       </div>
 
       <div class="col-md-4">
-        <small class="text-white-50">Téléphone</small>
+        <small class="text-muted">Téléphone</small>
         <div id="profile-phone">—</div>
       </div>
     </div>
