@@ -34,15 +34,11 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
 .form-select { background: #ffffff !important; border: 1px solid #d1d5db !important; color: #111827 !important; border-radius: 10px !important; }
 .form-control::placeholder { color: #6b7280 !important; opacity: 1; }
 .input-group-text { background: rgba(255,255,255,0.07) !important; border: 1px solid rgba(255,255,255,0.15) !important; color: white !important; }
-
-.nav-link {  color: #111827;  border-radius: 12px; transition: all .25s ease;  }
-.nav-link i{ color:inherit; transition:all .25s ease; }
-.nav-link:hover {  background: rgba(240,180,41,.06);  color: #f0b429 !important; }
-.nav-link:hover i{ color:#f0b429 !important; }
-.nav-link.active { background: transparent !important;  color: #f0b429 !important;  border: none !important; box-shadow: none !important; }
-.nav-link.active i{ color:#f0b429 !important; }
-.nav-pills .nav-link.active,
-.nav-pills .show > .nav-link { background: transparent !important; color: #f0b429 !important; border: none !important; box-shadow: none !important; }
+#sidebar .nav-link{ color:#374151 !important; border-radius:12px; transition:all .2s ease; display:flex; align-items:center; gap:8px; }
+#sidebar .nav-link:hover{ background:transparent !important; color:#f0b429 !important; font-weight:500; }
+#sidebar .nav-link.active-link{ background:#f0b429 !important; color:#111827 !important; }
+#sidebar .nav-link:hover i,
+#sidebar .nav-link.active-link i{ color:#f0b429 !important; }
 .upgrade-card{ background: rgba(255,255,255,0.1); border-radius: 12px; border: 1px solid transparent; transition: all .25s ease; }
 .upgrade-card:hover{ border: 1px solid #f0b429; transform: translateY(-2px); }
 .nav-lock{ display:flex; justify-content:space-between; align-items:center; }
@@ -238,7 +234,7 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
                 </a>
             </li>
             <li class="nav-item">
-                <a href="sécurité.html" class="nav-link active text-muted">
+                <a href="sécurité.html" class="nav-link active text-muted active-link">
                     <i class="fa-solid fa-shield-halved"></i> Sécurité
                 </a>
             </li>
