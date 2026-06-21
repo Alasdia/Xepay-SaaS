@@ -29,7 +29,7 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
 #sidebar { width: 260px; min-height: 100vh; background: #ffffff; border-right: 1px solid #e5e7eb; position: fixed; top: 0; left: 0; z-index: 100; padding: 20px; display: flex; flex-direction: column; min-width: 260px; }
 #main-content { margin-left: 260px; padding: 28px 32px;  width: calc(100% - 260px); min-width: 0; flex: 1; }
 .card-epay { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; color: #111827; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
-.card-epay:hover{ border-color:#f0b429; box-shadow:0 8px 24px rgba(240,180,41,.08); transform:translateY(-2px); }
+.card-epay:hover{ border-color:#f0b429; box-shadow:0 8px 24px rgba(240,180,41,.08); }
 .form-control,
 .form-select { background: #ffffff !important; border: 1px solid #d1d5db !important; color: #111827 !important; border-radius: 10px !important; }
 .form-control::placeholder { color: #6b7280 !important; opacity: 1; }
@@ -43,6 +43,10 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
 .nav-link.active i{ color:#f0b429 !important; }
 .nav-pills .nav-link.active,
 .nav-pills .show > .nav-link { background: transparent !important; color: #f0b429 !important; border: none !important; box-shadow: none !important; }
+.upgrade-card{ background: rgba(255,255,255,0.1); border-radius: 12px; border: 1px solid transparent; transition: all .25s ease; }
+.upgrade-card:hover{ border: 1px solid #f0b429; transform: translateY(-2px); }
+.nav-lock{ display:flex; justify-content:space-between; align-items:center; }
+.nav-lock span:first-child{ display:flex; align-items:center; gap:12px; }
         .plan-badge {
           display: inline-flex;
           align-items: center;
@@ -212,16 +216,18 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
 
             <!-- Fonctionnalité verrouillée (Free) -->
             <li class="nav-item">
-                <a href="API.html" class="nav-link text-muted d-flex justify-content-between"
+                <a href="API.html" class="nav-link nav-lock text-muted d-flex justify-content-between"
                      onclick="checkApiAccess(event)">
-                       <i class="fa-solid fa-code"></i> API Access
+                       <i class="fa-solid fa-code"></i> 
+                        API Access
                         <span class="badge bg-warning text-dark">Pro</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a href="multi-users.html" class="nav-link text-muted d-flex justify-content-between"
+                <a href="multi-users.html" class="nav-link nav-lock text-muted d-flex justify-content-between"
                     onclick="showUpgradeModal('team')">
-                        <i class="fa-solid fa-users"></i> Multi-utilisateurs
+                        <i class="fa-solid fa-users"></i> 
+                         Multi-utilisateurs
                         <span class="badge bg-danger">Business</span>
                 </a>
             </li>
@@ -240,7 +246,7 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
 
         <!-- Upgrade CTA -->
         <div class="mt-auto">
-            <div class="card border-0 p-3"
+            <div class="card border-0 p-3 upgrade-card"
                     style="background: rgba(255,255,255,0.1); border-radius: 12px;">
                 <p class="text-dark mb-2" style="font-size: 0.85rem;">
                     Débloquez plus de fonctionnalités
