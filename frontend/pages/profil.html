@@ -58,9 +58,7 @@ body { background: #f8fafc !important; color: #111827 !important; }
         text-transform: uppercase;
       }
 
-      .alert {
-        color: white !important;
-      }
+.alert { color: #6b7280 !important; }
       .form-control, .form-select, .input-group-text {
         background: rgba(255,255,255,0.07) !important;
         border-color: rgba(255,255,255,0.15) !important;
@@ -677,7 +675,7 @@ async function initStripe() {
       <div class="alert mb-4" style="background:rgba(255,193,7,0.15);
         border:1px solid rgba(255,193,7,0.3);
         border-radius:12px;">
-        ⚠️ Vérification KYC requise pour continuer à recevoir des paiements
+        <i class="fa-brands fa-node-js"></i> Vérification KYC requise pour continuer à recevoir des paiements
       </div>
     `
   }
@@ -697,7 +695,7 @@ async function initStripe() {
       <div class="alert mb-4" style="background:rgba(255,193,7,0.15);
         border:1px solid rgba(255,193,7,0.3);
         border-radius:12px;">
-        ⚠️ Compte opérationnel, vérification finale incomplète
+        <i class="fa-brands fa-node-js"></i> Compte opérationnel, vérification finale incomplète
       </div>
     `;
   }
