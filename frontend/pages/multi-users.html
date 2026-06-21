@@ -48,10 +48,13 @@ th{ color:#6b7280; }
   background: rgba(255,255,255,0.15);
   border-radius: 3px;
 }
-.nav-link { color: #374151 !important; font-size: 500; background: transparent; border-radius: 8px; transition: .25s; }
-.nav-link:hover { background: transparent; color: #facc15 !important; }
-.nav-link:hover i{ color:#facc15 !important; }
-.nav-link.active-link { background: transparent; color: #facc15 !important; border-radius: 8px; }
+#sidebar .nav-link{ color:#374151 !important; border-radius:12px; transition:all .2s ease; display:flex; align-items:center; gap:8px; }
+#sidebar .nav-link:hover{ background:transparent !important; color:#f0b429 !important; font-weight:500; }
+#sidebar .nav-link.active-link{ background:transparent !important; color:#f0b429 !important; font-size: 600; }
+#sidebar .nav-link:hover i,
+#sidebar .nav-link.active-link i{ color:#f0b429 !important; }
+#sidebar .logout-link{ justify-content:center; }
+#sidebar .logout-link{ justify-content:center; }
 .badge-web3 {
   display: inline-flex;
   align-items: center;
@@ -558,7 +561,7 @@ tr:hover td { background: #ffffff; }
     </div>
     <a href="login.html"
        onclick="logout()"
-       class="nav-link text-muted mt-3 text-center fw-bold">
+       class="nav-link logout-link text-muted mt-3 fw-bold">
          <i class="fa-solid fa-right-from-bracket"></i> Déconnexion
     </a>
   </div>
