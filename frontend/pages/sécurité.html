@@ -25,60 +25,16 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
   --font-m: Arial, sans-serif;
   --font-b: Arial, sans-serif;
 }
-        body {
-            background: #020617;
-            min-height: 100vh;
-            color: white;
-            position: relative;
-            overflow-x: hidden;
-        }
-        #sidebar {
-          width: 220px;
-          min-height: 100vh;
-          background: #0d1b6e;
-          position: fixed;
-          top: 0;
-          left: 0;
-          z-index: 100;
-          padding: 20px;
-          display: flex;
-          flex-direction: column;
-        }
-
-        /* Glow animé */
-
-        /* Animation */
-        #main-content {
-            margin-left: 220px;
-            padding: 28px 32px; /* plus d'espace en bas */
-            width: calc(100% - 220px);
-            min-width: 0;
-            flex: 1;
-        }
-        #sidebar {
-            width: 220px;
-            min-height: 100vh;
-            background: #0d1b6e;
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 100;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-        }
-        .card-epay {
-          background: rgba(255,255,255,0.08);
-          border: none;
-          border-radius: 16px;
-          color: white;
-        }
-
+body { background: #ffffff; min-height: 100vh; color: #111827; position: relative; overflow-x: hidden; min-height: 100vh; }
+#sidebar { width: 220px; min-height: 100vh; background: #ffffff; border-right: 1px solid #e5e7eb; position: fixed; top: 0; left: 0; z-index: 100; padding: 20px; display: flex; flex-direction: column; }
+#main-content { margin-left: 220px; padding: 28px 32px;  width: calc(100% - 220px); min-width: 0; flex: 1; }
+.card-epay { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; color: #111827; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+.card-epay:hover{ border-color:#f0b429; box-shadow:0 8px 24px rgba(240,180,41,.08); transform:translateY(-2px); }
         .form-control,
         .form-select {
-          background: rgba(255,255,255,0.07) !important;
-          border: 1px solid rgba(255,255,255,0.15) !important;
-          color: white !important;
+          background: #ffffff !important;
+          border: 1px solid #d1d5db !important;
+          color: #111827 !important;
           border-radius: 10px !important;
         }
 
@@ -92,18 +48,12 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
           color: white !important;
         }
 
-        .nav-link { 
-          color: rgba(255,255,255,0.8); 
-          border-radius: 8px; 
-        }
-        .nav-link:hover { 
-          background: rgba(255,255,255,0.1); 
-          color: white; 
-        }
-        .nav-link.active { 
-          background: rgba(255,255,255,0.15); 
-          color: white; 
-        }
+.nav-link {  color: #111827;  border-radius: 12px; transition: all .25s ease;  }
+.nav-link i{ color:inherit; transition:all .25s ease; }
+.nav-link:hover {  background: rgba(240,180,41,.06);  color: #f0b429 !important; }
+.nav-link:hover i{ color:#f0b429 !important; }
+.nav-link.active { background: #fff8e6;  color: #f0b429 !important;  border: 1px solid rgba(240,180,41,.25); }
+.nav-link.active i{ color:#f0b429 !important; }
         .plan-badge {
           display: inline-flex;
           align-items: center;
@@ -236,12 +186,12 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     
     <!-- SIDEBAR -->
     <div id="sidebar" class="d-flex flex-column p-3"
-        style="width: 220px; min-height: 100vh; background: #0d1b6e; position: fixed;">
+        style="width: 220px; min-height: 100vh; background: #ffffff; position: fixed;">
 
         <!-- Logo -->
         <div class="mb-4 mt-2">
-            <h4 class="text-white fw-bold">⚡ Xepay</h4>
-                <small class="text-white-50">Tableau de bord marchand</small>
+            <h4 class="fw-bold text-dark">⚡ Xepay</h4>
+                <small class="text-muted">Tableau de bord marchand</small>
         </div>
 
         <!-- Badge plan -->
@@ -255,32 +205,32 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
         <ul class="nav nav-pills flex-column gap-1">
             <li class="nav-item">
                 <a href="./dashboard.html"
-                    class="nav-link text-white ">
+                    class="nav-link text-dark">
                       <i class="fa-solid fa-house"></i> Accueil
                 </a>
             </li>
             <li class="nav-item">
                 <a href="./transactions.html"
-                    class="nav-link text-white">
+                    class="nav-link text-dark">
                       <i class="fa-solid fa-credit-card"></i> Transactions
                 </a>
             </li>
             <li class="nav-item">
-                <a href="./liens.html" class="nav-link text-white">
+                <a href="./liens.html" class="nav-link text-muted">
                   <i class="fa-solid fa-link"></i> Mes liens de paiement
                 </a>
             </li>
 
             <!-- Fonctionnalité verrouillée (Free) -->
             <li class="nav-item">
-                <a href="API.html" class="nav-link text-white-50 d-flex justify-content-between"
+                <a href="API.html" class="nav-link text-muted d-flex justify-content-between"
                      onclick="checkApiAccess(event)">
                        <i class="fa-solid fa-code"></i> API Access
                         <span class="badge bg-warning text-dark">Pro</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a href="multi-users.html" class="nav-link text-white-50 d-flex justify-content-between"
+                <a href="multi-users.html" class="nav-link text-muted d-flex justify-content-between"
                     onclick="showUpgradeModal('team')">
                         <i class="fa-solid fa-users"></i> Multi-utilisateurs
                         <span class="badge bg-danger">Business</span>
@@ -288,7 +238,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
             </li>
 
             <li class="nav-item mt-2">
-                <a href="./profil.html" class="nav-link text-white">
+                <a href="./profil.html" class="nav-link text-dark">
                   <i class="fa-solid fa-user"></i> Profil / KYC
                 </a>
             </li>
@@ -303,7 +253,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
         <div class="mt-auto">
             <div class="card border-0 p-3"
                     style="background: rgba(255,255,255,0.1); border-radius: 12px;">
-                <p class="text-white mb-2" style="font-size: 0.85rem;">
+                <p class="text-dark mb-2" style="font-size: 0.85rem;">
                     Débloquez plus de fonctionnalités
                 </p>
                 <button class="btn btn-warning btn-sm w-100 fw-bold upgrade-btn"
@@ -313,7 +263,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
             </div>
 
                 <!-- Logout -->
-                    <a href="login.html" onclick="logout()" class="nav-link text-white-50 mt-3 text-center fw-bold">
+                    <a href="login.html" onclick="logout()" class="nav-link text-muted mt-3 text-center fw-bold">
                       <i class="fa-solid fa-right-from-bracket"></i> Déconnexion
                     </a>
             </div>
