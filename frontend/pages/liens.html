@@ -30,7 +30,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
   --font-b: 'Manrope', sans-serif;
 }
 body { background: #ffffff !important; color: #111827; }
-#sidebar { width: 260px; min-height: 100vh; background: #ffffff !important; border-right: 1px solid #e5e7eb !important; box-shadow: inset -1px 0 0 rgba(255,255,255,0.03), 0 0 40px rgba(0,0,0,0.35); position: fixed; top: 0; left: 0; z-index: 100; padding: 20px; }
+#sidebar { width: 260px; min-height: 100vh; background: #ffffff !important; display: flex; flex-direction: column; border-right: 1px solid #e5e7eb !important; box-shadow: none; position: fixed; top: 0; left: 0; z-index: 100; padding: 20px; }
  #main-content { margin-left: 260px; padding: 28px; }
 .card-epay { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; color: #374151; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
 #sidebar .nav-link{ position: relative; color:#374151 !important; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:10px; transition:all .25s ease; }
@@ -41,7 +41,7 @@ body { background: #ffffff !important; color: #111827; }
 #sidebar .nav-link.active-link{ color:#f0b429 !important; font-weight:600; }
 #sidebar .nav-link.active::before,
 #sidebar .nav-link.active-link::before{ content:""; position:absolute; left:-16px; top:50%; transform:translateY(-50%); width:4px; height:24px; border-radius:999px; background:#f0b429; box-shadow:0 0 12px rgba(240,180,41,.5); }
-.lien-card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; margin-bottom: 12px; transition: .25s; }
+.lien-card { background: #ffffff; border: 1px solid #e5e7eb; display: flex; flex-direction: column; border-radius: 14px; padding: 16px; margin-bottom: 12px; transition: .25s; }
 .lien-card:hover{ border-color:#facc15; box-shadow:0 8px 24px rgba(250,204,21,.12); }
     .badge-statut-actif { background: #10b981; }
     .badge-statut-inactif { background: #6b7280; }
@@ -139,20 +139,7 @@ body { background: #ffffff !important; color: #111827; }
       border-radius: 8px;
       font-family: monospace;
     }
-    .lien-card {
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between; /* 🔥 clé */
-      height: auto; /* ou ce que tu veux */
-      width: 100%;
-      margin-top: 10px;
-      padding: 10px;
-      border-radius: 8px;
-      background: rgba(255,255,255,0.08);
-      overflow: visible;
-      text-overflow: unset;
-      white-space: normal;
-    }
+    
     .actions {
       display: flex;
       gap: 10px;
@@ -207,10 +194,7 @@ body { background: #ffffff !important; color: #111827; }
       color: #FFD700;
       line-height: 1.2;
     }
-    .lien-card {
-      overflow: hidden;
-      padding: 15px;
-    }
+    
     .lien-url {
       font-family: monospace;
       padding: 10px;
@@ -493,23 +477,16 @@ body { background: #ffffff !important; color: #111827; }
     <!-- MODAL CRÉATION DE LIEN -->
     <div class="modal fade" id="modalCreationLien" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 p-4" style="background:#0d1b6e; color:white; border-radius: 12px;">
+            <div class="modal-content border-0 p-4">
 
                 <!-- HEADER -->
                 <div class="modal-header border-0">
-                    <h5 class="modal-title fw-bold">🔗 Créer un lien de paiement</h5>
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-link"></i> Créer un lien de paiement</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
 
                 <!-- BODY -->
                 <div class="modal-body">
-                    <!-- EMAIL -->
-                    <div class="mb-3">
-                        <label class="form-label">Email du client</label>
-                        <input type="email" id="client-email"
-                            class="form-control bg-transparent text-muted border-secondary"
-                            placeholder="Ex: Freelance Design, Boutique...">
-                    </div>
                     <!-- NOM -->
                     <div class="mb-3">
                         <label class="form-label">Nom du lien</label>
