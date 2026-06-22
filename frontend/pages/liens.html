@@ -1223,29 +1223,21 @@ function updateUpgradeModal(plan, feature) {
 </script>
 <script>
 function checkApiAccess(event) {
-  const plan = window.GLOBAL_PLAN?.plan;
-
-  if (plan === "pro" || plan === "business") {
-    window.location.href = "API.html";
-    return;
-  }
-
-  event.preventDefault();
-  showUpgradeModal("api");
-}
-function checkMultiUsersAccess(event) {
-
     const plan = localStorage.getItem("plan");
 
-    console.log("PLAN =", plan);
-
-    if (plan === "business") {
-        return;
+    if (plan === "free") {
+        sessionStorage.setItem("openApiUpgrade", "true");
     }
+}
+function checkMultiUsersAccess(event) {
+    const plan = localStorage.getItem("plan");
 
-    event.preventDefault();
-
-    showUpgradeModal("multi-users");
+    if (plan !== "business") {
+        sessionStorage.setItem(
+            "openMultiUsersUpgrade",
+            "true"
+        );
+    }
 }
 </script>
 
