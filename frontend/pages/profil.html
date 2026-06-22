@@ -940,12 +940,9 @@ function showUpgradeModal(feature = null) {
 function checkApiAccess(event) {
     const plan = localStorage.getItem("plan");
 
-    if (plan === "pro" || plan === "business") {
-        return; // accès autorisé
+    if (plan === "free") {
+        sessionStorage.setItem("openApiUpgrade", "true");
     }
-
-    event.preventDefault(); // bloque la navigation
-    showUpgradeModal();
 }
 </script>
 

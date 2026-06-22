@@ -262,9 +262,8 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
 
         <!-- Fonctionnalité verrouillée (Free) -->
         <li class="nav-item">
-            <a href="#"
-              class="nav-link text-muted active-link d-flex justify-content-between"
-              onclick="event.preventDefault(); checkAccess('pro', 'API.html')">
+            <a href="API.html"
+              class="nav-link text-muted active-link d-flex justify-content-between">
               <i class="fa-solid fa-code"></i> API Access
                 <span class="badge pro">PRO</span>
             </a>
@@ -1191,6 +1190,17 @@ async function initPlan() {
 }
 initPlan()
 
+if (
+    localStorage.getItem("plan") === "free" &&
+    sessionStorage.getItem("openApiUpgrade")
+) {
+
+    sessionStorage.removeItem("openApiUpgrade");
+
+    document.body.classList.add("locked-page");
+
+    showUpgradeModal("API.html");
+}
 function checkAccess(requiredPlan, feature = null) {
     const plan = localStorage.getItem("plan");
 
@@ -1201,13 +1211,14 @@ function checkAccess(requiredPlan, feature = null) {
     };
 
     if (levels[plan] >= levels[requiredPlan]) {
-      return;
+      return true;
     } 
-    document.body.classList.add("locked-page");
+    sessionStorage.setItem("openApiUpgrade", "true");
 
-    showUpgradeModal(feature);
+    return true;
 
 }
+
 function checkMultiUsersAccess(event) {
 
     const plan = localStorage.getItem("plan");
