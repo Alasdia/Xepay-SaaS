@@ -192,7 +192,7 @@ body { background: #ffffff !important; color: #111827; }
     
 .montant { display: block; margin-top: 8px; font-size: 20px; font-weight: bold; color: #374151; line-height: 1.2; }
 .locked-page #main-content { filter: blur(8px); pointer-events: none; user-select: none; opacity: .5; }
-#links-lock{ position: fixed; inset: 0; z-index: 999; display:flex; align-items:center; justify-content:center; }
+#links-lock{ position: fixed; inset: 0; z-index: 999; display:flex; align-items:center; justify-content:center; top: 0; left: 260px; right: 0;  }
 .lock-card{ width:420px; background:#fff; border:1px solid #e5e7eb; border-radius:24px; padding:40px; text-align:center; box-shadow:0 15px 40px rgba(0,0,0,.08); }
 .lock-icon{ width:70px; height:70px; border-radius:50%; background:#fff6d6; color:#f0b429; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:28px; }
 .lock-card h2{ font-size:32px; margin-bottom:10px; color:#374151; }
@@ -717,13 +717,11 @@ body { background: #ffffff !important; color: #111827; }
       const user = await res.json()
 
       if (user.plan === "free") {
-
         document.body.classList.add("locked-page");
 
-        document
-          .getElementById("links-lock")
-          .classList.remove("d-none");
-
+        const lock = document.getElementById("links-lock");
+        lock.classList.remove("d-none");
+        
         return;
       }
     })
