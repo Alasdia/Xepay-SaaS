@@ -1185,22 +1185,26 @@ function renderPlanBadge(plan) {
   }
 }
 async function initPlan() {
-  const user = await loadCurrentUser()
-  renderPlanBadge(user.plan)
+  const user = await loadCurrentUser();
+
+  renderPlanBadge(user.plan);
+
+  if (
+      user.plan === "free" &&
+      sessionStorage.getItem("openApiUpgrade")
+  ) {
+
+      sessionStorage.removeItem("openApiUpgrade");
+
+      document.body.classList.add("locked-page");
+
+      setTimeout(() => {
+        showUpgradeModal("API.html");
+      }, 100);
+  }
 }
-initPlan()
 
-if (
-    localStorage.getItem("plan") === "free" &&
-    sessionStorage.getItem("openApiUpgrade")
-) {
-
-    sessionStorage.removeItem("openApiUpgrade");
-
-    document.body.classList.add("locked-page");
-
-    showUpgradeModal("API.html");
-}
+initPlan();
 function checkAccess(requiredPlan, feature = null) {
     const plan = localStorage.getItem("plan");
 
@@ -1214,9 +1218,7 @@ function checkAccess(requiredPlan, feature = null) {
       return true;
     } 
     sessionStorage.setItem("openApiUpgrade", "true");
-
-    return true;
-
+    return false;
 }
 
 function checkMultiUsersAccess(event) {
