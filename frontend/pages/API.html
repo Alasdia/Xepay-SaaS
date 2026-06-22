@@ -65,6 +65,11 @@ h3 i{ font-size:.85em; margin-right:6px; opacity:.75; }
 .card-title-small { font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; }
 .card-dark { padding: 16px; }
 
+.feature-lock{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:50; }
+.feature-lock-card{ background:white; border:1px solid #e5e7eb; border-radius:24px; padding:40px; text-align:center; max-width:500px; box-shadow:0 20px 80px rgba(0,0,0,.15); }
+.lock-icon{ width:80px; height:80px; margin:auto auto 20px; border-radius:50%; background:#fff8db; display:flex; align-items:center; justify-content:center; }
+.lock-icon i{ font-size:34px; color:#facc15; }
+
 .stat-value { font-size: 32px; font-weight: 600; color: #4b5563; }
 .cyan,
 .green,
@@ -727,7 +732,26 @@ return {
     </div>
   </div>
 </div>
+<div id="featureLock" class="feature-lock d-none">
+    <div class="feature-lock-card">
+        <div class="lock-icon">
+            <i class="fa-solid fa-lock"></i>
+        </div>
 
+        <h2>API Access</h2>
+
+        <p>
+            Débloquez les clés API, webhooks et logs temps réel
+            avec le plan Pro.
+        </p>
+
+        <button
+            class="btn btn-warning fw-bold"
+            onclick="showUpgradeModal('API.html')">
+            ⚡ Passer au Pro
+        </button>
+    </div>
+</div>
 
 <!-- Prism.js -->
 <link rel="stylesheet"
@@ -1189,18 +1213,9 @@ async function initPlan() {
 
   renderPlanBadge(user.plan);
 
-  if (
-      user.plan === "free" &&
-      sessionStorage.getItem("openApiUpgrade")
-  ) {
-
-      sessionStorage.removeItem("openApiUpgrade");
-
+  if (user.plan === "free") {
       document.body.classList.add("locked-page");
-
-      setTimeout(() => {
-        showUpgradeModal("API.html");
-      }, 100);
+      showLockedOverlay("pro");
   }
 }
 
@@ -1327,6 +1342,14 @@ function showUpgradeModal(feature = null) {
   );
 
   modal.show();
+}
+</script>
+<script>
+function showLockedOverlay(plan){
+
+  document
+    .getElementById("featureLock")
+    .classList.remove("d-none");
 }
 </script>
 <script>
