@@ -1808,7 +1808,9 @@ async function loadPlan() {
     window.GLOBAL_PLAN = plan;
 
     renderPlan(plan);
-    renderStats(window.LAST_STATS, window.GLOBAL_PLAN);
+    if (window.LAST_STATS) {
+      renderStats(window.LAST_STATS, window.GLOBAL_PLAN);
+    }
 
   } catch (err) {
     console.error("Erreur loadPlan:", err);
