@@ -42,12 +42,12 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
 
 body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: var(--text); color: #111827 !important; margin: 0; min-height: 100vh; overflow-x: hidden; }
 #sidebar { width: 260px; background: #ffffff; position: fixed; border-right: 1px solid #e5e7eb; top: 0; box-shadow: none; bottom: 0; left: 0; z-index: 100; padding: 20px; overflow-y: auto; }
-#sidebar .nav-link{ color:#6b7280 !important; border-radius:12px; transition:.25s; }
-#sidebar .nav-link i{ color:#9ca3af !important; transition:.25s; }
+#sidebar .nav-link{ color:#4b5563 !important; border-radius:12px; transition:.25s; gap: 8px; font-weight: 500; }
+#sidebar .nav-link i{ color:#4b5563 !important; transition:.25s; }
 #sidebar .nav-link:hover{ color:#facc15 !important; background:#fffdf2; transform:translateX(5px); }
 #sidebar .nav-link:hover i{ color:#facc15 !important; }
 #sidebar .nav-link.active-link i{ color:#facc15 !important; }
-#sidebar .nav-link.active-link { background: transparent !important; color: #facc15; font-weight: 600; }
+#sidebar .nav-link.active-link { background: transparent !important; color: #facc15; font-weight: 600; border-radius: 12px; }
 #sidebar .card { transition: all .25s ease; cursor: pointer; }
 #sidebar .card:hover { border: 1px solid #facc15 !important; background: #fffdf5 !important; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(250,204,21,.25); }
 
@@ -174,13 +174,13 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
       white-space: nowrap;
     }
     .chip:hover {
-      background: #fffdf2;
+      background: #facc15;
       color: #111827;
     }
     .chip.active {
-      background: #22d3ee;
-      border-color: #22d3ee;
-      color: #0b1138;
+      background: #facc15;
+      border-color: #facc15;
+      color: #111827;
     }
 
     .date-group {
@@ -458,7 +458,7 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
 
 #withdrawModal .modal-content{ background:#ffffff !important; color:#111827 !important; border:1px solid #e5e7eb !important; border-radius:20px; }
 #withdrawModal .form-control,
-#withdrawModal .form-select{ background:#ffffff; border:2px solid #facc15; color:#111827; height:50px; }
+#withdrawModal .form-select{ background:#ffffff; border:1px solid #d1d5db; color:#111827; height:50px; }
 #withdrawModal .form-control:focus,
 #withdrawModal .form-select:focus{ border-color:#eab308; box-shadow:0 0 0 4px rgba(250,204,21,.2); color:#111827; }
 #etat-vide,
