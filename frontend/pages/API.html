@@ -268,7 +268,8 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
         <!-- Fonctionnalité verrouillée (Free) -->
         <li class="nav-item">
             <a href="API.html"
-              class="nav-link text-muted active-link d-flex justify-content-between">
+              class="nav-link text-muted active-link d-flex justify-content-between"
+              onclick="checkApiAccess(event)">
               <i class="fa-solid fa-code"></i> API Access
                 <span class="badge pro">PRO</span>
             </a>
@@ -1220,36 +1221,26 @@ async function initPlan() {
 }
 
 initPlan();
-function checkAccess(requiredPlan, feature = null) {
+
+function checkApiAccess(event) {
     const plan = localStorage.getItem("plan");
 
-    const levels = {
-        free: 0,
-        pro: 1,
-        business: 2
-    };
-
-    if (levels[plan] >= levels[requiredPlan]) {
-      return true;
-    } 
-    sessionStorage.setItem("openApiUpgrade", "true");
-    return false;
+    if (plan === "free") {
+        sessionStorage.setItem("openApiUpgrade", "true");
+    }
 }
 
 function checkMultiUsersAccess(event) {
-
     const plan = localStorage.getItem("plan");
 
-    console.log("PLAN =", plan);
-
-    if (plan === "business") {
-        return;
+    if (plan !== "business") {
+        sessionStorage.setItem(
+            "openMultiUsersUpgrade",
+            "true"
+        );
     }
-
-    event.preventDefault();
-
-    showUpgradeModal("multi-users");
 }
+
 function copyPopupSecret() {
     const text = document.getElementById("popupSecret").textContent
     navigator.clipboard.writeText(text)
