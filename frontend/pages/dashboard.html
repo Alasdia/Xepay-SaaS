@@ -1779,25 +1779,20 @@ loadUser()
 <script>
 function checkApiAccess(event) {
     const plan = localStorage.getItem("plan");
-    if (plan === "pro" || plan === "business") {
-        return; // laisse le lien fonctionner
+
+    if (plan === "free") {
+        sessionStorage.setItem("openApiUpgrade", "true");
     }
-    event.preventDefault();
-    showUpgradeModal();
 }
 function checkMultiUsersAccess(event) {
-
     const plan = localStorage.getItem("plan");
 
-    console.log("PLAN =", plan);
-
-    if (plan === "business") {
-        return;
+    if (plan !== "business") {
+        sessionStorage.setItem(
+            "openMultiUsersUpgrade",
+            "true"
+        );
     }
-
-    event.preventDefault();
-
-    showUpgradeModal("multi-users");
 }
 </script>
 <script>
