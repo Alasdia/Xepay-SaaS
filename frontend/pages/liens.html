@@ -29,116 +29,18 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
   --font-m: 'IBM Plex Mono', monospace;
   --font-b: 'Manrope', sans-serif;
 }
-    body {
-      background:
-        radial-gradient(
-        circle at top,
-       rgba(99,102,241,0.12),
-        transparent 30%
-      ),
-
-      linear-gradient(
-        180deg,
-        #070b2d 0%,
-        #090f38 100%
-      );
-
-      color: white;
-      margin: 0;
-    }
-    #sidebar {
-      width: 260px;
-      min-height: 100vh;
-
-      background:
-      radial-gradient(
-        circle at top left,
-        rgba(99,102,241,0.18),
-         transparent 30%
-      ),
-
-      radial-gradient(
-        circle at bottom,
-       rgba(168,85,247,0.12),
-        transparent 35%
-      ),
-
-      linear-gradient(
-        180deg,
-        #11174f 0%,
-        #0d1245 35%,
-        #090f38 100%
-      );
-      border-right: 1px solid rgba(255,255,255,0.06);
-
-      box-shadow:
-      inset -1px 0 0 rgba(255,255,255,0.03),
-      0 0 40px rgba(0,0,0,0.35);
-      backdrop-filter: blur(18px);
-      position: fixed;
-      top: 0;
-      left: 0;
-      z-index: 100;
-      padding: 20px;
-      position: fixed; top: 0; left: 0; z-index: 100;
-
-    }
-    #sidebar::before {
-      content: "";
-
-      position: absolute;
-      inset: 0;
-
-      background:
-      linear-gradient(
-        180deg,
-        rgba(255,255,255,0.04),
-        transparent 20%
-      );
-
-      pointer-events: none;
-    }
-    /* Glow animé */
-    body::before {
-      content: "";
-      position: fixed;
-      width: 200%;
-      height: 200%;
-      top: -50%;
-      left: -50%;
-
-      background: radial-gradient(circle, rgba(255, 78, 205, 0.2), transparent 40%),
-      radial-gradient(circle, rgba(124, 58, 237, 0.2), transparent 40%);
-
-      animation: moveGlow 10s linear infinite;
-
-      z-index: -1;
-    }
-    /* Animation */
-    @keyframes moveGlow {
-      0% {
-        transform: translate(0, 0);
-      }
-      50% {
-        transform: translate(10%, 10%);
-      }
-      100% {
-        transform: translate(0, 0);
-      }
-    }
-    #main-content {
-      margin-left: 260px;
-      padding: 28px;
-    }
-    .card-epay {
-      background: rgba(255,255,255,0.08);
-      border: none;
-      border-radius: 16px;
-      color: white;
-    }
-    .nav-link { color: rgba(255,255,255,0.8); border-radius: 8px; }
-    .nav-link:hover { background: rgba(255,255,255,0.1); color: white; }
-    .nav-link.active { background: rgba(255,255,255,0.15); color: white; }
+body { background: #ffffff !important; color: #111827; }
+#sidebar { width: 260px; min-height: 100vh; background: #ffffff !important; border-right: 1px solid #e5e7eb !important; box-shadow: inset -1px 0 0 rgba(255,255,255,0.03), 0 0 40px rgba(0,0,0,0.35); position: fixed; top: 0; left: 0; z-index: 100; padding: 20px; }
+ #main-content { margin-left: 260px; padding: 28px; }
+.card-epay { background: rgba(255,255,255,0.08); border: none; border-radius: 16px; color: white; }
+#sidebar .nav-link{ position: relative; color:#374151 !important; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:10px; transition:all .25s ease; }
+#sidebar .nav-link i{ width:20px; text-align:center; transition:all .25s ease; }
+#sidebar .nav-link:hover{ color:#f0b429 !important; transform:translateX(6px); }
+#sidebar .nav-link:hover i{ color:#f0b429 !important; }
+#sidebar .nav-link.active,
+#sidebar .nav-link.active-link{ color:#f0b429 !important; font-weight:600; }
+#sidebar .nav-link.active::before,
+#sidebar .nav-link.active-link::before{ content:""; position:absolute; left:-16px; top:50%; transform:translateY(-50%); width:4px; height:24px; border-radius:999px; background:#f0b429; box-shadow:0 0 12px rgba(240,180,41,.5); }
     .lien-card {
       background: rgba(255,255,255,0.06);
       border: 1px solid rgba(255,255,255,0.1);
@@ -500,8 +402,8 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
   <!-- SIDEBAR -->
   <div id="sidebar">
     <div class="mb-4 mt-2">
-      <h4 class="text-white fw-bold">⚡ Xepay</h4>
-      <small class="text-white-50">Tableau de bord marchand</small>
+      <h4 class="text-muted fw-bold">⚡ Xepay</h4>
+      <small class="text-muted">Tableau de bord marchand</small>
     </div>
     <!-- Badge plan -->
     <div class="mb-4">
@@ -511,13 +413,13 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     <ul class="nav nav-pills flex-column gap-1">
       <li><a href="dashboard.html" class="nav-link"><i class="fa-solid fa-house"></i> Accueil</a></li>
       <li><a href="transactions.html" class="nav-link"><i class="fa-solid fa-credit-card"></i> Transactions</a></li>
-      <li><a href="liens.html" class="nav-link active"><i class="fa-solid fa-link"></i> Mes liens de paiement</a></li>
-      <li><a href="API.html" class="nav-link text-white-50 d-flex justify-content-between"
+      <li><a href="liens.html" class="nav-link active-link"><i class="fa-solid fa-link"></i> Mes liens de paiement</a></li>
+      <li><a href="API.html" class="nav-link text-muted d-flex justify-content-between"
         onclick="checkApiAccess(event)">
         <i class="fa-solid fa-code"></i> API Access
         <span class="badge pro">PRO</span>
       </a></li>
-      <li><a href="multi-users.html" class="nav-link text-white-50 d-flex justify-content-between"
+      <li><a href="multi-users.html" class="nav-link text-muted d-flex justify-content-between"
         onclick="checkMultiUsersAccess(event)">
         <i class="fa-solid fa-users"></i> Multi-utilisateurs
         <span class="badge business">BUSINESS</span>
@@ -527,11 +429,11 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     </ul>
     <div class="mt-auto pt-4">
       <div class="p-3" style="background:rgba(255,255,255,0.1); border-radius:12px;">
-        <p class="text-white mb-2" style="font-size:0.85rem;">Débloquez plus de fonctionnalités</p>
+        <p class="text-muted mb-2" style="font-size:0.85rem;">Débloquez plus de fonctionnalités</p>
         <button class="btn btn-warning btn-sm w-100 fw-bold"
                 onclick="showUpgradeModal()">⚡ Upgrader</button>
       </div>
-      <a href="login.html" onclick="logout()" class="nav-link text-white-50 mt-3 text-center"><i class="fa-solid fa-right-from-bracket"></i> Déconnexion</a>
+      <a href="login.html" onclick="logout()" class="nav-link text-muted mt-3 text-center"><i class="fa-solid fa-right-from-bracket"></i> Déconnexion</a>
     </div>
   </div>
 
@@ -543,7 +445,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
         <div class="d-flex justify-content-between align-items-center">
             <div>
             <h4 class="fw-bold mb-1">🔗 Mes liens de paiement</h4>
-            <small class="text-white-50">Créez et partagez vos liens pour recevoir des paiements internationaux</small>
+            <small class="text-muted">Créez et partagez vos liens pour recevoir des paiements internationaux</small>
         </div>
         <button 
             class="btn btn-warning"
@@ -566,7 +468,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
         <div id="barre-liens" class="progress-bar bg-warning" style="width: 0%"></div>
       </div>
 
-      <small class="text-white-50 mt-1 d-block">
+      <small class="text-muted mt-1 d-block">
         Plan Free — 
         <a href="#" class="text-warning" onclick="showUpgradeModal()">
           Upgrader pour plus de liens</a>
@@ -583,7 +485,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
           <div id="liste-liens"></div>
         </div>
         <div id="aucun-lien" class="text-center py-5 d-none">
-            <p class="text-white-50">Aucun lien de paiement créé</p>
+            <p class="text-muted">Aucun lien de paiement créé</p>
             <button 
                 class="btn btn-warning fw-bold"
                 data-bs-toggle="modal"
@@ -610,30 +512,30 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
                     <div class="mb-3">
                         <label class="form-label">Email du client</label>
                         <input type="email" id="client-email"
-                            class="form-control bg-transparent text-white border-secondary"
+                            class="form-control bg-transparent text-muted border-secondary"
                             placeholder="Ex: Freelance Design, Boutique...">
                     </div>
                     <!-- NOM -->
                     <div class="mb-3">
                         <label class="form-label">Nom du lien</label>
                         <input type="text" id="nom-lien"
-                            class="form-control bg-transparent text-white border-secondary"
+                            class="form-control bg-transparent text-muted border-secondary"
                             placeholder="Ex: Freelance Design, Boutique...">
                     </div>
 
                     <!-- MONTANT -->
                     <div class="mb-3">
                         <label class="form-label">
-                            Montant <small class="text-white-50">(obligatoire)</small>
+                            Montant <small class="text-muted">(obligatoire)</small>
                         </label>
 
                         <div class="input-group mt-2">
                             <input type="number" id="montant-lien"
-                                class="form-control bg-transparent text-white border-secondary"
+                                class="form-control bg-transparent text-muted border-secondary"
                                 placeholder="0.00">
 
                             <select id="devise-lien"
-                                class="form-select bg-dark text-white border-secondary"
+                                class="form-select bg-dark text-w border-secondary"
                                 style="max-width:120px;">
                                 <option value="XOF" selected>XOF</option>
                                 <option value="EUR">EUR</option>
@@ -674,7 +576,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
                   data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body text-center">
-          <p class="text-white-50 mb-3">Partagez ce lien avec votre client</p>
+          <p class="text-muted mb-3">Partagez ce lien avec votre client</p>
           <div class="p-3 rounded mb-3"
                style="background:rgba(255,255,255,0.1);">
             <code id="lien-genere" class="text-warning"
