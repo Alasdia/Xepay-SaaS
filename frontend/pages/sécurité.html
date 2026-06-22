@@ -1009,11 +1009,9 @@ function checkApiAccess(event) {
     const plan = localStorage.getItem("plan");
 
     if (plan === "pro" || plan === "business") {
-        return; // accès autorisé
+        return;
     }
-
-    event.preventDefault(); // bloque la navigation
-    showUpgradeModal();
+    sessionStorage.setItem("openApiUpgrade", "true");
 }
 </script>
 <script>
