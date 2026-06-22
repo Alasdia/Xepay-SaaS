@@ -16,7 +16,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
       color: rgba(255,255,255,0.75);
     }
     :root {
-      --bg-deep: #0b1138;
+      --bg-deep: #fff;
       --bg-panel: #141a4d;
       --bg-card: #1e246a;
       --bg-card-2: #262c85;
@@ -27,7 +27,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
       --accent-red: #f87171;
       --text: #ffffff;
       --text-dim: #b8bce0;
-      --text-muted: #8a90c4;
+      --text-muted: #6b7280;
       --border: rgba(255,255,255,0.08);
       --cyan: #00e5ff;
       --violet: #a855f7;
@@ -40,59 +40,18 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
       --font-b: "Sora", sans-serif;
     }
 
-    body {
-      font-family: 'Sora', sans-serif;
-      background: var(--bg-deep);
-      color: var(--text);
-      color: white;
-      margin: 0;
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
+body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: var(--text); color: #111827 !important; margin: 0; min-height: 100vh; overflow-x: hidden; }
+#sidebar { width: 260px; background: #ffffff; position: fixed; border-right: 1px solid #e5e7eb; top: 0; box-shadow: none; bottom: 0; left: 0; z-index: 100; padding: 20px; overflow-y: auto; }
+#sidebar .nav-link{ color:#111827 !important; border-radius:12px; transition:.25s; }
+#sidebar .nav-link i{ color:#111827 !important; transition:.25s; }
+#sidebar .nav-link:hover{ color:#facc15 !important; background:#fffdf2; transform:translateX(5px); }
+#sidebar .nav-link:hover i{ color:#facc15 !important; }
+#sidebar .nav-link.active-link{ color:#facc15 !important; font-weight:700; background:#fff8dc; }
+#sidebar .nav-link.active-link i{ color:#facc15 !important; }
+#sidebar .nav-link.active-link { background: rgba(255,255,255,0.15); color: white; border-radius: 8px; }
+#sidebar .card { transition: all .25s ease; cursor: pointer; }
+#sidebar .card:hover { border: 1px solid #facc15 !important; background: #fffdf5 !important; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(250,204,21,.25); }
 
-    body::before {
-      content: "";
-      position: fixed;
-      width: 200%;
-      height: 200%;
-      top: -50%;
-      left: -50%;
-      z-index: 0;
-      pointer-events: none;
-    }
-    
-
-    #sidebar {
-      width: 260px;
-      background: linear-gradient(180deg, #101652 0%, #0b1138 100%);
-      position: fixed;
-      top: 0;
-      bottom: 0;
-      left: 0;
-      z-index: 100;
-      padding: 20px;
-      overflow-y: auto;
-    }
-    #sidebar::-webkit-scrollbar { width: 6px; }
-    #sidebar::-webkit-scrollbar-thumb {
-      background: rgba(255,255,255,0.15);
-      border-radius: 3px;
-    }
-
-    .nav-link {
-      color: rgba(255,255,255,0.8);
-      border-radius: 8px;
-      transition: 0.2s;
-    }
-    .nav-link:hover {
-      background: rgba(255,255,255,0.1);
-      color: white;
-    }
-    .nav-link.active-link {
-      background: rgba(255,255,255,0.15);
-      color: white;
-      border-radius: 8px;
-    }
 
     .plan-badge {
       display: inline-flex;
@@ -131,45 +90,22 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
       color: rgba(255,255,255,0.55);
     }
 
-    /* ==== CARDS KPI ==== */
-    .card-epay {
-      background: linear-gradient(135deg, #2c1a4d, #3d2a6b);
-      border: 1px solid rgba(255,255,255,0.05);
-      border-radius: 16px;
-      color: white;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
-      padding: 22px 24px;
-    }
 
-    .kpi-label {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 1.2px;
-      color: rgba(255,255,255,0.6);
-      font-weight: 600;
-      margin-bottom: 10px;
-    }
-    .kpi-value {
-      font-size: 1.5rem;
-      font-weight: 800;
-      color: white;
-      line-height: 1.1;
-      letter-spacing: -0.5px;
-    }
-    .kpi-value.cyan   { color: #22d3ee; }
-    .kpi-value.green  { color: #4ade80; }
-    .kpi-value.yellow { color: #facc15; }
-    .kpi-value.pink   { color: #ec4899; }
-    .kpi-value.red    { color: #f87171; }
-    .kpi-value.purple { color: #a78bfa; }
-
-    .kpi-sub {
-      font-size: 0.78rem;
-      color: rgba(255, 255, 255, 0.55);
-      margin-top: 6px;
-    }
-
+.card-epay { background: #ffffff !important; border: 1px solid #e5e7eb !important;  border-radius: 16px; color: #111827 !important; backdrop-filter: blur(10px); box-shadow: none; padding: 22px 24px; transition: .25s; }
+.card-epay:hover{ border-color:#facc15 !important; box-shadow: 0 10px 25px rgba(250,204,21,.15); }
+.kpi-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.2px; color: #6b7280 !important; font-weight: 600; margin-bottom: 10px; }
+.kpi-value { font-size: 1.5rem; font-weight: 800; color: #111827 !important; line-height: 1.1; letter-spacing: -0.5px; }
+.kpi-sub { font-size: 0.78rem; color: #6b7280; margin-top: 6px; }
+.btn-warning,
+.btn-cyan,
+.btn-export,
+.retrait-btn,
+.btn-refresh{ background:#facc15 !important; border:1px solid #facc15 !important; color:#111827 !important; font-weight:700; }
+.btn-warning:hover,
+.btn-cyan:hover,
+.btn-export:hover,
+.retrait-btn:hover,
+.btn-refresh:hover{ background:#eab308 !important; border-color:#eab308 !important; color:#111827 !important; transform:translateY(-2px); }
     .mini-progress {
       height: 4px;
       background: rgba(255,255,255,0.08);
@@ -184,47 +120,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
       transition: width 0.4s ease;
     }
 
-    .btn-cyan {
-      background: linear-gradient(90deg, #06b6d4, #0ea5e9);
-      border: none;
-      color: white;
-      font-weight: 600;
-      border-radius: 10px;
-    }
-    .btn-cyan:hover { opacity: 0.9; color: white; }
-
-    .retrait-btn {
-      border: 1px solid rgba(255,255,255,0.25);
-      border-radius: 10px;
-      background: rgba(255,255,255,0.06);
-      color: white !important;
-      transition: 0.25s;
-      font-weight: 600;
-      font-size: 0.85rem;
-    }
-    .retrait-btn:hover {
-      background: linear-gradient(135deg, #06b6d4, #0ea5e9);
-      border-color: transparent;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(6,182,212,0.35);
-    }
-
-    .btn-export {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.15);
-      color: white;
-      padding: 10px 18px;
-      border-radius: 10px;
-      font-weight: 600;
-      font-size: 0.875rem;
-      transition: 0.2s;
-    }
-    .btn-export:hover {
-      background: rgba(6,182,212,0.15);
-      border-color: #22d3ee;
-      color: #22d3ee;
-    }
-
+    
     /* ==== FILTRES ==== */
     .toolbar {
       display: flex;
@@ -329,32 +225,15 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
       cursor: pointer;
     }
 
-    .btn-refresh {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: rgba(255,255,255,0.7);
-      border-radius: 10px;
-      height: 44px;
-      width: 44px;
-      display: grid;
-      place-items: center;
-      transition: 0.2s;
-    }
-    .btn-refresh:hover {
-      background: rgba(6,182,212,0.15);
-      color: #22d3ee;
-      border-color: #22d3ee;
-    }
-
     #filter-statut { display: none; }
 
     /* ==== TABLEAU ==== */
     .table-wrap {
-      background: linear-gradient(135deg, #2c1a4d, #3d2a6b);
-      border: 1px solid rgba(255,255,255,0.05);
+      background: #ffffff !important;
+      border: 1px solid #e5e7eb !important;
       border-radius: 16px;
       overflow: hidden;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+      box-shadow: none !important;
       padding: 20px 22px;
     }
 
@@ -364,17 +243,17 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     }
 
     .table {
-      color: white;
+      color: #111827 !important;
       margin-bottom: 0;
     }
     .table thead th {
-      color: rgba(255,255,255,0.5);
+      color: #6b7280;
       font-size: 0.72rem;
       text-transform: uppercase;
       letter-spacing: 1px;
       border-bottom: 1px solid rgba(255,255,255,0.08);
       font-weight: 700;
-      background: rgba(0,0,0,0.18) !important;
+      background: #f9fafb !important;
       padding: 14px 18px;
     }
     .table tbody tr {
@@ -382,7 +261,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
       transition: 0.15s;
     }
     .table tbody tr:hover {
-      background: rgba(255,255,255,0.03) !important;
+      background: #fffdf2 !important;
     }
     .table tbody td {
       padding: 14px 18px;
