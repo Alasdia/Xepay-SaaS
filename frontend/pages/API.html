@@ -314,6 +314,26 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
         </a>
     </div>
 </div>
+<div id="featureLock" class="feature-lock d-none">
+    <div class="feature-lock-card">
+        <div class="lock-icon">
+            <i class="fa-solid fa-lock"></i>
+        </div>
+
+        <h2>API Access</h2>
+
+        <p>
+            Débloquez les clés API, webhooks et logs temps réel
+            avec le plan Pro.
+        </p>
+
+        <button
+            class="btn btn-warning fw-bold"
+            onclick="Upgrade('pro')">
+            ⚡ Passer au Pro
+        </button>
+    </div>
+</div>
 
 <!-- MAIN -->
 <div id="main-content">
@@ -731,26 +751,6 @@ return {
       </div>
     </div>
   </div>
-</div>
-<div id="featureLock" class="feature-lock d-none">
-    <div class="feature-lock-card">
-        <div class="lock-icon">
-            <i class="fa-solid fa-lock"></i>
-        </div>
-
-        <h2>API Access</h2>
-
-        <p>
-            Débloquez les clés API, webhooks et logs temps réel
-            avec le plan Pro.
-        </p>
-
-        <button
-            class="btn btn-warning fw-bold"
-            onclick="showUpgradeModal('API.html')">
-            ⚡ Passer au Pro
-        </button>
-    </div>
 </div>
 
 <!-- Prism.js -->
