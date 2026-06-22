@@ -41,7 +41,10 @@ body { background: #ffffff !important; color: #111827; }
 #sidebar .nav-link.active,
 #sidebar .nav-link.active-link{ color:#f0b429 !important; font-weight:600; }
 #sidebar .nav-link.active::before,
-#sidebar .nav-link.active-link::before{ content:""; position:absolute; left:-16px; top:50%; transform:translateY(-50%); width:4px; height:24px; border-radius:999px; background:#f0b429; box-shadow:0 0 12px rgba(240,180,41,.5); }
+#sidebar .nav-link.active-link::before{ content: none; }
+#sidebar .card { transition: all .25s ease; cursor: pointer; }
+#sidebar .card:hover { border: 1px solid #facc15 !important; background: #fffdf5 !important; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(250,204,21,.25); }
+#sidebar .logout-link{ justify-content:center; }
 .lien-card { background: #ffffff; border: 1px solid #e5e7eb; display: flex; flex-direction: column; border-radius: 14px; padding: 16px; margin-bottom: 12px; transition: .25s; }
 .lien-card:hover{ border-color:#facc15; box-shadow:0 8px 24px rgba(250,204,21,.12); }
     .badge-statut-actif { background: #10b981; }
@@ -408,12 +411,12 @@ body { background: #ffffff !important; color: #111827; }
       <li><a href="sécurité.html" class="nav-link"><i class="fa-solid fa-shield-halved"></i> Sécurité</a></li>
     </ul>
     <div class="pt-3">
-      <div class="p-3" style="background:rgba(255,255,255,0.1); border-radius:12px;">
+      <div class="card p-3" style="background:rgba(255,255,255,0.1); border-radius:12px;">
         <p class="text-muted mb-2" style="font-size:0.85rem;">Débloquez plus de fonctionnalités</p>
         <button class="btn btn-warning btn-sm w-100 fw-bold"
                 onclick="showUpgradeModal()">⚡ Upgrader</button>
       </div>
-      <a href="login.html" onclick="logout()" class="nav-link text-muted mt-3 text-center"><i class="fa-solid fa-right-from-bracket"></i> Déconnexion</a>
+      <a href="login.html" onclick="logout()" class="nav-link logout-link text-muted mt-3 text-center"><i class="fa-solid fa-right-from-bracket"></i> Déconnexion</a>
     </div>
   </div>
 
