@@ -249,8 +249,8 @@ body { background: #f8fafc !important; color: #111827 !important; }
         </li>
         <li class="nav-item">
           <a href="multi-users.html" class="nav-link text-muted"
-            onclick="showUpgradeModal('team')">
-             <i class="fa-solid fa-users"></i> Multi-utilisateurs
+            onclick="checkMultiUsersAccess(event)">
+            <i class="fa-solid fa-users"></i> Multi-utilisateurs
             <span class="badge bg-danger">Business</span>
           </a>
         </li>
@@ -942,6 +942,16 @@ function checkApiAccess(event) {
 
     if (plan === "free") {
         sessionStorage.setItem("openApiUpgrade", "true");
+    }
+}
+function checkMultiUsersAccess(event) {
+    const plan = localStorage.getItem("plan");
+
+    if (plan !== "business") {
+        sessionStorage.setItem(
+            "openMultiUsersUpgrade",
+            "true"
+        );
     }
 }
 </script>
