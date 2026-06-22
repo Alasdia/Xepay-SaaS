@@ -596,7 +596,7 @@ tr:hover td { background: #ffffff; }
 
       <button
           class="btn btn-warning fw-bold"
-          onclick="Upgrade('business')">
+          onclick="upgrade('business')">
           ⚡ Passer à Business
       </button>
 
@@ -1278,6 +1278,34 @@ function showUpgradeModal() {
       }, index * 150);
     });
   }, 300);
+}
+</script>
+<script>
+async function upgrade(plan) {
+  const token = localStorage.getItem("token");
+
+  const res = await fetch(
+    "https://api.alasdia.com/create-checkout-session",
+    {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + token,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        plan: plan
+      })
+    }
+  );
+
+  const data = await res.json();
+
+  if (!res.ok || !data.url) {
+    alert("Erreur lors de l'ouverture de Stripe");
+    return;
+  }
+
+  window.location.href = data.url;
 }
 </script>
 
