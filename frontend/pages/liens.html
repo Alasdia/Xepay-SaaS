@@ -22,8 +22,8 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
   --violet: #a855f7;
   --gold: #f0b429;
   --white: #ffffff;
-  --muted: rgba(255,255,255,.42);
-  --border: rgba(255,255,255,.07);
+  --muted: #6b7280;
+  --border: #e5e7eb;
 
   --font-d: 'Bebas Neue', sans-serif;
   --font-m: 'IBM Plex Mono', monospace;
@@ -32,7 +32,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
 body { background: #ffffff !important; color: #111827; }
 #sidebar { width: 260px; min-height: 100vh; background: #ffffff !important; border-right: 1px solid #e5e7eb !important; box-shadow: inset -1px 0 0 rgba(255,255,255,0.03), 0 0 40px rgba(0,0,0,0.35); position: fixed; top: 0; left: 0; z-index: 100; padding: 20px; }
  #main-content { margin-left: 260px; padding: 28px; }
-.card-epay { background: rgba(255,255,255,0.08); border: none; border-radius: 16px; color: white; }
+.card-epay { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; color: #374151; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
 #sidebar .nav-link{ position: relative; color:#374151 !important; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:10px; transition:all .25s ease; }
 #sidebar .nav-link i{ width:20px; text-align:center; transition:all .25s ease; }
 #sidebar .nav-link:hover{ color:#f0b429 !important; transform:translateX(6px); }
@@ -41,13 +41,8 @@ body { background: #ffffff !important; color: #111827; }
 #sidebar .nav-link.active-link{ color:#f0b429 !important; font-weight:600; }
 #sidebar .nav-link.active::before,
 #sidebar .nav-link.active-link::before{ content:""; position:absolute; left:-16px; top:50%; transform:translateY(-50%); width:4px; height:24px; border-radius:999px; background:#f0b429; box-shadow:0 0 12px rgba(240,180,41,.5); }
-    .lien-card {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 12px;
-    }
+.lien-card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; margin-bottom: 12px; transition: .25s; }
+.lien-card:hover{ border-color:#facc15; box-shadow:0 8px 24px rgba(250,204,21,.12); }
     .badge-statut-actif { background: #10b981; }
     .badge-statut-inactif { background: #6b7280; }
     .badge {
