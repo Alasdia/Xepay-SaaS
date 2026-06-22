@@ -55,6 +55,12 @@ th{ color:#6b7280; }
 #sidebar .nav-link.active-link i{ color:#f0b429 !important; }
 #sidebar .logout-link{ justify-content:center; }
 #sidebar .logout-link{ justify-content:center; }
+.feature-lock{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.35); backdrop-filter:blur(2px); z-index:50; }
+.feature-lock-card{ width:520px; max-width:90%; background:white; border:1px solid #e5e7eb; border-radius:24px; padding:40px; text-align:center; box-shadow: 0 20px 60px rgba(0,0,0,.12); }
+.lock-icon{ width:84px; height:84px; margin:auto auto 20px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#fff8db; }
+.lock-icon i{ font-size:34px; color:#facc15; }
+.lock-features{ display:flex; justify-content:center; flex-wrap:wrap; gap:10px; margin:24px 0; }
+.lock-features span{ background:#f9fafb; border:1px solid #e5e7eb; padding:8px 14px; border-radius:999px; font-size:13px; font-weight:600; }
 .badge-web3 {
   display: inline-flex;
   align-items: center;
@@ -566,6 +572,37 @@ tr:hover td { background: #ffffff; }
   </div>
 
 </div>
+<div id="businessLock" class="feature-lock d-none">
+
+  <div class="feature-lock-card">
+
+      <div class="lock-icon">
+          <i class="fa-solid fa-users"></i>
+      </div>
+
+      <h2>Multi-utilisateurs</h2>
+
+      <p>
+          Invitez des collaborateurs, gérez les rôles,
+          les permissions et plusieurs espaces de travail.
+      </p>
+
+      <div class="lock-features">
+          <span>✓ Équipes</span>
+          <span>✓ Permissions</span>
+          <span>✓ Workspaces</span>
+          <span>✓ Collaboration</span>
+      </div>
+
+      <button
+          class="btn btn-warning fw-bold"
+          onclick="showUpgradeModal()">
+          ⚡ Passer à Business
+      </button>
+
+  </div>
+
+</div>
 <!-- Main -->
 <main>
   <div class="header">
@@ -794,11 +831,17 @@ tr:hover td { background: #ffffff; }
     const user = await res.json();
 
     if (user.plan !== "business") {
-      document.querySelector("main").classList.add("locked");
-      showUpgradeModal();
+
+      document
+        .querySelector("main")
+        .classList.add("workspace-locked");
+
+      document
+        .getElementById("businessLock")
+        .classList.remove("d-none");
+
       return false;
     }
-    return true;
   }
 
   async function loadUsers() {
