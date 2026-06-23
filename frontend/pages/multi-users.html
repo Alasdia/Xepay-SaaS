@@ -831,7 +831,6 @@ tr:hover td { background: #ffffff; }
     const user = await res.json();
 
     if (user.plan !== "business") {
-
       document
         .querySelector("main")
         .classList.add("workspace-locked");
@@ -840,7 +839,7 @@ tr:hover td { background: #ffffff; }
         .getElementById("businessLock")
         .classList.remove("d-none");
 
-      return false;
+      return true;
     }
   }
 
