@@ -526,7 +526,7 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
     </div>
 
     <div class="mb-4">
-      <span id="badge-plan" class="badge-web3 free"></span>
+      <span id="badge-plan" class="badge-web3"></span>
     </div>
 
     <ul class="nav nav-pills flex-column gap-1">
@@ -1846,6 +1846,7 @@ function updatePlanUI(plan) {
 
   if (plan === "free") {
     badge.textContent = "FREE"
+    badge.classList.add("free")
   }
   else if (plan === "pro") {
     badge.textContent = "PRO"
