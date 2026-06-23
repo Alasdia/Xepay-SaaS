@@ -831,16 +831,11 @@ tr:hover td { background: #ffffff; }
     const user = await res.json();
 
     if (user.plan !== "business") {
-      document
-        .querySelector("main")
-        .classList.add("workspace-locked");
-
-      document
-        .getElementById("businessLock")
-        .classList.remove("d-none");
-
-      return true;
+      document.querySelector("main").classList.add("workspace-locked");
+      document.getElementById("businessLock").classList.remove("d-none");
+      return false;
     }
+    return true;
   }
 
   async function loadUsers() {
