@@ -1148,7 +1148,7 @@ nav {
     left: -280px !important;
     width: 260px !important;
     height: 100vh !important;
-    z-index: 1050 !important;
+    z-index: 20000 !important;
     overflow-y: auto !important;
     transition: left .3s cubic-bezier(.23,1,.32,1) !important;
   }
