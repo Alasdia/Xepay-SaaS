@@ -30,7 +30,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
   --font-b: 'Manrope', sans-serif;
 }
 body { background: #ffffff !important; color: #111827; }
-#sidebar { width: 260px; min-height: 100vh; background: #ffffff !important; display: flex; flex-direction: column; border-right: 1px solid #e5e7eb !important; box-shadow: none; position: fixed; top: 0; left: 0; z-index: 100; padding: 20px;z-index: 20000; }
+#sidebar { width: 260px; min-height: 100vh; background: #ffffff !important; display: flex; flex-direction: column; border-right: 1px solid #e5e7eb !important; box-shadow: none; position: fixed; top: 0; left: 0; z-index: 100; padding: 20px;z-index: 10000; }
  #main-content { margin-left: 260px; padding: 28px; }
 .card-epay { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; color: #374151; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
 #sidebar .nav-link{ position: relative; color:#374151 !important; border-radius:12px; padding:8px 12px; display:flex; align-items:center; gap: 8px; transition:all .25s ease; }
@@ -192,7 +192,7 @@ body { background: #ffffff !important; color: #111827; }
     
 .montant { display: block; margin-top: 8px; font-size: 20px; font-weight: bold; color: #374151; line-height: 1.2; }
 .locked-page #main-content { filter: blur(8px); pointer-events: none; user-select: none; opacity: .5; position: relative; margin-left: 260px; padding: 28px; }
-#links-lock{ position: absolute; inset: 0; z-index: 9999; display:flex; align-items:center; justify-content:center; top: 0; }
+#links-lock{ position: absolute; inset: 0; z-index: 999; display:flex; align-items:center; justify-content:center; top: 0; }
 .lock-card{ width:420px; background:#fff; border:1px solid #e5e7eb; border-radius:24px; padding:40px; text-align:center; box-shadow:0 15px 40px rgba(0,0,0,.08); margin: auto; position: static; transform: none; }
 .lock-icon{ width:70px; height:70px; border-radius:50%; background:#fff6d6; color:#f0b429; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:28px; }
 .lock-card h2{ font-size:32px; margin-bottom:10px; color:#374151; }
