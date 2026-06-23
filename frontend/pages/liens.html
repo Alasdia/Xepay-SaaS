@@ -30,10 +30,10 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
   --font-b: 'Manrope', sans-serif;
 }
 body { background: #ffffff !important; color: #111827; }
-#sidebar { width: 260px; min-height: 100vh; background: #ffffff !important; display: flex; flex-direction: column; border-right: 1px solid #e5e7eb !important; box-shadow: none; position: fixed; top: 0; left: 0; z-index: 100; padding: 20px;z-index: 10000; }
- #main-content { margin-left: 260px; padding: 28px; }
+#sidebar { width: 260px; min-height: 100vh; background: #ffffff !important; display: flex; flex-direction: column; border-right: 1px solid #e5e7eb !important; box-shadow: none; position: fixed; top: 0; left: 0; z-index: 100; padding: 20px;z-index: 10000; gap: 8px; }
+#main-content { margin-left: 260px; padding: 28px; }
 .card-epay { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; color: #374151; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
-#sidebar .nav-link{ position: relative; color:#374151 !important; border-radius:12px; padding:8px 12px; display:flex; align-items:center; gap: 8px; transition:all .25s ease; }
+#sidebar .nav-link{ position: relative; color:#111827 !important; border-radius:12px; padding:8px 12px; display:flex; align-items:center; gap: 8px; transition:all .25s ease; font-weight: 600; }
 #sidebar .nav{ gap:0 !important; }
 #sidebar .nav-link i{ width:20px; text-align:center; transition:all .25s ease; }
 #sidebar .nav-link:hover{ color:#f0b429 !important; transform:translateX(6px); }
@@ -396,12 +396,12 @@ body { background: #ffffff !important; color: #111827; }
       <li><a href="dashboard.html" class="nav-link"><i class="fa-solid fa-house"></i> Accueil</a></li>
       <li><a href="transactions.html" class="nav-link"><i class="fa-solid fa-credit-card"></i> Transactions</a></li>
       <li><a href="liens.html" class="nav-link active-link"><i class="fa-solid fa-link"></i> Mes liens de paiement</a></li>
-      <li><a href="API.html" class="nav-link text-muted d-flex justify-content-between"
+      <li><a href="API.html" class="nav-link d-flex justify-content-between"
         onclick="checkApiAccess(event)">
         <i class="fa-solid fa-code"></i> API Access
         <span class="badge pro">PRO</span>
       </a></li>
-      <li><a href="multi-users.html" class="nav-link text-muted d-flex justify-content-between"
+      <li><a href="multi-users.html" class="nav-link d-flex justify-content-between"
         onclick="checkMultiUsersAccess(event)">
         <i class="fa-solid fa-users"></i> Multi-utilisateurs
         <span class="badge business">BUSINESS</span>
