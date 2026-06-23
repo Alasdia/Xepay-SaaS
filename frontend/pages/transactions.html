@@ -360,7 +360,7 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
       width: fit-content;
     }
 .badge-web3.free { color: #22c55e; background: linear-gradient(135deg, rgba(34,197,94,0.18), rgba(34,197,94,0.05) ); border: 1px solid rgba(34,197,94,0.4); box-shadow: 0 0 8px rgba(34,197,94,0.6), inset 0 0 6px rgba(34,197,94,0.25); }
-.badge-web3.pro { color: #7c3aed; background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.4); box-shadow: 0 0 8px rgba(34,211,238,0.4), 0 0 20px rgba(34,211,238,0.2); }
+.badge-web3.pro { color: #7c3aed; background: rgba(168,85,247,0.10); border: 1px solid rgba(168,85,247,0.35); box-shadow: 0 0 10px rgba(168,85,247,0.35), 0 0 20px rgba(168,85,247,0.15); }
 .badge-web3.business { color: #facc15; background: rgba(250,204,21,0.08); border: 1px solid rgba(250,204,21,0.5); box-shadow: 0 0 10px rgba(250,204,21,0.5), 0 0 25px rgba(250,204,21,0.25); }
 .badge-web3::after { content: ""; position: absolute; inset: 0; background: linear-gradient( 120deg, transparent, rgba(255,255,255,0.5), transparent ); transform: translateX(-100%); animation: shimmer 2.5s infinite; }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
@@ -578,7 +578,7 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
     </div>
   </div>
 
-<div id="transactions-lock" class="lock-overlay">
+<div id="transactions-lock" class="lock-overlay" style="display: none;">
   <div class="lock-card">
     <div class="lock-icon">
       <i class="fa-solid fa-lock"></i>
@@ -1061,10 +1061,17 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
 
       const user = await res.json()
 
+      const lock = document.getElementById("transactions-lock");
+
       if (user.plan === "free") {
         document.body.classList.add("locked-page");
+        lock.style.display = "flex";
         return;
       }
+
+      document.body.classList.remove("locked-page");
+      lock.style.display = "none";
+
       loadStats();
       loadTransactions();
       chargerWallet();
