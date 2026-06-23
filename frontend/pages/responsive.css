@@ -1684,7 +1684,7 @@ nav {
     position: fixed;
     top: 14px;
     left: 14px;
-    z-index: 1060;
+    z-index: 30000;
     flex-direction: column;
     justify-content: center;
     gap: 5px;
