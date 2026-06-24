@@ -104,9 +104,7 @@ class TransferRequest(BaseModel):
     amount: float
 
 class WithdrawRequest(BaseModel):
-    amount: float
-    operator: str   # wave/orange/mtn
-    phone: str
+    amount: float  
 
 class Wallet(Base):
     __tablename__ = "wallets"
