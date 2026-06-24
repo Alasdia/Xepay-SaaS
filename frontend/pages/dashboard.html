@@ -25,7 +25,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
   --accent-red: #f87171;
   --text: #ffffff;
   --text-dim: #b8bce0;
-  --text-muted: #8a90c4;
+  --text-muted: #6b7280;
   --border: rgba(255,255,255,0.08);
   --cyan: #22d3ee;
   --violet: #a855f7;
@@ -36,21 +36,48 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
   --white: #ffffff;
 }
 
-        body {
-            background: #020617;
-            min-height: 100vh;
-            color: white;
-            position: static;
-            overflow-x: hidden;
-        }
+body { background: #ffffff !important; min-height: 100vh; color: #6b7280 !important; position: static; overflow-x: hidden; }
+#sidebar{ background:#ffffff !important; border-right:1px solid #e5e7eb; box-shadow:0 2px 20px rgba(0,0,0,.04); }
+#sidebar h4{ color:#111827 !important; }
+#sidebar small{ color:#6b7280 !important; }
+#sidebar .nav-link{ color:#6b7280 !important; border-radius:12px; padding:12px 14px; transition:.25s; display:flex; align-items:center; gap:10px; }
+#sidebar .nav-link:hover{ background:#facc15 !important; color:#111827 !important; }
+#sidebar .nav-link.active-link{ background:#facc15 !important; color:#111827 !important; font-weight:700; }
+#sidebar .nav-link i{ width:20px; }
+
+#main-content { background: #ffffff; position: relative; z-index: 1; margin-left: 260px; padding: 28px 40px;  width: calc(100% - 220px); }
+
+h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
+
+.card,
+.card-epay{ background:#ffffff !important; border:1px solid #e5e7eb !important; box-shadow:0 2px 12px rgba(0,0,0,.05); color:#374151 !important; }
+.card:hover,
+.card-epay:hover{ box-shadow:0 6px 20px rgba(0,0,0,.08); }
+.card h3,
+.card h4,
+.card h5{ color:#111827 !important; }
+
+#createLinkModal .modal-content,
+#withdrawModal .modal-content{ background:#ffffff !important; color:#374151 !important; border:none !important; box-shadow:0 20px 50px rgba(0,0,0,.12); }
+#createLinkModal h5,
+#withdrawModal h5{ color:#111827 !important; }
+#createLinkModal .form-label,
+#withdrawModal .form-label{ color:#6b7280 !important; }
+#createLinkModal .form-control,
+#createLinkModal .form-select,
+#withdrawModal .form-control{ background:#ffffff !important; color:#374151 !important; border:1px solid #d1d5db !important; }
+#createLinkModal .form-control:focus,
+#createLinkModal .form-select:focus,
+#withdrawModal .form-control:focus{ border-color:#facc15 !important; box-shadow:0 0 0 .15rem rgba(250,204,21,.25) !important; }
+#createLinkModal .btn-close,
+#withdrawModal .btn-close{ filter:none !important; }
+
         .modal {
             z-index: 99999 !important;
         }
         .modal-backdrop {
             z-index: 99990 !important;
         }
-#createLinkModal .modal-content,
-#withdrawModal .modal-content { background: #0f172a; color: white; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 20px 60px rgba(0,0,0,0.45); }
         .modal-header,
         .modal-footer {
           border: none;
@@ -78,25 +105,24 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
           border-color: #3b82f6;
           box-shadow: none;
         }
-        /* Glow + modern modal */
-#createLinkModal .modal-content,
-#withdrawModal .modal-content { border-radius: 16px; overflow: hidden; background: linear-gradient(135deg, #0f172a, #1e3a8a); }
         /* Footer propre */
         .modal-footer {
           border-top: none;
         }
 
-        /* Bouton upgrade / create */
-        .btn-warning {
-          background: linear-gradient(90deg, #facc15, #f59e0b);
-          border: none;
-          font-weight: bold;
-        }
+.btn-warning,
+.btn-create-link{ background:#facc15 !important; border-color:#facc15 !important; color:#111827 !important; box-shadow:none !important; }
+.btn-warning:hover,
+.btn-create-link:hover{ background:#eab308 !important; border-color:#eab308 !important; color:#111827 !important; }
+.btn-outline-light{ border:1px solid #facc15 !important; color:#111827 !important; background:#ffffff !important; }
+.btn-outline-light:hover{ background:#facc15 !important; }
 
-        /* Hover effet */
-        .btn-warning:hover {
-          opacity: 0.9;
-        }
+.custom-table,
+table{ color:#374151 !important; }
+.custom-table thead th{ color:#6b7280 !important; border-bottom:1px solid #e5e7eb !important; }
+.custom-table tbody td{ color:#374151 !important; border-bottom:1px solid #f3f4f6 !important; }
+.progress{ background:#f3f4f6; }
+.progress-bar{ background:#facc15 !important; }
 
         /* Inputs spacing */
         .modal-body {
@@ -105,15 +131,13 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
         .modal-dialog {
             max-width: 500px;
         }
-#createLinkModal .modal-content,
-#withdrawModal .modal-content { border-radius: 14px; max-height: 90vh; overflow-y: auto; }
         /* INPUTS PLUS GRANDS */
         .modal .form-control,
         .modal .form-select {
-          height: 48px;              /* + grand */
+          height: 48px;              
           font-size: 15px;
           padding: 0 14px;
-          border-radius: 10px;       /* arrondi propre */
+          border-radius: 10px;      
         }
 
         /* INPUT MONTANT + SELECT ALIGNÉS */
@@ -179,16 +203,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
                 transform: translate(0, 0);
             }
         }
-        #main-content {
-            position: relative;
-            z-index: 1;
-            margin-left: 260px;
-            padding: 28px 40px; /* plus d'espace en bas */
-            width: calc(100% - 220px);
-        }
-        #sidebar {
-            width: 220px;
-        }
+
 
 
         .custom-navbar {
@@ -345,31 +360,6 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
             border-bottom: 1px solid rgba(255,255,255,0.18);
             background: transparent !important;
         }
-        .custom-table thead th {
-            background: transparent;
-        }
-        .nav-link.active-link {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 8px;
-        }
-        #createLinkModal .modal-dialog {
-            max-width: 500px;
-        }
-
-        .nav-link:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            transition: 0.2s;
-        }
-
-        .custom-table thead th {
-            font-size: 14px;
-            font-weight: 700;
-            color: rgba(255,255,255,0.7);
-            border-bottom: 1px solid rgba(255,255,255,0.2);
-            padding: 14px 16px;
-            background: transparent;
-        }
         .recent-payments-card table tbody tr:hover {
             background: transparent !important;
         }
@@ -490,42 +480,6 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
             text-align: center;
             z-index: 2;
             pointer-events: none;
-        }
-        .btn-create-link {
-            background: linear-gradient(90deg, #00c6ff, #0072ff);
-            border: none;
-            padding: 12px 22px;
-            border-radius: 12px;
-            color: white;
-            font-weight: 600;
-            box-shadow: 0 0 12px rgba(0, 114, 255, 0.4);
-            transition: all 0.25s ease;
-        }
-
-        .btn-create-link:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 18px rgba(0, 114, 255, 0.6);
-        }
-        .btn-create-link {
-          font-size: 16px;
-          letter-spacing: 0.5px;
-          position: relative;
-          overflow: hidden;
-        }
-        
-        .btn-create-link::after {
-          content: "";
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(120deg, transparent, rgba(255,255,255,0.4), transparent);
-          transition: 0.5s;
-        }
-
-        .btn-create-link:hover::after {
-          left: 100%;
         }
       
         .custom-toast {
@@ -659,12 +613,12 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     
 <!-- SIDEBAR -->
 <div id="sidebar" class="d-flex flex-column p-3"
-    style="width: 260px; min-height: 100vh; background: #0d1b6e; position: fixed;">
+    style="width: 260px; min-height: 100vh; position: fixed;">
 
     <!-- Logo -->
     <div class="mb-4 mt-2">
-        <h4 class="text-white fw-bold">⚡ Xepay</h4>
-        <small class="text-white-50">Tableau de bord marchand</small>
+        <h4 class="text-muted fw-bold">⚡ Xepay</h4>
+        <small class="text-muted">Tableau de bord marchand</small>
     </div>
 
     <!-- Badge plan -->
@@ -678,32 +632,32 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     <ul class="nav nav-pills flex-column gap-1">
         <li class="nav-item">
             <a href="dashboard.html"
-                class="nav-link text-white active-link">
+                class="nav-link text-muted active-link">
                   <i class="fa-solid fa-house"></i> Accueil
             </a>
         </li>
         <li class="nav-item">
             <a href="transactions.html"
-                class="nav-link text-white">
+                class="nav-link text-muted">
                   <i class="fa-solid fa-credit-card"></i> Transactions
             </a>
         </li>
         <li class="nav-item">
-            <a href="liens.html" class="nav-link text-white">
+            <a href="liens.html" class="nav-link text-muted">
                 <i class="fa-solid fa-link"></i> Mes liens de paiement
             </a>
         </li>
 
         <!-- Fonctionnalité verrouillée (Free) -->
         <li class="nav-item">
-            <a href="API.html" class="nav-link text-white-50 d-flex justify-content-between"
+            <a href="API.html" class="nav-link text-muted d-flex justify-content-between"
                 onclick="checkApiAccess(event)">
                     <i class="fa-solid fa-code"></i> API Access
                 <span class="badge bg-warning text-dark">Pro</span>
             </a>
         </li>
         <li class="nav-item">
-            <a href="multi-users.html" class="nav-link text-white-50 d-flex justify-content-between"
+            <a href="multi-users.html" class="nav-link text-muted d-flex justify-content-between"
                   onclick="checkMultiUsersAccess(event)">
                     <i class="fa-solid fa-users"></i> Multi-utilisateurs
                 <span class="badge bg-danger">Business</span>
@@ -711,12 +665,12 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
         </li>
 
         <li class="nav-item mt-2">
-            <a href="profil.html" class="nav-link text-white">
+            <a href="profil.html" class="nav-link text-muted">
                 <i class="fa-solid fa-user"></i> Profil / KYC
             </a>
         </li>
         <li class="nav-item">
-            <a href="sécurité.html" class="nav-link text-white">
+            <a href="sécurité.html" class="nav-link text-muted">
                 <i class="fa-solid fa-shield-halved"></i> Sécurité
             </a>
         </li>
@@ -726,7 +680,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     <div class="mt-auto">
         <div class="card border-0 p-3"
                 style="background: rgba(255,255,255,0.1); border-radius: 12px;">
-            <p class="text-white mb-2" style="font-size: 0.85rem;">
+            <p class="text-muted mb-2" style="font-size: 0.85rem;">
                 Débloquez plus de fonctionnalités
             </p>
             <button class="btn btn-warning btn-sm w-100 fw-bold upgrade-btn"
@@ -736,7 +690,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
         </div>
 
         <!-- Logout -->
-        <a href="login.html" onclick="logout()" class="nav-link text-white-50 mt-3 text-center fw-bold">
+        <a href="login.html" onclick="logout()" class="nav-link text-muted mt-3 text-center fw-bold">
             <i class="fa-solid fa-right-from-bracket"></i> Déconnexion
         </a>
     </div>
@@ -748,11 +702,11 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h4 class="fw-bold mb-1" id="welcomeText">Bienvenu</h4>
-            <small class="text-white-50 d-block">
+            <small class="text-muted d-block">
                 Plan <span class="text-success fw-bold">Free</span> 10 paiements par mois
             </small>
 
-            <small class="text-white-50 d-block mt-1">
+            <small class="text-muted d-block mt-1">
                 Commencez à recevoir vos paiements facilement.
                 Passez au plan Pro pour plus de volume et de fonctionnalités.
             </small>
@@ -784,7 +738,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
                 <div class="card-epay p-3">
                    <div class="d-flex justify-content-between align-items-start">
                         <div>
-                           <small class="text-white-50"> Total Solde</small>
+                           <small class="text-muted"> Total Solde</small>
                            <h4 id="wallet-balance" class="fw-bold mt-1 text-success">0 XOF</h4>
                         </div>
 
@@ -803,7 +757,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
         <!-- Retrait en attente -->
         <div class="col-md-4">
             <div class="card-epay p-3">
-                <small class="text-white-50">Retrait en attente</small>
+                <small class="text-muted">Retrait en attente</small>
                 <h4 id="pending-withdraw" class="fw-bold mt-1 text-danger">0 XOF</h4>
             </div>
         </div>
@@ -811,7 +765,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
         <!-- Total reçu -->
         <div class="col-md-4">
             <div class="card-epay p-3">
-                <small class="text-white-50">Total reçu</small>
+                <small class="text-muted">Total reçu</small>
                 <h4 id="total-xof" class="fw-bold mt-1">0 XOF</h4>
             </div>
         </div>
@@ -827,7 +781,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
         <div class="progress" style="height:8px;">
             <div class="progress-bar bg-warning progress-bar-custom" style="width:30%"></div>
         </div>
-        <small class="text-white-50 mt-2 d-block">
+        <small class="text-muted mt-2 d-block">
             Plan Free — <a href="#" class="text-warning" onclick="showUpgradeModal()">Upgrader</a>
         </small>
     </div>
@@ -836,7 +790,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
 
         <h5 class="mb-3">Créer un paiement</h5>
 
-        <p class="text-white-50 mb-3">
+        <p class="text-muted mb-3">
             Générez un lien et recevez de l’argent instantanément
         </p>
 
@@ -849,14 +803,14 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     </div>
 
     <div id="links-container" class="mt-4" style="width:100%; padding: 0 20px;"></div>
-    <p class="text-white-50 mb-2">
+    <p class="text-muted mb-2">
         Recevez de l'argent en USD, EUR et converti automatiquement en XOF
     </p>
 
     <div class="card-epay p-5 text-center mt-4">
         <div style="font-size:3rem;">🚀</div>
         <h4 class="fw-bold mt-3">Débloquez plus de fonctionnalités</h4>
-        <p class="text-white-50 mb-4">
+        <p class="text-muted mb-4">
             Passez au plan Pro pour accéder aux graphiques avancés,
             aux exports CSV/PDF et à plus de transactions.
         </p>
@@ -876,7 +830,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
 
       <div class="modal-body p-4">
 
-        <h5 class="mb-4 text-white">Créer un lien de paiement</h5>
+        <h5 class="mb-4 text-muted">Créer un lien de paiement</h5>
 
         <!-- Nom du lien -->
         <div class="mb-3">
@@ -1031,7 +985,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
 
 <div class="modal fade" id="withdrawModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content bg-dark text-white">
+    <div class="modal-content bg-dark text-muted">
 
       <!-- HEADER -->
       <div class="modal-header border-0">
@@ -1355,7 +1309,7 @@ if (!token) {
         container.innerHTML = "";
 
         if (!data.links || data.links.length == 0) {
-          container.innerHTML = `<p class="text-white-50">Aucun lien pour le moment</p>`;
+          container.innerHTML = `<p class="text-muted">Aucun lien pour le moment</p>`;
           return;
         }
 
