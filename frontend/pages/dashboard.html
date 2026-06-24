@@ -1041,12 +1041,10 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
 
       <!-- BODY -->
       <div class="modal-body">
-
         <div class="mb-3">
           <label class="form-label">Montant</label>
           <input type="number" id="withdrawAmount" class="form-control" placeholder="Ex: 5000">
         </div>
-
       </div>
 
       <!-- FOOTER -->
@@ -1501,9 +1499,7 @@ async function submitWithdraw() {
         "X-Workspace-Id": localStorage.getItem("workspace_id")
       },
       body: JSON.stringify({
-        amount: parseFloat(document.getElementById("withdrawAmount").value),
-        operator: document.getElementById("withdrawOperator").value,
-        phone: document.getElementById("withdrawPhone").value
+        amount: parseFloat(document.getElementById("withdrawAmount").value)
       })
     });
 
