@@ -305,22 +305,24 @@ def process_withdraw(id: int, db: Session = Depends(get_db)):
 
         print("APRES PAYOUT")
 
-        wd.status = "pending"
+        wd.status = payout["status"]
         wd.stripe_payout_id = payout["id"]
+
+        wallet.pending -= wd.amount
 
         tx = db.query(WalletTransaction).filter(
             WalletTransaction.reference == wd.reference
         ).first()
 
         if tx:
-            tx.status = "success"
+            tx.status = payout["status"]
 
     except Exception as e:
         print("Stripe error:", str(e))
 
         wd.status = "failed"
         wallet.pending -= wd.amount
-        wallet.available += wd.amount  # rollback
+        wallet.available += wd.amount 
 
         tx = db.query(WalletTransaction).filter(
             WalletTransaction.reference == wd.reference
