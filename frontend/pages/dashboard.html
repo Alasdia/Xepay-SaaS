@@ -74,44 +74,6 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .sidebar-upgrade{ margin-top:auto; padding-top:22px; border-top:1px solid #f3f4f6; }
 .sidebar-upgrade .card{ border:1px solid #e5e7eb !important; border-radius:16px; }
 .sidebar-upgrade .card:hover{ border-color:#facc15 !important; transform: none !important; }
-        .modal {
-            z-index: 99999 !important;
-        }
-        .modal-backdrop {
-            z-index: 99990 !important;
-        }
-        .modal-header,
-        .modal-footer {
-          border: none;
-        }
-
-        .modal-title {
-          font-weight: 700;
-        }
-
-        .modal .form-control,
-        .modal select {
-          background: rgba(255,255,255,0.06);
-          border: 1px solid rgba(255,255,255,0.08);
-          color: white;
-        }
-
-        .modal .form-control::placeholder {
-          color: rgba(255,255,255,0.55);
-        }
-
-        .modal .form-control:focus,
-        .modal select:focus {
-          background: rgba(255,255,255,0.08);
-          color: white;
-          border-color: #3b82f6;
-          box-shadow: none;
-        }
-        /* Footer propre */
-        .modal-footer {
-          border-top: none;
-        }
-
 .btn-warning,
 .btn-create-link{ background:#facc15 !important; border-color:#facc15 !important; color:#111827 !important; box-shadow:none !important; }
 .btn-warning:hover,
@@ -265,6 +227,34 @@ table{ color:#374151 !important; }
         .status-pending {
             background: rgba(255, 193, 7, 0.15);
             color: #d39e00;
+        }
+
+        .action-link {
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            margin-right: 12px;
+        }
+
+        .action-edit {
+            color: #0d6efd;
+        }
+
+        .action-delete {
+            color: #dc3545;
+        }
+
+        .action-link:hover {
+            opacity: 0.8;
+        }
+        canvas {
+            filter: brightness(1.15);
+        }
+        payments-chart-wrapper {
+            position: relative;
+            width: 260px;
+            height: 260px;
+            margin: 0 auto;
         }
 
         #paymentsChart {
