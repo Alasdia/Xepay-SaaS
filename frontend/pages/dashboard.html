@@ -40,11 +40,11 @@ body { background: #ffffff !important; min-height: 100vh; color: #6b7280 !import
 #sidebar{ background:#ffffff !important; border-right:1px solid #e5e7eb; box-shadow:0 2px 20px rgba(0,0,0,.04); }
 #sidebar h4{ color:#111827 !important; }
 #sidebar small{ color:#6b7280 !important; }
-#sidebar .nav-link{ color:#6b7280 !important; border-radius:12px; padding:6px 10px; transition:.25s; display:flex; align-items:center; gap:10px; }
-#sidebar .nav-link:hover{ background: transparent !important; color:#facc15 !important; }
+#sidebar .nav-link{ color:#6b7280 !important; border-radius:12px; padding:6px 10px; transition:.22s; display:flex; align-items:center; gap:8px; }
+#sidebar .nav-link:hover{ background: transparent !important; color:#facc15 !important; transform: translateX(8px); }
 #sidebar .nav-link.active-link{ background: transparent !important; color:#facc15 !important; font-weight:600; }
-#sidebar .nav-link i{ width:18px; font-size: 15px; transition: .2s; }
-#sidebar .nav-link:hover i{ color:#facc15; }
+#sidebar .nav-link i{ width:18px; font-size: 15px; transition: .22s; }
+#sidebar .nav-link:hover i{ color:#facc15; transform: scale(1.15); rotate: -8deg; }
 #sidebar .nav-item{ margin-bottom:2px; }
 #main-content { background: #ffffff; position: relative; z-index: 1; margin-left: 260px; padding: 28px 40px;  width: calc(100% - 220px); }
 
@@ -72,7 +72,9 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 #withdrawModal .form-control:focus{ border-color:#facc15 !important; box-shadow:0 0 0 .15rem rgba(250,204,21,.25) !important; }
 #createLinkModal .btn-close,
 #withdrawModal .btn-close{ filter:none !important; }
-
+.sidebar-upgrade{ margin-top:auto; padding-top:22px; border-top:1px solid #f3f4f6; }
+.sidebar-upgrade .card{ border:1px solid #e5e7eb !important; border-radius:16px; transition:all .25s ease; }
+.sidebar-upgrade .card:hover{ border-color:#facc15 !important; box-shadow:0 10px 30px rgba(250,204,21,.15); transform:translateY(-2px); }
         .modal {
             z-index: 99999 !important;
         }
@@ -678,7 +680,7 @@ table{ color:#374151 !important; }
     </ul>
 
     <!-- Upgrade CTA -->
-    <div class="mt-auto">
+    <div class="mt-auto sidebar-upgrade">
         <div class="card border-0 p-3"
                 style="background: rgba(255,255,255,0.1); border-radius: 12px;">
             <p class="text-muted mb-2" style="font-size: 0.85rem;">
