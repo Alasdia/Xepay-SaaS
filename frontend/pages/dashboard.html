@@ -1699,7 +1699,9 @@ fetch("https://api.alasdia.com/wallet/me", {
         if (diff <= 0) {
             el.innerText = "✅ Disponible maintenant";
             btn.disabled = false;
-            clearInterval(timer);
+            if (timer) {
+              clearInterval(timer);
+            }
             return;
         }
 
@@ -1716,9 +1718,8 @@ fetch("https://api.alasdia.com/wallet/me", {
 
         el.innerText = "Disponible dans " + text;
     }
-
+    let timer = setInterval(update, 1000);
     update();
-    const timer = setInterval(update, 1000);
   }
 });
 </script>
