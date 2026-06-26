@@ -820,6 +820,7 @@ tr:hover td { background: #ffffff; }
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
   let users = []
+
   async function checkBusinessAccess() {
     const res = await fetch("https://api.alasdia.com/me", {
       headers: {
@@ -830,11 +831,17 @@ tr:hover td { background: #ffffff; }
 
     const user = await res.json();
 
+    const lock = document.getElementById("businessLock");
+    const main = document.querySelector("main");
+
     if (user.plan !== "business") {
-      document.querySelector("main").classList.add("workspace-locked");
-      document.getElementById("businessLock").classList.remove("d-none");
+      main.classList.remove("workspace-locked");
+      lock.classList.add("d-none");
       return false;
     }
+
+    main.classList.remove("workspace-locked");
+    lock.classList.add("d-none");
     return true;
   }
 
@@ -883,7 +890,8 @@ tr:hover td { background: #ffffff; }
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Bearer " + localStorage.getItem("token")
+        "Authorization": "Bearer " + localStorage.getItem("token"),
+        "X-Workspace-Id": localStorage.getItem("workspace_id")
       },
       body: JSON.stringify({ email, role })
     })
@@ -1137,10 +1145,14 @@ tr:hover td { background: #ffffff; }
         localStorage.setItem("workspace_id", workspaceId)
 
         users = []
-
         renderTable()
 
-        await loadUsers()
+        await loadCurrentUser();
+        const allowed = await checkBusinessAccess();
+
+        if (allowed) {
+          await loadUsers();
+        }
       })
 
     } catch (err) {
@@ -1148,7 +1160,6 @@ tr:hover td { background: #ffffff; }
       console.error("Erreur loadWorkspaces:", err)
     }
   }
-  loadWorkspaces()
   
   async function deleteUser(i) {
     const u = users[i]
@@ -1203,6 +1214,7 @@ tr:hover td { background: #ffffff; }
     }
   }
   async function init() {
+    await loadWorkspaces()
     await loadCurrentUser();
 
     const allowed = await checkBusinessAccess();
@@ -1252,7 +1264,6 @@ tr:hover td { background: #ffffff; }
 function showUpgradeModal() {
   const modalEl = document.getElementById("modalUpgrade");
 
-  // Reset animation
   modalEl.querySelectorAll(".reveal").forEach(el => {
     el.classList.remove("visible");
   });
@@ -1264,7 +1275,6 @@ function showUpgradeModal() {
 
   modal.show();
 
-  // Lance l'animation après l'ouverture
   setTimeout(() => {
     modalEl.querySelectorAll(".reveal").forEach((el, index) => {
       setTimeout(() => {

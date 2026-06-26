@@ -20,11 +20,9 @@ def get_workspace_owner_id(
             m.role
         )
 
-    # ✅ aucun workspace choisi
     if not workspace_id:
         return current_user.id
 
-    # ✅ vérifier accès workspace
     membership = db.query(WorkspaceUser).filter(
         WorkspaceUser.user_id == current_user.id,
         WorkspaceUser.workspace_id == workspace_id
@@ -36,5 +34,4 @@ def get_workspace_owner_id(
             detail="Workspace access denied"
         )
 
-    # ✅ owner du workspace
     return workspace_id
