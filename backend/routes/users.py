@@ -797,16 +797,13 @@ def create_user(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # workspace = user.id (ton modèle actuel)
     workspace_id = x_workspace_id or current_user.id
 
-    # vérifier si user existe
     existing = db.query(UserDB).filter(
         UserDB.email == data.get("email")
     ).first()
 
     if existing:
-        # juste ajouter au workspace
         membership = WorkspaceUser(
             user_id=existing.id,
             workspace_id=workspace_id,
@@ -856,7 +853,6 @@ def create_invite(
     if not email:
         raise HTTPException(400, "Email requis")
 
-    # éviter double invitation
     existing_invite = db.query(WorkspaceInvite).filter(
         WorkspaceInvite.email == email,
         WorkspaceInvite.workspace_id == workspace_id,
@@ -866,7 +862,6 @@ def create_invite(
     if existing_invite:
         raise HTTPException(400, "Invitation déjà envoyée")
 
-    # éviter inviter quelqu’un déjà membre
     existing_user = db.query(UserDB).filter(UserDB.email == email).first()
     if existing_user:
         existing_membership = db.query(WorkspaceUser).filter(
@@ -877,7 +872,6 @@ def create_invite(
         if existing_membership:
             raise HTTPException(400, "Utilisateur déjà dans le workspace")
 
-    # génération token sécurisé
     token = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(token.encode()).hexdigest()
 
@@ -905,6 +899,21 @@ def create_invite(
         "message": "Invitation créée",
         "invite_link": invite_link
     }
+
+@router.get("/invites")
+def get_invites(
+    x_workspace_id: str = Header(None),
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    workspace_id = x_workspace_id or current_user.id
+
+    invites = db.query(WorkspaceInvite).filter(
+        WorkspaceInvite.workspace_id == workspace_id,
+        WorkspaceInvite.used == False
+    ).all()
+
+    return invites
 
 @router.get("/invites/accept")
 def accept_invite(

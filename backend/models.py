@@ -122,52 +122,33 @@ class Withdrawal(Base):
     __tablename__ = "withdrawals"
 
     id = Column(Integer, primary_key=True, index=True)
-
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     wallet_id = Column(Integer, ForeignKey("wallets.id"), nullable=False)
-
     amount = Column(Float, nullable=False)
-
-    operator = Column(String)   # wave / orange / mtn
+    operator = Column(String)  
     phone = Column(String)
     reference = Column(String, unique=True, index=True)
-
-    status = Column(String, default="pending")  # pending | success | failed
-
+    status = Column(String, default="pending") 
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc)
     )
-
     processed_at = Column(DateTime(timezone=True), nullable=True)
 
 class WalletTransaction(Base):
     __tablename__ = "wallet_transactions"
 
     id = Column(Integer, primary_key=True, index=True)
-
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     wallet_id = Column(Integer, ForeignKey("wallets.id"), nullable=False)
-
     type = Column(String, nullable=False)
-    # deposit / withdraw / internal_transfer / refund
-
     direction = Column(String, nullable=False)
-    # in / out
-
     amount = Column(Float, nullable=False)
-
     status = Column(String, default="success")
-    # pending / success / failed
-
     reference = Column(String, unique=True, index=True)
-
     related_user_id = Column(String, ForeignKey("users.id"), nullable=True)
-    # pour transfert interne
-
     description = Column(String, nullable=True)
     available_at = Column(DateTime(timezone=True), nullable=True)
-
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc)

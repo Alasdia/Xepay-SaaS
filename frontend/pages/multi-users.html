@@ -857,14 +857,11 @@ tr:hover td { background: #ffffff; }
           "X-Workspace-Id": workspaceId
         }
       })
-
       const data = await res.json()
       console.log("USERS LOADED:", data)
 
       users = data
-
       const now = new Date()
-
       const time = now.toLocaleTimeString("fr-FR", {
         hour: "2-digit",
         minute: "2-digit"
@@ -878,6 +875,19 @@ tr:hover td { background: #ffffff; }
     } catch (err) {
       console.error("Erreur loadUsers:", err)
     }
+  }
+  async function loadInvites() {
+
+    const res = await fetch("https://api.alasdia.com/invites", {
+      headers: {
+        Authorization: "Bearer " + localStorage.getItem("token"),
+        "X-Workspace-Id": localStorage.getItem("workspace_id")
+      }
+    });
+
+    const invites = await res.json();
+
+    document.getElementById("stat-pending").textContent = invites.length;
   }
   
   async function sendInvite() {
@@ -903,6 +913,7 @@ tr:hover td { background: #ffffff; }
     if (data.invite_link) {
       alert("Lien:\n" + data.invite_link)
       closeModal() 
+      await loadInvites();
     } else {
       alert(data.detail || "Erreur inconnue")
     }
@@ -965,9 +976,7 @@ tr:hover td { background: #ffffff; }
       }).join('');
     }
 
-    // Stats
     document.getElementById('stat-active').textContent  = users.filter(u => u.status === 'active').length;
-    document.getElementById('stat-pending').textContent = users.filter(u => u.status === 'pending').length;
     document.getElementById('stat-admins').textContent  = users.filter(u => u.role === 'Admin').length;
   }
 
@@ -1221,6 +1230,7 @@ tr:hover td { background: #ffffff; }
 
     if (allowed) {
       await loadUsers();
+      await loadInvites();
     }
   }
   init();
