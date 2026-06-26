@@ -23,6 +23,7 @@ import os, shutil
 from fastapi.responses import FileResponse
 from fastapi import FastAPI, Request
 from backend.services.email_service import send_invitation_email, send_login_alert_email
+from math import ceil
 import requests
 import os
 import stripe
@@ -880,7 +881,7 @@ def create_invite(
         workspace_id=workspace_id,
         role=role,
         token_hash=token_hash,
-        expires_at=datetime.utcnow() + timedelta(hours=24)
+        expires_at=datetime.utcnow() + timedelta(days=7)
     )
 
     db.add(invite)
@@ -920,8 +921,7 @@ def get_invites(
             "email": invite.email,
             "role": invite.role,
             "expires_at": invite.expires_at,
-            "days_remaining": (invite.expires_at - datetime.utcnow()).days
-
+            "days_remaining": max( 0, ceil( (invite.expires_at - datetime.utcnow()).total_seconds() / 86400 ) )
         })
 
     return result
