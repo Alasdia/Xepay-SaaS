@@ -33,8 +33,10 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Invalid token")
 
     email = payload.get("sub")
+    print("TOKEN EMAIL:", email)
 
     user = db.query(UserDB).filter(UserDB.email == email).first()
+    print("USER FOUND:", user.email if user else None)
 
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
