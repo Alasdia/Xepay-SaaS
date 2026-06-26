@@ -27,6 +27,7 @@ def get_workspace_owner_id(
         WorkspaceUser.user_id == current_user.id,
         WorkspaceUser.workspace_id == workspace_id
     ).first()
+    print("MEMBERSHIP FOUND:", membership)
 
     if not membership:
         raise HTTPException(
