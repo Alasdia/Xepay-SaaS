@@ -757,20 +757,14 @@ const workspaceId = oauthParams.get("workspace_id");
 console.log("Workspace ID reçu dans l'URL :", workspaceId);
 console.log("Est null ?", workspaceId === null);
 
-// Connexion via Google OAuth
 if (urlToken) {
-
-  // Nettoie l'ancien utilisateur
   localStorage.clear();
 
-  // Sauvegarde le nouveau token
   localStorage.setItem("token", urlToken);
 
-  // Sauvegarde le bon workspace
   if (workspaceId) {
     localStorage.setItem("workspace_id", workspaceId);
   }
-  // Nettoie l'URL
   window.history.replaceState({}, document.title, "/dashboard.html");
 }
 
@@ -1523,7 +1517,7 @@ function updateUpgradeModal(plan, feature) {
     window.location.href = "login.html"
   }
 </script>
-<!-- <script src="auth.js"></script> -->
+
 
 <script>
 (function() {
