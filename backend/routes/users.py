@@ -912,8 +912,19 @@ def get_invites(
         WorkspaceInvite.workspace_id == workspace_id,
         WorkspaceInvite.used == False
     ).all()
+    result = []
 
-    return invites
+    for invite in invites:
+        result.append({
+            "id": str(invite.id),
+            "email": invite.email,
+            "role": invite.role,
+            "expires_at": invite.expires_at,
+            "days_remaining": (invite.expires_at - datetime.utcnow()).days
+
+        })
+
+    return result
 
 @router.get("/invites/accept")
 def accept_invite(
