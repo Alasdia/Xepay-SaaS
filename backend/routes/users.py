@@ -174,6 +174,7 @@ def login(
     )
     user.last_login = datetime.now(timezone.utc)
     db.commit()
+    print("LAST LOGIN SAVED:", user.last_login)
 
     token = create_access_token({"sub": user.email})
 
@@ -790,7 +791,7 @@ def get_users(x_workspace_id: str = Header(None), current_user=Depends(get_curre
             "status": getattr(u, "status", "active"),
             "last": u.last_login.isoformat() if u.last_login else None
         }
-        
+
         for u in users
     ]
 
