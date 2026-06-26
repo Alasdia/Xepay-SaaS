@@ -445,6 +445,8 @@ table{ color:#374151 !important; }
                 Passez au plan Pro pour plus de volume et de fonctionnalités.
             </small>
         </div>
+        <select id="workspaceSwitcher">
+        </select>
         <button class="btn btn-warning fw-bold px-4 upgrade-btn">
             ⚡ Passer au Pro
         </button>
@@ -1167,6 +1169,69 @@ function showUpgradeModal(feature = null) {
 
   modal.show();
 }
+</script>
+<script>
+  async function loadWorkspaces() {
+
+    try {
+
+      const res = await fetch("https://api.alasdia.com/workspaces/me", {
+        headers: {
+          Authorization: "Bearer " + localStorage.getItem("token"),
+          "X-Workspace-Id": localStorage.getItem("workspace_id")
+        }
+      })
+
+      const workspaces = await res.json()
+
+      console.log("WORKSPACES:", workspaces)
+
+      const select = document.getElementById("workspaceSwitcher")
+
+      select.innerHTML = workspaces.map(w => `
+        <option value="${w.id}">
+          ${w.name}
+        </option>
+      `).join("")
+
+      const savedWorkspace = localStorage.getItem("workspace_id")
+
+      if (
+        savedWorkspace &&
+        workspaces.some(w => String(w.id) === savedWorkspace)
+      ) {
+        select.value = savedWorkspace
+      } else if (workspaces.length > 0) {
+        select.value = workspaces[0].id
+        localStorage.setItem("workspace_id", workspaces[0].id)
+        await loadUsers()
+      }
+
+      select.addEventListener("change", async () => {
+
+        const workspaceId = select.value
+
+        console.log("SWITCH TO:", workspaceId)
+
+        localStorage.setItem("workspace_id", workspaceId)
+
+        users = []
+        renderTable()
+
+        await loadCurrentUser();
+        const allowed = await checkBusinessAccess();
+
+        if (allowed) {
+          await loadUsers();
+        }
+      })
+
+    } catch (err) {
+
+      console.error("Erreur loadWorkspaces:", err)
+    }
+  }
+
 </script>
 <script>
 async function submitWithdraw() {
