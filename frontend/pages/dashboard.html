@@ -766,6 +766,9 @@ if (urlToken) {
     localStorage.setItem("workspace_id", workspaceId);
   }
   window.history.replaceState({}, document.title, "/dashboard.html");
+  console.log("URL =", window.location.href);
+  console.log("urlToken =", urlToken);
+  console.log("workspaceId =", workspaceId);
 }
 
 const token = localStorage.getItem("token");
