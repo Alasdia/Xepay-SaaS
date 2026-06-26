@@ -1005,7 +1005,7 @@ tr:hover td { background: #ffffff; }
             </td>
             <td><span class="role-pill role-${u.role.toLowerCase()}">${u.role}</span></td>
             <td><span class="status-dot status-${u.status}">${statusLabel}</span></td>
-            <td style="color:var(--text-dim);">${FormatLastLogin(u.last)}</td>
+            <td style="color:var(--text-dim);">${formatLastLogin(u.last)}</td>
             <td>
               <div class="actions">
                 <button class="icon-btn" title="Modifier le rôle" onclick="cycleRole(${idx})">🎚</button>
