@@ -158,14 +158,15 @@ def login(
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     workspace_user = db.query(WorkspaceUser).filter(
-        WorkspaceUser.user_id == user.id
+        WorkspaceUser.user_id == user.id,
+        WorkspaceUser.role == "owner"
     ).first()
 
     if not workspace_user:
-        raise HTTPException(
-          status_code=404,
-          detail="Workspace introuvable"
-        )
+        workspace_user = db.query(WorkspaceUser).filter(
+            WorkspaceUser.user_id == user.id
+        ).first()
+        
     ip = request.client.host
 
     device = request.headers.get(
