@@ -835,8 +835,8 @@ tr:hover td { background: #ffffff; }
     const main = document.querySelector("main");
 
     if (user.plan !== "business") {
-      main.classList.remove("workspace-locked");
-      lock.classList.add("d-none");
+      main.classList.add("workspace-locked");
+      lock.classList.remove("d-none");
       return false;
     }
 
