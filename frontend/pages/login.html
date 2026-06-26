@@ -694,8 +694,15 @@ function loginWithGoogle() {
 
   const clientId = '366389455040-q0iie187c1ok621vbcl3vkuflib3fvgf.apps.googleusercontent.com';
   const redirectUri = 'https://api.alasdia.com/auth/google/callback';
-  const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid%20email%20profile`;
-
+  const url =
+  `https://accounts.google.com/o/oauth2/v2/auth?` +
+  `client_id=${clientId}` +
+  `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+  `&response_type=code` +
+  `&scope=openid%20email%20profile` +
+  `&prompt=select_account` +
+  `&access_type=offline` +
+  `&include_granted_scopes=true`;
   setTimeout(() => { window.location.href = url; }, 800);
 }
 
