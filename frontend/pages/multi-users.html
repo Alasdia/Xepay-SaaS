@@ -895,9 +895,41 @@ tr:hover td { background: #ffffff; }
       .querySelector(".stat-sub");
 
     if (invites.length > 0) {
-        sub.textContent = `Expire sous ${invites[0].days_remaining} jours`;
+
+      const expiresAt = new Date(invites[0].expires_at);
+
+      function updateCountdown() {
+
+        const now = new Date();
+
+        let diff = expiresAt - now;
+
+        if (diff <= 0) {
+          sub.textContent = "Invitation expirée";
+          clearInterval(timer);
+          return;
+        }
+
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        diff %= 1000 * 60 * 60 * 24;
+
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        diff %= 1000 * 60 * 60;
+
+        const minutes = Math.floor(diff / (1000 * 60));
+        diff %= 1000 * 60;
+
+        const seconds = Math.floor(diff / 1000);
+
+        sub.textContent =
+          `Expire dans ${days}j ${hours}h ${minutes}m ${seconds}s`;
+      }
+
+      updateCountdown();
+      const timer = setInterval(updateCountdown, 1000);
+
     } else {
-        sub.textContent = "Aucune invitation";
+      sub.textContent = "Aucune invitation";
     }
   }
   
