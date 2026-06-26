@@ -886,6 +886,7 @@ tr:hover td { background: #ffffff; }
     });
 
     const invites = await res.json();
+    console.log("DATA INVITES:", invites)
 
     document.getElementById("stat-pending").textContent = invites.length;
 
