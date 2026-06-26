@@ -319,12 +319,22 @@ def google_callback(code: str, db: Session = Depends(get_db)):
 
     membership = (
         db.query(WorkspaceUser)
-        .filter(WorkspaceUser.user_id == user.id)
+        .filter(
+            WorkspaceUser.user_id == user.id,
+            WorkspaceUser.role == "owner"
+        )
         .first()
     )
 
-    workspace_id = membership.workspace_id if membership else user.id
+    if not membership:
+        membership = (
+            db.query(WorkspaceUser)
+            .filter(WorkspaceUser.user_id == user.id)
+            .first()
+        )
 
+    workspace_id = membership.workspace_id
+    
     return RedirectResponse(
         url=f"https://alasdia.com/dashboard.html?token={token}&workspace_id={workspace_id}"
     )
