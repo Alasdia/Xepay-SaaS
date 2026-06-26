@@ -1264,6 +1264,18 @@ tr:hover td { background: #ffffff; }
         console.error("Erreur:", err)
     }
   }
+  const params = new URLSearchParams(window.location.search);
+
+  const token = params.get("token");
+  const workspaceId = params.get("workspace_id");
+
+  if (token) {
+    localStorage.setItem("token", token);
+  }
+
+  if (workspaceId) {
+    localStorage.setItem("workspace_id", workspaceId);
+  }
   async function init() {
     await loadWorkspaces()
     await loadCurrentUser();

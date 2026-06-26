@@ -166,7 +166,7 @@ def login(
         workspace_user = db.query(WorkspaceUser).filter(
             WorkspaceUser.user_id == user.id
         ).first()
-        
+
     ip = request.client.host
 
     device = request.headers.get(
@@ -991,7 +991,7 @@ def accept_invite(
         })
 
         return RedirectResponse(
-            url=f"https://alasdia.com/multi-users.html?token={jwt_token}"
+            url=f"https://alasdia.com/multi-users.html?token={jwt_token}&workspace_id={invite.workspace_id}"
         )
     # ==================================================
     # CAS 2 → NOUVEL UTILISATEUR
