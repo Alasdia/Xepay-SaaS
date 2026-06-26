@@ -948,7 +948,9 @@ def accept_invite(
     ).first()
 
     if not invite:
-        raise HTTPException(400, "Invitation invalide")
+        return RedirectResponse(
+            url="https://alasdia.com/login.html"
+        )
 
     if invite.expires_at < datetime.utcnow():
         raise HTTPException(400, "Invitation expirée")
