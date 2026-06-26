@@ -259,6 +259,8 @@ def google_callback(code: str, db: Session = Depends(get_db)):
 
     user_data = user_res.json()
     email = user_data.get("email")
+    print(user_data)
+    print("GOOGLE EMAIL =", email)
 
     if not email:
         raise HTTPException(400, "User info invalid")
