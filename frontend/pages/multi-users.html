@@ -888,6 +888,16 @@ tr:hover td { background: #ffffff; }
     const invites = await res.json();
 
     document.getElementById("stat-pending").textContent = invites.length;
+
+    const sub = document.querySelector("#stat-pending")
+      .parentElement
+      .querySelector(".stat-sub");
+
+    if (invites.length > 0) {
+        sub.textContent = `Expire sous ${invites[0].days_remaining} jours`;
+    } else {
+        sub.textContent = "Aucune invitation";
+    }
   }
   
   async function sendInvite() {
@@ -929,8 +939,6 @@ tr:hover td { background: #ffffff; }
     };
 
     console.log("INVITATION:", data);
-
-    closeModal();
   }
 
   let filter = "all";
@@ -991,18 +999,6 @@ tr:hover td { background: #ffffff; }
   // ---------- Actions ----------
   const roles = ['Admin', 'Manager', 'Membre', 'Lecteur'];
 
-  function toggleSuspend(i) {
-    const u = users[i];
-    u.status = u.status === 'suspended' ? 'active' : 'suspended';
-    renderTable();
-  }
-  function deleteUser(i) {
-    if (confirm(`Supprimer ${users[i].name} ?`)) {
-      users.splice(i, 1);
-      renderTable();
-    }
-  }
-
   // ---------- Modal ----------
   function openModal() {
     document.getElementById('modal').classList.add('show');
@@ -1012,29 +1008,11 @@ tr:hover td { background: #ffffff; }
     document.getElementById('modal').classList.remove('show');
     document.getElementById('user-form').reset();
   }
-  
-  function submitUser(e) {
-    e.preventDefault();
-    const palette = ['#22d3ee','#facc15','#ec4899','#4ade80','#a78bfa','#fb923c','#60a5fa'];
-    users.unshift({
-      name: document.getElementById('f-name').value,
-      email: document.getElementById('f-email').value,
-      role: document.getElementById('f-role').value,
-      status: mode === 'create' ? 'active' : 'pending',
-      last: mode === 'create' ? "À l'instant" : '—',
-      color: palette[Math.floor(Math.random() * palette.length)],
-    });
-    closeModal();
-    renderTable();
-    return false;
-  }
 
-  // Close on backdrop click
   document.getElementById('modal').addEventListener('click', e => {
     if (e.target.id === 'modal') closeModal();
   });
 
-  // Init
   renderTable();
 
   async function cycleRole(i) {
