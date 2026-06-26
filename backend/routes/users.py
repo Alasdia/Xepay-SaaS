@@ -243,7 +243,6 @@ def google_callback(code: str, db: Session = Depends(get_db)):
         "grant_type": "authorization_code",
     }
 
-    # 🔁 échange code → token
     token_res = requests.post(token_url, data=data)
     token_json = token_res.json()
 
@@ -252,7 +251,6 @@ def google_callback(code: str, db: Session = Depends(get_db)):
     if not access_token:
         raise HTTPException(400, "Google auth failed")
 
-    # 👤 récupérer user
     user_res = requests.get(
         "https://www.googleapis.com/oauth2/v2/userinfo",
         headers={"Authorization": f"Bearer {access_token}"}
@@ -264,7 +262,6 @@ def google_callback(code: str, db: Session = Depends(get_db)):
     if not email:
         raise HTTPException(400, "User info invalid")
 
-    # 🧠 créer ou récupérer user
     user = db.query(UserDB).filter(UserDB.email == email).first()
 
     if not user:
@@ -310,6 +307,10 @@ def google_callback(code: str, db: Session = Depends(get_db)):
 
         db.add(wallet)
         db.commit()
+
+    user.last_login = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(user)
 
     token = create_access_token({"sub": user.email})
 
