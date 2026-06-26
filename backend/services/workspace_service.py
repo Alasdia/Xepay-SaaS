@@ -22,12 +22,29 @@ def get_workspace_owner_id(
 
     if not workspace_id:
         return current_user.id
+    
+    print("TYPE CURRENT USER:", type(current_user.id))
+    print("TYPE WORKSPACE:", type(workspace_id))
 
     membership = db.query(WorkspaceUser).filter(
         WorkspaceUser.user_id == current_user.id,
         WorkspaceUser.workspace_id == workspace_id
     ).first()
+
     print("MEMBERSHIP FOUND:", membership)
+
+    all_memberships = db.query(WorkspaceUser).filter(
+        WorkspaceUser.user_id == current_user.id
+    ).all()
+
+    print("USER MEMBERSHIPS:")
+
+    for m in all_memberships:
+        print(
+            m.workspace_id,
+            type(m.workspace_id),
+            m.role
+        )
 
     if not membership:
         raise HTTPException(
