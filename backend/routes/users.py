@@ -1171,7 +1171,6 @@ def delete_user(
         WorkspaceUser.user_id == user.id
     ).delete()
 
-    db.delete(user)
     db.commit()
 
     return {"message": "Utilisateur supprimé"}
