@@ -172,6 +172,8 @@ def login(
         "user-agent",
         "Appareil inconnu"
     )
+    user.last_login = datetime.now(timezone.utc)
+    db.commit()
 
     token = create_access_token({"sub": user.email})
 
@@ -786,8 +788,9 @@ def get_users(x_workspace_id: str = Header(None), current_user=Depends(get_curre
             "email": u.email,
             "role": next((m.role for m in memberships if m.user_id == u.id), "member"),
             "status": getattr(u, "status", "active"),
-            "last": "—"
+            "last": u.last_login.isoformat() if u.last_login else None
         }
+        
         for u in users
     ]
 
