@@ -1005,7 +1005,7 @@ tr:hover td { background: #ffffff; }
             </td>
             <td><span class="role-pill role-${u.role.toLowerCase()}">${u.role}</span></td>
             <td><span class="status-dot status-${u.status}">${statusLabel}</span></td>
-            <td style="color:var(--text-dim);">${u.last}</td>
+            <td style="color:var(--text-dim);">${FormatLastLogin(u.last)}</td>
             <td>
               <div class="actions">
                 <button class="icon-btn" title="Modifier le rôle" onclick="cycleRole(${idx})">🎚</button>
@@ -1019,6 +1019,37 @@ tr:hover td { background: #ffffff; }
 
     document.getElementById('stat-active').textContent  = users.filter(u => u.status === 'active').length;
     document.getElementById('stat-admins').textContent  = users.filter(u => u.role === 'Admin').length;
+  }
+  function formatLastLogin(date) {
+    if (!date) return "Jamais";
+
+    const last = new Date(date);
+    const now = new Date();
+
+    const diff = Math.floor((now - last) / 1000);
+
+    if (diff < 60) return "À l'instant";
+
+    const minutes = Math.floor(diff / 60);
+    if (minutes < 60) return `Il y a ${minutes} min`;
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `Il y a ${hours} h`;
+
+    const days = Math.floor(hours / 24);
+
+    if (days === 1) {
+        return `Hier à ${last.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit"
+        })}`;
+    }
+
+    return last.toLocaleDateString("fr-FR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+    });
   }
 
   // ---------- Filters ----------
