@@ -653,6 +653,7 @@ async function login() {
     });
 
     const data = await response.json();
+    console.log(data)
 
     if (data.access_token &&  data.account_id) {
       localStorage.setItem('token', data.access_token);
@@ -666,7 +667,7 @@ async function login() {
       `;
       showToast('success', 'CONNEXION RÉUSSIE', 'Bienvenue sur votre dashboard Xepay.', 3000);
       setTimeout(() => { 
-        window.location.href = `${data.account_id}/dashboard.html`;
+        window.location.href = `dashboard.html?account_id=${data.account_id}`;
       }, 1200);
 
     } else {
