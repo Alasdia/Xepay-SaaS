@@ -8,6 +8,7 @@ import os
 load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
+print("SECRET_KEY =", SECRET_KEY)
 if not SECRET_KEY:
     raise ValueError("SECRET_KEY is missing")
 
