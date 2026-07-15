@@ -654,7 +654,7 @@ async function login() {
 
     const data = await response.json();
 
-    if (data.access_token) {
+    if (data.access_token &&  data.account_id) {
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('email', email);
       localStorage.setItem("workspace_id", data.workspace_id);
