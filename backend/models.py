@@ -169,6 +169,7 @@ class UserDB(Base):
     __tablename__ = "users"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    account_id = Column(String, unique=True, index=True, default=lambda: "acct_" + str(uuid.uuid4())[:8])
     email = Column(String, index=True, unique=True)
     password = Column(String)
     two_factor_enabled = Column(Boolean, default=False)
