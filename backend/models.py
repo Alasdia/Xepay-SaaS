@@ -8,8 +8,16 @@ from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import Numeric
+import secrets
+import string
 import uuid
 from sqlalchemy import Index
+
+def generate_account_id():
+    chars = string.ascii_letters + string.digits
+    return "acct_" + "".join(
+        secrets.choice(chars) for _ in range(16)
+    )
 
 class User(BaseModel):
     email: str
@@ -169,7 +177,7 @@ class UserDB(Base):
     __tablename__ = "users"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    account_id = Column(String, unique=True, index=True, default=lambda: "acct_" + str(uuid.uuid4())[:8])
+    account_id = Column(String, unique=True, index=True, nullable=False, default=generate_account_id)
     email = Column(String, index=True, unique=True)
     password = Column(String)
     two_factor_enabled = Column(Boolean, default=False)
