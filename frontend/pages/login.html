@@ -624,7 +624,6 @@ function togglePw() {
   }
 }
 
-/* ─── LOGIN ─── */
 async function login() {
   const btn = document.getElementById('btnLogin');
   const email = document.getElementById('email').value.trim();
@@ -666,7 +665,9 @@ async function login() {
         Connecté — Redirection...
       `;
       showToast('success', 'CONNEXION RÉUSSIE', 'Bienvenue sur votre dashboard Xepay.', 3000);
-      setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
+      setTimeout(() => { 
+        window.location.href = `${data.account_id}/dashboard.html`;
+      }, 1200);
 
     } else {
       showToast('error', 'ACCÈS REFUSÉ', 'Email ou mot de passe incorrect. Vérifiez vos identifiants.');
