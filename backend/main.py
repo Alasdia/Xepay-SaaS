@@ -25,6 +25,7 @@ from backend.routes.wallet import router as wallet_router
 from backend.routes.webhook.stripe import router as stripe_router
 from backend.routes.app import router as ai_router
 from backend.auth import router as auth_router
+from backend.routes.account_id import router as account_router
 
 
 app = FastAPI()
@@ -53,7 +54,7 @@ app.include_router(wallet_router)
 app.include_router(stripe_router)
 app.include_router(ai_router)
 app.include_router(auth_router)
-
+app.include_router(account_router)
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

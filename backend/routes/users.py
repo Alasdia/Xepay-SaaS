@@ -189,7 +189,8 @@ def login(
     return {
         "access_token": token,
         "token_type": "bearer",
-        "workspace_id": workspace_user.workspace_id
+        "workspace_id": workspace_user.workspace_id,
+        "account_id": user.account_id
     }
 
 
