@@ -1205,6 +1205,12 @@ function showUpgradeModal(feature = null) {
         const workspaceId = select.value
         console.log("SWITCH TO:", workspaceId)
         localStorage.setItem("workspace_id", workspaceId)
+        await loadProfileHeader()
+        await loadPlan()
+        await loadKPI()
+        await chargerWallet()
+        await loadLinks()
+        await loadUser()
       })
     } catch (err) {
       console.error("Erreur loadWorkspaces:", err)
