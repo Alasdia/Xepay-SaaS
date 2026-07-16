@@ -770,18 +770,22 @@ if (urlToken) {
   if (workspaceId) {
     localStorage.setItem("workspace_id", workspaceId);
   }
-  window.history.replaceState({}, document.title, "/dashboard.html");
+  window.history.replaceState({}, document.title, `/dashboard.html?workspace_id=${workspaceId}`);
   console.log("URL =", window.location.href);
   console.log("urlToken =", urlToken);
   console.log("workspaceId =", workspaceId);
 }
-
 const token = localStorage.getItem("token");
-
 if (!token) {
   window.location.replace("login.html");
 }
-
+</script>
+<script>
+document.querySelectorAll('#sidebar a[href$=".html"]').forEach(link => {
+  const url = new URL(link.getAttribute("href"), window.location.origin);
+  url.searchParams.set("workspace_id", localStorage.getItem("workspace_id"));
+  link.setAttribute("href", url.pathname + url.search);
+});
 </script>
 <script>
     
