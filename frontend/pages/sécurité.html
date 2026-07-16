@@ -1201,13 +1201,16 @@ async function load2FAStatus() {
 
   }
 }
-
-
 // lancer au chargement de la page
 load2FAStatus();
-
 </script>
-
+<script>
+document.querySelectorAll('#sidebar a[href$]').forEach(link => {
+  const url = new URL(link.getAttribute("href"), window.location.origin);
+  url.searchParams.set("workspace_id", localStorage.getItem("workspace_id"));
+  link.setAttribute("href", url.pathname + url.search);
+});
+</script>
 <!-- <script src="auth.js"></script> -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
 </body>
