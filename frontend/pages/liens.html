@@ -697,31 +697,26 @@ body { background: #ffffff !important; color: #111827; }
   </div>
 </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
     document.addEventListener("DOMContentLoaded", async () => {
       const token = localStorage.getItem("token")
-
       if (!token) {
         window.location.href = "login.html"
         return
       }
-
       const res = await fetch("https://api.alasdia.com/me", {
         headers: {
-            Authorization: "Bearer " + token
+          "Authorization": "Bearer " + token,
+          "X-Workspace-Id": localStorage.getItem("workspace_id")
         }
       })
-
       const user = await res.json()
 
       if (user.plan === "free") {
         document.body.classList.add("locked-page");
-
         const lock = document.getElementById("links-lock");
         lock.classList.remove("d-none");
-
         return;
       }
     })

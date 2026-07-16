@@ -1049,20 +1049,17 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
 
     document.addEventListener("DOMContentLoaded", async () => {
       const token = localStorage.getItem("token")
-
       if (!token) {
         window.location.href = "login.html"
         return
       }
-
       const res = await fetch("https://api.alasdia.com/me", {
         headers: {
-            Authorization: "Bearer " + token
+          "Authorization": "Bearer " + token,
+          "X-Workspace-Id": localStorage.getItem("workspace_id")
         }
       })
-
       const user = await res.json()
-
       const lock = document.getElementById("transactions-lock");
 
       if (user.plan === "free") {
@@ -1070,7 +1067,6 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
         lock.style.display = "flex";
         return;
       }
-
       document.body.classList.remove("locked-page");
       lock.style.display = "none";
 
