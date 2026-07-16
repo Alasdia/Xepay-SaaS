@@ -1079,7 +1079,11 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
       chargerWallet();
       loadWalletHistory();
     })
-
+    document.querySelectorAll('#sidebar a[href$=".html"]').forEach(link => {
+      const url = new URL(link.getAttribute("href"), window.location.origin);
+      url.searchParams.set("workspace_id", localStorage.getItem("workspace_id"));
+      link.setAttribute("href", url.pathname + url.search);
+    });
 
     const statusMap = {
       paid: "Réussi",

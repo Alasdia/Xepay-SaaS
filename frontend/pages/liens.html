@@ -725,6 +725,11 @@ body { background: #ffffff !important; color: #111827; }
         return;
       }
     })
+    document.querySelectorAll('#sidebar a[href$=".html"]').forEach(link => {
+      const url = new URL(link.getAttribute("href"), window.location.origin);
+      url.searchParams.set("workspace_id", localStorage.getItem("workspace_id"));
+      link.setAttribute("href", url.pathname + url.search);
+    });
 
     let links = []
     let offset = 0;
