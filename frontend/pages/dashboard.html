@@ -755,69 +755,60 @@ table{ color:#374151 !important; }
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
-const oauthParams = new URLSearchParams(window.location.search);
+  const oauthParams = new URLSearchParams(window.location.search);
 
-const urlToken = oauthParams.get("token");
-const workspaceId = oauthParams.get("workspace_id");
-console.log("Workspace ID reçu dans l'URL :", workspaceId);
-console.log("Est null ?", workspaceId === null);
+  const urlToken = oauthParams.get("token");
+  const workspaceId = oauthParams.get("workspace_id");
+  console.log("Workspace ID reçu dans l'URL :", workspaceId);
+  console.log("Est null ?", workspaceId === null);
 
-if (urlToken) {
-  localStorage.clear();
-
-  localStorage.setItem("token", urlToken);
-
-  if (workspaceId) {
-    localStorage.setItem("workspace_id", workspaceId);
+  if (urlToken) {
+    localStorage.clear();
+    localStorage.setItem("token", urlToken);
+    if (workspaceId) {
+      localStorage.setItem("workspace_id", workspaceId);
+    }
+    window.history.replaceState({}, document.title, `/dashboard.html?workspace_id=${workspaceId}`);
+    console.log("URL =", window.location.href);
+    console.log("urlToken =", urlToken);
+    console.log("workspaceId =", workspaceId);
   }
-  window.history.replaceState({}, document.title, `/dashboard.html?workspace_id=${workspaceId}`);
-  console.log("URL =", window.location.href);
-  console.log("urlToken =", urlToken);
-  console.log("workspaceId =", workspaceId);
-}
-const token = localStorage.getItem("token");
-if (!token) {
-  window.location.replace("login.html");
-}
+  const token = localStorage.getItem("token");
+  if (!token) {
+    window.location.replace("login.html");
+  }
 </script>
 <script>
-document.querySelectorAll('#sidebar a[href$=".html"]').forEach(link => {
-  const url = new URL(link.getAttribute("href"), window.location.origin);
-  url.searchParams.set("workspace_id", localStorage.getItem("workspace_id"));
-  link.setAttribute("href", url.pathname + url.search);
-});
+  document.querySelectorAll('#sidebar a[href$=".html"]').forEach(link => {
+    const url = new URL(link.getAttribute("href"), window.location.origin);
+    url.searchParams.set("workspace_id", localStorage.getItem("workspace_id"));
+    link.setAttribute("href", url.pathname + url.search);
+  });
 </script>
 <script>
-    
-    async function loadProfileHeader() {
-      console.log(localStorage.getItem("token"))
-        try {
-          const res = await fetch("https://api.alasdia.com/profile", {
-            headers: {
-              Authorization: "Bearer " + localStorage.getItem("token"),
-              "X-Workspace-Id": localStorage.getItem("workspace_id")
-            }
-          })
-
-          if (res.status === 401) {
-            console.log("TOKEN =", localStorage.getItem("token"))
-            console.log("401 FROM /profile")
-
-            return
-          }
-
-          if (!res.ok) {
-            console.warn("API /profile failed")
-            return
-          }
-
-          const user = await res.json()
-
-          const name =
-            user.full_name?.split(" ")[0] ||
-            user.email ||
-              "Utilisateur"
-
+  async function loadProfileHeader() {
+    console.log(localStorage.getItem("token"))
+    try {
+      const res = await fetch("https://api.alasdia.com/profile", {
+        headers: {
+          Authorization: "Bearer " + localStorage.getItem("token"),
+          "X-Workspace-Id": localStorage.getItem("workspace_id")
+        }
+      })
+      if (res.status === 401) {
+        console.log("TOKEN =", localStorage.getItem("token"))
+        console.log("401 FROM /profile")
+        return
+      }
+      if (!res.ok) {
+        console.warn("API /profile failed")
+        return
+      }
+      const user = await res.json()
+      const name =
+        user.full_name?.split(" ")[0] ||
+        user.email ||
+          "Utilisateur"
           document.getElementById("welcomeText").innerText =
             "Bonjour, " + name + " 👋"
 
@@ -1179,16 +1170,13 @@ function showUpgradeModal(feature = null) {
 </script>
 <script>
   async function loadWorkspaces() {
-
     try {
-
       const res = await fetch("https://api.alasdia.com/workspaces/me", {
         headers: {
           Authorization: "Bearer " + localStorage.getItem("token"),
           "X-Workspace-Id": localStorage.getItem("workspace_id")
         }
       })
-
       const workspaces = await res.json()
 
       console.log("WORKSPACES:", workspaces)
@@ -1213,28 +1201,12 @@ function showUpgradeModal(feature = null) {
         localStorage.setItem("workspace_id", workspaces[0].id)
         await loadUsers()
       }
-
       select.addEventListener("change", async () => {
-
         const workspaceId = select.value
-
         console.log("SWITCH TO:", workspaceId)
-
         localStorage.setItem("workspace_id", workspaceId)
-
-        users = []
-        renderTable()
-
-        await loadCurrentUser();
-        const allowed = await checkBusinessAccess();
-
-        if (allowed) {
-          await loadUsers();
-        }
       })
-
     } catch (err) {
-
       console.error("Erreur loadWorkspaces:", err)
     }
   }
