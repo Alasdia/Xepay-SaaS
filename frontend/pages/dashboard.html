@@ -438,7 +438,7 @@ table{ color:#374151 !important; }
         <div>
             <h4 class="fw-bold mb-1" id="welcomeText">Bienvenu</h4>
             <small class="text-muted d-block">
-                Plan <span class="text-success fw-bold">Free</span> 10 paiements par mois
+                Plan <span id="plan-label" class="text-success fw-bold">Free</span> 10 paiements par mois
             </small>
 
             <small class="text-muted d-block mt-1">
@@ -832,6 +832,8 @@ table{ color:#374151 !important; }
         });
 
         const data = await res.json();
+        const planLabel = document.getElementById("plan-label");
+        if (planLabel) planLabel.innerText = data.plan.charAt(0).toUpperCase() + data.plan.slice(1);
 
         handleFreeLimit(data)
         console.log("PLAN:", data.plan)
