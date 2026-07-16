@@ -1265,8 +1265,6 @@ function closePopup() {
     <button class="btn" onclick="closeSecretModal()">J’ai copié</button>
   </div>
 </div>
-
-
 <script>
 (function() {
   const sidebar = document.getElementById("sidebar") || document.querySelector(".sidebar");
@@ -1334,6 +1332,13 @@ function showUpgradeModal(feature = null) {
 
   modal.show();
 }
+</script>
+<script>
+document.querySelectorAll('#sidebar a[href$]').forEach(link => {
+  const url = new URL(link.getAttribute("href"), window.location.origin);
+  url.searchParams.set("workspace_id", localStorage.getItem("workspace_id"));
+  link.setAttribute("href", url.pathname + url.search);
+});
 </script>
 <script>
 function showLockedOverlay(plan){
