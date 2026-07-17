@@ -50,7 +50,13 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
 #sidebar .nav-link.active-link { background: transparent !important; color: #facc15 !important; font-weight: 600; }
 #sidebar .card { transition: all .25s ease; cursor: pointer; }
 #sidebar .card:hover { border: 1px solid #facc15 !important; background: #fffdf5 !important; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(250,204,21,.25); }
-
+.toast-notif { position: fixed; top: 24px; right: 24px; z-index: 999999; flex-direction: column; gap: 10px; }
+.toast-notif-item { min-width: 280px; max-width: 380px; background: #ffffff; border: 1px solid #e5e7eb; border-left: 4px solid #22c55e; border-radius: 12px; padding: 14px 18px; box-shadow: 0 10px 30px rgba(0,0,0,.12); font-size: 14px; color: #111827; display: flex; align-items: flex-start; gap: 10px; opacity: 0; transform: translateX(20px); animation: toastIn 0.3s ease forwards; }
+.toast-notif-item.error { border-left-color: #ef4444; }
+.toast-notif-item.warning { border-left-color: #facc15; }
+.toast-notif-item .icon { font-size: 16px; margin-top: 1px; }
+@keyframes toastIn { to { opacity: 1; transform: translateX(0); } }
+@keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
 
     .plan-badge {
       display: inline-flex;
@@ -815,7 +821,7 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
         </div>
         <div class="modal-footer border-0">
           <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-          <button id="confirmWithdrawBtn" class="btn btn-cyan" onclick="submitWithdraw()">Confirmer</button>
+          <button id="confirmWithdrawBtn" class="btn btn-cyan">Confirmer</button>
         </div>
       </div>
     </div>
@@ -1336,9 +1342,8 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
 
     function voirDetail(email) {
       const t = transactions.find(x => x.email === email)
-      alert(`Client: ${t.client}\nMontant: ${t.montant} ${t.devise}\nStatut: ${t.statut}`)
+      showToast(`${t.client} — ${t.montant} ${t.devise} — ${t.statut}`)
     }
-
     console.log("DATA =", transactions);
 
     function renderStats(stats, plan) {
@@ -1487,7 +1492,7 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
       table.innerHTML = "Chargement...";
 
       if (!token) {
-        alert("Session expirée")
+        showToast("Session expirée, veuillez vous reconnecter", "warning")
         window.location.href = "login.html"
       }
       console.log("TOKEN =", token)
@@ -1668,50 +1673,24 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
             amount,
           })
         });
-
         const data = await res.json();
 
         if (!res.ok) {
-          alert(data.detail || "Erreur retrait");
+          showToast(data.detail || "Erreur lors du retrait", "error");
           return;
         }
-
-        alert("Retrait envoyé");
+        showToast("Retrait envoyé avec succès");
 
         bootstrap.Modal.getInstance(document.getElementById("withdrawModal")).hide();
-
         document.getElementById("withdrawAmount").value = "";
-        document.getElementById("withdrawPhone").value = "";
 
-        location.reload();
+        setTimeout(() => location.reload(), 1200);
 
       } catch (err) {
-        alert("Erreur serveur");
+        showToast("Erreur serveur, veuillez réessayer", "error");
       }
     });
     }
-
-    async function submitWithdraw() {
-      const amount = document.getElementById("withdrawAmount").value;
-      
-      const token = localStorage.getItem("token");
-
-      const res = await fetch("https://api.alasdia.com/withdraw", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-          "X-Workspace-Id": localStorage.getItem("workspace_id")
-        },
-        body: JSON.stringify({
-          amount: Number(amount),
-        })
-      });
-      const data = await res.json();
-      alert("Retrait demandé");
-      location.reload();
-    }
-
     const successCard = document.getElementById("successCard");
     const chartTooltip = document.getElementById("chartTooltip");
 
@@ -1946,10 +1925,9 @@ async function upgrade(plan) {
   const data = await res.json();
 
   if (!res.ok || !data.url) {
-    alert("Erreur lors de l'ouverture de Stripe");
+    showToast("Erreur lors de l'ouverture de Stripe", "error");
     return;
   }
-
   window.location.href = data.url;
 }
 </script>
@@ -1968,6 +1946,23 @@ document
 });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+<script>
+function showToast(message, type = "success") {
+  const container = document.getElementById("toast-container");
+  const icons = { success: "✅", error: "⚠️", warning: "⏳" };
 
+  const toast = document.createElement("div");
+  toast.className = `toast-notif-item ${type}`;
+  toast.innerHTML = `<span class="icon">${icons[type] || icons.success}</span><span>${message}</span>`;
+
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.animation = "toastOut 0.3s ease forwards";
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
+}
+</script>
+<div id="toast-container" class="toast-notif"></div>
 </body>
 </html>
