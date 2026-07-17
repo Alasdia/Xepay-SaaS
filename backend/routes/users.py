@@ -7,6 +7,7 @@ from backend.services.workspace_service import (
     get_workspace_owner_id
 )
 from backend.security import verify_password, create_access_token
+from backend.middleware.authorization import require_admin, require_owner, require_member
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import text
 from datetime import datetime, timezone
@@ -584,19 +585,13 @@ def delete_account(
 
 @router.get("/profile")
 def get_profile(
+    membership: WorkspaceUser = Depends(require_admin),
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db),
-    workspace_id: str = Header(
-        None,
-        alias="X-Workspace-Id"
-    )
+    
 ):
     
-    owner_id = get_workspace_owner_id(
-        current_user,
-        workspace_id,
-        db
-    )
+    owner_id = membership.workspace_id
     print("ROUTE PROFILE LOADED")
     
     profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
@@ -721,18 +716,11 @@ def get_plan(
 @router.post("/change-plan")
 def change_plan(
     data: PlanUpdate,
-    current_user=Depends(get_current_user),
+    membership: WorkspaceUser = Depends(require_owner),
     db: Session = Depends(get_db),
-    workspace_id: str = Header(
-        None,
-        alias="X-Workspace-Id"
-    )
+
 ):
-    owner_id = get_workspace_owner_id(
-        current_user,
-        workspace_id,
-        db
-    )
+    owner_id = membership.workspace_id
 
     user = db.query(UserDB).filter(UserDB.id == owner_id).first()
     print("===== CHANGE PLAN =====")
@@ -775,23 +763,11 @@ def dashboard():
 
 
 @router.get("/users")
-def get_users(x_workspace_id: str = Header(None), current_user=Depends(get_current_user), db: Session = Depends(get_db)):
-    print("CURRENT USER:", current_user.id)
-
-    workspace_id = x_workspace_id or current_user.id
-
-    membership = db.query(WorkspaceUser).filter(
-        WorkspaceUser.user_id == current_user.id
-    ).first()
-
-    if not membership:
-        membership = WorkspaceUser(
-            user_id=current_user.id,
-            workspace_id=current_user.id,
-            role="owner"
-        )
-        db.add(membership)
-        db.commit()
+def get_users(
+    membership: WorkspaceUser = Depends(require_member),
+    db: Session = Depends(get_db)
+):
+    workspace_id = membership.workspace_id
 
     memberships = db.query(WorkspaceUser).filter(
         WorkspaceUser.workspace_id == workspace_id
@@ -821,11 +797,10 @@ def get_users(x_workspace_id: str = Header(None), current_user=Depends(get_curre
 @router.post("/users")
 def create_user(
     data: dict,
-    x_workspace_id: str = Header(None),
-    current_user = Depends(get_current_user),
+    membership: WorkspaceUser = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
-    workspace_id = x_workspace_id or current_user.id
+    workspace_id = membership.workspace_id
 
     existing = db.query(UserDB).filter(
         UserDB.email == data.get("email")
@@ -870,11 +845,11 @@ def create_user(
 @router.post("/invites")
 def create_invite(
     data: dict,
-    x_workspace_id: str = Header(None),
+    membership: WorkspaceUser = Depends(require_admin),
     db: Session = Depends(get_db),
     current_user: UserDB = Depends(get_current_user)
 ):
-    workspace_id = x_workspace_id or current_user.id
+    workspace_id = membership.workspace_id
     email = data.get("email")
     role = data.get("role", "member")
 
@@ -930,11 +905,10 @@ def create_invite(
 
 @router.get("/invites")
 def get_invites(
-    x_workspace_id: str = Header(None),
-    current_user: UserDB = Depends(get_current_user),
+    membership: WorkspaceUser = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
-    workspace_id = x_workspace_id or current_user.id
+    workspace_id = membership.workspace_id
 
     invites = db.query(WorkspaceInvite).filter(
         WorkspaceInvite.workspace_id == workspace_id,
@@ -1054,9 +1028,8 @@ def register(data: dict, db: Session = Depends(get_db)):
 def update_role(
     user_id: str,
     data: dict,
-    x_workspace_id: str = Header(None),
     db: Session = Depends(get_db),
-    current_user: UserDB = Depends(get_current_user)
+    membership: WorkspaceUser = Depends(require_admin)
 ):
 
     user = db.query(UserDB).filter(UserDB.id == user_id).first()
@@ -1064,22 +1037,7 @@ def update_role(
     if not user:
         raise HTTPException(404, "User not found")
 
-    workspace_id = x_workspace_id or current_user.id
-
-    current_membership = db.query(WorkspaceUser).filter(
-        WorkspaceUser.user_id == current_user.id,
-        WorkspaceUser.workspace_id == workspace_id
-    ).first()
-
-    if not current_membership:
-        current_membership = WorkspaceUser(
-            user_id=current_user.id,
-            workspace_id=workspace_id,
-            role="owner"
-        )
-        db.add(current_membership)
-        db.commit()
-        db.refresh(current_membership)
+    workspace_id = membership.workspace_id
 
     target_membership = db.query(WorkspaceUser).filter(
         WorkspaceUser.user_id == user.id,
@@ -1089,18 +1047,6 @@ def update_role(
     if not target_membership:
         raise HTTPException(403, "User hors workspace")
 
-    current_membership = db.query(WorkspaceUser).filter(
-        WorkspaceUser.user_id == current_user.id,
-        WorkspaceUser.workspace_id == workspace_id
-    ).first()
-
-    if current_membership:
-        print("ROLE:", current_membership.role)
-
-    if current_membership.role.lower() not in ["owner", "admin"]:
-        print("❌ 403: mauvais rôle ->", current_membership.role)
-        raise HTTPException(403, "Permission insuffisante")
-    
     # owner protégé
     if user.id == workspace_id:
         raise HTTPException(400, "Impossible de modifier le propriétaire")
@@ -1113,31 +1059,15 @@ def update_role(
 @router.post("/users/{user_id}/toggle")
 def toggle_user(
     user_id: str,
-    x_workspace_id: str = Header(None),
     db: Session = Depends(get_db),
-    current_user: UserDB = Depends(get_current_user)
+    membership: WorkspaceUser = Depends(require_admin)
 ):
     user = db.query(UserDB).filter(UserDB.id == user_id).first()
 
     if not user:
         raise HTTPException(404)
 
-    workspace_id = x_workspace_id or current_user.id
-
-    current_membership = db.query(WorkspaceUser).filter(
-        WorkspaceUser.user_id == current_user.id,
-        WorkspaceUser.workspace_id == workspace_id
-    ).first()
-
-    if not current_membership:
-        current_membership = WorkspaceUser(
-            user_id=current_user.id,
-            workspace_id=workspace_id,
-            role="owner"
-        )
-        db.add(current_membership)
-        db.commit()
-        db.refresh(current_membership)
+    workspace_id = membership.workspace_id
 
     target_membership = db.query(WorkspaceUser).filter(
         WorkspaceUser.user_id == user.id,
@@ -1146,14 +1076,6 @@ def toggle_user(
 
     if not target_membership:
         raise HTTPException(403, "User hors workspace")
-
-    current_membership = db.query(WorkspaceUser).filter(
-        WorkspaceUser.user_id == current_user.id,
-        WorkspaceUser.workspace_id == workspace_id
-    ).first()
-
-    if current_membership.role.lower() not in ["owner", "admin"]:
-        raise HTTPException(403, "Permission insuffisante")
 
     if user.id == workspace_id :
         raise HTTPException(400, "Impossible de suspendre le propriétaire")
@@ -1167,8 +1089,8 @@ def toggle_user(
 @router.delete("/users/{user_id}")
 def delete_user(
     user_id: str,
-    x_workspace_id: str = Header(None),
     db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_admin),
     current_user: UserDB = Depends(get_current_user)
 ):
     user = db.query(UserDB).filter(UserDB.id == user_id).first()
@@ -1176,22 +1098,7 @@ def delete_user(
     if not user:
         raise HTTPException(404)
 
-    workspace_id = x_workspace_id or current_user.id
-
-    current_membership = db.query(WorkspaceUser).filter(
-        WorkspaceUser.user_id == current_user.id,
-        WorkspaceUser.workspace_id == workspace_id
-    ).first()
-
-    if not current_membership:
-        current_membership = WorkspaceUser(
-            user_id=current_user.id,
-            workspace_id=workspace_id,
-            role="owner"
-        )
-        db.add(current_membership)
-        db.commit()
-        db.refresh(current_membership)
+    workspace_id = membership.workspace_id
 
     target_membership = db.query(WorkspaceUser).filter(
         WorkspaceUser.user_id == user.id,
@@ -1201,14 +1108,6 @@ def delete_user(
     if not target_membership:
         raise HTTPException(403, "User hors workspace")
 
-    current_membership = db.query(WorkspaceUser).filter(
-        WorkspaceUser.user_id == current_user.id,
-        WorkspaceUser.workspace_id == workspace_id
-    ).first()
-
-    if current_membership.role.lower() not in ["owner", "admin"]:
-        raise HTTPException(403, "Permission insuffisante")
-
     if user.id == workspace_id:
         raise HTTPException(400, "Impossible de supprimer le propriétaire")
 
@@ -1217,7 +1116,8 @@ def delete_user(
 
 
     db.query(WorkspaceUser).filter(
-        WorkspaceUser.user_id == user.id
+        WorkspaceUser.user_id == user.id,
+        WorkspaceUser.workspace_id == workspace_id
     ).delete()
 
     db.commit()
