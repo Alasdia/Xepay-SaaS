@@ -343,7 +343,7 @@ def google_callback(code: str, db: Session = Depends(get_db)):
 
 @router.post("/onboarding")
 def create_onboarding_link(
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_owner),
     db: Session = Depends(get_db),
 ):
     owner_id = membership.workspace_id
@@ -380,7 +380,7 @@ def create_onboarding_link(
 
 @router.get("/stripe/login-link")
 def get_login_link(
-    membership: WorkspaceUser = Depends(require_manager), 
+    membership: WorkspaceUser = Depends(require_owner), 
     db: Session = Depends(get_db),
 ):
 
