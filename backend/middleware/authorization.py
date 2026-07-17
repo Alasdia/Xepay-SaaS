@@ -4,6 +4,19 @@ from backend.database import get_db
 from backend.models import UserDB, WorkspaceUser
 from backend.auth import get_current_user
 
+ROLE_ALIASES = {
+    "owner": "owner",
+    "admin": "admin",
+    "administrateur": "admin",
+    "manager": "admin",       
+    "agent": "agent",
+    "membre": "agent",     
+    "lecture": "lecture",
+    "lecteur": "lecture",
+}
+
+def normalize_role(role: str) -> str:
+    return ROLE_ALIASES.get(role.lower().strip(), role.lower().strip())
 
 def get_membership(
     x_workspace_id: str = Header(None, alias="X-Workspace-Id"),
@@ -17,27 +30,24 @@ def get_membership(
         WorkspaceUser.user_id == current_user.id,
         WorkspaceUser.workspace_id == workspace_id
     ).first()
-    print("ROLE EN BASE:", repr(membership.role) if membership else "AUCUNE MEMBERSHIP")
 
     if not membership:
         raise HTTPException(403, "Vous n'appartenez pas à ce workspace")
 
     return membership
 
-
 def require_role(*allowed_roles: str):
     """Fabrique une dependency qui exige un des rôles listés."""
-    allowed = [r.lower() for r in allowed_roles]
+    allowed = [normalize_role(r) for r in allowed_roles]
 
     def checker(
         membership: WorkspaceUser = Depends(get_membership)
     ) -> WorkspaceUser:
-        if membership.role.lower() not in allowed:
+        if normalize_role(membership.role) not in allowed:
             raise HTTPException(403, "Permission insuffisante")
         return membership
 
     return checker
-
 
 require_owner = require_role("owner")
 require_admin = require_role("owner", "admin")
