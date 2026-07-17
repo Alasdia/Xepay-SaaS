@@ -17,6 +17,7 @@ def get_membership(
         WorkspaceUser.user_id == current_user.id,
         WorkspaceUser.workspace_id == workspace_id
     ).first()
+    print("ROLE EN BASE:", repr(membership.role) if membership else "AUCUNE MEMBERSHIP")
 
     if not membership:
         raise HTTPException(403, "Vous n'appartenez pas à ce workspace")
