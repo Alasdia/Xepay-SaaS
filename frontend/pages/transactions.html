@@ -1844,6 +1844,22 @@ window.onload = () => {
 
 </script>
 <script>
+function closeWithdrawModalCleanly() {
+  const modalEl = document.getElementById("withdrawModal");
+  const modal = bootstrap.Modal.getInstance(modalEl);
+
+  if (modal) modal.hide();
+
+  setTimeout(() => {
+    document.body.classList.remove("modal-open");
+    document.body.style.removeProperty("overflow");
+    document.body.style.removeProperty("padding-right");
+
+    document.querySelectorAll(".modal-backdrop").forEach(el => el.remove());
+  }, 300);
+}
+</script>
+<script>
 function showUpgradeModal(feature = null) {
 
   const plan = window.GLOBAL_PLAN?.plan;
