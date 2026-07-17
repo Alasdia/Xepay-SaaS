@@ -7,7 +7,7 @@ from backend.services.workspace_service import (
     get_workspace_owner_id
 )
 from backend.security import verify_password, create_access_token
-from backend.middleware.authorization import require_admin, require_owner, require_member
+from backend.middleware.authorization import require_admin, require_owner, require_member, require_manager
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import text
 from datetime import datetime, timezone
@@ -343,18 +343,10 @@ def google_callback(code: str, db: Session = Depends(get_db)):
 
 @router.post("/onboarding")
 def create_onboarding_link(
-    current_user: UserDB = Depends(get_current_user),
+    membership: WorkspaceUser = Depends(require_manager),
     db: Session = Depends(get_db),
-    workspace_id: str = Header(
-        None,
-        alias="X-Workspace-Id"
-    )
 ):
-    owner_id = get_workspace_owner_id(
-        current_user,
-        workspace_id,
-        db
-    )
+    owner_id = membership.workspace_id
 
     profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
 
@@ -388,19 +380,11 @@ def create_onboarding_link(
 
 @router.get("/stripe/login-link")
 def get_login_link(
-    current_user: UserDB = Depends(get_current_user), 
+    membership: WorkspaceUser = Depends(require_manager), 
     db: Session = Depends(get_db),
-    workspace_id: str = Header(
-        None,
-        alias="X-Workspace-Id"
-    )
 ):
 
-    owner_id = get_workspace_owner_id(
-        current_user,
-        workspace_id,
-        db
-    )
+    owner_id = membership.workspace_id
 
     profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
 
@@ -415,18 +399,10 @@ def get_login_link(
     
 @router.get("/stripe/status")
 def stripe_status(
-    current_user: UserDB = Depends(get_current_user),
+    membership: WorkspaceUser = Depends(require_manager),
     db: Session = Depends(get_db),
-    workspace_id: str = Header(
-        None,
-        alias="X-Workspace-Id"
-    )
 ):
-    owner_id = get_workspace_owner_id(
-        current_user,
-        workspace_id,
-        db
-    )
+    owner_id = membership.workspace_id
 
     print("🔥 STRIPE STATUS HIT 🔥")
 
@@ -585,7 +561,7 @@ def delete_account(
 
 @router.get("/profile")
 def get_profile(
-    membership: WorkspaceUser = Depends(require_admin),
+    membership: WorkspaceUser = Depends(require_manager),
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db),
     
@@ -645,17 +621,10 @@ def get_my_plan(
 @router.get("/me/plan")
 def get_plan(
     db: Session = Depends(get_db),
-    user: UserDB = Depends(get_current_user),
-    workspace_id: str = Header(
-        None,
-        alias="X-Workspace-Id"
-    )
+    membership: WorkspaceUser = Depends(require_manager),
+    
 ):
-    owner_id = get_workspace_owner_id(
-        user,
-        workspace_id,
-        db
-    )
+    owner_id = membership.workspace_id
     
     PLAN_LIMITS = {
         "free": {"paid": 10, "links": 30},
