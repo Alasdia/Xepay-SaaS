@@ -10,6 +10,8 @@ from backend.auth import get_current_user
 from backend.services.workspace_service import (
     get_workspace_owner_id
 )
+from backend.middleware.authorization import require_member
+from backend.models import WorkspaceUser
 from datetime import timedelta
 from backend.models import Payment, Link
 from backend.models import UserDB
@@ -18,175 +20,18 @@ import os
 from typing import Optional
 from sqlalchemy.orm import joinedload
 
-
-
 router = APIRouter()
 
-
-
-@router.get("/payments")
-def get_payments(
-    status: str = None,
-    email_search: str = None,
-    currency: str = None,
-    user = Depends(get_current_user)
-):
-    print("USER:", user)
-
-    query = """
-    SELECT p.* 
-    FROM payments p
-    JOIN links l ON p.link_id = l.id
-    WHERE l.user_id = :user_id
-    """
-
-    params = {"user_id": user.id}
-
-    # 🔎 filtre recherche email
-    if email_search:
-        query += " AND p.email ILIKE :email_search"
-        params["email_search"] = f"%{email_search}%"
-
-    # 🎯 filtre status
-    if status:
-        query += " AND p.status = :status"
-        params["status"] = status
-
-    # 💱 filtre devise
-    if currency:
-        query += " AND p.currency = :currency"
-        params["currency"] = currency
-
-    with engine.connect() as conn:
-        result = conn.execute(text(query), params).fetchall()
-
-    return [dict(row._mapping) for row in result]
-
-
-@router.post("/create-payment")
-def create_payment(payment: PaymentCreate):
-    try:
-        with engine.begin() as conn:
-            status_map = {
-                "réussi": "success",
-                "payé": "success",
-                "success": "success",
-
-                "en attente": "pending",
-                "pending": "pending",
-
-                "échoué": "failed",
-                "failed": "failed"
-            }
-            status_clean = status_map.get(payment.status.lower(), "pending")
-            result = conn.execute(
-                text("""
-                    INSERT INTO payments (email, amount, status, created_at) 
-                    VALUES (:email, :amount, :status, :created_at)
-                    RETURNING id
-                """),
-                {
-                    "email": payment.email,
-                    "amount": payment.amount,
-                    "status": status_clean,
-                    "created_at": datetime.now(timezone.utc).isoformat()
-                }
-            )
-            new_id = result.scalar()
-
-        return {"success": True, "id": new_id}
-    except Exception as e:
-        print("CREATE ERROR:", e)
-        return {"success": False, "error": str(e)}
-
-
-
-@router.delete("/payments/{payment_id}")
-def delete_payment(payment_id: int):
-    try:
-        print("DB utilisée :", engine.url)
-
-        with engine.begin() as conn:
-            result = conn.execute(
-                text("DELETE FROM payments WHERE id = :id"), 
-                {"id": payment_id}
-            )
-
-            if result.rowcount == 0:
-                return {
-                    "success": False,
-                    "message": "Payment not found"
-                }
-            
-        return {"success": True}
-        
-    except Exception as e:
-        print("Erreur suppression :", e)
-        return {
-            "success": False, 
-            "error": str(e)
-        }
-
-
-
-    
-@router.put("/payments/{payment_id}")
-def update_payment(payment_id: int, payment: PaymentUpdate):
-    with engine.begin() as conn:
-        result = conn.execute(
-            text("""
-                UPDATE payments
-                SET email = :email,
-                    amount = :amount,
-                    status = :status
-                WHERE id = :id
-            """),
-            {
-                "id": payment_id,
-                "email": payment.email,
-                "amount": payment.amount,
-                "status": payment.status
-            }
-        )
-
-        if result.rowcount == 0:
-            return {"success": False, "message": "Payment not found"}
-
-    return {"success": True}
-
-
-@router.get("/test-wallet")
-def test_wallet():
-    try:
-        with engine.connect() as conn:
-            result = conn.execute(
-                text("SELECT * FROM wallets")
-            ).mappings().all()
-
-        return {"data": result}
-
-    except Exception as e:
-        return {"error": str(e)}
-    
 @router.get("/transactions")
 def get_transactions(
     db: Session = Depends(get_db),
-    user: UserDB = Depends(get_current_user),
-    workspace_id: str = Header(
-        None,
-        alias="X-Workspace-Id"
-    ),
+    membership: WorkspaceUser = Depends(require_member),
     status: Optional[str] = None,
     offset: int = 0,
     limit: int = 10
 ):
-    owner_id = get_workspace_owner_id(
-        user,
-        workspace_id,
-        db
-    )
+    owner_id = membership.workspace_id
 
-    print("CURRENT USER:", user.id)
     now = datetime.now(timezone.utc)
 
     # 🔹 récupérer liens
@@ -268,17 +113,9 @@ def get_transactions(
 @router.get("/stats")
 def get_stats(
     db: Session = Depends(get_db),
-    user: UserDB = Depends(get_current_user),
-    workspace_id: str = Header(
-        None,
-        alias="X-Workspace-Id"
-    )
+    membership: WorkspaceUser = Depends(require_member),
 ):
-    owner_id = get_workspace_owner_id(
-        user,
-        workspace_id,
-        db
-    )
+    owner_id = membership.workspace_id
 
     now = datetime.now(timezone.utc)
 
@@ -360,7 +197,6 @@ def get_stats(
 
     success_rate = round(success_rate, 2)
     
-
     return {
         "total_received": total_received,
         "pending_total": pending_total,
