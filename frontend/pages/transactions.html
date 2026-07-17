@@ -803,40 +803,20 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
   <div class="modal fade" id="withdrawModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
-
         <div class="modal-header border-0">
           <h5 class="modal-title fw-bold">Retirer de l'argent</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-
         <div class="modal-body px-4">
-
           <div class="mb-3">
             <label class="form-label">Montant</label>
             <input type="number" id="withdrawAmount" class="form-control" placeholder="Ex: 5000">
           </div>
-
-          <div class="mb-3">
-            <label class="form-label">Opérateur</label>
-            <select id="withdrawOperator" class="form-select">
-              <option value="wave">Wave</option>
-              <option value="orange">Orange Money</option>
-              <option value="free">Free Money</option>
-            </select>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Numéro</label>
-            <input type="text" id="withdrawPhone" class="form-control" placeholder="+221 77...">
-          </div>
-
         </div>
-
         <div class="modal-footer border-0">
           <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
           <button id="confirmWithdrawBtn" class="btn btn-cyan" onclick="submitWithdraw()">Confirmer</button>
         </div>
-
       </div>
     </div>
   </div>
@@ -1671,19 +1651,11 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
       const token = localStorage.getItem("token");
 
       const amount = parseFloat(document.getElementById("withdrawAmount").value);
-      const operator = document.getElementById("withdrawOperator").value;
-      const phone = document.getElementById("withdrawPhone").value.trim();
-
+      
       if (!amount || amount <= 0) {
         alert("Montant invalide");
         return;
       }
-
-      if (!phone) {
-        alert("Numéro requis");
-        return;
-      }
-
       try {
         const res = await fetch("https://api.alasdia.com/withdraw", {
           method: "POST",
@@ -1694,8 +1666,6 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
           },
           body: JSON.stringify({
             amount,
-            operator,
-            phone
           })
         });
 
@@ -1723,9 +1693,7 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
 
     async function submitWithdraw() {
       const amount = document.getElementById("withdrawAmount").value;
-      const operator = document.getElementById("withdrawOperator").value;
-      const phone = document.getElementById("withdrawPhone").value;
-
+      
       const token = localStorage.getItem("token");
 
       const res = await fetch("https://api.alasdia.com/withdraw", {
@@ -1737,13 +1705,9 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
         },
         body: JSON.stringify({
           amount: Number(amount),
-          operator,
-          phone
         })
       });
-
       const data = await res.json();
-
       alert("Retrait demandé");
       location.reload();
     }
@@ -1781,9 +1745,7 @@ async function loadUser() {
       "X-Workspace-Id": localStorage.getItem("workspace_id")
     }
   })
-
   const user = await res.json()
-
   console.log("USER:", user)
 
   updatePlanUI(user.plan)
@@ -1799,7 +1761,6 @@ async function loadPlan() {
         "X-Workspace-Id": localStorage.getItem("workspace_id")
       }
     });
-
     const plan = await res.json();
     console.log("PLAN:", plan);
     window.GLOBAL_PLAN = plan;
