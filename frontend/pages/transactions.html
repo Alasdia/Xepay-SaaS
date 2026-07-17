@@ -1684,19 +1684,18 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
             message = data.detail;
           }
           showToast(message, "error");
-
-          bootstrap.Modal.getInstance(document.getElementById("withdrawModal"))?.hide();
+          closeWithdrawModalCleanly();
           return;
         }
         showToast("Retrait envoyé avec succès");
-
-        bootstrap.Modal.getInstance(document.getElementById("withdrawModal"))?.hide();
+        closeWithdrawModalCleanly();
         document.getElementById("withdrawAmount").value = "";
 
         setTimeout(() => location.reload(), 1200);
 
       } catch (err) {
         showToast("Erreur serveur, veuillez réessayer", "error");
+        closeWithdrawModalCleanly();
       }
     });
     }
