@@ -15,6 +15,8 @@ from backend.database import get_db, SessionLocal
 from backend.models import LinkCreate
 from backend.models import Link, Payment
 from backend.models import PaymentResponse
+from backend.middleware.authorization import require_admin, require_owner, require_member, require_manager
+from backend.models import Link, WorkspaceUser
 from backend.models import Payment
 from backend.services.rates import get_live_rate
 from backend.models import UserDB
@@ -34,23 +36,15 @@ router = APIRouter()
 
 print(Link.__table__.columns.keys())
 
-# ✅ CREATE LINK (Stripe style)
 @router.post("/links")
 def create_link(
     data: LinkCreate, 
     db: Session = Depends(get_db),
     user: UserDB = Depends(get_current_user),
-        workspace_id: str = Header(
-        None,
-        alias="X-Workspace-Id"
-    )
+    membership: WorkspaceUser = Depends(require_manager)
+
 ):
-    
-    owner_id = get_workspace_owner_id(
-        user,
-        workspace_id,
-        db
-    )
+    owner_id = membership.workspace_id
 
     current_month = datetime.now(timezone.utc).month
     current_year = datetime.now(timezone.utc).year
@@ -62,7 +56,6 @@ def create_link(
     ).count()
 
     now = datetime.now(timezone.utc)
-
     start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
 
     if now.month == 12:
@@ -124,7 +117,7 @@ def create_link(
         name=data.name.strip() if data.name else "Lien de paiement",
         amount=data.amount,
         currency=data.currency,
-        url=f"http://api.alasdia.com/pay/{raw_token}",
+        url=f"https://api.alasdia.com/pay/{raw_token}",
         created_at=datetime.now(timezone.utc),
         active=True,
         expires_at=expires_at,

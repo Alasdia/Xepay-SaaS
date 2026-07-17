@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 import uuid
 from backend.database import get_db
 from backend.models import Wallet, Withdrawal, WithdrawRequest, WalletTransaction
+from backend.middleware.authorization import require_owner
+from backend.models import WorkspaceUser
 from backend.auth import get_current_user
 from backend.services.workspace_service import (
     get_workspace_owner_id
@@ -114,17 +116,9 @@ def get_wallet_history(
 def withdraw(
     req: WithdrawRequest, 
     db: Session = Depends(get_db), 
-    user=Depends(get_current_user),
-    workspace_id: str = Header(
-        None,
-        alias="X-Workspace-Id"
-    )
+    membership: WorkspaceUser = Depends(require_owner)
 ):
-    owner_id = get_workspace_owner_id(
-        user,
-        workspace_id,
-        db
-    )
+    owner_id = membership.workspace_id
 
     print("ROUTE /withdraw appelée")
 
