@@ -1676,12 +1676,21 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
         const data = await res.json();
 
         if (!res.ok) {
-          showToast(data.detail || "Erreur lors du retrait", "error");
+          let message = "Impossible d'effectuer ce retrait";
+
+          if (data.detail === "Permission insuffisante") {
+            message = "Seul le propriétaire du compte peut effectuer un retrait";
+          } else if (typeof data.detail === "string") {
+            message = data.detail;
+          }
+          showToast(message, "error");
+
+          bootstrap.Modal.getInstance(document.getElementById("withdrawModal"))?.hide();
           return;
         }
         showToast("Retrait envoyé avec succès");
 
-        bootstrap.Modal.getInstance(document.getElementById("withdrawModal")).hide();
+        bootstrap.Modal.getInstance(document.getElementById("withdrawModal"))?.hide();
         document.getElementById("withdrawAmount").value = "";
 
         setTimeout(() => location.reload(), 1200);
