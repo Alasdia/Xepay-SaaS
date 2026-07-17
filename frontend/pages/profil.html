@@ -736,8 +736,12 @@ async function initStripe() {
           alert("Erreur Stripe onboarding")
           return
         }
-
+        if (!res.ok) {
+          alert(d.detail || "Action réservée au propriétaire du compte")
+          return
+        }
         window.location.href = d.url
+
       } catch (e) {
         btn.innerText = "Erreur, réessayer"
         btn.disabled = false
@@ -758,6 +762,10 @@ async function initStripe() {
         }
       })
       const d = await res.json()
+      if (!res.ok) {
+        alert(d.detail || "Action réservée au propriétaire du compte")
+        return
+      }
       window.location.href = d.url
     }
   }
@@ -778,7 +786,11 @@ async function initStripe() {
         });
 
         const d = await res.json();
-        window.location.href = d.url;
+        if (!res.ok) {
+          alert(d.detail || "Action réservée au propriétaire du compte")
+          return
+        }
+        window.location.href = d.url
     };
   }
   else {
