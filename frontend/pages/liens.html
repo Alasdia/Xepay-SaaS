@@ -1014,10 +1014,18 @@ body { background: #ffffff !important; color: #111827; }
         successBox.innerText = "Lien créé avec succès ✅"
         successBox.style.display = "block"
 
-        const liste = document.getElementById("liste-liens");
+        const modalEl = document.getElementById('modalCreationLien');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        }
+        document.getElementById("nom-lien").value = "";
+        document.getElementById("montant-lien").value = "";
+        errorBox.style.display = "none";
 
-        closeModalCleanly('modalCreationLien');
-        chargerLiens();
+        offset = 0;
+        document.getElementById("liste-liens").innerHTML = "";
+        await chargerLiens();
     }
     chargerLiens();
 
