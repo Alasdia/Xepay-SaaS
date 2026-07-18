@@ -5,9 +5,7 @@ from backend.models import ApiLog
 from backend.auth import get_current_user
 from backend.models import Webhook
 from datetime import timezone, datetime
-
-
-
+from backend.auth import get_current_user
 
 router = APIRouter()
 
@@ -19,8 +17,13 @@ def get_db():
         db.close()
 
 @router.get("/logs")
-def get_logs(limit: int = 5, db: Session = Depends(get_db)):
+def get_logs(
+    limit: int = 5, 
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
     logs = db.query(ApiLog)\
+        .filter(ApiLog.user_id == user.id)\
         .order_by(ApiLog.created_at.desc())\
         .limit(limit)\
         .all()
