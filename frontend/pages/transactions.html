@@ -50,7 +50,7 @@ body { font-family: 'Sora', sans-serif; background: #ffffff !important; color: v
 #sidebar .nav-link.active-link { background: transparent !important; color: #facc15 !important; font-weight: 600; }
 #sidebar .card { transition: all .25s ease; cursor: pointer; }
 #sidebar .card:hover { border: 1px solid #facc15 !important; background: #fffdf5 !important; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(250,204,21,.25); }
-.toast-notif { position: fixed; top: 24px; right: 24px; z-index: 999999; flex-direction: column; gap: 10px; }
+.toast-notif { position: fixed; top: 24px; right: 24px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; }
 .toast-notif-item { min-width: 280px; max-width: 380px; background: #ffffff; border: 1px solid #e5e7eb; border-left: 4px solid #22c55e; border-radius: 12px; padding: 14px 18px; box-shadow: 0 10px 30px rgba(0,0,0,.12); font-size: 14px; color: #111827; display: flex; align-items: flex-start; gap: 10px; opacity: 0; transform: translateX(20px); animation: toastIn 0.3s ease forwards; }
 .toast-notif-item.error { border-left-color: #ef4444; }
 .toast-notif-item.warning { border-left-color: #facc15; }
@@ -1768,8 +1768,6 @@ async function loadPlan() {
     if (el2) el2.textContent =
       plan.paid_limit === null ? "Illimité" : plan.paid_limit;
 
-    // 🔥 AJOUTE ÇA 👇
-
     const createdEl = document.getElementById("links-created");
     const paidEl = document.getElementById("links-paid");
     const progress = document.getElementById("links-progress-bar");
@@ -1875,13 +1873,10 @@ function showUpgradeModal(feature = null) {
 </script>
 <script>
 function updateUpgradeModal(plan, feature) {
-
   document.querySelectorAll(".plan-card")
     .forEach(card => {
       card.classList.remove("plan-disabled");
     });
-
-  // Cas Multi-utilisateurs => seul Business doit rester disponible
   if (feature === "multi-users") {
     document.querySelector(".plan-starter")
       .classList.add("plan-disabled");
@@ -1891,18 +1886,14 @@ function updateUpgradeModal(plan, feature) {
 
     return;
   }
-
-  // Cas normal : on floute le plan actuel
   if (plan === "free") {
     document.querySelector(".plan-starter")
       .classList.add("plan-disabled");
   }
-
   if (plan === "pro") {
     document.querySelector(".plan-pro")
       .classList.add("plan-disabled");
   }
-
   if (plan === "business") {
     document.querySelector(".plan-business")
       .classList.add("plan-disabled");
@@ -1969,7 +1960,6 @@ document
 
 });
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
 <script>
 function showToast(message, type = "success") {
   const container = document.getElementById("toast-container");
