@@ -931,7 +931,19 @@ body { background: #ffffff !important; color: #111827; }
 
         isLoading = false;
     }
+    function closeModalCleanly(modalId) {
+      const modalEl = document.getElementById(modalId);
+      const modal = bootstrap.Modal.getInstance(modalEl);
 
+      if (modal) modal.hide();
+
+      setTimeout(() => {
+        document.body.classList.remove("modal-open");
+        document.body.style.removeProperty("overflow");
+        document.body.style.removeProperty("padding-right");
+        document.querySelectorAll(".modal-backdrop").forEach(el => el.remove());
+      }, 300);
+    }
     // =========================
     // 2. CRÉER LIEN
     // =========================
@@ -1004,13 +1016,8 @@ body { background: #ffffff !important; color: #111827; }
 
         const liste = document.getElementById("liste-liens");
 
-        // 🔥 correction ici (PAS .hide direct)
-        const modalEl = document.getElementById('modalCreationLien');
-        if (modalEl) {
-            const modal = bootstrap.Modal.getInstance(modalEl);
-            if (modal) modal.hide();
-        }
-        
+        closeModalCleanly('modalCreationLien');
+        chargerLiens();
     }
     chargerLiens();
 
@@ -1297,7 +1304,5 @@ document
 
 });
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
-
 </body>
 </html>
