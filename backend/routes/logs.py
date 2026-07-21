@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from backend.database import SessionLocal
-from backend.models import ApiLog
+from backend.models import WebhookDeliveryLog
 from backend.auth import get_current_user
 from backend.models import Webhook
 from datetime import timezone, datetime
@@ -22,17 +22,17 @@ def get_logs(
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    logs = db.query(ApiLog)\
-        .filter(ApiLog.user_id == user.id)\
-        .order_by(ApiLog.created_at.desc())\
+    logs = db.query(WebhookDeliveryLog)\
+        .filter(WebhookDeliveryLog.user_id == user.id)\
+        .order_by(WebhookDeliveryLog.created_at.desc())\
         .limit(limit)\
         .all()
 
     return [
         {
-            "method": log.method,
+            "method": log.event,
             "status": log.status_code,
-            "path": log.path,
+            "path": log.url,
             "time": log.created_at
         }
         for log in logs
@@ -44,16 +44,16 @@ def logs_stats(
     user = Depends(get_current_user)
 ):
 
-    total = db.query(ApiLog).filter(ApiLog.user_id == user.id).count()
+    total = db.query(WebhookDeliveryLog).filter(WebhookDeliveryLog.user_id == user.id).count()
 
-    success = db.query(ApiLog).filter(
-        ApiLog.user_id == user.id,
-        ApiLog.status_code == 200
+    success = db.query(WebhookDeliveryLog).filter(
+        WebhookDeliveryLog.user_id == user.id,
+        WebhookDeliveryLog.success == True
     ).count()
 
-    errors = db.query(ApiLog).filter(
-        ApiLog.user_id == user.id,
-        ApiLog.status_code >= 400
+    errors = db.query(WebhookDeliveryLog).filter(
+        WebhookDeliveryLog.user_id == user.id,
+        WebhookDeliveryLog.success == False
     ).count()
 
     now = datetime.now(timezone.utc)
@@ -69,16 +69,16 @@ def logs_stats(
     else:
         start_last_month = datetime(now.year, now.month - 1, 1, tzinfo=timezone.utc)
 
-    calls_this_month = db.query(ApiLog).filter(
-        ApiLog.user_id == user.id,
-        ApiLog.created_at >= start_month,
-        ApiLog.created_at < next_month
+    calls_this_month = db.query(WebhookDeliveryLog).filter(
+        WebhookDeliveryLog.user_id == user.id,
+        WebhookDeliveryLog.created_at >= start_month,
+        WebhookDeliveryLog.created_at < next_month
     ).count()
 
-    calls_last_month = db.query(ApiLog).filter(
-        ApiLog.user_id == user.id,
-        ApiLog.created_at >= start_last_month,
-        ApiLog.created_at < start_month
+    calls_last_month = db.query(WebhookDeliveryLog).filter(
+        WebhookDeliveryLog.user_id == user.id,
+        WebhookDeliveryLog.created_at >= start_last_month,
+        WebhookDeliveryLog.created_at < start_month
     ).count()
 
     growth = ((calls_this_month - calls_last_month) / calls_last_month * 100) if calls_last_month > 0 else 0
