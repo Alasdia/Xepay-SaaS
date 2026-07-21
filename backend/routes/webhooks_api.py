@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.database import get_db
-from backend.models import UserDB, Webhook
+from backend.models import UserDB, Webhook, WebhookDeliveryLog
 from backend.auth import get_current_user
 from pydantic import BaseModel
 from typing import List
 import httpx
-from datetime import datetime
+from datetime import datetime, timezone
 import secrets
 
 secret = secrets.token_hex(32)
@@ -84,24 +84,22 @@ async def test_webhook(
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    print("🚀 TEST WEBHOOK START")
-
     webhook = db.query(Webhook).filter(
         Webhook.id == webhook_id,
         Webhook.user_id == current_user.id
     ).first()
 
     if not webhook:
-        print("❌ Webhook introuvable")
-        raise HTTPException(status_code=404, detail="Webhook introuvable")
-    
-    print("🔗 URL:", webhook.url)
-    print("📦 EVENTS:", webhook.events)
-    print("🟢 ACTIVE:", webhook.is_active)
-    
+        raise HTTPException(
+            status_code=404, 
+            detail="Webhook introuvable"
+        )
+
+    status_code = None
+    success = False
+
     try:
         async with httpx.AsyncClient() as client:
-            print("📡 Envoi de la requête...")
             response = await client.post(
                 webhook.url,
                 json={
@@ -110,16 +108,30 @@ async def test_webhook(
                 },
                 timeout=10
             )
-
-        print("✅ STATUS:", response.status_code)
-        print("📩 BODY:", response.text)
-
-        webhook.last_triggered = datetime.utcnow()
-        db.commit()
-        print("💾 DB updated")
-
-        return {"message": "Test envoyé !"}
+        status_code = response.status_code
+        success = 200 <= status_code < 300
 
     except Exception as e:
+        status_code = 0  
+        success = False
         print("🔥 ERREUR WEBHOOK:", str(e))
-        return {"error": str(e)}
+
+    now = datetime.now(timezone.utc)
+    webhook.last_triggered = now
+
+    log = WebhookDeliveryLog(
+        user_id=current_user.id,
+        webhook_id=webhook.id,
+        url=webhook.url,
+        event="test",
+        status_code=status_code,
+        success=success,
+        created_at=now
+    )
+    db.add(log)
+    db.commit()
+
+    if not success:
+        return {"error": "Échec de l'envoi du webhook", "status_code": status_code}
+
+    return {"message": "Test envoyé !"}
