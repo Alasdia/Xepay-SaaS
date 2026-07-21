@@ -1,7 +1,7 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy.orm import Session
 from backend.database import SessionLocal
-from backend.models import ApiLog
+from backend.models import WebhookDeliveryLog
 from datetime import datetime, timezone
 from jose import jwt
 from backend.models import UserDB 
@@ -60,24 +60,5 @@ class LogMiddleware(BaseHTTPMiddleware):
             )
 
         response = await call_next(request)
-
-        try:
-            db = SessionLocal()
-            user = db.query(UserDB).filter(UserDB.email == email).first()
-
-            if user:
-                log = ApiLog(
-                    user_id=user.id,
-                    method=request.method,
-                    path=request.url.path,
-                    status_code=response.status_code,
-                    created_at=datetime.now(timezone.utc)
-                )
-                db.add(log)
-                db.commit()
-        except Exception as e:
-            print("❌ Erreur log API:", e)
-        finally:
-            db.close()
 
         return response
