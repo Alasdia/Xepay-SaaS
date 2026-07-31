@@ -114,7 +114,13 @@ body { background: #f8fafc !important; color: #111827 !important; }
         background: rgba(255,193,7,0.2);
         color: #ffc107;
       }
-      
+.toast-notif { position: fixed; top: 24px; right: 24px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; }
+.toast-notif-item { min-width: 280px; max-width: 380px; background: #ffffff; border: 1px solid #e5e7eb; border-left: 4px solid #22c55e; border-radius: 12px; padding: 14px 18px; box-shadow: 0 10px 30px rgba(0,0,0,.12); font-size: 14px; color: #111827; display: flex; align-items: flex-start; gap: 10px; opacity: 0; transform: translateX(20px); animation: toastIn 0.3s ease forwards; }
+.toast-notif-item.error { border-left-color: #ef4444; }
+.toast-notif-item.warning { border-left-color: #facc15; }
+.toast-notif-item .icon { font-size: 16px; margin-top: 1px; }
+@keyframes toastIn { to { opacity: 1; transform: translateX(0); } }
+@keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
 /* ── PLANS ── */
 .plans-section{position:relative;z-index:2;max-width:1300px;margin:0 auto;padding:0 48px 100px}
 .plans-header{text-align:center;margin-bottom:52px}
@@ -731,13 +737,17 @@ async function initStripe() {
         })
 
         const d = await res.json()
-        if (!res.ok || !d.url) {
-          console.error("Onboarding error:", d)
-          alert("Erreur Stripe onboarding")
-          return
-        }
+
         if (!res.ok) {
-          alert(d.detail || "Action réservée au propriétaire du compte")
+          let message = d.detail || "Erreur Stripe onboarding";
+
+          if (d.detail === "Permission insuffisante") {
+            message = "Seul le propriétaire du compte peut configurer Stripe";
+          }
+
+          showToast(message, "error");
+          btn.innerText = "Configurer Stripe";
+          btn.disabled = false;
           return
         }
         window.location.href = d.url
@@ -762,8 +772,15 @@ async function initStripe() {
         }
       })
       const d = await res.json()
+
       if (!res.ok) {
-        alert(d.detail || "Action réservée au propriétaire du compte")
+        let message = d.detail || "Impossible d'accéder à Stripe";
+
+        if (d.detail === "Permission insuffisante") {
+          message = "Seul le propriétaire du compte peut effectuer cette vérification";
+        }
+
+        showToast(message, "error");
         return
       }
       window.location.href = d.url
@@ -786,8 +803,15 @@ async function initStripe() {
         });
 
         const d = await res.json();
+        
         if (!res.ok) {
-          alert(d.detail || "Action réservée au propriétaire du compte")
+          let message = d.detail || "Impossible d'accéder à Stripe";
+
+          if (d.detail === "Permission insuffisante") {
+            message = "Seul le propriétaire du compte peut effectuer cette vérification";
+          }
+
+          showToast(message, "error");
           return
         }
         window.location.href = d.url
@@ -927,7 +951,7 @@ async function upgrade(plan) {
   console.log("DATA:", data);
 
   if (!res.ok) {
-    alert(data.detail || "Erreur Stripe");
+    showToast(data.detail || "Erreur Stripe");
     return;
   }
 
@@ -973,8 +997,22 @@ document.querySelectorAll('#sidebar a[href$=".html"]').forEach(link => {
   link.setAttribute("href", url.pathname + url.search);
 });
 </script>
-
+<script>
+function showToast(message, type = "success") {
+  const container = document.getElementById("toast-container");
+  const icons = { success: "✅", error: "⚠️", warning: "⏳" };
+  const toast = document.createElement("div");
+  toast.className = `toast-notif-item ${type}`;
+  toast.innerHTML = `<span class="icon">${icons[type] || icons.success}</span><span>${message}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.animation = "toastOut 0.3s ease forwards";
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
+}
+</script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+<div id="toast-container" class="toast-notif"></div>
 </body>
 </html>
 
