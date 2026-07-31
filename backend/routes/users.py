@@ -454,24 +454,12 @@ def stripe_status(
 @router.post("/change-password")
 def change_password(
     data: ChangePasswordRequest,
+    membership: WorkspaceUser = Depends(require_owner),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
-        member = (
-            db.query(WorkspaceUser)
-            .filter(
-                WorkspaceUser.user_id == current_user.id,
-                WorkspaceUser.workspace_id == current_user.workspace_id
-            )
-            .first()
-        )
-
-        if not member or member.role != "owner":
-            raise HTTPException(
-                status_code=403,
-                detail="Permission insuffisante"
-            )
+        
         user = db.query(UserDB).filter(UserDB.email == current_user.email).first()
 
         if not user:
