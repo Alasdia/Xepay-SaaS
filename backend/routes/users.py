@@ -458,7 +458,9 @@ def change_password(
     db: Session = Depends(get_db)
 ):
     try:
-        # récupérer user en base
+        if current_user.role != "owner":
+            raise HTTPException(status_code=403, detail="Permission insuffisante")
+
         user = db.query(UserDB).filter(UserDB.email == current_user.email).first()
 
         if not user:
