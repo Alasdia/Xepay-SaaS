@@ -708,10 +708,9 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
         if (!response.ok) {
             let message = data.detail || "Erreur";
 
-            if (data.detail === "Permission insuffisante") {
-                message = "Seul le propriétaire du compte peut modifier le mot de passe";
-            }
-
+          if (data.detail?.includes("Permission insuffisante")) {
+            message = "Seul le propriétaire du compte peut modifier le mot de passe";
+          }
             throw new Error(message);
         }
         showToast("Mot de passe mis à jour");
