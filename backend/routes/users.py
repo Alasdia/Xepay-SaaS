@@ -458,33 +458,38 @@ def change_password(
     db: Session = Depends(get_db)
 ):
     try:
-        if current_user.role != "owner":
-            raise HTTPException(status_code=403, detail="Permission insuffisante")
+        member = (
+            db.query(WorkspaceUser)
+            .filter(
+                WorkspaceUser.user_id == current_user.id,
+                WorkspaceUser.workspace_id == current_user.workspace_id
+            )
+            .first()
+        )
 
+        if not member or member.role != "owner":
+            raise HTTPException(
+                status_code=403,
+                detail="Permission insuffisante"
+            )
         user = db.query(UserDB).filter(UserDB.email == current_user.email).first()
 
         if not user:
             raise HTTPException(status_code=404, detail="Utilisateur introuvable")
 
-        # vérifier mot de passe actuel
         if not verify_password(data.current_password, user.password):
             raise HTTPException(status_code=400, detail="Mot de passe actuel incorrect")
 
-        # vérifier confirmation
         if data.new_password != data.confirm_password:
             raise HTTPException(status_code=400, detail="Les nouveaux mots de passe ne correspondent pas")
 
-        # sécurité mini
         if len(data.new_password) < 8:
             raise HTTPException(status_code=400, detail="Minimum 8 caractères")
 
-        # empêcher même mdp
         if verify_password(data.new_password, user.password):
             raise HTTPException(status_code=400, detail="Le nouveau mot de passe doit être différent")
 
-        # hash nouveau mdp
         user.password = hash_password(data.new_password)
-
         db.commit()
 
         return {"success": True, "message": "Mot de passe mis à jour"}
