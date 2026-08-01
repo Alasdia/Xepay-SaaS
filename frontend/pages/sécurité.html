@@ -1031,18 +1031,13 @@ async function toggle2FA(enabled) {
 
   const toggle = document.getElementById("toggle-2fa");
 
-  // ACTIVATION
   if (enabled) {
-
     const modal = new bootstrap.Modal(
       document.getElementById("twoFaModal")
     );
-
     modal.show();
     return;
   }
-
-  // DÉSACTIVATION
   const token = localStorage.getItem("token");
 
   try {
@@ -1064,21 +1059,14 @@ async function toggle2FA(enabled) {
     }
 
     showToast("2FA désactivée avec succès");
-
     toggle.checked = false;
-
     document.getElementById("2fa-active").style.display = "none";
-
     document.getElementById("2fa-inactive").style.display = "block";
 
   } catch(err) {
-
     console.error(err);
-
     showToast("Impossible de désactiver la 2FA");
-
-    // remet le switch sur ON
-    toggle.checked = true;
+    toggle.checked =false;
   }
 }
 
