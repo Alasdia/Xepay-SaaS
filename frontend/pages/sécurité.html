@@ -692,8 +692,9 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
         const response = await fetch("https://api.alasdia.com/change-password", {
             method: "POST",
             headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + token
+              "Content-Type": "application/json",
+              "Authorization": "Bearer " + token,
+              "X-Workspace-Id": localStorage.getItem("workspace_id")
             },
             body: JSON.stringify({
                 current_password,
@@ -734,8 +735,8 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
 
         const response = await fetch("https://api.alasdia.com/me", {
             headers: {
-                "Authorization": "Bearer " + token,
-                "X-Workspace-Id": localStorage.getItem("workspace_id")
+              "Authorization": "Bearer " + token,
+              "X-Workspace-Id": localStorage.getItem("workspace_id")
             }
         });
 
