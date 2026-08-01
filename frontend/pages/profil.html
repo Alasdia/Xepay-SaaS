@@ -650,7 +650,28 @@ async function initStripe() {
   })
 
   if (!res.ok) {
-    console.error("Stripe API error")
+    let message = "Impossible de charger les informations Stripe";
+
+    try {
+      const errData = await res.json();
+      if (errData.detail === "Permission insuffisante") {
+        message = "Seul le propriétaire du compte peut configurer Stripe";
+      } else if (errData.detail) {
+        message = errData.detail;
+      }
+    } catch (e) {}
+
+    showToast(message, "error");
+
+    const badge = document.getElementById("stripe-status-badge")
+    badge.innerText = "Accès restreint"
+    badge.classList.remove("status-warn", "status-pending", "status-ok")
+    badge.classList.add("status-warn")
+
+    const btn = document.getElementById("stripe-action-btn")
+    btn.innerText = "Réservé au propriétaire"
+    btn.disabled = true
+
     return
   }
 
