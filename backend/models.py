@@ -40,6 +40,9 @@ class ProfileRequest(BaseModel):
     wallet_number: str
     doc_type: str
 
+class LoginTwoFAVerify(BaseModel):
+    email: str
+    code: str
 
 class PaymentCreate(BaseModel):
     email: str

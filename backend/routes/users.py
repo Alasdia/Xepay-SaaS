@@ -25,6 +25,7 @@ from fastapi.responses import FileResponse
 from fastapi import FastAPI, Request
 from backend.services.email_service import send_invitation_email, send_login_alert_email
 from math import ceil
+import random
 import requests
 import os
 import stripe
@@ -145,8 +146,6 @@ def login(
     form_data: OAuth2PasswordRequestForm = Depends(), 
     db: Session = Depends(get_db)
 ):
-    print("🚀 LOGIN hit")
-
     email = form_data.username
     password = form_data.password
 
@@ -168,8 +167,24 @@ def login(
             WorkspaceUser.user_id == user.id
         ).first()
 
-    ip = request.client.host
+    user.last_login = datetime.now(timezone.utc)
+    db.commit()
 
+    if user.two_factor_enabled:
+        otp_code = str(random.randint(100000, 999999))
+        user.two_factor_code = otp_code
+        user.two_factor_code_expires_at = datetime.utcnow() + timedelta(minutes=5)
+        db.commit()
+
+        print("OTP LOGIN 2FA:", otp_code)  # TODO: remplacer par envoi SMS réel
+
+        return {
+            "requires_2fa": True,
+            "email": user.email,
+            "workspace_id": workspace_user.workspace_id
+        }
+
+    ip = request.client.host
     device = request.headers.get(
         "user-agent",
         "Appareil inconnu"
@@ -234,8 +249,10 @@ from fastapi import HTTPException
 import requests
 
 @router.get("/auth/google/callback")
-def google_callback(code: str, db: Session = Depends(get_db)):
-
+def google_callback(
+    code: str, 
+    db: Session = Depends(get_db)
+):
     token_url = "https://oauth2.googleapis.com/token"
 
     data = {
@@ -336,7 +353,21 @@ def google_callback(code: str, db: Session = Depends(get_db)):
         )
 
     workspace_id = membership.workspace_id
-    
+
+    if user.two_factor_enabled:
+        otp_code = str(random.randint(100000, 999999))
+        user.two_factor_code = otp_code
+        user.two_factor_code_expires_at = datetime.utcnow() + timedelta(minutes=5)
+        db.commit()
+
+        print("OTP LOGIN 2FA:", otp_code)  # TODO: remplacer par envoi SMS réel
+
+        return RedirectResponse(
+            url=f"https://alasdia.com/verify-2fa.html?email={user.email}&workspace_id={workspace_id}"
+        )
+
+    token = create_access_token({"sub": user.email})
+
     return RedirectResponse(
         url=f"https://alasdia.com/dashboard.html?token={token}&workspace_id={workspace_id}"
     )

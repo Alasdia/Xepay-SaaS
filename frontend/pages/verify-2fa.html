@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vérification 2FA - Xepay</title>
+<style>
+body { font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f8fafc; }
+.card { background: white; padding: 32px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 320px; text-align: center; }
+input { width: 100%; padding: 12px; font-size: 18px; text-align: center; letter-spacing: 4px; border: 1px solid #d1d5db; border-radius: 10px; margin: 16px 0; box-sizing: border-box; }
+button { width: 100%; padding: 12px; background: #f0b429; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+.error { color: #ef4444; font-size: 14px; margin-top: 8px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h4><i class="fa-solid fa-lock"></i> Vérification en 2 étapes</h4>
+    <p>Entrez le code reçu par SMS</p>
+    <input type="text" id="code" placeholder="123456" maxlength="6">
+    <button onclick="verify()">Vérifier</button>
+    <div id="error" class="error"></div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const email = params.get("email");
+    const workspaceId = params.get("workspace_id");
+
+    async function verify() {
+      const code = document.getElementById("code").value;
+      const errorEl = document.getElementById("error");
+      errorEl.textContent = "";
+
+      try {
+        const res = await fetch("https://api.alasdia.com/auth/2fa/verify-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            email, 
+            code 
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          errorEl.textContent = data.detail || "Erreur";
+          return;
+        }
+
+        localStorage.setItem("token", data.access_token);
+        localStorage.setItem("workspace_id", data.workspace_id || workspaceId);
+        window.location.href = "dashboard.html";
+
+      } catch (err) {
+        errorEl.textContent = "Erreur réseau, réessayez";
+      }
+    }
+  </script>
+</body>
+</html>
