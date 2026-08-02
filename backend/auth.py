@@ -8,6 +8,9 @@ from backend.security import decode_token, jwt, JWTError, SECRET_KEY, ALGORITHM
 from fastapi.security import OAuth2PasswordBearer
 from jose import JOSEError, ExpiredSignatureError
 import random
+from backend.models import UserDB, TwoFASetupRequest, TwoFAVerifyRequest, WorkspaceUser, LoginTwoFAVerify
+from backend.security import decode_token, jwt, JWTError, SECRET_KEY, ALGORITHM, create_access_token
+from pydantic import BaseModel
 
 router = APIRouter()
 
@@ -33,10 +36,8 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Invalid token")
 
     email = payload.get("sub")
-    print("TOKEN EMAIL:", email)
 
     user = db.query(UserDB).filter(UserDB.email == email).first()
-    print("USER FOUND:", user.email if user else None)
 
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
@@ -52,8 +53,6 @@ def setup_2fa(
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-
-    # Générer OTP à 6 chiffres
     code = str(random.randint(100000, 999999))
 
     current_user.two_factor_phone = data.phone
@@ -61,10 +60,8 @@ def setup_2fa(
     current_user.two_factor_code_expires_at = (
         datetime.utcnow() + timedelta(minutes=5)
     )
-
     db.commit()
 
-    # TODO: envoyer SMS via Twilio, Orange, etc.
     print("OTP 2FA:", code)
 
     return {
@@ -83,32 +80,26 @@ def verify_2fa(
             status_code=400,
             detail="Aucun code à vérifier"
         )
-
-    # Vérifier le code
+    
     if current_user.two_factor_code != data.code:
         raise HTTPException(
             status_code=400,
             detail="Code incorrect"
         )
-
-    # Vérifier qu'un code existe
+    
     if not current_user.two_factor_code_expires_at:
         raise HTTPException(
             status_code=400,
             detail="Aucun code de vérification en attente"
         )
 
-    # Vérifier expiration
     if current_user.two_factor_code_expires_at < datetime.utcnow():
         raise HTTPException(
             status_code=400,
             detail="Code expiré"
         )
-
-    # Activer le 2FA
+    
     current_user.two_factor_enabled = True
-
-    # Nettoyer le code utilisé
     current_user.two_factor_code = None
     current_user.two_factor_code_expires_at = None
 
@@ -123,14 +114,12 @@ def disable_2fa(
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-
     if not current_user.two_factor_enabled:
         raise HTTPException(
             status_code=400,
             detail="Le 2FA est déjà désactivé"
         )
 
-    # Désactiver le 2FA
     current_user.two_factor_enabled = False
     current_user.two_factor_phone = None
     current_user.two_factor_code = None
@@ -140,4 +129,47 @@ def disable_2fa(
 
     return {
         "message": "2FA désactivée avec succès"
+    }
+
+@router.post("/auth/2fa/verify-login")
+def verify_login_2fa(
+    data: LoginTwoFAVerify,
+    db: Session = Depends(get_db)
+):
+    user = db.query(UserDB).filter(UserDB.email == data.email).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+
+    if not user.two_factor_code:
+        raise HTTPException(status_code=400, detail="Aucun code à vérifier")
+
+    if user.two_factor_code != data.code:
+        raise HTTPException(status_code=400, detail="Code incorrect")
+
+    if not user.two_factor_code_expires_at:
+        raise HTTPException(status_code=400, detail="Aucun code de vérification en attente")
+
+    if user.two_factor_code_expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Code expiré")
+
+    user.two_factor_code = None
+    user.two_factor_code_expires_at = None
+    db.commit()
+
+    workspace_user = db.query(WorkspaceUser).filter(
+        WorkspaceUser.user_id == user.id,
+        WorkspaceUser.role == "owner"
+    ).first()
+
+    if not workspace_user:
+        workspace_user = db.query(WorkspaceUser).filter(
+            WorkspaceUser.user_id == user.id
+        ).first()
+
+    token = create_access_token({"sub": user.email})
+
+    return {
+        "access_token": token,
+        "workspace_id": workspace_user.workspace_id
     }
