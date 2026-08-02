@@ -655,6 +655,14 @@ async function login() {
     const data = await response.json();
     console.log(data)
 
+    if (data.requires_2fa) {
+      showToast('info', 'VÉRIFICATION REQUISE', 'Un code de sécurité a été envoyé.', 3000);
+      setTimeout(() => {
+        window.location.href = `verify-2fa.html?email=${encodeURIComponent(data.email)}&workspace_id=${data.workspace_id}`;
+      }, 1000);
+      return;
+    }
+
     if (data.access_token &&  data.account_id) {
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('email', email);
