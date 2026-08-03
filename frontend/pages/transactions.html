@@ -535,9 +535,9 @@ body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
 
       <div class="col-md-4">
         <div class="card-epay">
-          <div class="kpi-label">Retrait en attente</div>
-          <h4 id="pending-withdraw" class="kpi-value red">0 XOF</h4>
-          <div class="kpi-sub">vers mobile money</div>
+          <div class="kpi-label">Montant verrouillé</div>
+          <h4 id="locked-amount" class="kpi-value yellow">0 XOF</h4>
+          <div id="locked-countdown" class="kpi-sub">Chargement...</div>
         </div>
       </div>
 
@@ -1269,12 +1269,8 @@ body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
           stats.pending_link || 0,
           stats.failed_links || 0
         )
-
         document.getElementById("success-rate").textContent =
           (stats.success_rate || 0) + "%"
-
-        document.getElementById("pending-withdraw").textContent =
-          (stats.pending_withdraw || 0).toLocaleString("fr-FR") + " XOF";
 
         renderStats(stats);
       } catch (error) {
@@ -1317,6 +1313,29 @@ body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
           setInterval(updateCountdown, 1000)
         } else {
           nextEl.innerText = "Disponible immédiatement"
+        }
+
+        const lockedAmountEl = document.getElementById("locked-amount");
+        if (lockedAmountEl) {
+          lockedAmountEl.innerText =
+            Number(data.pending || 0).toLocaleString("fr-FR", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            }) + " XOF";
+        }
+
+        const lockedCountdownEl = document.getElementById("locked-countdown");
+        if (lockedCountdownEl) {
+          if (data.next_available_at) {
+            const lockedTarget = new Date(data.next_available_at);
+            function updateLockedCountdown() {
+              lockedCountdownEl.innerText = formatCountdown(lockedTarget);
+            }
+            updateLockedCountdown();
+            setInterval(updateLockedCountdown, 1000);
+          } else {
+            lockedCountdownEl.innerText = "Aucun montant verrouillé";
+          }
         }
 
       } catch (err) {
