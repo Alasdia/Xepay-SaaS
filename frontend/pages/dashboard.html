@@ -894,10 +894,6 @@ table{ color:#374151 !important; }
         document.getElementById("total-xof").innerText =
           (data.total_received || 0).toLocaleString("fr-FR") + " XOF"
 
-        // ⏳ Retrait en attente
-        document.getElementById("pending-withdraw").innerText =
-          (data.pending_withdraw || 0).toLocaleString("fr-FR") + " XOF"
-
         // 📊 Progression
         const planRes = await fetch("https://api.alasdia.com/me/plan", {
             headers: {
