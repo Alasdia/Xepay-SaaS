@@ -267,7 +267,6 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
             now = datetime.now(timezone.utc)
 
             wallet.balance += amount_local 
-            wallet.available += amount_local
 
             stripe_available_on = balance_tx["available_on"]
 
