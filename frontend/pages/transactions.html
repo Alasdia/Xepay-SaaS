@@ -1238,9 +1238,12 @@ body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
       const paidEl = document.getElementById("links-paid");
       const barEl = document.getElementById("links-progress-bar");
 
-      if (createdEl) createdEl.innerText = `${plan.links_used} / ${plan.links_limit}`;
-      if (paidEl) paidEl.innerText = `${plan.paid_count} paiements sur ${plan.paid_limit} liens`;
+      const linksLimitText = plan.links_limit === null ? "Illimité" : plan.links_limit;
+      const paidLimitText = plan.paid_limit === null ? "Illimité" : plan.paid_limit;
 
+      if (createdEl) createdEl.innerText = `${plan.links_used} / ${linksLimitText}`;
+      if (paidEl) paidEl.innerText = `${plan.paid_count} paiements sur ${paidLimitText} liens`;
+ 
       if (barEl) {
         const pct = plan.paid_limit > 0
           ? Math.min(100, (plan.paid_count / plan.paid_limit) * 100)
@@ -1248,7 +1251,6 @@ body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
         barEl.style.width = pct + "%";
       }
     }
-
     async function loadStats() {
       try {
         const token = localStorage.getItem("token");
