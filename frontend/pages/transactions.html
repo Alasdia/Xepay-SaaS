@@ -1217,7 +1217,7 @@ body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
     }
     console.log("DATA =", transactions);
 
-    function renderStats(stats, plan) {
+    function renderStats(stats) {
       document.getElementById("total-xof").innerText =
         (stats.total_received || 0).toLocaleString("fr-FR") + " XOF";
 
@@ -1232,40 +1232,32 @@ body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
         stats.pending_links || 0,
         stats.failed_links || 0
       );
-      console.log("PLAN =", window.GLOBAL_PLAN)
-      console.log("STATS =", window.LAST_STATS)
-      const paid = window.GLOBAL_PLAN?.paid_count ?? 0;
-      const paidLimit = window.GLOBAL_PLAN?.paid_limit ?? 0;
-
+    }
+    function renderLinksKPI(plan) {
       const createdEl = document.getElementById("links-created");
       const paidEl = document.getElementById("links-paid");
-      const barEL = document.getElementById("links-progress-bar");
+      const barEl = document.getElementById("links-progress-bar");
 
-      if (createdEl) createdEl.innerText = `${paid} / ${paidLimit}`;
+      if (createdEl) createdEl.innerText = `${plan.links_used} / ${plan.links_limit}`;
+      if (paidEl) paidEl.innerText = `${plan.paid_count} paiements sur ${plan.paid_limit} liens`;
 
-      if (paidEl) paidEl.innerText = `${paid} paiements sur ${paidLimit} liens`;
-
-      // 👉 barre de progression
-      if (barEL) {
-        const pct = paidLimit > 0
-          ? Math.min(100, (paid / paidLimit) * 100)
+      if (barEl) {
+        const pct = plan.paid_limit > 0
+          ? Math.min(100, (plan.paid_count / plan.paid_limit) * 100)
           : 0;
-
-        barEL.style.width = pct + "%";
+        barEl.style.width = pct + "%";
       }
     }
 
     async function loadStats() {
       try {
         const token = localStorage.getItem("token");
-
         const response = await fetch("https://api.alasdia.com/stats", {
             headers: {
                 Authorization: "Bearer " + token,
                 "X-Workspace-Id": localStorage.getItem("workspace_id")
             }
         });
-
         const stats = await response.json();
         window.LAST_STATS = stats;
         console.log(stats)
@@ -1283,7 +1275,6 @@ body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
           (stats.pending_withdraw || 0).toLocaleString("fr-FR") + " XOF";
 
         renderStats(stats);
-
       } catch (error) {
         console.error("Erreur stats:", error);
       }
@@ -1612,7 +1603,6 @@ async function loadUser() {
 async function loadPlan() {
   try {
     const token = localStorage.getItem("token");
-
     const res = await fetch("https://api.alasdia.com/me/plan", {
       headers: {
         Authorization: "Bearer " + token,
@@ -1620,41 +1610,17 @@ async function loadPlan() {
       }
     });
     const plan = await res.json();
-    console.log("PLAN:", plan);
     window.GLOBAL_PLAN = plan;
 
-    renderPlan(plan);
-    if (window.LAST_STATS) {
-      renderStats(window.LAST_STATS, window.GLOBAL_PLAN);
-    }
-
-  } catch (err) {
-    console.error("Erreur loadPlan:", err);
-  }
-  function renderPlan(plan) {
     const el = document.getElementById("plan-name");
     if (el) el.textContent = plan.plan;
 
     const el2 = document.getElementById("plan-limit");
-    if (el2) el2.textContent =
-      plan.paid_limit === null ? "Illimité" : plan.paid_limit;
+    if (el2) el2.textContent = plan.paid_limit === null ? "Illimité" : plan.paid_limit;
 
-    const createdEl = document.getElementById("links-created");
-    const paidEl = document.getElementById("links-paid");
-    const progress = document.getElementById("links-progress-bar");
-
-    if (createdEl) {
-      createdEl.textContent = `${plan.links_used} / ${plan.links_limit}`;
-    }
-
-    if (paidEl) {
-      paidEl.textContent = plan.paid_count;
-    }
-
-    if (progress && plan.links_limit) {
-      const percent = (plan.links_used / plan.links_limit) * 100;
-      progress.style.width = percent + "%";
-    }
+    renderLinksKPI(plan);
+  } catch (err) {
+    console.error("Erreur loadPlan:", err);
   }
 }
 
