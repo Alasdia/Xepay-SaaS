@@ -53,27 +53,25 @@ def get_wallet(
         WalletTransaction.user_id == owner_id
     ).all()
 
-    for tx in txs:
-        print({
-            "status": tx.status,
-            "available_at": tx.available_at,
-            "amount": tx.amount
-        })
+    locked_amount = sum(
+        tx.amount for tx in txs
+        if tx.type == "deposit" and tx.available_at and tx.available_at > now
+    )
 
     next_available = db.query(WalletTransaction.available_at)\
         .filter(
             WalletTransaction.user_id == owner_id,
             WalletTransaction.type == "deposit",
-            WalletTransaction.available_at != None
+            WalletTransaction.available_at != None,
+            WalletTransaction.available_at > now
         )\
         .order_by(WalletTransaction.available_at.desc())\
         .first()
-    
-    print("NEXT:", next_available)
 
     return {
         "available": wallet.available,
         "pending": wallet.pending,
+        "locked_amount": locked_amount,
         "next_available_at": next_available[0] if next_available else None
     }
 

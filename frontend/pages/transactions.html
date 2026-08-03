@@ -518,7 +518,7 @@ body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
                 Retirer
               </button>
             </div>
-            <div id="wallet-next" class="kpi-sub">Chargement...</div>
+            <div class="kpi-sub">Disponible maintenant</div>
           </div>
 
           <div id="walletHistoryPopup" class="wallet-popup">
@@ -1302,28 +1302,15 @@ body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
           }) + " XOF"
-        if (data.next_available_at) {
-          const target = new Date(data.next_available_at)
-
-          function updateCountdown() {
-            nextEl.innerText = formatCountdown(target)
-          }
-
-          updateCountdown()
-          setInterval(updateCountdown, 1000)
-        } else {
-          nextEl.innerText = "Disponible immédiatement"
-        }
 
         const lockedAmountEl = document.getElementById("locked-amount");
         if (lockedAmountEl) {
           lockedAmountEl.innerText =
-            Number(data.pending || 0).toLocaleString("fr-FR", {
+            Number(data.locked_amount || 0).toLocaleString("fr-FR", {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2
             }) + " XOF";
         }
-
         const lockedCountdownEl = document.getElementById("locked-countdown");
         if (lockedCountdownEl) {
           if (data.next_available_at) {
