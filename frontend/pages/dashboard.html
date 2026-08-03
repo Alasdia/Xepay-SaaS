@@ -905,22 +905,23 @@ table{ color:#374151 !important; }
         const planData = await planRes.json()
         console.log("PLAN DATA FRONT:", planData)
 
-        const displayUsed = planData.paid_count || 0;
-        const displayLimit = planData.paid_limit === null ? 10 : (planData.paid_limit || 10);
+        const visibleLinks = document.querySelectorAll("#links-container > div")
 
-        const percent = displayLimit > 0
-          ? Math.min(100, (displayUsed / displayLimit) * 100)
-          : 0;
+        const displayUsed = visibleLinks.length
+        const displayLimit = 10
+
+        const percent = (displayUsed / displayLimit) * 100
 
         const bar = document.querySelector(".progress-bar-custom")
         if (bar) {
-          bar.style.width = percent + "%"
+         bar.style.width = percent + "%"
         }
 
         const usage = document.getElementById("plan-usage")
         if (usage) {
-          usage.innerText = `${displayUsed} / ${displayLimit}`
+         usage.innerText = `${displayUsed} / ${displayLimit}`
         }
+
       } catch (err) {
         console.error("Erreur KPI:", err)
       }
