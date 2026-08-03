@@ -1241,7 +1241,7 @@ body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
       const linksLimitText = plan.links_limit === null ? "Illimité" : plan.links_limit;
       const paidLimitText = plan.paid_limit === null ? "Illimité" : plan.paid_limit;
 
-      if (createdEl) createdEl.innerText = `${plan.links_used} / ${linksLimitText}`;
+      if (createdEl) createdEl.innerText = `${plan.paid_count} / ${linksLimitText}`;
       if (paidEl) paidEl.innerText = `${plan.paid_count} paiements sur ${paidLimitText} liens`;
  
       if (barEl) {
