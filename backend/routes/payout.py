@@ -25,8 +25,6 @@ print(stripe.api_key)
 
 router = APIRouter()
 
-print("🔥 FICHIER CHARGÉ 🔥")
-
 @router.get("/wallet/me")
 def get_wallet(
     db: Session = Depends(get_db), 
@@ -50,29 +48,28 @@ def get_wallet(
     now = datetime.now(timezone.utc)
 
     txs = db.query(WalletTransaction).filter(
-        WalletTransaction.user_id == owner_id
+        WalletTransaction.user_id == owner_id,
+        WalletTransaction.type == "deposit"
     ).all()
+
+    available_amount = sum(
+        tx.amount for tx in txs
+        if not tx.available_at or tx.available_at <= now
+    )
 
     locked_amount = sum(
         tx.amount for tx in txs
         if tx.type == "deposit" and tx.available_at and tx.available_at > now
     )
 
-    next_available = db.query(WalletTransaction.available_at)\
-        .filter(
-            WalletTransaction.user_id == owner_id,
-            WalletTransaction.type == "deposit",
-            WalletTransaction.available_at != None,
-            WalletTransaction.available_at > now
-        )\
-        .order_by(WalletTransaction.available_at.desc())\
-        .first()
+    future_dates = [tx.available_at for tx in txs if tx.available_at and tx.available_at > now]
+    next_available_at = min(future_dates) if future_dates else None
 
     return {
-        "available": wallet.available,
-        "pending": wallet.pending,
+        "available": available_amount,
+        "pending_withdrawal": wallet.pending,
         "locked_amount": locked_amount,
-        "next_available_at": next_available[0] if next_available else None
+        "next_available_at": next_available_at
     }
 
 
