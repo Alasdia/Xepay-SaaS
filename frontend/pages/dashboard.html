@@ -470,36 +470,36 @@ table{ color:#374151 !important; }
     <!-- KPI rapides -->
     <!-- FINANCE -->
     <div class="row g-3 mb-3">
-
         <!-- Solde disponible -->
         <div class="col-md-4">
-            <div class="wallet-hover-wrapper position-relative">
+          <div class="wallet-hover-wrapper position-relative">
 
-                <div class="card-epay p-3">
-                   <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                           <small class="text-muted"> Total Solde</small>
-                           <h4 id="wallet-balance" class="fw-bold mt-1 text-success">0 XOF</h4>
-                        </div>
-
-                        <button 
-                            id="withdrawBtn"
-                            class="btn btn-outline-light"
-                        >
-                          Retirer
-                        </button>
-                    </div>
+            <div class="card-epay p-3">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <small class="text-muted"> Total Solde</small>
+                  <h4 id="wallet-balance" class="fw-bold mt-1 text-success">0 XOF</h4>
                 </div>
+
+                <button 
+                    id="withdrawBtn"
+                    class="btn btn-outline-light"
+                >
+                  Retirer
+                </button>
+              </div>
+              <small class="text-muted d-block mt-1">Disponible maintenant</small>
             </div>
-            <p id="nextAvailableText" style="color: orange; font-size: 14px;"></p>
+          </div>
         </div>
 
-        <!-- Retrait en attente -->
+        <!-- Montant verrouillé -->
         <div class="col-md-4">
-            <div class="card-epay p-3">
-                <small class="text-muted">Retrait en attente</small>
-                <h4 id="pending-withdraw" class="fw-bold mt-1 text-danger">0 XOF</h4>
-            </div>
+          <div class="card-epay p-3">
+            <small class="text-muted">Montant verrouillé</small>
+            <h4 id="locked-amount" class="fw-bold mt-1 text-danger">0 XOF</h4>
+            <small id="nextAvailableText" class="text-muted d-block mt-1"></small>
+          </div>
         </div>
 
         <!-- Total reçu -->
@@ -932,31 +932,90 @@ table{ color:#374151 !important; }
     }
     loadKPI()
 
+    let lockedCountdownTimer = null;
+
     async function chargerWallet() {
       try {
         const res = await fetch("https://api.alasdia.com/wallet/me", {
-            headers: {
-                Authorization: "Bearer " + localStorage.getItem("token"),
-                "X-Workspace-Id": localStorage.getItem("workspace_id")
-            }
+          headers: {
+            Authorization: "Bearer " + localStorage.getItem("token"),
+            "X-Workspace-Id": localStorage.getItem("workspace_id")
+          }
         });
 
         const data = await res.json();
 
         const balanceEl = document.getElementById("wallet-balance");
-
         balanceEl.innerText =
-            Number(data.available || 0).toLocaleString("fr-FR", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
+          Number(data.available || 0).toLocaleString("fr-FR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          }) + " XOF";
+
+        const lockedEl = document.getElementById("locked-amount");
+        if (lockedEl) {
+          lockedEl.innerText =
+            Number(data.locked_amount || 0).toLocaleString("fr-FR", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
             }) + " XOF";
+        }
+
+        if (lockedCountdownTimer) {
+          clearInterval(lockedCountdownTimer);
+          lockedCountdownTimer = null;
+        }
+
+        if (data.next_available_at) {
+          startCountdown(data.next_available_at);
+        } else {
+          const el = document.getElementById("nextAvailableText");
+          if (el) el.innerText = "Aucun montant verrouillé";
+        }
 
       } catch (err) {
         console.error("Erreur wallet:", err);
       }
     }
     chargerWallet()
-    
+
+    function startCountdown(nextAvailableAt) {
+      const el = document.getElementById("nextAvailableText");
+      const btn = document.getElementById("withdrawBtn");
+
+      function update() {
+        const now = new Date();
+        const future = new Date(nextAvailableAt);
+        const diff = future - now;
+
+        if (diff <= 0) {
+          if (el) el.innerText = "✅ Disponible maintenant";
+          if (btn) btn.disabled = false;
+          if (lockedCountdownTimer) {
+            clearInterval(lockedCountdownTimer);
+            lockedCountdownTimer = null;
+          }
+          return;
+        }
+
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor(diff / (1000 * 60 * 60)) % 24;
+        const minutes = Math.floor(diff / (1000 * 60)) % 60;
+        const seconds = Math.floor(diff / 1000) % 60;
+
+        let text = "";
+        if (days > 0) text += `${days}j `;
+        if (hours > 0 || days > 0) text += `${hours}h `;
+        if (minutes > 0 || hours > 0) text += `${minutes}min `;
+        text += `${seconds}s`;
+
+        if (el) el.innerText = "Disponible dans " + text;
+      }
+
+      lockedCountdownTimer = setInterval(update, 1000);
+      update();
+    }
+
     async function createLink() {
 
       const amount = document.getElementById("amount").value
@@ -1388,64 +1447,6 @@ async function upgrade(plan) {
 
    window.location.href = data.url
 }
-
-fetch("https://api.alasdia.com/wallet/me", {
-  headers: {
-    "Authorization": "Bearer " + token,
-    "X-Workspace-Id": localStorage.getItem("workspace_id")
-  }
-})
-.then(res => res.json())
-.then(data => {
-  console.log("NEXT:", data.next_available_at);
-  console.log("WALLET:", data);
-
-  document.getElementById("wallet-balance").innerText =
-    data.available.toLocaleString("fr-FR") + " XOF";
-
-  document.getElementById("pending-withdraw").innerText =
-    data.pending.toLocaleString("fr-FR") + " XOF";
-
-  if (data.next_available_at) {
-    startCountdown(data.next_available_at);
-
-  }
-  function startCountdown(nextAvailableAt) {
-    const el = document.getElementById("nextAvailableText");
-    const btn = document.getElementById("withdrawBtn");
-
-    function update() {
-        const now = new Date();
-        const future = new Date(nextAvailableAt);
-
-        const diff = future - now;
-
-        if (diff <= 0) {
-            el.innerText = "✅ Disponible maintenant";
-            btn.disabled = false;
-            if (timer) {
-              clearInterval(timer);
-            }
-            return;
-        }
-
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor(diff / (1000 * 60 * 60)) % 24;
-        const minutes = Math.floor(diff / (1000 * 60)) % 60;
-        const seconds = Math.floor(diff / 1000) % 60;
-
-        let text = "";
-        if (days > 0) text += `${days}j `;
-        if (hours > 0 || days > 0) text += `${hours}h `;
-        if (minutes > 0 || hours > 0) text += `${minutes}min `;
-        text += `${seconds}s`;
-
-        el.innerText = "Disponible dans " + text;
-    }
-    let timer = setInterval(update, 1000);
-    update();
-  }
-});
 </script>
 <script>
 const params = new URLSearchParams(window.location.search)
