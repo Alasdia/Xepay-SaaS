@@ -48,12 +48,14 @@ def get_wallet(
     now = datetime.now(timezone.utc)
 
     txs = db.query(WalletTransaction).filter(
-        WalletTransaction.user_id == owner_id,
-        WalletTransaction.type == "deposit"
+        WalletTransaction.user_id == owner_id
     ).all()
 
-    available_amount = sum(
-        tx.amount for tx in txs
+    deposits = [tx for tx in txs if tx.type == "deposit"]
+    withdrawals = [tx for tx in txs if tx.type == "withdraw"]
+
+    unlocked_deposits = sum(
+        tx.amount for tx in deposits
         if not tx.available_at or tx.available_at <= now
     )
 
@@ -61,6 +63,13 @@ def get_wallet(
         tx.amount for tx in txs
         if tx.type == "deposit" and tx.available_at and tx.available_at > now
     )
+
+    withdrawn_total = sum(
+        tx.amount for tx in withdrawals
+        if tx.status in ("pending", "processing", "success")
+    )
+
+    available_amount = unlocked_deposits - withdrawn_total
 
     future_dates = [tx.available_at for tx in txs if tx.available_at and tx.available_at > now]
     next_available_at = min(future_dates) if future_dates else None
