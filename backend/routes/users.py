@@ -6,6 +6,7 @@ from backend.auth import get_current_user
 from backend.services.workspace_service import (
     get_workspace_owner_id
 )
+from backend.services.sms_service import send_2fa_sms
 from backend.security import verify_password, create_access_token
 from backend.middleware.authorization import require_admin, require_owner, require_member, require_manager
 from fastapi.security import OAuth2PasswordRequestForm
@@ -176,7 +177,7 @@ def login(
         user.two_factor_code_expires_at = datetime.utcnow() + timedelta(minutes=5)
         db.commit()
 
-        print("OTP LOGIN 2FA:", otp_code)  # TODO: remplacer par envoi SMS réel
+        send_2fa_sms(user.two_factor_phone, otp_code)
 
         return {
             "requires_2fa": True,
@@ -360,7 +361,7 @@ def google_callback(
         user.two_factor_code_expires_at = datetime.utcnow() + timedelta(minutes=5)
         db.commit()
 
-        print("OTP LOGIN 2FA:", otp_code)  # TODO: remplacer par envoi SMS réel
+        send_2fa_sms(user.two_factor_phone, otp_code)
 
         return RedirectResponse(
             url=f"https://alasdia.com/verify-2fa.html?email={user.email}&workspace_id={workspace_id}"
