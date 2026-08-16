@@ -183,7 +183,7 @@ class UserDB(Base):
     account_id = Column(String, unique=True, index=True, nullable=False, default=generate_account_id)
     email = Column(String, index=True, unique=True)
     password = Column(String)
-    two_factor_enabled = Column(Boolean, default=True)
+    two_factor_enabled = Column(Boolean, default=False)
     two_factor_phone = Column(String, nullable=True)
     two_factor_code = Column(String, nullable=True)
     two_factor_code_expires_at = Column(DateTime, nullable=True)
