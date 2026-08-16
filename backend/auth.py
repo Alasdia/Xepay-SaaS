@@ -10,6 +10,7 @@ from jose import JOSEError, ExpiredSignatureError
 import random
 from backend.models import UserDB, TwoFASetupRequest, TwoFAVerifyRequest, WorkspaceUser, LoginTwoFAVerify
 from backend.security import decode_token, jwt, JWTError, SECRET_KEY, ALGORITHM, create_access_token
+from backend.services.sms_service import send_2fa_sms
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -62,7 +63,7 @@ def setup_2fa(
     )
     db.commit()
 
-    print("OTP 2FA:", code)
+    send_2fa_sms(data.phone, code)
 
     return {
         "message": "Code de vérification envoyé"
