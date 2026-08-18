@@ -9,10 +9,17 @@ client = Client(TWILIO_SID, TWILIO_AUTH)
 
 def send_2fa_sms(phone: str, code: str):
     try:
-        client.messages.create(
+        message = client.messages.create(
             body=f"Xepay — votre code de vérification : {code}",
             from_=TWILIO_FROM,
             to=phone
         )
+        print("✅ SMS envoyé")
+        print("Twilio SID:", message.sid)
+
+        return True
+
     except Exception as e:
-        print("❌ Erreur envoi SMS 2FA:", e)
+        print("❌ Erreur Twilio:", repr(e))
+        return False
+    

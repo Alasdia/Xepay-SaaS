@@ -63,7 +63,13 @@ def setup_2fa(
     )
     db.commit()
 
-    send_2fa_sms(data.phone, code)
+    sent = send_2fa_sms(data.phone, code)
+
+    if not sent:
+        raise HTTPException(
+            status_code=500,
+            detail="Impossible d'envoyer le SMS"
+        )
 
     return {
         "message": "Code de vérification envoyé"
