@@ -86,6 +86,11 @@ table{ color:#374151 !important; }
 .custom-table tbody td{ color:#374151 !important; border-bottom:1px solid #f3f4f6 !important; }
 .progress{ background:#f3f4f6; }
 .progress-bar{ background:#facc15 !important; }
+.toast-notif { position: fixed; top: 24px; right: 24px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; }
+.toast-notif-item { min-width: 280px; max-width: 380px; background: #ffffff; border: 1px solid #e5e7eb; border-left: 4px solid #22c55e; border-radius: 12px; padding: 14px 18px; box-shadow: 0 10px 30px rgba(0,0,0,.12); font-size: 14px; color: #111827; display: flex; align-items: flex-start; gap: 10px; opacity: 0; transform: translateX(20px); animation: toastIn 0.3s ease forwards; }
+.toast-notif-item.error { border-left-color: #ef4444; }
+.toast-notif-item.warning { border-left-color: #facc15; }
+.toast-notif-item .icon { font-size: 16px; margin-top: 1px; }
 
         /* Inputs spacing */
         .modal-body {
