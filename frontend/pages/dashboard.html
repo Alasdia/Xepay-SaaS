@@ -978,34 +978,6 @@ table{ color:#374151 !important; }
       }
     }
     chargerWallet()
-    
-    async function retirerArgent() {
-      const token = localStorage.getItem("token");
-
-      try {
-        const response = await fetch("https://api.alasdia.com/withdraw", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + token,
-            "X-Workspace-Id": localStorage.getItem("workspace_id")
-          },
-          body: JSON.stringify({ /* ... */ })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          let message = data.detail || "Erreur";
-          if (data.detail?.includes("Permission insuffisante")) {
-            message = "Seul le propriétaire du compte peut effectuer un retrait";
-          }
-          throw new Error(message);
-        }
-      } catch (error) {
-        showToast(error.message, "error");
-      }
-    }
 
     function startCountdown(nextAvailableAt) {
       const el = document.getElementById("nextAvailableText");
@@ -1324,16 +1296,17 @@ async function submitWithdraw() {
     if (!res.ok) {
       console.log("DETAIL:", data.detail);
 
-      let message = data.detail?.message || "Erreur";
+      let message = data.detail || "Erreur";
+      if (message.includes("Permission insuffisante")) {
+        message = "Seul le propriétaire du compte peut effectuer un retrait";
+      }
 
-      // 👉 si date dispo existe
       if (data.detail?.next_available_at) {
         const date = new Date(data.detail.next_available_at);
-
         message += `\n⏳ Disponible le ${date.toLocaleDateString("fr-FR")}`;
       }
 
-      showToast(message);
+      showToast(message, "error");
 
       btn.innerText = "Confirmer";
       btn.disabled = false;
