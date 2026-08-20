@@ -979,6 +979,57 @@ table{ color:#374151 !important; }
     }
     chargerWallet()
 
+    const confirmBtn = document.getElementById("confirmWithdrawBtn");
+
+    if (confirmBtn) {
+      confirmBtn.addEventListener("click", async () => {
+      const token = localStorage.getItem("token");
+
+      const amount = parseFloat(document.getElementById("withdrawAmount").value);
+      
+      if (!amount || amount <= 0) {
+        alert("Montant invalide");
+        return;
+      }
+      try {
+        const res = await fetch("https://api.alasdia.com/withdraw", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+            "X-Workspace-Id": localStorage.getItem("workspace_id")
+          },
+          body: JSON.stringify({
+            amount,
+          })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          let message = "Impossible d'effectuer ce retrait";
+
+          if (data.detail === "Permission insuffisante") {
+            message = "Seul le propriétaire du compte peut effectuer un retrait";
+          } else if (typeof data.detail === "string") {
+            message = data.detail;
+          }
+          showToast(message, "error");
+          closeWithdrawModalCleanly();
+          return;
+        }
+        showToast("Retrait envoyé avec succès");
+        closeWithdrawModalCleanly();
+        document.getElementById("withdrawAmount").value = "";
+
+        setTimeout(() => location.reload(), 1200);
+
+      } catch (err) {
+        showToast("Erreur serveur, veuillez réessayer", "error");
+        closeWithdrawModalCleanly();
+      }
+    });
+    }
+
     function startCountdown(nextAvailableAt) {
       const el = document.getElementById("nextAvailableText");
       const btn = document.getElementById("withdrawBtn");
