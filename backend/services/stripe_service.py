@@ -38,16 +38,7 @@ def create_checkout_session(
 
         stripe_account_id = profile.stripe_account_id
 
-        print("DESTINATION:", stripe_account_id)
-
         account = stripe.Account.retrieve(stripe_account_id)
-        print("CAPABILITIES:", account.capabilities)
-
-        print("ACCOUNT ID DEBUG:", stripe_account_id)
-        
-        print("FINAL AMOUNT BEFORE STRIPE:", amount)
-
-        print("FINAL CURRENCY BEFORE STRIPE:", currency)
         
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
