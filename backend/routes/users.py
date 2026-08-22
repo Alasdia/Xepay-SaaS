@@ -348,7 +348,7 @@ def google_callback(
 
     if user.two_factor_enabled:
         return RedirectResponse(
-            url=f"https://alasdia.com/verify-2fa.html?email={user.email}&workspace_id={workspace_id}"
+            url=f"https://alasdia.com/login.html?requires_2fa=true&email={user.email}&workspace_id={workspace_id}"
         )
     
     token = create_access_token({"sub": user.email})
