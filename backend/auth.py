@@ -7,7 +7,10 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import UserDB, TwoFAVerifyRequest, WorkspaceUser, LoginTwoFAVerify
 from datetime import datetime, timezone
-from backend.security import decode_token, jwt, JWTError, SECRET_KEY, ALGORITHM, create_access_token
+from backend.security import (
+    decode_token, jwt, JWTError, SECRET_KEY, ALGORITHM, create_access_token,
+    encrypt_secret, decrypt_secret
+)
 from fastapi.security import OAuth2PasswordBearer
 from jose import JOSEError, ExpiredSignatureError
 
@@ -48,7 +51,7 @@ def setup_2fa(
     db: Session = Depends(get_db)
 ):
     secret = pyotp.random_base32()
-    current_user.two_factor_secret = secret
+    current_user.two_factor_secret = encrypt_secret(secret)
     db.commit()
 
     totp = pyotp.TOTP(secret)
@@ -74,7 +77,8 @@ def verify_2fa(
     if not current_user.two_factor_secret:
         raise HTTPException(status_code=400, detail="Aucun secret 2FA en attente")
 
-    totp = pyotp.TOTP(current_user.two_factor_secret)
+    decrypted = decrypt_secret(current_user.two_factor_secret)
+    totp = pyotp.TOTP(decrypted)
 
     if not totp.verify(data.code, valid_window=1):
         raise HTTPException(status_code=400, detail="Code incorrect")
@@ -110,7 +114,8 @@ def verify_login_2fa(
     if not user or not user.two_factor_secret:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable ou 2FA non configuré")
 
-    totp = pyotp.TOTP(user.two_factor_secret)
+    decrypted = decrypt_secret(user.two_factor_secret)
+    totp = pyotp.TOTP(decrypted)
 
     if not totp.verify(data.code, valid_window=1):
         raise HTTPException(status_code=400, detail="Code incorrect")
