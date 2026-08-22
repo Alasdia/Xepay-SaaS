@@ -495,13 +495,26 @@ body { font-family:var(--font-b); background:var(--bg); color:var(--white); curs
           </div>
         </div>
       </div>
+      <!-- 2FA CODE (hidden by default) -->
+      <div class="field" id="twofa-field" style="display:none">
+        <label class="field-label">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><rect x="3" y="11" width="18" height="11" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            Code d'authentification
+          </label>
+        <div class="input-wrap">
+          <div class="input-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="11" width="18" height="11" rx="2.5" stroke="var(--cyan)" stroke-width="1.5"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="var(--cyan)" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </div>
+          <input type="text" id="twofa-code" placeholder="123456" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+        </div>
+      </div>
 
       <div class="forgot-row">
         <a href="#" class="forgot-link">Mot de passe oublié ?</a>
       </div>
 
       <!-- SUBMIT -->
-      <button onclick="login()" class="btn-submit" id="btnLogin">
+      <button onclick="handleSubmit()" class="btn-submit" id="btnLogin">
         Se connecter →
       </button>
 
@@ -624,6 +637,18 @@ function togglePw() {
   }
 }
 
+let awaitingTwoFa = false;
+let twoFaEmail = '';
+let twoFaWorkspaceId = '';
+
+function handleSubmit() {
+  if (awaitingTwoFa) {
+    verifyTwoFaCode();
+  } else {
+    login();
+  }
+}
+
 async function login() {
   const btn = document.getElementById('btnLogin');
   const email = document.getElementById('email').value.trim();
@@ -653,31 +678,28 @@ async function login() {
     });
 
     const data = await response.json();
-    console.log(data)
+    console.log(data);
 
     if (data.requires_2fa) {
-      showToast('info', 'VÉRIFICATION REQUISE', 'Entrez le code de votre application d\'authentification.', 3000);
-      setTimeout(() => {
-        window.location.href = `verify-2fa.html?email=${encodeURIComponent(data.email)}&workspace_id=${data.workspace_id}`;
-      }, 1000);
+      awaitingTwoFa = true;
+      twoFaEmail = data.email;
+      twoFaWorkspaceId = data.workspace_id;
+
+      document.getElementById('twofa-field').style.display = 'block';
+      document.getElementById('email').disabled = true;
+      document.getElementById('password').disabled = true;
+
+      btn.innerHTML = 'Vérifier →';
+      btn.disabled = false;
+
+      showToast('info', 'VÉRIFICATION REQUISE', 'Entrez le code de votre application d\'authentification.', 4000);
+
+      setTimeout(() => document.getElementById('twofa-code').focus(), 100);
       return;
     }
 
-    if (data.access_token &&  data.account_id) {
-      localStorage.setItem('token', data.access_token);
-      localStorage.setItem('email', email);
-      localStorage.setItem("workspace_id", data.workspace_id);
-
-      btn.classList.add('success');
-      btn.innerHTML = `
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:6px"><path d="M20 6L9 17l-5-5" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Connecté — Redirection...
-      `;
-      showToast('success', 'CONNEXION RÉUSSIE', 'Bienvenue sur votre dashboard Xepay.', 3000);
-      setTimeout(() => { 
-        window.location.href = `dashboard.html?account_id=${data.account_id}`;
-      }, 1200);
-
+    if (data.access_token && data.account_id) {
+      finalizeLogin(data.access_token, email, data.workspace_id, data.account_id);
     } else {
       showToast('error', 'ACCÈS REFUSÉ', 'Email ou mot de passe incorrect. Vérifiez vos identifiants.');
       btn.innerHTML = 'Se connecter →';
@@ -691,8 +713,64 @@ async function login() {
   }
 }
 
+async function verifyTwoFaCode() {
+  const btn = document.getElementById('btnLogin');
+  const code = document.getElementById('twofa-code').value.trim();
+
+  if (!code || code.length !== 6) {
+    showToast('warning', 'CODE INVALIDE', 'Entrez un code à 6 chiffres.');
+    return;
+  }
+
+  btn.innerHTML = '<span class="spin"></span>Vérification...';
+  btn.disabled = true;
+
+  try {
+    const response = await fetch('https://api.alasdia.com/auth/2fa/verify-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: twoFaEmail, code })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || 'Code incorrect');
+    }
+    finalizeLogin(data.access_token, twoFaEmail, data.workspace_id, null);
+
+  } catch (error) {
+    showToast('error', 'CODE INCORRECT', error.message);
+    btn.innerHTML = 'Vérifier →';
+    btn.disabled = false;
+    document.getElementById('twofa-code').value = '';
+    document.getElementById('twofa-code').focus();
+  }
+}
+
+function finalizeLogin(token, email, workspaceId, accountId) {
+  const btn = document.getElementById('btnLogin');
+
+  localStorage.setItem('token', token);
+  localStorage.setItem('email', email);
+  localStorage.setItem('workspace_id', workspaceId);
+
+  btn.classList.add('success');
+  btn.innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:6px"><path d="M20 6L9 17l-5-5" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Connecté — Redirection...
+  `;
+  showToast('success', 'CONNEXION RÉUSSIE', 'Bienvenue sur votre dashboard Xepay.', 3000);
+
+  setTimeout(() => {
+    window.location.href = accountId
+      ? `dashboard.html?account_id=${accountId}`
+      : `dashboard.html`;
+  }, 1200);
+}
+
 /* ─── ENTER KEY ─── */
-document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+document.addEventListener('keydown', e => { if (e.key === 'Enter') handleSubmit(); });
 
 /* ─── GOOGLE LOGIN ─── */
 function loginWithGoogle() {
