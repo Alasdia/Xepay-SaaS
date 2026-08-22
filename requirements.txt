@@ -16,4 +16,5 @@ openai
 reportlab
 resend
 matplotlib
-twilio
+pyotp
+qrcode[pil]

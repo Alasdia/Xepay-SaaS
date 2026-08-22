@@ -24,9 +24,6 @@ class User(BaseModel):
     password: str
     invite_token: Optional[str] = None
 
-class TwoFASetupRequest(BaseModel):
-    phone: str
-
 class TwoFAVerifyRequest(BaseModel):
     code: str
 
@@ -184,9 +181,7 @@ class UserDB(Base):
     email = Column(String, index=True, unique=True)
     password = Column(String)
     two_factor_enabled = Column(Boolean, default=False)
-    two_factor_phone = Column(String, nullable=True)
-    two_factor_code = Column(String, nullable=True)
-    two_factor_code_expires_at = Column(DateTime, nullable=True)
+    two_factor_secret = Column(String, nullable=True) 
     status = Column(String, default="active")
     last_login = Column(DateTime, nullable=True)
     owner_id = Column(String, ForeignKey("users.id"), nullable=True)
