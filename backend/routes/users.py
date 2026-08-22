@@ -6,7 +6,6 @@ from backend.auth import get_current_user
 from backend.services.workspace_service import (
     get_workspace_owner_id
 )
-from backend.services.sms_service import send_2fa_sms
 from backend.security import verify_password, create_access_token
 from backend.middleware.authorization import require_admin, require_owner, require_member, require_manager
 from fastapi.security import OAuth2PasswordRequestForm
@@ -26,7 +25,6 @@ from fastapi.responses import FileResponse
 from fastapi import FastAPI, Request
 from backend.services.email_service import send_invitation_email, send_login_alert_email
 from math import ceil
-import random
 import requests
 import os
 import stripe
@@ -172,13 +170,6 @@ def login(
     db.commit()
 
     if user.two_factor_enabled:
-        otp_code = str(random.randint(100000, 999999))
-        user.two_factor_code = otp_code
-        user.two_factor_code_expires_at = datetime.utcnow() + timedelta(minutes=5)
-        db.commit()
-
-        send_2fa_sms(user.two_factor_phone, otp_code)
-
         return {
             "requires_2fa": True,
             "email": user.email,
@@ -356,17 +347,10 @@ def google_callback(
     workspace_id = membership.workspace_id
 
     if user.two_factor_enabled:
-        otp_code = str(random.randint(100000, 999999))
-        user.two_factor_code = otp_code
-        user.two_factor_code_expires_at = datetime.utcnow() + timedelta(minutes=5)
-        db.commit()
-
-        send_2fa_sms(user.two_factor_phone, otp_code)
-
         return RedirectResponse(
             url=f"https://alasdia.com/verify-2fa.html?email={user.email}&workspace_id={workspace_id}"
         )
-
+    
     token = create_access_token({"sub": user.email})
 
     return RedirectResponse(
@@ -616,9 +600,7 @@ def get_profile(
         "email": current_user.email,
         "phone": profile.phone,
         "two_factor_enabled": current_user.two_factor_enabled,
-        "two_factor_phone": current_user.two_factor_phone
     }
-
 
 @router.get("/me/user-plan")
 def get_my_plan(

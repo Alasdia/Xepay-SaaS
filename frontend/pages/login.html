@@ -656,7 +656,7 @@ async function login() {
     console.log(data)
 
     if (data.requires_2fa) {
-      showToast('info', 'VÉRIFICATION REQUISE', 'Un code de sécurité a été envoyé.', 3000);
+      showToast('info', 'VÉRIFICATION REQUISE', 'Entrez le code de votre application d\'authentification.', 3000);
       setTimeout(() => {
         window.location.href = `verify-2fa.html?email=${encodeURIComponent(data.email)}&workspace_id=${data.workspace_id}`;
       }, 1000);
