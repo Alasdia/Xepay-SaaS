@@ -794,8 +794,32 @@ function loginWithGoogle() {
   setTimeout(() => { window.location.href = url; }, 800);
 }
 
+/* ─── CHECK 2FA FROM URL (Google OAuth redirect) ─── */
+window.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+
+  if (params.get('requires_2fa') === 'true') {
+    awaitingTwoFa = true;
+    twoFaEmail = params.get('email');
+    twoFaWorkspaceId = params.get('workspace_id');
+
+    document.getElementById('twofa-field').style.display = 'block';
+    document.getElementById('email').value = twoFaEmail;
+    document.getElementById('email').disabled = true;
+    document.getElementById('password').disabled = true;
+    document.querySelector('.btn-google').style.display = 'none';
+
+    document.getElementById('btnLogin').innerHTML = 'Vérifier →';
+
+    showToast('info', 'VÉRIFICATION REQUISE', 'Entrez le code de votre application d\'authentification.', 4000);
+
+    setTimeout(() => document.getElementById('twofa-code').focus(), 100);
+  }
+});
+
 /* ─── DEMO: show info toast on load ─── */
 window.addEventListener('load', () => {
+  if (new URLSearchParams(window.location.search).get('requires_2fa') === 'true') return;
   setTimeout(() => {
     showToast('info', 'XEPAY', 'Connectez-vous pour accéder à votre dashboard.', 5000);
   }, 800);
