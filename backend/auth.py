@@ -2,7 +2,7 @@ import pyotp
 import qrcode
 import base64
 from io import BytesIO
-from fastapi import Header, HTTPException, Depends, APIRouter
+from fastapi import Header, HTTPException, Depends, APIRouter, Request
 from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import UserDB, TwoFAVerifyRequest, WorkspaceUser, LoginTwoFAVerify
@@ -13,7 +13,7 @@ from backend.security import (
 )
 from fastapi.security import OAuth2PasswordBearer
 from jose import JOSEError, ExpiredSignatureError
-
+from backend.services.email_service import send_login_alert_email
 router = APIRouter()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -107,6 +107,7 @@ def disable_2fa(
 @router.post("/auth/2fa/verify-login")
 def verify_login_2fa(
     data: LoginTwoFAVerify,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     user = db.query(UserDB).filter(UserDB.email == data.email).first()
@@ -131,6 +132,15 @@ def verify_login_2fa(
         ).first()
 
     token = create_access_token({"sub": user.email})
+
+    if user.alert_login:
+        ip = request.client.host
+        device = request.headers.get("user-agent", "Appareil inconnu")
+        send_login_alert_email(
+            email=user.email,
+            device=device,
+            ip=ip
+        )
 
     return {
         "access_token": token,
