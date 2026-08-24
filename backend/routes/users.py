@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.database import engine, get_db
-from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, PlanUpdate, Link, SecurityAlertsRequest, ForgotPasswordRequest
+from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, PlanUpdate, Link, SecurityAlertsRequest
 from backend.auth import get_current_user
 from backend.services.workspace_service import (
     get_workspace_owner_id
