@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
 from backend.database import Base
 from sqlalchemy import Column, String, Boolean
 from sqlalchemy import Column, Integer, String, Float, DateTime
@@ -20,9 +20,22 @@ def generate_account_id():
     )
 
 class User(BaseModel):
-    email: str
+    email: EmailStr
     password: str
     invite_token: Optional[str] = None
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class VerifyForgotPasswordRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(..., min_length=6, max_length=6)
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(..., min_length=6, max_length=6)
+    new_password: str = Field(..., min_length=8)
+    confirm_password: str = Field(..., min_length=8)
 
 class TwoFAVerifyRequest(BaseModel):
     code: str

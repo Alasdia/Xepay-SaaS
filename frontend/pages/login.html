@@ -510,9 +510,27 @@ body { font-family:var(--font-b); background:var(--bg); color:var(--white); curs
       </div>
 
       <div class="forgot-row">
-        <a href="#" class="forgot-link">Mot de passe oublié ?</a>
+        <a href="#" class="forgot-link" onclick="toggleForgotPassword(event)">Mot de passe oublié ?</a>
       </div>
 
+      <!-- FORGOT PASSWORD FIELDS (hidden by default) -->
+      <div id="forgot-fields" style="display:none">
+        <div class="field">
+          <label class="field-label">Nouveau mot de passe</label>
+          <div class="input-wrap">
+            <input type="password" id="forgot-new-pwd" placeholder="••••••••••">
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">Confirmer le mot de passe</label>
+          <div class="input-wrap">
+            <input type="password" id="forgot-confirm-pwd" placeholder="••••••••••">
+          </div>
+        </div>
+        <button class="btn-submit" onclick="submitForgotPassword()" style="margin-bottom:12px">
+          Réinitialiser →
+        </button>
+      </div>
       <!-- SUBMIT -->
       <button onclick="handleSubmit()" class="btn-submit" id="btnLogin">
         Se connecter →
@@ -647,6 +665,26 @@ function handleSubmit() {
   } else {
     login();
   }
+}
+function toggleForgotPassword(e) {
+  e.preventDefault();
+  const fields = document.getElementById('forgot-fields');
+  fields.style.display = fields.style.display === 'none' ? 'block' : 'none';
+}
+async function submitForgotPassword() {
+  const email = document.getElementById('email').value.trim();
+  const new_password = document.getElementById('forgot-new-pwd').value;
+  const confirm_password = document.getElementById('forgot-confirm-pwd').value;
+
+  if (!email || !new_password || !confirm_password) {
+    showToast('warning', 'CHAMPS MANQUANTS', 'Remplissez tous les champs.');
+    return;
+  }
+  if (new_password !== confirm_password) {
+    showToast('error', 'ERREUR', 'Les mots de passe ne correspondent pas.');
+    return;
+  }
+  showToast('info', 'BIENTÔT', 'Cette fonctionnalité arrive prochainement.');
 }
 
 async function login() {
