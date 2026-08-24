@@ -24,8 +24,10 @@ import os, shutil
 from fastapi.responses import FileResponse
 from fastapi import FastAPI, Request
 from backend.services.email_service import send_invitation_email, send_login_alert_email
+from backend.security import hash_password, verify_password, decrypt_secret
 from math import ceil
 import requests
+import pyotp
 import os
 import stripe
 import secrets
@@ -505,48 +507,32 @@ def change_password(
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/forgot-password")
-def forgot_password(
-    data: ForgotPasswordRequest,
-    db: Session = Depends(get_db)
-):
-    user = db.query(UserDB).filter(
-        UserDB.email == data.email
-    ).first()
-
-    if not user:
-        raise HTTPException(status_code=404, detail="Compte introuvable")
-
-    return {
-        "message": "Veuillez saisir votre code Google Authenticator"
-    }
-@router.post("/verify-forgot-password")
-def verify_forgot_password(
-    data: VerifyForgotPasswordRequest,
-    db: Session = Depends(get_db)
-):
-    user = db.query(UserDB).filter(
-        UserDB.email == data.email
-    ).first()
-
-    if not user:
-        raise HTTPException(status_code=404, detail="Compte introuvable")
-
-    return {
-        "message": "Code vérifié"
-    }
-
 @router.post("/reset-password")
 def reset_password(
     data: ResetPasswordRequest,
     db: Session = Depends(get_db)
 ):
+    user = db.query(UserDB).filter(UserDB.email == data.email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Compte introuvable")
+
+    if not user.two_factor_secret:
+        raise HTTPException(status_code=400, detail="L'authentification 2FA n'est pas configurée pour ce compte")
+
+    secret = decrypt_secret(user.two_factor_secret)
+    totp = pyotp.TOTP(secret)
+
+    if not totp.verify(data.code):
+        raise HTTPException(status_code=400, detail="Code Google Authenticator invalide ou expiré")
+
     if data.new_password != data.confirm_password:
         raise HTTPException(status_code=400, detail="Les mots de passe ne correspondent pas")
 
-    return {
-        "message": "Mot de passe mis à jour"
-    }
+    user.password = hash_password(data.new_password)
+    db.commit()
+
+    return {"message": "Mot de passe mis à jour avec succès"}
+
 
 @router.get("/me")
 def get_me(
