@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.database import engine, get_db
-from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, PlanUpdate, Link, SecurityAlertsRequest
+from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, PlanUpdate, Link, SecurityAlertsRequest, ForgotPasswordRequest
 from backend.auth import get_current_user
 from backend.services.workspace_service import (
     get_workspace_owner_id
@@ -16,7 +16,7 @@ from backend.security import hash_password
 from fastapi import Request
 import hashlib
 from datetime import datetime, timedelta
-from backend.models import WorkspaceUser, Profile, WorkspaceInvite
+from backend.models import WorkspaceUser, Profile, WorkspaceInvite, VerifyForgotPasswordRequest, ResetPasswordRequest
 from uuid import UUID
 from fastapi import Form, File, UploadFile, Header
 from fastapi.responses import RedirectResponse
@@ -504,6 +504,49 @@ def change_password(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/forgot-password")
+def forgot_password(
+    data: ForgotPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    user = db.query(UserDB).filter(
+        UserDB.email == data.email
+    ).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Compte introuvable")
+
+    return {
+        "message": "Veuillez saisir votre code Google Authenticator"
+    }
+@router.post("/verify-forgot-password")
+def verify_forgot_password(
+    data: VerifyForgotPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    user = db.query(UserDB).filter(
+        UserDB.email == data.email
+    ).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Compte introuvable")
+
+    return {
+        "message": "Code vérifié"
+    }
+
+@router.post("/reset-password")
+def reset_password(
+    data: ResetPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    if data.new_password != data.confirm_password:
+        raise HTTPException(status_code=400, detail="Les mots de passe ne correspondent pas")
+
+    return {
+        "message": "Mot de passe mis à jour"
+    }
 
 @router.get("/me")
 def get_me(
