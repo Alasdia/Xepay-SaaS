@@ -16,7 +16,7 @@ from backend.security import hash_password
 from fastapi import Request
 import hashlib
 from datetime import datetime, timedelta
-from backend.models import WorkspaceUser, Profile, WorkspaceInvite, VerifyForgotPasswordRequest, ResetPasswordRequest
+from backend.models import WorkspaceUser, Profile, WorkspaceInvite, ResetPasswordRequest
 from uuid import UUID
 from fastapi import Form, File, UploadFile, Header
 from fastapi.responses import RedirectResponse
