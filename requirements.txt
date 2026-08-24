@@ -18,3 +18,4 @@ resend
 matplotlib
 pyotp
 qrcode[pil]
+pydantic[email]
