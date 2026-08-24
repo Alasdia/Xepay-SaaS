@@ -25,6 +25,7 @@ class LogMiddleware(BaseHTTPMiddleware):
             "/pay",
             "/ai",
             "/invites/accept",
+            "/reset-password"
         ]
         print("PATH:", request.url.path)
 
