@@ -512,14 +512,9 @@ body { font-family:var(--font-b); background:var(--bg); color:var(--white); curs
       <div class="forgot-row">
         <a href="#" class="forgot-link" onclick="toggleForgotPassword(event)">Mot de passe oublié ?</a>
       </div>
-      <!-- FORGOT PASSWORD FIELDS -->
+
+      <!-- FORGOT PASSWORD FIELDS (hidden by default) -->
       <div id="forgot-fields" style="display:none">
-        <div class="field">
-          <label class="field-label">Code Google Authenticator (2FA)</label>
-          <div class="input-wrap">
-            <input type="text" id="forgot-code" placeholder="123456" maxlength="6" inputmode="numeric">
-          </div>
-        </div>
         <div class="field">
           <label class="field-label">Nouveau mot de passe</label>
           <div class="input-wrap">
@@ -532,9 +527,24 @@ body { font-family:var(--font-b); background:var(--bg); color:var(--white); curs
             <input type="password" id="forgot-confirm-pwd" placeholder="••••••••••">
           </div>
         </div>
-        <button class="btn-submit" type="button" onclick="submitForgotPassword()" id="btnResetPwd" style="margin-bottom:12px">
-          Réinitialiser le mot de passe →
+        <button class="btn-submit" onclick="submitForgotPassword()" style="margin-bottom:12px">
+          Réinitialiser →
         </button>
+      </div>
+      <!-- SUBMIT -->
+      <button onclick="handleSubmit()" class="btn-submit" id="btnLogin">
+        Se connecter →
+      </button>
+
+      <div class="card-divider"></div>
+
+      <div class="card-footer">
+        Pas encore de compte ? <a href="signup.html">Créer un compte</a>
+      </div>
+
+      <div class="sec-strip">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><rect x="3" y="11" width="18" height="11" rx="2.5" stroke="rgba(255,255,255,.18)" stroke-width="1.8"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="rgba(255,255,255,.18)" stroke-width="1.8" stroke-linecap="round"/></svg>
+        TRANSACTIONS SÉCURISÉES · DONNÉES PROTÉGÉES
       </div>
 
     </div>
@@ -661,19 +671,13 @@ function toggleForgotPassword(e) {
   const fields = document.getElementById('forgot-fields');
   fields.style.display = fields.style.display === 'none' ? 'block' : 'none';
 }
-
 async function submitForgotPassword() {
   const email = document.getElementById('email').value.trim();
-  const code = document.getElementById('forgot-code').value.trim();
   const new_password = document.getElementById('forgot-new-pwd').value;
   const confirm_password = document.getElementById('forgot-confirm-pwd').value;
 
-  if (!email || !code || !new_password || !confirm_password) {
-    showToast('warning', 'CHAMPS MANQUANTS', 'Veuillez remplir tous les champs.');
-    return;
-  }
-  if (code.length !== 6) {
-    showToast('warning', 'CODE INVALIDE', 'Le code Authenticator doit faire 6 chiffres.');
+  if (!email || !new_password || !confirm_password) {
+    showToast('warning', 'CHAMPS MANQUANTS', 'Remplissez tous les champs.');
     return;
   }
   if (new_password !== confirm_password) {
@@ -681,33 +685,21 @@ async function submitForgotPassword() {
     return;
   }
 
-  const btn = document.getElementById('btnResetPwd');
-  btn.innerHTML = '<span class="spin"></span>Réinitialisation...';
-  btn.disabled = true;
-
   try {
     const res = await fetch('https://api.alasdia.com/reset-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: email,
-        code: code,
-        new_password: new_password,
-        confirm_password: confirm_password
-      })
+      body: JSON.stringify({ email, new_password, confirm_password })
     });
 
     const data = await res.json();
+
     if (!res.ok) throw new Error(data.detail || 'Erreur lors de la réinitialisation');
 
-    showToast('success', 'SUCCÈS', 'Mot de passe mis à jour avec succès.');
-    
+    showToast('success', 'SUCCÈS', 'Mot de passe mis à jour. Vous pouvez vous connecter.');
     document.getElementById('forgot-fields').style.display = 'none';
   } catch (err) {
     showToast('error', 'ERREUR', err.message);
-  } finally {
-    btn.innerHTML = 'Réinitialiser le mot de passe →';
-    btn.disabled = false;
   }
 }
 
