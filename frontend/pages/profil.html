@@ -344,20 +344,34 @@ body { background: #f8fafc !important; color: #111827 !important; }
 
 <!-- CARD RETRAIT -->
 <div class="col-md-6">
-  <div class="card-epay p-4 h-100">
-    <h6 class="fw-bold mb-3 text-muted"><i class="fa-solid fa-credit-card"></i> Retraits</h6>
+  <div class="card-epay p-4 h-100 d-flex flex-column justify-content-between">
+    <div>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold mb-0 text-muted"><i class="fa-solid fa-credit-card"></i> Retraits & Comptes US</h6>
+        <span class="badge bg-warning text-dark" style="font-size: 11px;">Requis pour Stripe</span>
+      </div>
 
-    <p class="text-muted small mb-2">
-      Les fonds sont envoyés via Stripe vers :
-    </p>
+      <p class="text-muted small mb-2">
+        Les fonds sont envoyés via Stripe vers des comptes bancaires internationaux (Europe / US).
+      </p>
 
-    <div class="text-warning small">
-      <i class="fa-solid fa-triangle-exclamation warning-icon"></i> Les retraits ne sont disponibles que vers des comptes bancaires internationaux (Europe / US).
+      <div class="text-warning small mb-3 text-muted">
+        <i class="fa-solid fa-triangle-exclamation"></i> Les méthodes locales (Mobile Money, banques africaines) ne sont pas supportées actuellement.
+      </div>
+
+      <!-- Encadré Incitatif LLC -->
+      <div class="p-3 mb-3" style="background: rgba(240, 180, 41, 0.08); border: 1px dashed rgba(240, 180, 41, 0.4); border-radius: 12px;">
+        <small class="d-block fw-bold text-dark mb-1">🚀 Vous n'avez pas d'entreprise enregistrée aux US ?</small>
+        <small class="text-muted d-block" style="font-size: 0.8rem; line-height: 1.3;">
+          Créez votre LLC et obtenez votre compte bancaire professionnel en quelques jours pour activer vos retraits.
+        </small>
+      </div>
     </div>
 
-    <div class="text-muted small mt-1">
-      Les méthodes locales (Mobile Money, banques africaines) ne sont pas supportées actuellement.
-    </div>
+    <!-- Bouton d'affiliation Firstbase -->
+    <a href="https://get.firstbase.io/lzqmlclh3nr9" target="_blank" rel="noopener noreferrer" class="btn btn-warning w-100 fw-bold text-dark text-decoration-none d-flex align-items-center justify-content-center gap-2">
+      Créer ma LLC & Compte US <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.8rem;"></i>
+    </a>
   </div>
 </div>
 
