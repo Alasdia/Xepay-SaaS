@@ -1233,7 +1233,7 @@ body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
         stats.failed_links || 0
       );
     }
-    function renderLinksKPI(plan, stats) {
+    function renderLinksKPI(plan) {
       const createdEl = document.getElementById("links-created");
       const paidEl = document.getElementById("links-paid");
       const barEl = document.getElementById("links-progress-bar");
@@ -1241,8 +1241,8 @@ body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
       const linksLimitText = plan.links_limit === null ? "Illimité" : plan.links_limit;
       const paidLimitText = plan.paid_limit === null ? "Illimité" : plan.paid_limit;
 
-      if (createdEl) createdEl.innerText = `${stats.paid_count} / ${linksLimitText}`;
-      if (paidEl) paidEl.innerText = `${stats.paid_count} paiements sur ${paidLimitText} liens`;
+      if (createdEl) createdEl.innerText = `${plan.paid_count} / ${linksLimitText}`;
+      if (paidEl) paidEl.innerText = `${plan.paid_count} paiements sur ${paidLimitText} liens`;
  
       if (barEl) {
         const pct = plan.paid_limit > 0
@@ -1626,13 +1626,12 @@ async function loadPlan() {
     const el2 = document.getElementById("plan-limit");
     if (el2) el2.textContent = plan.paid_limit === null ? "Illimité" : plan.paid_limit;
 
-    if (window.LAST_STATS) {
-      renderLinksKPI(plan, window.LAST_STATS);
-    }
+    renderLinksKPI(plan);
   } catch (err) {
     console.error("Erreur loadPlan:", err);
   }
 }
+
 function updatePlanUI(plan) {
   const badge = document.getElementById("badge-plan")
 
