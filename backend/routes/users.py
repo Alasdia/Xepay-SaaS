@@ -547,7 +547,6 @@ def get_me(
         db
     )
 
-    # 🔹 garantir wallet (idempotent)
     wallet = db.query(Wallet).filter(Wallet.user_id == owner_id).first()
 
     if not wallet:
@@ -565,10 +564,15 @@ def get_me(
     workspace_owner = db.query(UserDB).filter(
         UserDB.id == owner_id
     ).first()
+    if workspace_owner:
+        db.refresh(workspace_owner)
 
     return {
         "email": user.email,
         "plan": getattr(workspace_owner, "plan", "free"),
+        "subscription_status": getattr(workspace_owner, "subscription_status", "active"),
+        "cancel_at_period_end": getattr(workspace_owner, "cancel_at_period_end", False),
+        "plan_expires_at": getattr(workspace_owner, "plan_expires_at", None),
         "wallet": {
             "balance": wallet.balance,
             "created_at": wallet.created_at
@@ -670,6 +674,11 @@ def get_plan(
         UserDB.id == owner_id
     ).first()
 
+    if not workspace_user:
+        raise HTTPException(status_code=404, detail="Propriétaire du workspace introuvable")
+    
+    db.refresh(workspace_user)
+
     plan = getattr(workspace_user, "plan", "free")
     limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
     
@@ -708,13 +717,25 @@ def get_plan(
             "CREATED_AT:",
             l.created_at
         )
+    is_expired = False
+    if workspace_user.plan_expires_at:
+        is_expired = workspace_user.plan_expires_at < now
 
     return {
-        "plan": plan,
-        "links_used": links_count,
-        "links_limit": limits["links"],
-        "paid_count": paid_count,
-        "paid_limit": limits["paid"]
+        "plan": plan if not is_expired else "free",
+        "subscription_status": getattr(workspace_user, "subscription_staus", "active"),
+        "cancel_at_period_end": getattr(workspace_user, "cancel_at_period_end", False),
+        "plan_started_at": workspace_user.plan_started_at,
+        "plan_expires_at": workspace_user.plan_expires_at,
+        "is_expired": is_expired,
+        "stripe_customer_id": getattr(workspace_user, "stripe_customer_id", None),
+        "stripe_subscription_id": getattr(workspace_user, "stripe_subscription_id", None),
+        "usage": {
+            "links_used": links_count,
+            "links_limit": limits["links"],
+            "paid_count": paid_count,
+            "paid_limit": limits["paid"]
+        }
     }
 
 @router.post("/change-plan")
