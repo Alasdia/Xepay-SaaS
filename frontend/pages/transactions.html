@@ -1611,22 +1611,29 @@ async function loadUser() {
 async function loadPlan() {
   try {
     const token = localStorage.getItem("token");
+    const workspaceId = localStorage.getItem("workspace_id");
+
     const res = await fetch("https://api.alasdia.com/me/plan", {
       headers: {
-        Authorization: "Bearer " + token,
-        "X-Workspace-Id": localStorage.getItem("workspace_id")
+        "Authorization": "Bearer " + token,
+        "X-Workspace-Id": workspaceId
       }
     });
-    const plan = await res.json();
-    window.GLOBAL_PLAN = plan;
+
+    const data = await res.json();
+    window.GLOBAL_PLAN = data;
 
     const el = document.getElementById("plan-name");
-    if (el) el.textContent = plan.plan;
+    if (el) el.textContent = data.plan;
 
+    const paidLimit = data.usage ? data.usage.paid_limit : data.paid_limit;
     const el2 = document.getElementById("plan-limit");
-    if (el2) el2.textContent = plan.paid_limit === null ? "Illimité" : plan.paid_limit;
+    if (el2) {
+      el2.textContent = paidLimit === null || paidLimit === undefined ? "Illimité" : paidLimit;
+    }
 
-    renderLinksKPI(plan);
+    renderLinksKPI(data);
+
   } catch (err) {
     console.error("Erreur loadPlan:", err);
   }

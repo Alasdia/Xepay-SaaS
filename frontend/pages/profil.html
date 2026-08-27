@@ -520,28 +520,31 @@ body { background: #f8fafc !important; color: #111827 !important; }
 
 <script>
 async function loadUser() {
-
-  const token = localStorage.getItem("token")
+  const token = localStorage.getItem("token");
 
   if (!token) {
-    window.location.href = "login.html"
-    return
+    window.location.href = "login.html";
+    return;
   }
+  
+  try {
+    const res = await fetch("https://api.alasdia.com/me/plan", {
+      headers: {
+        "Authorization": "Bearer " + token,
+        "X-Workspace-Id": localStorage.getItem("workspace_id")
+      }
+    });
 
-  const res = await fetch("https://api.alasdia.com/me/user-plan", {
-    headers: {
-      "Authorization": "Bearer " + token,
-      "X-Workspace-Id": localStorage.getItem("workspace_id")
-    }
-  })
+    const data = await res.json();
+    console.log("PLAN DATA:", data);
 
-  const user = await res.json()
+    const planName = data.plan || "free";
+    localStorage.setItem("plan", planName);
 
-  console.log("USER:", user)
-
-  localStorage.setItem("plan", user.plan);
-
-  updatePlanUI(user.plan)
+    updatePlanUI(planName);
+  } catch (err) {
+    console.error("Erreur chargement plan:", err);
+  }
 }
 
 function updatePlanUI(plan) {
