@@ -742,11 +742,11 @@ def get_plan(
 @router.post("/me/plan/cancel")
 def cancel_user_subscription(
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_owner)
+    membership: WorkspaceUser = Depends(require_owner),
+    current_user: UserDB = Depends(get_current_user) 
 ):
-    workspace_user = membership
-    stripe_sub_id = workspace_user.stripe_subscription_id
-    
+    stripe_sub_id = current_user.stripe_subscription_id
+
     if not stripe_sub_id:
         raise HTTPException(status_code=400, detail="Aucun abonnement actif trouvé")
 
@@ -756,11 +756,11 @@ def cancel_user_subscription(
             cancel_at_period_end=True
         )
 
-        workspace_user.cancel_at_period_end = True
+        current_user.cancel_at_period_end = True
         db.commit()
 
         return {"message": "Abonnement résilié avec succès pour la fin de période"}
-        
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
