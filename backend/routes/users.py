@@ -38,14 +38,11 @@ router = APIRouter()
 
 
 @router.post("/signup")
-def signup(user: User, db: Session = Depends(get_db)):
+def signup(
+    user: User, 
+    db: Session = Depends(get_db)
+    ):
 
-    print("🔥 ENTER FUNCTION")
-
-    print("USER OBJ:", user)
-    print("USER DICT:", user.dict())
-    print("EMAIL:", user.email)
-    print("PASSWORD:", user.password)
     try:
         # ✅ vérifier si user existe
         existing = db.query(UserDB).filter(UserDB.email == user.email).first()
@@ -676,13 +673,13 @@ def get_plan(
     plan = getattr(workspace_user, "plan", "free")
     limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
     
-    start = workspace_user.plan_started_at
-    end = workspace_user.plan_expires_at
+    now = datetime.now(timezone.utc)
+    start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-    if not start or not end:
-        now = datetime.now(timezone.utc)
-        start = now - timedelta(days=30)
-        end = now 
+    if start.month == 12:
+        end = start.replace(year=start.year + 1, month=1)
+    else:
+        end = start.replace(month=start.month + 1)
 
     links_count = db.query(Link).filter(
         Link.user_id == owner_id,
