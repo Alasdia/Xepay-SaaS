@@ -335,10 +335,11 @@ body { background: #f8fafc !important; color: #111827 !important; }
     </p>
 
     <!-- ACTION PRINCIPALE -->
-    <button id="stripe-action-btn" class="btn btn-warning w-100 fw-bold text-muted">
+    <button id="stripe-action-btn" class="btn btn-warning w-100 fw-bold text-muted mb-5">
       Configurer Stripe
     </button>
 
+    <button id="btn-cancel-sub" onclick="cancelSubscription()">Résilier mon abonnement</button>
   </div>
 </div>
 
@@ -855,6 +856,29 @@ async function initStripe() {
 
     btn.innerText = "Compte entièrement vérifié ✅";
     btn.disabled = true;
+  }
+}
+
+async function cancelSubscription() {
+  try {
+    const res = await fetch("https://api.alasdia.com/me/plan/cancel", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + localStorage.getItem("token"),
+        "X-Workspace-Id": localStorage.getItem("workspace_id")
+      }
+    });
+
+    if (res.ok) {
+      showToast("Votre abonnement ne sera pas renouvelé à la fin de la période", "success");
+      loadUser(); 
+    } else {
+      const errorData = await res.json();
+      showToast(errorData.detail || "Échec de l'annulation", "error");
+    }
+  } catch (err) {
+    console.error("Erreur annulation :", err);
+    showToast("Erreur de connexion au serveur", "error");
   }
 }
 

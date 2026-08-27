@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.database import engine, get_db
-from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, PlanUpdate, Link, SecurityAlertsRequest
+from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, PlanUpdate, Link, SecurityAlertsRequest, wo
 from backend.auth import get_current_user
 from backend.services.workspace_service import (
     get_workspace_owner_id
@@ -739,6 +739,31 @@ def get_plan(
             "paid_limit": limits["paid"]
         }
     }
+@router.post("/me/plan/cancel")
+def cancel_user_subscription(
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_owner)
+):
+    workspace_user = membership
+    stripe_sub_id = workspace_user.stripe_subscription_id
+    
+    if not stripe_sub_id:
+        raise HTTPException(status_code=400, detail="Aucun abonnement actif trouvé")
+
+    try:
+        stripe.Subscription.modify(
+            stripe_sub_id,
+            cancel_at_period_end=True
+        )
+
+        workspace_user.cancel_at_period_end = True
+        db.commit()
+
+        return {"message": "Abonnement résilié avec succès pour la fin de période"}
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/change-plan")
 def change_plan(
