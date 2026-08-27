@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Header, HTTPException
 import stripe
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from backend.database import SessionLocal
 from backend.models import UserDB
 from backend.services.email_service import send_subscription_email
@@ -29,7 +29,6 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
     db = SessionLocal()
 
     try:
-        # 1. Premier achat via Stripe Checkout
         if event_type == "checkout.session.completed":
             session = event["data"]["object"].to_dict()
 
@@ -40,11 +39,9 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                     print("❌ ERREUR: Aucun subscription_id dans la session Checkout")
                     return {"status": "error", "message": "Missing subscription ID"}
 
-                # Récupération de l'abonnement complet auprès de Stripe
                 subscription_obj = stripe.Subscription.retrieve(subscription_id)
                 subscription = subscription_obj.to_dict()
 
-                # Récupération de la facture
                 invoice_id = subscription.get("latest_invoice")
                 invoice_pdf = None
                 hosted_invoice_url = None
@@ -54,7 +51,6 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                     invoice_pdf = invoice.get("invoice_pdf")
                     hosted_invoice_url = invoice.get("hosted_invoice_url")
 
-                # Récupération des métadonnées (Session prioritaires, puis Subscription)
                 session_meta = session.get("metadata") or {}
                 sub_meta = subscription.get("metadata") or {}
 
@@ -68,7 +64,6 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                 user = db.query(UserDB).filter(UserDB.id == user_id).first()
 
                 if user:
-                    # Accès sécurisé à current_period_end
                     period_end_timestamp = subscription.get("current_period_end")
                     if period_end_timestamp:
                         current_period_end = datetime.fromtimestamp(
@@ -76,8 +71,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                             tz=timezone.utc
                         )
                     else:
-                        # Solution de repli si Stripe ne renvoie pas le timestamp
-                        current_period_end = datetime.now(timezone.utc)
+                        current_period_end = datetime.now(timezone.utc) + timedelta(days=30)
 
                     user.plan = plan
                     user.plan_started_at = datetime.now(timezone.utc)
@@ -93,7 +87,6 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                         )
                     print(f"✅ PREMIER ACHAT ACTIVÉ POUR {user_id}")
 
-        # 2. Renouvellement ou changement de plan automatique
         elif event_type == "customer.subscription.updated":
             subscription = event["data"]["object"].to_dict()
             sub_meta = subscription.get("metadata") or {}
@@ -115,7 +108,6 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                     db.commit()
                     print(f"✅ ABONNEMENT PROLONGÉ JUSQU'À {current_period_end}")
 
-        # 3. Résiliation
         elif event_type == "customer.subscription.deleted":
             subscription = event["data"]["object"].to_dict()
             sub_meta = subscription.get("metadata") or {}
@@ -128,7 +120,6 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                 db.commit()
                 print("⚠️ ABONNEMENT RÉSILIÉ -> RETOUR AU PLAN FREE")
 
-        # 4. Échec de paiement de renouvellement
         elif event_type == "invoice.payment_failed":
             invoice = event["data"]["object"].to_dict()
             customer_email = invoice.get("customer_email")
