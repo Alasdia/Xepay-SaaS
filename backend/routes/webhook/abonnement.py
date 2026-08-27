@@ -31,20 +31,27 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
     try:
         # 1. Premier achat via Stripe Checkout
         if event_type == "checkout.session.completed":
-            session = event["data"]["object"]
+            # Conversion explicite en dictionnaire
+            session = event["data"]["object"].to_dict()
 
             if session.get("mode") == "subscription":
                 subscription_id = session.get("subscription")
-                subscription = stripe.Subscription.retrieve(subscription_id)
+                subscription_obj = stripe.Subscription.retrieve(subscription_id)
+                subscription = subscription_obj.to_dict()
 
                 invoice_id = subscription.get("latest_invoice")
-                invoice = stripe.Invoice.retrieve(invoice_id)
+                invoice_obj = stripe.Invoice.retrieve(invoice_id)
+                invoice = invoice_obj.to_dict()
+
                 invoice_pdf = invoice.get("invoice_pdf")
                 hosted_invoice_url = invoice.get("hosted_invoice_url")
 
-                # Récupération sécurisée depuis metadata session ou subscription
-                user_id = session.get("metadata", {}).get("user_id") or subscription.get("metadata", {}).get("user_id")
-                plan = session.get("metadata", {}).get("plan") or subscription.get("metadata", {}).get("plan", "pro")
+                # Récupération sécurisée dans metadata
+                session_meta = session.get("metadata") or {}
+                sub_meta = subscription.get("metadata") or {}
+
+                user_id = session_meta.get("user_id") or sub_meta.get("user_id")
+                plan = session_meta.get("plan") or sub_meta.get("plan", "pro")
 
                 user = db.query(UserDB).filter(UserDB.id == user_id).first()
 
@@ -68,14 +75,14 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
 
         # 2. Renouvellement ou changement de plan automatique
         elif event_type == "customer.subscription.updated":
-            subscription = event["data"]["object"]
+            subscription = event["data"]["object"].to_dict()
+            sub_meta = subscription.get("metadata") or {}
             
-            # Recherche par user_id dans metadata, sinon par customer Stripe ID dans votre BDD
-            user_id = subscription.get("metadata", {}).get("user_id")
+            user_id = sub_meta.get("user_id")
             user = db.query(UserDB).filter(UserDB.id == user_id).first() if user_id else None
 
             if user:
-                plan = subscription.get("metadata", {}).get("plan", user.plan)
+                plan = sub_meta.get("plan", user.plan)
                 status = subscription.get("status")
 
                 if status == "active":
@@ -90,8 +97,9 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
 
         # 3. Résiliation
         elif event_type == "customer.subscription.deleted":
-            subscription = event["data"]["object"]
-            user_id = subscription.get("metadata", {}).get("user_id")
+            subscription = event["data"]["object"].to_dict()
+            sub_meta = subscription.get("metadata") or {}
+            user_id = sub_meta.get("user_id")
 
             user = db.query(UserDB).filter(UserDB.id == user_id).first() if user_id else None
 
@@ -102,7 +110,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
 
         # 4. Échec de paiement de renouvellement
         elif event_type == "invoice.payment_failed":
-            invoice = event["data"]["object"]
+            invoice = event["data"]["object"].to_dict()
             customer_email = invoice.get("customer_email")
             print(f"❌ ÉCHEC DE PRÉLÈVEMENT POUR {customer_email}")
 
