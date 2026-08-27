@@ -872,35 +872,46 @@ function showCancelModal() {
 
 async function confirmCancelSubscription() {
   const btn = document.getElementById("btn-confirm-cancel");
-  btn.disabled = true;
-  btn.innerText = "Résiliation...";
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = "Résiliation...";
+  }
+
+  const token = localStorage.getItem("token");
+  const workspaceId = localStorage.getItem("workspace_id");
 
   try {
     const res = await fetch("https://api.alasdia.com/me/plan/cancel", {
       method: "POST",
       headers: {
-        "Authorization": "Bearer " + localStorage.getItem("token"),
-        "X-Workspace-Id": localStorage.getItem("workspace_id")
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token,
+        "X-Workspace-Id": workspaceId
       }
     });
 
+    const data = await res.json();
+
     const modalEl = document.getElementById("modalCancelSub");
-    const modal = bootstrap.Modal.getInstance(modalEl);
-    if (modal) modal.hide();
+    if (modalEl) {
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+    }
 
     if (res.ok) {
-      showToast("Votre abonnement ne sera pas renouvelé à la fin de la période en cours.", "warning");
+      showToast(data.message || "Abonnement résilié avec succès.", "warning");
       loadUser();
     } else {
-      const errorData = await res.json();
-      showToast(errorData.detail || "Échec de l'annulation", "error");
+      showToast(data.detail || "Échec de l'annulation", "error");
     }
   } catch (err) {
     console.error("Erreur annulation :", err);
     showToast("Erreur de connexion au serveur", "error");
   } finally {
-    btn.disabled = false;
-    btn.innerText = "Oui, résilier";
+    if (btn) {
+      btn.disabled = false;
+      btn.innerText = "Oui, résilier";
+    }
   }
 }
 
