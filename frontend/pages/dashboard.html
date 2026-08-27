@@ -860,7 +860,6 @@ table{ color:#374151 !important; }
         e.preventDefault()
 
         if (data.plan === "free" && data.paid_count >= 10) {
-          // 🔒 limite atteinte → ouvrir upgrade
 
           const createModal = bootstrap.Modal.getInstance(
             document.getElementById("createLinkModal")
@@ -873,7 +872,6 @@ table{ color:#374151 !important; }
           upgradeModal.show()
 
         } else {
-          // ✅ ok → créer le lien
           createLink()
           }
         }

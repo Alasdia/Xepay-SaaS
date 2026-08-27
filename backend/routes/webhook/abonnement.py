@@ -123,6 +123,8 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
 
             if user:
                 user.plan = "free"
+                user.subscription_status = "canceled"
+                user.stripe_subscription_id = None
                 db.commit()
                 print("⚠️ ABONNEMENT RÉSILIÉ -> RETOUR AU PLAN FREE")
 
