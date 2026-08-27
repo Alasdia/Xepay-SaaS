@@ -76,6 +76,10 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                     user.plan = plan
                     user.plan_started_at = datetime.now(timezone.utc)
                     user.plan_expires_at = current_period_end
+                    user.stripe_customer_id = session.get("customer")
+                    user.stripe_subscription_id = subscription_id
+                    user.subscription_status = subscription.get("status", "active")
+                    user.cancel_at_period_end = subscription.get("cancel_at_period_end", False)
                     db.commit()
 
                     if user.email:
@@ -105,6 +109,8 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                     )
                     user.plan = plan
                     user.plan_expires_at = current_period_end
+                    user.subscription_status = status
+                    user.cancel_at_period_end = subscription.get("cancel_at_period_end", False)
                     db.commit()
                     print(f"✅ ABONNEMENT PROLONGÉ JUSQU'À {current_period_end}")
 
