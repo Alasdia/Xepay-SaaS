@@ -53,6 +53,8 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                 user_id = session_meta.get("user_id") or sub_meta.get("user_id")
                 plan = session_meta.get("plan") or sub_meta.get("plan", "pro")
 
+                print(f"ERREUR: Aucun 'user")
+
                 user = db.query(UserDB).filter(UserDB.id == user_id).first()
 
                 if user:
