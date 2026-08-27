@@ -723,7 +723,7 @@ def get_plan(
 
     return {
         "plan": plan if not is_expired else "free",
-        "subscription_status": getattr(workspace_user, "subscription_staus", "active"),
+        "subscription_status": getattr(workspace_user, "subscription_status", "active"),
         "cancel_at_period_end": getattr(workspace_user, "cancel_at_period_end", False),
         "plan_started_at": workspace_user.plan_started_at,
         "plan_expires_at": workspace_user.plan_expires_at,
@@ -771,6 +771,8 @@ def change_plan(
 
         print("START:", user.plan_started_at)
         print("END:", user.plan_expires_at)
+    else:
+        user.plan_expires_at = None
 
     db.commit()
 
