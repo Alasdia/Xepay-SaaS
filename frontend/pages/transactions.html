@@ -565,7 +565,7 @@ body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
 
       <div class="col-md-4">
         <div class="card-epay">
-          <div class="kpi-label">Liens de paiement</div>
+          <div class="kpi-label">paiements réussis ce mois</div>
           <h4 class="kpi-value purple">
             <span id="links-created">0</span>
           </h4>
@@ -1241,8 +1241,8 @@ body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
       const linksLimitText = plan.links_limit === null ? "Illimité" : plan.links_limit;
       const paidLimitText = plan.paid_limit === null ? "Illimité" : plan.paid_limit;
 
-      if (createdEl) createdEl.innerText = `${plan.paid_count} / ${linksLimitText}`;
-      if (paidEl) paidEl.innerText = `${plan.paid_count} paiements sur ${paidLimitText} liens`;
+      if (createdEl) createdEl.innerText = `${plan.paid_count} / ${paidLimitText}`;
+      if (paidEl) paidEl.innerText = `Sur un maximum de ${linksLimitText} liens pouvant être générer par mois`;
  
       if (barEl) {
         const pct = plan.paid_limit > 0
