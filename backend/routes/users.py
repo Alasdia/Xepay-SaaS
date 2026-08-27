@@ -721,9 +721,11 @@ def get_plan(
     if workspace_user.plan_expires_at:
         is_expired = workspace_user.plan_expires_at < now
 
+    default_status = "none" if plan == "free" else "active"
+
     return {
         "plan": plan if not is_expired else "free",
-        "subscription_status": getattr(workspace_user, "subscription_status", "active"),
+        "subscription_status": getattr(workspace_user, "subscription_status", None) or default_status,
         "cancel_at_period_end": getattr(workspace_user, "cancel_at_period_end", False),
         "plan_started_at": workspace_user.plan_started_at,
         "plan_expires_at": workspace_user.plan_expires_at,

@@ -1153,7 +1153,6 @@ async function loadUser() {
 function updatePlanUI(plan) {
   const badge = document.getElementById("badge-plan")
 
-  // reset
   badge.className = "badge"
 
   if (plan === "free") {
@@ -1186,7 +1185,6 @@ function updateUpgradeModal(plan, feature) {
       card.classList.remove("plan-disabled");
     });
 
-  // Cas Multi-utilisateurs => seul Business doit rester disponible
   if (feature === "multi-users") {
     document.querySelector(".plan-starter")
       .classList.add("plan-disabled");
@@ -1197,7 +1195,6 @@ function updateUpgradeModal(plan, feature) {
     return;
   }
 
-  // Cas normal : on floute le plan actuel
   if (plan === "free") {
     document.querySelector(".plan-starter")
       .classList.add("plan-disabled");
