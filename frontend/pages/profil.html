@@ -526,7 +526,7 @@ async function loadUser() {
     window.location.href = "login.html";
     return;
   }
-  
+
   try {
     const res = await fetch("https://api.alasdia.com/me/plan", {
       headers: {
@@ -572,33 +572,27 @@ function updateKycProgress(data) {
 
   let percent = 0;
 
-  // 1. Compte Stripe créé
   if (data.stripe) {
     percent += 20;
   }
 
-  // Pas de compte Stripe
   if (!data.stripe) {
     setProgress(percent);
     return;
   }
 
-  // 2. Paiements activés
   if (data.stripe.charges_enabled) {
     percent += 20;
   }
 
-  // 3. Retraits activés
   if (data.stripe.payouts_enabled) {
     percent += 20;
   }
 
-  // 4. Aucun KYC obligatoire actuellement
   if (!data.needs_kyc) {
     percent += 20;
   }
 
-  // 5. Aucun KYC futur prévu par Stripe
   if (!data.future_requirements) {
     percent += 20;
   }
