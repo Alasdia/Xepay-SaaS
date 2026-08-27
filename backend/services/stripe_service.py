@@ -73,7 +73,6 @@ def create_checkout_session(
 
         return session.url
 
-
     elif mode == "subscription":
         price_map = {
             "pro": "price_1TLmI121oAuf4OUmX8OjO02a",
@@ -90,10 +89,10 @@ def create_checkout_session(
             mode="subscription",
             customer_email=email,
 
-            line_items=[{
-                "price": price_id,
-                "quantity": 1,
-            }],
+            metadata={
+                "user_id": str(user_id),
+                "plan": plan
+            },
 
             subscription_data={
                 "metadata": {
@@ -101,6 +100,11 @@ def create_checkout_session(
                     "plan": plan
                 }
             },
+
+            line_items=[{
+                "price": price_id,
+                "quantity": 1,
+            }],
 
             success_url="https://alasdia.com/success.html",
             cancel_url="https://alasdia.com/cancel.html",
