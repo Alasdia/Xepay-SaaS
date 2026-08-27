@@ -31,49 +31,67 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
     try:
         # 1. Premier achat via Stripe Checkout
         if event_type == "checkout.session.completed":
-            # Conversion explicite en dictionnaire
             session = event["data"]["object"].to_dict()
 
             if session.get("mode") == "subscription":
                 subscription_id = session.get("subscription")
+
+                if not subscription_id:
+                    print("❌ ERREUR: Aucun subscription_id dans la session Checkout")
+                    return {"status": "error", "message": "Missing subscription ID"}
+
+                # Récupération de l'abonnement complet auprès de Stripe
                 subscription_obj = stripe.Subscription.retrieve(subscription_id)
                 subscription = subscription_obj.to_dict()
 
+                # Récupération de la facture
                 invoice_id = subscription.get("latest_invoice")
-                invoice_obj = stripe.Invoice.retrieve(invoice_id)
-                invoice = invoice_obj.to_dict()
+                invoice_pdf = None
+                hosted_invoice_url = None
+                if invoice_id:
+                    invoice_obj = stripe.Invoice.retrieve(invoice_id)
+                    invoice = invoice_obj.to_dict()
+                    invoice_pdf = invoice.get("invoice_pdf")
+                    hosted_invoice_url = invoice.get("hosted_invoice_url")
 
-                invoice_pdf = invoice.get("invoice_pdf")
-                hosted_invoice_url = invoice.get("hosted_invoice_url")
-
-                # Récupération sécurisée dans metadata
+                # Récupération des métadonnées (Session prioritaires, puis Subscription)
                 session_meta = session.get("metadata") or {}
                 sub_meta = subscription.get("metadata") or {}
 
                 user_id = session_meta.get("user_id") or sub_meta.get("user_id")
                 plan = session_meta.get("plan") or sub_meta.get("plan", "pro")
 
-                print(f"ERREUR: Aucun 'user")
+                if not user_id:
+                    print("❌ ERREUR: user_id introuvable dans les metadata")
+                    return {"status": "error", "message": "Missing user_id"}
 
                 user = db.query(UserDB).filter(UserDB.id == user_id).first()
 
                 if user:
-                    current_period_end = datetime.fromtimestamp(
-                        subscription["current_period_end"], 
-                        tz=timezone.utc
-                    )
+                    # Accès sécurisé à current_period_end
+                    period_end_timestamp = subscription.get("current_period_end")
+                    if period_end_timestamp:
+                        current_period_end = datetime.fromtimestamp(
+                            period_end_timestamp, 
+                            tz=timezone.utc
+                        )
+                    else:
+                        # Solution de repli si Stripe ne renvoie pas le timestamp
+                        current_period_end = datetime.now(timezone.utc)
+
                     user.plan = plan
                     user.plan_started_at = datetime.now(timezone.utc)
                     user.plan_expires_at = current_period_end
                     db.commit()
 
-                    send_subscription_email(
-                        user.email,
-                        plan,
-                        invoice_pdf,
-                        hosted_invoice_url
-                    )
-                    print("✅ PREMIER ACHAT ACTIVÉ")
+                    if user.email:
+                        send_subscription_email(
+                            user.email,
+                            plan,
+                            invoice_pdf,
+                            hosted_invoice_url
+                        )
+                    print(f"✅ PREMIER ACHAT ACTIVÉ POUR {user_id}")
 
         # 2. Renouvellement ou changement de plan automatique
         elif event_type == "customer.subscription.updated":
