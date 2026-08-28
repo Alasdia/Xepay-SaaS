@@ -38,7 +38,7 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
         event = stripe.Webhook.construct_event(
             payload,
             stripe_signature,
-            WEBHOOK_SECRET_PAYMENT  # ⚠️ nouveau secret
+            WEBHOOK_SECRET_PAYMENT  
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -63,7 +63,6 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
         
         db = SessionLocal()
 
-        # 🔥 montant réel après frais (Stripe + ta commission incluse)
         intent = stripe.PaymentIntent.retrieve(session.payment_intent)
 
         if not intent.latest_charge:
@@ -124,7 +123,6 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
             total_fee = amount_usd * 0.06
             commission = total_fee - stripe_fee
 
-            # montant net marchand
             merchant_amount = amount_usd - total_fee
         
             print("=== BUSINESS DEBUG ===")
@@ -146,8 +144,6 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
             if not user.wallet:
                 return {"status": "error", "reason": "wallet_not_found"}
         
-            
-            # override propre
             amount_local = int(amount_local)
 
             

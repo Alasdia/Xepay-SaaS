@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 import uuid
 from backend.database import get_db
-from backend.models import Wallet, Withdrawal, WithdrawRequest, WalletTransaction
+from backend.models import Wallet, Withdrawal, WithdrawRequest, WalletTransaction, WebhookDeliveryLog, Webhook
 from backend.middleware.authorization import require_owner
 from backend.models import WorkspaceUser
 from backend.auth import get_current_user
@@ -13,6 +13,11 @@ from backend.services.workspace_service import (
 from sqlalchemy import func
 from backend.models import Payment, Link, UserDB, Profile
 from fastapi import Request
+import json
+import time
+import hmac
+import hashlib
+import requests
 import os
 import stripe
 
@@ -220,7 +225,10 @@ def withdraw(
     }
     
 @router.post("/withdraw/{id}/process")
-def process_withdraw(id: int, db: Session = Depends(get_db)):
+def process_withdraw(
+    id: int, 
+    db: Session = Depends(get_db)
+):
     print("🔥 PROCESS WITHDRAW EXECUTÉ 🔥")
 
     wd = db.query(Withdrawal)\
@@ -331,6 +339,83 @@ def process_withdraw(id: int, db: Session = Depends(get_db)):
 
     wd.processed_at = datetime.now(timezone.utc)
     db.commit()
+
+    event_type = "withdrawal.done"
+    webhooks = db.query(Webhook).filter(
+        Webhook.user_id == wd.user_id,
+        Webhook.is_active == True
+    ).all()
+
+    for webhook in webhooks:
+        if event_type not in webhook.events.split(","):
+            continue
+
+        try:
+            payload = {
+                "id": f"evt_{uuid.uuid4().hex}",
+                "timestamp": int(time.time()),
+                "event": event_type,
+                "data": {
+                    "withdrawal_id": wd.id,
+                    "amount": wd.amount,
+                    "currency": "XOF",
+                    "status": wd.status,
+                    "reference": wd.reference,
+                    "stripe_payout_id": wd.stripe_payout_id
+                }
+            }
+
+            payload_bytes = json.dumps(payload).encode()
+            signature = hmac.new(
+                webhook.secret.encode(),
+                payload_bytes,
+                hashlib.sha256
+            ).hexdigest()
+
+            success = False
+            final_status_code = None
+            response = None
+
+            for attempt in range(3):
+                try:
+                    response = requests.post(
+                        webhook.url,
+                        json=payload,
+                        headers={
+                            "X-Signature": signature,
+                            "X-Epay-Event": event_type,
+                            "X-Epay-Timestamp": str(payload["timestamp"])
+                        },
+                        timeout=5
+                    )
+                    final_status_code = response.status_code
+                    if response.status_code == 200:
+                        success = True
+                        break
+                except Exception:
+                    final_status_code = 0
+                time.sleep(2)
+
+            log = WebhookDeliveryLog(
+                user_id=wd.user_id,
+                webhook_id=webhook.id,
+                url=webhook.url,
+                event=event_type,
+                status_code=final_status_code,
+                success=success
+            )
+            db.add(log)
+            
+            webhook.last_triggered = datetime.now(timezone.utc)
+            webhook.status = "active" if success else "error"
+            webhook.last_status_code = final_status_code
+            db.commit()
+
+        except Exception as e:
+            print("❌ Erreur webhook withdrawal:", e)
+            webhook.status = "error"
+            webhook.last_triggered = datetime.now(timezone.utc)
+            db.commit()
 
     return {"status": wd.status}
 
