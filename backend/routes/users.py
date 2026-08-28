@@ -30,13 +30,12 @@ import requests
 import pyotp
 import os
 import stripe
-from importlib.metadata import version
-print("🔍 VERSION STRIPE ACTUELLE:", version("stripe"))
 import secrets
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 router = APIRouter()
+
 
 @router.post("/signup")
 def signup(
@@ -89,46 +88,33 @@ def signup(
 
         try:
             print("🚀 SIGNUP START")
-            print("👉 Creating Stripe account (v2) for:", new_user.email)
-
-            client = stripe.StripeClient(stripe.api_key)
-        
-            account = client.v2.core.accounts.create(
-                params={
-                    "contact_email": new_user.email,
-                    "dashboard": {
-                        "type": "express"
+            print("👉 Creating Stripe account for:", new_user.email)
+            account = stripe.Account.create(
+                type="express",
+                email=new_user.email,
+                settings={
+                  "payouts": {
+                    "schedule": {
+                      "interval": "manual"
                     }
+                  }
                 }
             )
             print("✅ STRIPE ACCOUNT CREATED:", account.id)
 
-            stripe.Account.modify(
-                account.id,
-                settings={
-                    "payouts": {
-                        "schedule": {
-                            "interval": "manual"
-                        } 
-                    }
-                }
-            )
-            print("⚙️ PAYOUT SCHEDULE SET TO MANUAL")
-
             profile = Profile(
                 user_id=new_user.id,
-                stripe_account_id=account.id
+                stripe_account_id=account.id 
             )
             db.add(profile)
             db.commit()
             db.refresh(profile)
-
+            
         except Exception as e:
-            print("❌ ERROR TYPE:", type(e).__name__)
-            print("❌ ERROR DETAILS:", str(e))
+            print("❌ ERROR:", e)
             db.rollback()
             raise e
-
+        
         wallet = Wallet(
             user_id=new_user.id,
             balance=0,
