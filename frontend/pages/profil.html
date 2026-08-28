@@ -345,11 +345,13 @@ body { background: #f8fafc !important; color: #111827 !important; }
       Résilier mon abonnement
     </button>
 
-    <div id="payment-failed-alert" class="alert alert-warning d-none mt-3">
-      ⚠️ Votre dernier paiement a échoué.
-      <a href="#" id="update-card-btn" class="fw-bold text-dark text-decoration-underline">
-        Mettez à jour votre carte pour conserver votre accès Pro
-      </a>
+    <div id="payment-failed-alert" class="alert alert-warning d-none border-0 shadow-sm p-3 mb-3" style="border-radius: 8px;">
+      <p class="mb-0 text-muted" style="font-size: 13px; line-height: 1.5;">
+        ⚠️ Votre dernier paiement a échoué. 
+        <a href="javascript:void(0);" id="update-card-btn" class="fw-bold" style="color: #d97706; text-decoration: underline; cursor: pointer;">
+          Mettez à jour votre carte pour conserver votre accès Pro
+        </a>
+      </p>
     </div>
 
   </div>
