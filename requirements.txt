@@ -3,7 +3,7 @@ uvicorn
 sqlalchemy
 psycopg2-binary
 python-dotenv
-stripe
+stripe>=11.0.0
 requests
 python-multipart
 pydantic
