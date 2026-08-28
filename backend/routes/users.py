@@ -92,19 +92,9 @@ def signup(
 
             # Initialisation du client v2 Stripe
             client = stripe.StripeClient(os.getenv("STRIPE_SECRET_KEY"))
-        
-            # 1. Récupération du pays transmis par le frontend (SN, CI, BJ, NE, US, etc.)
-            user_country = getattr(user, "country", "SN").upper() if hasattr(user, "country") and user.country else "SN"
+            user_country = getattr(user, "country", "US").upper() if hasattr(user, "country") else "US"
 
-            african_countries = ["SN", "CI", "BJ", "NE"]
-
-            # 2. Définition des capacités v2 (Format liste attendu par Stripe v2)
-            if user_country in african_countries:
-                requested_capabilities = ["transfers"]
-            else:
-                requested_capabilities = ["card_payments", "transfers"]
-
-            # 3. Création du compte Connect v2 Stripe
+            # Création du compte via la v2
             account = client.v2.core.accounts.create(
                 params={
                     "contact_email": new_user.email,
@@ -113,7 +103,13 @@ def signup(
                     },
                     "dashboard": "express",
                     "configuration": {
-                        "requested": requested_capabilities
+                        "merchant": {
+                            "capabilities": {
+                                "card_payments": {
+                                    "requested": True
+                                }
+                            }
+                        }
                     },
                     "defaults": {
                         "responsibilities": {
@@ -123,6 +119,7 @@ def signup(
                     }
                 }
             )
+
             # Passage du calendrier de virement en manuel via la v1 (nécessaire pour la gestion des virements)
             stripe.Account.modify(
                 account.id,
