@@ -85,7 +85,9 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
             if session.mode != "payment":
                 return {"status": "ignored"}
 
-            metadata = session.metadata
+            session_dict = session.to_dict() if hasattr(session, "to_dict") else dict(session)
+            metadata = session_dict.get("metadata", {})
+            
             user_id = metadata.get("user_id")
             link_id = metadata.get("link_id")
 
