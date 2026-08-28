@@ -70,11 +70,8 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                 print(f"❌ DB error: {e}")
                 return {"status": "db_error"}
 
-
     elif event_type in ["payout.paid", "payout.failed", "payout.canceled"]:
         payout_id = object_data["id"]
-        forced_event_type = "payout.failed" if event_type == "payout.paid" else event_type
-
 
         wd = db.query(Withdrawal).filter(
             Withdrawal.stripe_payout_id == payout_id
@@ -86,7 +83,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                 WalletTransaction.reference == wd.reference
             ).first()
 
-            if forced_event_type == "payout.paid":
+            if event_type == "payout.paid":
                 wd.status = "success"
                 if tx:
                     tx.status = "success"
