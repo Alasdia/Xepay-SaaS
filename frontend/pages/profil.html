@@ -342,11 +342,7 @@ body { background: #f8fafc !important; color: #111827 !important; }
       Configurer Stripe
     </button>
 
-    <button id="btn-cancel-sub" class="btn btn-cancel-custom w-100 fw-bold mt-2 text-muted mb-4" onclick="showCancelModal()">
-      Résilier mon abonnement
-    </button>
-
-    <div id="payment-failed-alert" class="alert alert-warning d-none border-0 shadow-sm p-3 mb-3" style="border-radius: 8px;">
+    <div id="payment-failed-alert" class="alert alert-warning d-none border-0 shadow-sm p-3 mb-4" style="border-radius: 8px;">
       <p class="mb-0 text-muted" style="font-size: 13px; line-height: 1.5;">
         ⚠️ Votre dernier paiement a échoué. 
         <a href="javascript:void(0);" 
@@ -357,6 +353,10 @@ body { background: #f8fafc !important; color: #111827 !important; }
         </a>
       </p>
     </div>
+
+    <button id="btn-cancel-sub" class="btn btn-cancel-custom w-100 fw-bold mt-2 text-muted mb-4" onclick="showCancelModal()">
+      Résilier mon abonnement
+    </button>
 
   </div>
 </div>
