@@ -103,6 +103,18 @@ def signup(
             )
             print("✅ STRIPE ACCOUNT CREATED:", account.id)
 
+            stripe.Account.modify(
+                account.id,
+                settings={
+                    "payouts": {
+                        "schedule": {
+                            "interval": "manual"
+                        } 
+                    }
+                }
+            )
+            print("⚙️ PAYOUT SCHEDULE SET TO MANUAL")
+
             profile = Profile(
                 user_id=new_user.id,
                 stripe_account_id=account.id
@@ -110,7 +122,7 @@ def signup(
             db.add(profile)
             db.commit()
             db.refresh(profile)
-            
+
         except Exception as e:
             print("❌ ERROR TYPE:", type(e).__name__)
             print("❌ ERROR DETAILS:", str(e))
