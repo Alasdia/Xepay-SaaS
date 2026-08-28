@@ -92,9 +92,42 @@ def signup(
 
             # Initialisation du client v2 Stripe
             client = stripe.StripeClient(os.getenv("STRIPE_SECRET_KEY"))
-            user_country = getattr(user, "country", "US").upper() if hasattr(user, "country") else "US"
+        
+            # 1. Récupération du pays transmis par le frontend (SN, CI, BJ, NE, US, etc.)
+            user_country = getattr(user, "country", "SN").upper() if hasattr(user, "country") and user.country else "SN"
 
-            # Création du compte via la v2
+            african_countries = ["SN", "CI", "BJ", "NE"]
+
+            # 2. Définition de la configuration v2 selon les exigences des comptes v2 Stripe
+            if user_country in african_countries:
+                account_configuration = {
+                    "recipient": {
+                        "capabilities": {
+                            "stripe_transfers": {
+                                "requested": True
+                            }
+                        }
+                    }
+                }
+            else:
+                account_configuration = {
+                    "merchant": {
+                        "capabilities": {
+                            "card_payments": {
+                                "requested": True
+                            }
+                        }
+                    },
+                    "recipient": {
+                        "capabilities": {
+                            "stripe_transfers": {
+                                "requested": True
+                            }
+                        }
+                    }
+                }
+
+            # 3. Création du compte Connect v2 Stripe avec la structure valide
             account = client.v2.core.accounts.create(
                 params={
                     "contact_email": new_user.email,
@@ -102,15 +135,7 @@ def signup(
                         "country": user_country
                     },
                     "dashboard": "express",
-                    "configuration": {
-                        "merchant": {
-                            "capabilities": {
-                                "card_payments": {
-                                    "requested": True
-                                }
-                            }
-                        }
-                    },
+                    "configuration": account_configuration,
                     "defaults": {
                         "responsibilities": {
                             "fees_collector": "application",
@@ -119,7 +144,6 @@ def signup(
                     }
                 }
             )
-
             # Passage du calendrier de virement en manuel via la v1 (nécessaire pour la gestion des virements)
             stripe.Account.modify(
                 account.id,
