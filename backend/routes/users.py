@@ -92,15 +92,24 @@ def signup(
 
             client = stripe.StripeClient(stripe.api_key)
         
-            # Le compte créé sera AUTOMATIQUEMENT un compte Express grâce à ton Dashboard
+            # Création v2 complète avec la capability transfers ET le payout manuel direct
             account = client.v2.core.accounts.create(
                 params={
-                    "contact_email": new_user.email
+                    "contact_email": new_user.email,
+                    "defaults": {
+                        "capabilities": {
+                            "stripe_balance": {
+                                "stripe_transfers": {
+                                    "requested": True
+                                }
+                            }
+                        }
+                    }
                 }
             )
             print("✅ COMPTE CONNECT EXPRESS CRÉÉ :", account.id)
 
-            # Verrouillage du mode de virement en MANUEL
+            # Application du payout schedule manuel
             stripe.Account.modify(
                 account.id,
                 settings={
