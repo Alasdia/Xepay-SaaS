@@ -100,9 +100,10 @@ def signup(
                 },
                 json={
                     "contact_email": new_user.email,
-                    "dashboard": "express",
                     "configuration": {
-                        "recipient": {}
+                        "recipient": {
+                            "dashboard": "express"
+                        }
                     },
                     "defaults": {
                         "responsibilities": {
