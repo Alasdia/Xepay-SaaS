@@ -92,23 +92,27 @@ def signup(
             print("👉 Creating Stripe account (v2) for:", new_user.email)
 
             account = stripe.v2.core.accounts.create(
-                contact_email=new_user.email,
-                configuration={
-                    "merchant": {
-                        "payouts": {
-                            "schedule": {
-                                "interval": "manual"
+                params={
+                    "contact_email": new_user.email,
+                    "configuration": {
+                        "merchant": {
+                            "payouts": {
+                                "schedule": {
+                                    "interval": "manual"
+                                }
                             }
                         }
                     }
                 }
             )
-            print("✅ STRIPE ACCOUNT CREATED:", account.id)
+
+            print("✅ STRIPE ACCOUNT CREATED:", account["id"])
 
             profile = Profile(
                 user_id=new_user.id,
-                stripe_account_id=account.id 
+                stripe_account_id=account["id"]
             )
+
             db.add(profile)
             db.commit()
             db.refresh(profile)
