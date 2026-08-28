@@ -114,7 +114,7 @@ def get_wallet_history(
                 "direction": tx.direction,
                 "type": tx.type,
                 "description": tx.description,
-                "reference": f"TX-{tx.id}",
+                "reference": tx.reference,
                 "created_at": tx.created_at.isoformat()
             }
             for tx in txs
