@@ -112,15 +112,12 @@ def signup(
             else:
                 # Pour les pays supportant l'encaissement direct carte (ex: US, FR)
                 config_payload = {
-                    "merchant": {
-                        "capabilities": {
-                            "card_payments": {
-                                "requested": True
-                            }
+                    "recipient": {
+                        "transfers": {
+                            "requested": True
                         }
                     }
                 }
-
             # 3. Appels de création v2
             account = client.v2.core.accounts.create(
                 params={
