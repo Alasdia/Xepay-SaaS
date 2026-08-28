@@ -30,6 +30,7 @@ import requests
 import pyotp
 import os
 import stripe
+print("🔍 VERSION STRIPE ACTUELLE:", stripe.__version__)
 import secrets
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
