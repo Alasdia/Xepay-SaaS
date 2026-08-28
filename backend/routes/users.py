@@ -92,15 +92,11 @@ def signup(
 
             # Initialisation du client v2 Stripe
             client = stripe.StripeClient(os.getenv("STRIPE_SECRET_KEY"))
-            user_country = getattr(user, "country", "US").upper() if hasattr(user, "country") else "US"
 
             # Création du compte via la v2
             account = client.v2.core.accounts.create(
                 params={
                     "contact_email": new_user.email,
-                    "identity": {
-                        "country": user_country
-                    },
                     "dashboard": "express",
                     "configuration": {
                         "merchant": {
