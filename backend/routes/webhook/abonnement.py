@@ -130,8 +130,15 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
 
         elif event_type == "invoice.payment_failed":
             invoice = event["data"]["object"].to_dict()
+            customer_id = invoice.get("customer")
             customer_email = invoice.get("customer_email")
-            print(f"❌ ÉCHEC DE PRÉLÈVEMENT POUR {customer_email}")
+
+        user = db.query(UserDB).filter(UserDB.stripe_customer_id == customer_id).first() if customer_id else None
+    
+        if user:
+            user.subscription_status = "past_due"
+            db.commit()
+            print(f"❌ ÉCHEC DE PRÉLÈVEMENT POUR {customer_email} -> Statut passé à past_due")
 
     except Exception as e:
         db.rollback()

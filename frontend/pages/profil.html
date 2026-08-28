@@ -341,10 +341,16 @@ body { background: #f8fafc !important; color: #111827 !important; }
       Configurer Stripe
     </button>
 
-
-    <button id="btn-cancel-sub" class="btn btn-cancel-custom w-100 fw-bold mt-2 text-muted" onclick="showCancelModal()">
+    <button id="btn-cancel-sub" class="btn btn-cancel-custom w-100 fw-bold mt-2 text-muted mb-4" onclick="showCancelModal()">
       Résilier mon abonnement
     </button>
+
+    <div id="payment-failed-alert" class="alert alert-warning d-none mt-3">
+      ⚠️ Votre dernier paiement a échoué.
+      <a href="#" id="update-card-btn" class="fw-bold text-dark text-decoration-underline">
+        Mettez à jour votre carte pour conserver votre accès Pro
+      </a>
+    </div>
 
   </div>
 </div>
@@ -914,6 +920,47 @@ async function confirmCancelSubscription() {
     }
   }
 }
+
+async function loadUserProfile() {
+  try {
+    const res = await fetch('/me');
+    const data = await res.json();
+
+    const alertBox = document.getElementById('payment-failed-alert');
+
+    if (alertBox) {
+      if (data.is_owner && data.subscription_status === 'past_due') {
+        alertBox.classList.remove('d-none');
+      } else {
+        alertBox.classList.add('d-none');
+      }
+    }
+  } catch (err) {
+    console.error("Erreur chargement profil:", err);
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  loadUserProfile();
+  
+  const updateBtn = document.getElementById('update-card-btn');
+  if (updateBtn) {
+    updateBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        const res = await fetch('/me/create-portal-session', { method: 'POST' });
+        const data = await res.json();
+
+        if (res.ok && data.url) {
+          window.location.href = data.url;
+        } else {
+          alert(data.detail || "Impossible d'accéder au portail de facturation.");
+        }
+      } catch (err) {
+        console.error("Erreur redirection portail:", err);
+      }
+    });
+  }
+});
 
 async function loadProfile() {
   const token = localStorage.getItem("token")

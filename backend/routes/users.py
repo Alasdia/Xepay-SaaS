@@ -764,6 +764,23 @@ def cancel_user_subscription(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
+@router.post("/me/create-portal-session")
+def create_portal_session(
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_owner),
+    current_user: UserDB = Depends(get_current_user)
+):
+    if not current_user.stripe_customer_id:
+        raise HTTPException(status_code=400, detail="Aucun identifiant client Stripe trouvé")
+    try:
+        session = stripe.billing_portal.Session.create(
+            customer=current_user.stripe_customer_id,
+            return_url="https://api.alasdia.com/profil.html", 
+        )
+        return {"url": session.url}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 
 @router.post("/change-plan")
 def change_plan(
