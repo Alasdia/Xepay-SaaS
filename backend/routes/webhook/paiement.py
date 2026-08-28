@@ -43,193 +43,116 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    print("🔥 PAYMENT EVENT:", event["type"])
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
+    event_type = event["type"]
+    object_data = event["data"]["object"]
+    print("🔥 PAYMENT EVENT:", event_type)
 
-        if session.mode != "payment":
-            return {"status": "ignored"}
+    db = SessionLocal()
 
-        event_type = "payment.success"
+    try:
+        if event_type in ["payment_intent.payment_failed", "payment_intent.canceled"]:
+            pi_id = object_data["id"]
+            reference = f"pi_{pi_id}" # ou recherche via metadata si vous l'y stockez
 
-        metadata = session.get("metadata") if isinstance(session, dict) else session["metadata"]
+            tx = db.query(WalletTransaction).filter(WalletTransaction.reference == reference).first()
+            if tx and tx.status != "failed":
+                tx.status = "failed"
+                db.commit()
+                print(f"❌ Transaction {reference} marquée comme échouée/annulée.")
+            return {"status": "ok"}
 
-        user_id = metadata["user_id"]
-        link_id = metadata["link_id"]
+        elif event_type == "charge.refunded":
+            charge_id = object_data["id"]
+            pi_id = object_data.get("payment_intent")
+            reference = f"pi_{pi_id}" if pi_id else f"ch_{charge_id}"
 
-        if not user_id or not link_id:
-            print("❌ METADATA MANQUANTE")
-            return {"status": "ignored"}
-        
-        db = SessionLocal()
-
-        intent = stripe.PaymentIntent.retrieve(session.payment_intent)
-
-        if not intent.latest_charge:
-            return {"status": "waiting"}
-
-        charge = stripe.Charge.retrieve(intent.latest_charge)
-        
-        balance_tx = None
-        available_at = None
-
-        for _ in range(5):
-            charge = stripe.Charge.retrieve(intent.latest_charge)
-
-            if charge.balance_transaction:
-                balance_tx = stripe.BalanceTransaction.retrieve(charge.balance_transaction)
-                amount_usd = balance_tx.amount / 100
-                stripe_fee = balance_tx.fee / 100
-                net_usd = balance_tx.net / 100 
-
-                print("=== STRIPE DEBUG ===")
-                print("AMOUNT USD:", amount_usd)
-                print("STRIPE FEE:", stripe_fee)
-                print("NET USD:", net_usd)
-
-                available_on = balance_tx.available_on
-                available_at = datetime.fromtimestamp(available_on, tz=timezone.utc)
-                break
-
-            time.sleep(1)
-
-        if not balance_tx:
-            return {"status": "waiting"}
-
-        if not available_at:
-            raise Exception("available_at not found")
-
-        if not balance_tx:
-            print("❌ balance_transaction pas prêt")
-            return {"status": "waiting"}
-
-        currency = session["currency"].upper()
-        print(currency)
-
-        row = None
-
-        
-        if currency == "XOF":
-           amount_local = amount_usd
-           rate_used = 1
-        else:
-            row = db.execute(text("""
-                SELECT rate FROM exchange_rates
-                WHERE from_currency = 'USD' AND to_currency = 'XOF'
-            """)).fetchone()
-
-            rate_used = row.rate if row else 600
-
-            total_fee = amount_usd * 0.06
-            commission = total_fee - stripe_fee
-
-            merchant_amount = amount_usd - total_fee
-        
-            print("=== BUSINESS DEBUG ===")
-            print("TOTAL FEE (6%):", total_fee)
-            print("COMMISSION:", commission)
-            print("MERCHANT AMOUNT:", merchant_amount)
-
-            amount_local = int(float(merchant_amount) * float(rate_used)) 
-
-            print("=== CONVERSION ===")
-            print("RATE:", rate_used)
-            print("FINAL XOF:", amount_local)
-
-            user = db.query(UserDB).filter(UserDB.id == user_id).first()
-
-            if not user:
-                return {"status": "error", "reason": "user_not_found"}
-
-            if not user.wallet:
-                return {"status": "error", "reason": "wallet_not_found"}
-        
-            amount_local = int(amount_local)
-
-            
-            print("RAW:", amount_local)
-            print("WALLET RESIDUAL:", user.wallet.residual_xof)
-
-        
-        email_client = session.customer_details.email if session.customer_details else None
-
-        existing_tx = db.query(WalletTransaction).filter(
-            WalletTransaction.reference == f"pay_{session.id}"
-        ).first()
-
-        if existing_tx:
-            print("⚠️ EVENT DEJA TRAITE")
-            db.close()
-            return {"status": "ignored"}
-        
-        user = db.query(UserDB).filter(UserDB.id == user_id).first()
-
-        if user:
-            if not user.wallet:
-                print("❌ WALLET NOT FOUND")
-                db.close()
-                return {"status": "error"}
+            tx = db.query(WalletTransaction).filter(WalletTransaction.reference == reference).first()
+            if tx and tx.status != "refunded":
+                tx.status = "refunded"
                 
+                # Déduire du wallet si nécessaire
+                wallet = db.query(Wallet).filter(Wallet.id == tx.wallet_id).first()
+                if wallet:
+                    wallet.balance -= tx.amount
 
-            now = datetime.now(timezone.utc)
+                db.commit()
+                print(f"🔄 Transaction {reference} remboursée et solde mis à jour.")
+            return {"status": "ok"}
 
-            start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
+        # 3. Gestion du succès via Checkout Session
+        if event_type == "checkout.session.completed":
+            session = object_data
 
-            if now.month == 12:
-                end = datetime(now.year + 1, 1, 1, tzinfo=timezone.utc)
-            else:
-                end = datetime(now.year, now.month + 1, 1, tzinfo=timezone.utc)
+            if session.mode != "payment":
+                return {"status": "ignored"}
 
-            paid_count = (
-              db.query(Payment.link_id)
-                .join(Link, Payment.link_id == Link.id)
-                .filter(Link.user_id == user.id)
-                .filter(Payment.status.in_(["paid", "success", "réussi"]))
-                .filter(Payment.created_at >= start)
-                .filter(Payment.created_at < end)
-                .distinct()
-                .count()
-            )
+            metadata = session.get("metadata", {})
+            user_id = metadata.get("user_id")
+            link_id = metadata.get("link_id")
 
-            PLAN_LIMITS = {
-                "free": {"paid": 10, "links": 30},
-                "pro": {"paid": 100, "links": 200},
-                "business": {"paid": float("inf"), "links": float("inf")}
-            }
-
-            plan = getattr(user, "plan", "free")
-            limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
-            PAID_LIMIT = limits["paid"]
-
-            if paid_count >= PAID_LIMIT:
-                print("❌ PAYMENT BLOCKED: LIMIT REACHED")
-                return {"status": "limit_reached"}
+            if not user_id or not link_id:
+                print("❌ METADATA MANQUANTE")
+                return {"status": "ignored"}
             
-            
-            user_id = session.metadata["user_id"]
+            # Référence unique basée sur le payment_intent ou la session
+            pi_id = session.get("payment_intent")
+            reference_key = f"pi_{pi_id}" if pi_id else f"pay_{session['id']}"
 
-            user = db.query(UserDB).filter(UserDB.id == user_id).first()
-
-            profile = db.query(Profile).filter(
-                Profile.user_id == user.id
+            existing_tx = db.query(WalletTransaction).filter(
+                WalletTransaction.reference == reference_key
             ).first()
 
+            if existing_tx:
+                print("⚠️ EVENT DEJA TRAITE")
+                return {"status": "ignored"}
+
+            intent = stripe.PaymentIntent.retrieve(pi_id) if pi_id else None
+            if intent and not intent.latest_charge:
+                return {"status": "waiting"}
+
+            balance_tx = None
+            available_at = None
+
+            if intent and intent.latest_charge:
+                for _ in range(5):
+                    charge = stripe.Charge.retrieve(intent.latest_charge)
+                    if charge.balance_transaction:
+                        balance_tx = stripe.BalanceTransaction.retrieve(charge.balance_transaction)
+                        amount_usd = balance_tx.amount / 100
+                        stripe_fee = balance_tx.fee / 100
+                        available_on = balance_tx.available_on
+                        available_at = datetime.fromtimestamp(available_on, tz=timezone.utc)
+                        break
+                    time.sleep(1)
+
+            if not balance_tx:
+                return {"status": "waiting"}
+
+            currency = session["currency"].upper()
+
+            if currency == "XOF":
+                amount_local = amount_usd
+                rate_used = 1
+            else:
+                row = db.execute(text("""
+                    SELECT rate FROM exchange_rates
+                    WHERE from_currency = 'USD' AND to_currency = 'XOF'
+                """)).fetchone()
+                rate_used = row.rate if row else 600
+                total_fee = amount_usd * 0.06
+                merchant_amount = amount_usd - total_fee
+                amount_local = int(float(merchant_amount) * float(rate_used))
+
+            email_client = session.customer_details.email if session.customer_details else None
+
+            user = db.query(UserDB).filter(UserDB.id == user_id).first()
+            if not user or not user.wallet:
+                return {"status": "error", "reason": "user_or_wallet_not_found"}
+
+            wallet = user.wallet
+            profile = db.query(Profile).filter(Profile.user_id == user.id).first()
             if not profile or not profile.stripe_account_id:
                 raise Exception("Stripe account not found")
-            
-            if not user:
-                db.close()
-                return {"error": "user not found"}
-            
-            wallet = db.query(Wallet).filter(Wallet.user_id == user.id).first()
-
-            if not wallet:
-                wallet = Wallet(user_id=user.id, balance=0)
-                db.add(wallet)
-                db.flush()
-
-            stripe_account_id = profile.stripe_account_id
-            merchant_email = user.email
 
             payment = Payment(
                 user_id=user_id,
@@ -242,167 +165,63 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                 status="paid",
                 link_id=link_id,
                 stripe_session_id=session.id,
-                stripe_account_id=stripe_account_id
+                stripe_account_id=profile.stripe_account_id
             )
-
             db.add(payment)
             db.flush()
 
-            pdf_path = generate_invoice_pdf(payment, merchant_email)
-
-            send_payment_email(
-                email_client,
-                pdf_path
-            )
-
-            send_merchant_notification(
-                merchant_email,
-                payment
-            )
-
-            now = datetime.now(timezone.utc)
+            try:
+                pdf_path = generate_invoice_pdf(payment, user.email)
+                send_payment_email(email_client, pdf_path)
+                send_merchant_notification(user.email, payment)
+            except Exception as e:
+                print(f"⚠️ Erreur génération PDF/Email: {e}")
 
             wallet.balance += amount_local 
 
-            stripe_available_on = balance_tx["available_on"]
-
-            available_at = datetime.fromtimestamp(
-                stripe_available_on,
-                tz=timezone.utc
-            )
+            if event_type == "checkout.session.completed":
+                tx_status = "success"
+                tx_type = "deposit"
+                tx_direction = "in"
+                tx_description = f"Paiement reçu via le lien {link_id} par le client {email_client}"
+            elif event_type in ["payment_intent.payment_failed", "payment_intent.canceled"]:
+                tx_status = "failed"
+                tx_type = "deposit"
+                tx_direction = "in"
+                tx_description = f"Échec ou annulation du paiement pour le lien {link_id}"
+            elif event_type == "charge.refunded":
+                tx_status = "refunded"
+                tx_type = "refund"
+                tx_direction = "out"
+                tx_description = f"Remboursement effectué pour la transaction {reference_key}"
+            else:
+                tx_status = "pending"
+                tx_type = "deposit"
+                tx_direction = "in"
+                tx_description = f"Événement Stripe {event_type}"
 
             tx = WalletTransaction(
                 user_id=user_id,
                 wallet_id=wallet.id,
-                type="deposit",
-                direction="in",
+                type=tx_type,
+                direction=tx_direction,
                 amount=amount_local,
-                status="success",
-                available_at = available_at,
-                reference=f"pay_{session['id']}",
-                description=f"Paiement reçu via le lien {link_id} par le client {email_client}"
+                status=tx_status, 
+                available_at=available_at,
+                reference=reference_key,
+                description=tx_description 
             )
             db.add(tx)
 
             db.commit()
             print("✅ WALLET CREDITED:", amount_local)
 
-            webhooks = db.query(Webhook).filter(
-                Webhook.user_id == user_id,
-                Webhook.is_active == True
-            ).all()
-
-            import requests
-            print("🚀 LOOP WEBHOOK")
-            for webhook in webhooks:
-                print("SECRET:", webhook.secret)
-
-                # 🔥 filtre des events
-                print("EVENT TYPE:", event_type)
-                print("WEBHOOK EVENTS:", webhook.events)
-                if event_type not in webhook.events.split(","):
-                    continue
-
-                try:
-                    payload = {
-                        "id": f"evt_{uuid.uuid4().hex}",
-                        "timestamp": int(time.time()),
-                        "event": event_type,
-                        "data": {
-                            "amount": amount_local,
-                            "currency": "XOF",
-                            "user_id": user_id,
-                            "link_id": link_id
-                        }
-                    }
-
-                    payload_bytes = json.dumps(payload).encode()
-
-                    signature = hmac.new(
-                        webhook.secret.encode(),
-                        payload_bytes,
-                        hashlib.sha256
-                    ).hexdigest()
-
-                    print("SIGNATURE:", signature)
-                    print("🔥 AVANT REQUEST")
-
-                    max_retries = 3
-
-                    response = None 
-                    success = False  
-                    final_status_code = None
-
-                    for attempt in range(max_retries):
-                        try:
-                            print(f"🚀 Tentative {attempt + 1}")
-
-                            response = requests.post(
-                                webhook.url,
-                                json=payload,
-                                headers={
-                                    "X-Signature": signature,
-                                    "X-Epay-Event": event_type,
-                                    "X-Epay-Timestamp": str(payload["timestamp"])
-                                },
-                                timeout=5
-                            )
-                            
-                            print("SIGNATURE SENT:", signature)
-
-                            print(f"STATUS: {response.status_code}")
-
-                            final_status_code = response.status_code
-
-                            if response.status_code == 200:
-                                print("✅ Webhook envoyé avec succès")
-                                success = True
-                                break
-                            else:
-                                print("❌ Échec, retry...")
-
-                        except Exception as e:
-                            final_status_code = 0
-
-                        time.sleep(2) 
-
-                    log = WebhookDeliveryLog(
-                        user_id=user_id,
-                        webhook_id=webhook.id,
-                        url=webhook.url,
-                        event=event_type,
-                        status_code=final_status_code,
-                        success=success
-                    )
-
-                    db.add(log)
-                    db.commit()
-
-
-                    if response:
-                        print(f"STATUS: {response.status_code}")
-                        print(f"BODY: {response.text}")
-                    else:
-                        print("❌ Aucune réponse reçue")
-
-                    webhook.last_triggered = datetime.now(timezone.utc)
-
-                    if success:
-                        webhook.status = "active"
-                        webhook.last_status_code = 200
-                    else:
-                        webhook.status = "error"
-                        webhook.last_status_code = response.status_code if response else None
-
-                    db.commit()
-
-                except Exception as e:
-                    print("❌ erreur webhook:", e)
-                    webhook.status = "error"
-                    print("UPDATE EXECUTED")
-                    webhook.last_triggered = datetime.now(timezone.utc)
-                    db.commit()
-
-            db.close()
-
             return {"status": "ok"}
+
+    except Exception as e:
+        db.rollback()
+        print(f"❌ Erreur critique webhook payment: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
