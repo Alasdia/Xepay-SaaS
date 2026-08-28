@@ -92,7 +92,7 @@ def signup(
 
             client = stripe.StripeClient(stripe.api_key)
         
-            # 1. Création v2 officielle avec la configuration Recipient
+            # Création v2 valide avec les responsabilités obligatoires
             account = client.v2.core.accounts.create(
                 params={
                     "contact_email": new_user.email,
@@ -106,12 +106,18 @@ def signup(
                                 }
                             }
                         }
+                    },
+                    "defaults": {
+                        "responsibilities": {
+                            "losses_collector": "application",
+                            "fees_collector": "application"
+                        }
                     }
                 }
             )
             print("✅ COMPTE CONNECT EXPRESS V2 CRÉÉ :", account.id)
 
-            # 2. Passage des payouts en manuel via l'API Accounts v1 avec l'id v2
+            # Passage des virements en manuel via la v1
             stripe.Account.modify(
                 account.id,
                 settings={

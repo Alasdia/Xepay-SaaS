@@ -60,7 +60,7 @@ def create_checkout_session(
                 "price_data": {
                     "currency": currency.lower(),
                     "product_data": {
-                        "name": "Paiement ePay",
+                        "name": "Paiement Xepay",
                     },
                     "unit_amount": int(amount * 100),
                 },
