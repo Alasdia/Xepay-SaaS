@@ -1474,43 +1474,54 @@ body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
             historyList.innerHTML = "<small>Aucun mouvement wallet</small>";
             return;
         }
+        const html = data.transactions.map(tx => {
+          const estRetraitEnAttente = tx.type === 'withdraw' && (tx.status === 'pending' || (tx.description && tx.description.toLowerCase().includes('en attente')));
 
-        const html = data.transactions.map(tx => `
-          <div class="wallet-item">
-            <div class="wallet-row">
-              <span class="wallet-label">Type :</span>
-              <span class="wallet-value">
-                ${tx.type === "deposit" ? "Dépôt" : tx.type === "withdraw" ? "Retrait" : tx.type}
-              </span>
-            </div>
+          const boutonAnnuler = estRetraitEnAttente 
+            ? `<div style="margin-top: 8px; text-align: right;">
+                <button onclick="annulerRetrait('${tx.id}')" style="background: #fee2e2; color: #991b1b; border: 1px solid #f87171; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;">
+                  Annuler le retrait
+                </button>
+              </div>` 
+            : '';
 
-            <div class="wallet-row">
-              <span class="wallet-label">Montant :</span>
-              <span class="wallet-value ${tx.direction === 'in' ? 'text-success' : 'text-danger'}">
-                ${tx.direction === "in" ? "+" : "-"}${Number(tx.amount).toLocaleString("fr-FR")} XOF
-              </span>
-            </div>
+            return `
+            <div class="wallet-item" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px;">
+              <div class="wallet-row">
+                <span class="wallet-label">Type :</span>
+                <span class="wallet-value">
+                  ${tx.type === 'deposit' ? 'Dépôt' : tx.type === 'withdraw' ? 'Retrait' : tx.type}
+                </span>
+              </div>
 
-            <div class="wallet-row">
-              <span class="wallet-label">Date :</span>
-              <span class="wallet-value">
-                ${new Date(tx.created_at).toLocaleString("fr-FR")}
-              </span>
-            </div>
+              <div class="wallet-row">
+                <span class="wallet-label">Montant :</span>
+                <span class="wallet-value ${tx.direction === 'in' ? 'text-success' : 'text-danger'}">
+                  ${tx.direction === 'in' ? '+' : '-'}${Number(tx.amount).toLocaleString("fr-FR")} XOF
+                </span>
+              </div>
 
-            <div class="wallet-row">
-              <span class="wallet-label">Référence :</span>
-              <span class="wallet-value">${tx.reference || "N/A"}</span>
-            </div>
+              <div class="wallet-row">
+                <span class="wallet-label">Date :</span>
+                <span class="wallet-value">${new Date(tx.created_at).toLocaleString("fr-FR")}</span>
+              </div>
 
-            <div class="wallet-row">
-              <span class="wallet-label">Note :</span>
-              <span class="wallet-value">${tx.description || "—"}</span>
+              <div class="wallet-row">
+                <span class="wallet-label">Référence :</span>
+                <span class="wallet-value">${tx.reference || "N/A"}</span>
+              </div>
+
+              <div class="wallet-row">
+                <span class="wallet-label">Note :</span>
+                <span class="wallet-value">${tx.description || "-"}</span>
+              </div>
+
+              ${boutonAnnuler}
             </div>
-          </div>
-        `).join("");
+            `;
+        }).join("");
+
         historyList.innerHTML = html;
-
       } catch (e) {
         const historyList = document.getElementById("walletHistoryList");
         if (historyList) {
@@ -1518,7 +1529,38 @@ body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
         }
       }
     }
+    async function annulerRetrait(retraitId) {
+      if (!confirm("Voulez-vous vraiment annuler ce retrait ? Les fonds seront recrédités.")) return;
 
+      try {
+        const token = localStorage.getItem("token");
+        const workspaceId = localStorage.getItem("workspace_id");
+
+        const res = await fetch(`https://api.alasdia.com/wallet/withdrawals/${retraitId}/cancel`, {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + token,
+            "X-Workspace-Id": workspaceId,
+            "Content-Type": "application/json"
+          }
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showToast(data.detail || "Erreur lors de l'annulation", "error");
+          return;
+        }
+        showToast("Retrait annulé avec succès !", "success");
+    
+        loadWalletHistory();
+        if (typeof loadStats === 'function') loadStats();
+
+      } catch (err) {
+        console.error(err);
+        showToast("Erreur de connexion au serveur", "error");
+      }
+    }
     const confirmBtn = document.getElementById("confirmWithdrawBtn");
 
     if (confirmBtn) {
