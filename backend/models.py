@@ -23,6 +23,7 @@ class User(BaseModel):
     email: EmailStr
     password: str
     invite_token: Optional[str] = None
+    country: Optional[str] = "SN"
 
 class ResetPasswordRequest(BaseModel):
     email: EmailStr
