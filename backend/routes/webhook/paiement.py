@@ -70,7 +70,6 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
             if tx and tx.status != "refunded":
                 tx.status = "refunded"
                 
-                # Déduire du wallet si nécessaire
                 wallet = db.query(Wallet).filter(Wallet.id == tx.wallet_id).first()
                 if wallet:
                     wallet.balance -= tx.amount
@@ -86,7 +85,7 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
             if session.mode != "payment":
                 return {"status": "ignored"}
 
-            metadata = session.get("metadata", {})
+            metadata = session.metadata
             user_id = metadata.get("user_id")
             link_id = metadata.get("link_id")
 
