@@ -198,7 +198,7 @@ class UserDB(Base):
     plan_expires_at = Column(DateTime(timezone=True), nullable=True)
     stripe_customer_id = Column(String, nullable=True, index=True)
     stripe_subscription_id = Column(String, nullable=True, index=True)
-    subscription_status = Column(String, default="active")  
+    subscription_status = Column(String, default="inactive")  
     cancel_at_period_end = Column(Boolean, default=False)
     api_key_public = Column(String, nullable=True)
     api_key_secret = Column(String, nullable=True)
