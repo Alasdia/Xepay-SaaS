@@ -102,10 +102,8 @@ def signup(
                 # Pour le Sénégal, Côte d'Ivoire, Bénin, Niger -> Transferts uniquement
                 config_payload = {
                     "recipient": {
-                        "capabilities": {
-                            "transfers": {
-                                "requested": True
-                            }
+                        "transfers": {
+                            "requested": True
                         }
                     }
                 }
