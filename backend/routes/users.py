@@ -167,7 +167,9 @@ def signup(
             db.refresh(profile)
 
         except Exception as e:
-            print("❌ ERROR:", e)
+            print("❌ ERROR DETAIL:", repr(e))
+            import traceback
+            traceback.print_exc()
             db.rollback()
             raise e
 
