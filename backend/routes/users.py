@@ -91,7 +91,9 @@ def signup(
             print("🚀 SIGNUP START")
             print("👉 Creating Stripe account (v2) for:", new_user.email)
 
-            account = stripe.v2.core.accounts.create(
+            client = stripe.StripeClient(stripe.api_key)
+        
+            account = client.v2.core.accounts.create(
                 params={
                     "contact_email": new_user.email,
                     "configuration": {
@@ -105,7 +107,6 @@ def signup(
                     }
                 }
             )
-
             print("✅ STRIPE ACCOUNT CREATED:", account["id"])
 
             profile = Profile(
