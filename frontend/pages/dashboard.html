@@ -1041,7 +1041,6 @@ table{ color:#374151 !important; }
 
         console.log("DATA:", data)
 
-        // ✅ cas upgrade détecté proprement
         if (data.detail && data.detail.upgrade === true) {
           const modal = new bootstrap.Modal(document.getElementById("modalUpgrade"))
           modal.show()
@@ -1051,10 +1050,8 @@ table{ color:#374151 !important; }
         return
       }
       console.log("CREATED:", data)
-      // 💥 Affichage direct sans reload
       loadLinks()
 
-      // 💥 fermer le modal (ICI 👇)
       const modalEl = document.getElementById('createLinkModal')
       const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl)
       modal.hide()
@@ -1135,7 +1132,6 @@ table{ color:#374151 !important; }
       navigator.clipboard.writeText(url);
       alert("Lien copié !");
     }
-
     // ARCHIVER
     async function archiveLink(id) {
       const token = localStorage.getItem("token");
@@ -1152,7 +1148,6 @@ table{ color:#374151 !important; }
         alert("Erreur archivage");
       }
     }
-
     // SUPPRIMER
     async function deleteLink(id) {
       const token = localStorage.getItem("token");
