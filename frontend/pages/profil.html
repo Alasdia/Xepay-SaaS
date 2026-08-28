@@ -551,10 +551,19 @@ async function loadUser() {
     const data = await res.json();
     console.log("PLAN DATA:", data);
 
+    const alertBox = document.getElementById('payment-failed-alert');
+    if (alertBox) {
+      if (data.subscription_status === 'past_due') {
+        alertBox.classList.remove('d-none');
+      } else {
+        alertBox.classList.add('d-none');
+      }
+    }
     const planName = data.plan || "free";
     localStorage.setItem("plan", planName);
 
     updatePlanUI(planName);
+
   } catch (err) {
     console.error("Erreur chargement plan:", err);
   }
@@ -920,42 +929,22 @@ async function confirmCancelSubscription() {
     }
   }
 }
-
-async function loadUserProfile() {
-  try {
-    const urlParams = new URLSearchParams(window.location.search);
-    const workspaceId = urlParams.get('workspace_id');
-
-    const apiUrl = workspaceId ? `/me?workspace_id=${workspaceId}` : '/me';
-    
-    const res = await fetch(apiUrl);
-    if (!res.ok) throw new Error(`Erreur API: ${res.status}`);
-    
-    const data = await res.json();
-
-    const alertBox = document.getElementById('payment-failed-alert');
-
-    if (alertBox) {
-      if ((data.is_owner || data.role === 'owner') && data.subscription_status === 'past_due') {
-        alertBox.classList.remove('d-none');
-      } else {
-        alertBox.classList.add('d-none');
-      }
-    }
-  } catch (err) {
-    console.error("Erreur chargement profil:", err);
-  }
-}
-
 document.addEventListener('DOMContentLoaded', () => {
-  loadUserProfile();
-
   const updateBtn = document.getElementById('update-card-btn');
   if (updateBtn) {
     updateBtn.addEventListener('click', async (e) => {
       e.preventDefault();
       try {
-        const res = await fetch('/me/create-portal-session', { method: 'POST' });
+        const token = localStorage.getItem("token");
+        const workspaceId = localStorage.getItem("workspace_id");
+
+        const res = await fetch('https://api.alasdia.com/me/create-portal-session', {
+          method: 'POST',
+          headers: {
+            "Authorization": "Bearer " + token,
+            "X-Workspace-Id": workspaceId
+          }
+        });
         const data = await res.json();
 
         if (res.ok && data.url) {
