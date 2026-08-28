@@ -102,7 +102,9 @@ def signup(
                     "contact_email": new_user.email,
                     "configuration": {
                         "recipient": {
-                            "dashboard": "express"
+                            "features": {
+                                "external_account_collection": "stripe_hosted"
+                            }
                         }
                     },
                     "defaults": {
