@@ -923,13 +923,20 @@ async function confirmCancelSubscription() {
 
 async function loadUserProfile() {
   try {
-    const res = await fetch('/me');
+    const urlParams = new URLSearchParams(window.location.search);
+    const workspaceId = urlParams.get('workspace_id');
+
+    const apiUrl = workspaceId ? `/me?workspace_id=${workspaceId}` : '/me';
+    
+    const res = await fetch(apiUrl);
+    if (!res.ok) throw new Error(`Erreur API: ${res.status}`);
+    
     const data = await res.json();
 
     const alertBox = document.getElementById('payment-failed-alert');
 
     if (alertBox) {
-      if (data.is_owner && data.subscription_status === 'past_due') {
+      if ((data.is_owner || data.role === 'owner') && data.subscription_status === 'past_due') {
         alertBox.classList.remove('d-none');
       } else {
         alertBox.classList.add('d-none');
@@ -939,9 +946,10 @@ async function loadUserProfile() {
     console.error("Erreur chargement profil:", err);
   }
 }
+
 document.addEventListener('DOMContentLoaded', () => {
   loadUserProfile();
-  
+
   const updateBtn = document.getElementById('update-card-btn');
   if (updateBtn) {
     updateBtn.addEventListener('click', async (e) => {
