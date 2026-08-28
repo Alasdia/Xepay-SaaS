@@ -102,13 +102,7 @@ def signup(
                     "contact_email": new_user.email,
                     "dashboard": "express",
                     "configuration": {
-                        "recipient": {
-                            "capabilities": {
-                                "stripe_balance.stripe_transfers": {
-                                    "requested": True
-                                }
-                            }
-                        }
+                        "recipient": {}
                     },
                     "defaults": {
                         "responsibilities": {
