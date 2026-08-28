@@ -98,13 +98,38 @@ def signup(
 
             african_countries = ["SN", "CI", "BJ", "NE"]
 
-            # 2. Définition des capacités v2 (Format liste attendu par Stripe v2)
+            # 2. Définition de la configuration v2 selon le pays
             if user_country in african_countries:
-                requested_capabilities = ["transfers"]
+                # Pays avec virements/transferts uniquement (ex: Sénégal, CI)
+                config_payload = {
+                    "recipient": {
+                        "capabilities": {
+                            "transfers": {
+                                "requested": True
+                            }
+                        }
+                    }
+                }
             else:
-                requested_capabilities = ["card_payments", "transfers"]
+                # Pays avec encaissement carte + transferts (ex: US, FR)
+                config_payload = {
+                    "recipient": {
+                        "capabilities": {
+                            "transfers": {
+                                "requested": True
+                            }
+                        }
+                    },
+                    "merchant": {
+                        "capabilities": {
+                            "card_payments": {
+                                "requested": True
+                            }
+                        }
+                    }
+                }
 
-            # 3. Création du compte Connect v2 Stripe
+            # 3. Création du compte v2 Connect
             account = client.v2.core.accounts.create(
                 params={
                     "contact_email": new_user.email,
@@ -112,9 +137,7 @@ def signup(
                         "country": user_country
                     },
                     "dashboard": "express",
-                    "configuration": {
-                        "requested": requested_capabilities
-                    },
+                    "configuration": config_payload,
                     "defaults": {
                         "responsibilities": {
                             "fees_collector": "application",
@@ -123,6 +146,7 @@ def signup(
                     }
                 }
             )
+
             # Passage du calendrier de virement en manuel via la v1 (nécessaire pour la gestion des virements)
             stripe.Account.modify(
                 account.id,
