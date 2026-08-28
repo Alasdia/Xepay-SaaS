@@ -97,6 +97,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
             
             user_id = sub_meta.get("user_id")
             stripe_sub_id = subscription.get("id")
+            customer_id = subscription.get("customer")
 
             user = None
             if user_id:
