@@ -90,41 +90,34 @@ def signup(
             print("🚀 SIGNUP START")
             print("👉 Creating Stripe account for:", new_user.email)
 
-            # Appel direct REST v2 pour contourner le typage du SDK Python
-            response = requests.post(
-                "https://api.stripe.com/v2/core/accounts",
-                headers={
-                    "Authorization": f"Bearer {os.getenv('STRIPE_SECRET_KEY')}",
-                    "Content-Type": "application/json",
-                    "Stripe-Version": "2024-12-18.acacia"
-                },
-                json={
+            client = stripe.StripeClient(stripe.api_key)
+
+            account = client.v2.core.accounts.create(
+                params={
                     "contact_email": new_user.email,
+                    "dashboard": "express",
                     "configuration": {
-                        "recipient": {
-                            "features": {
-                                "external_account_collection": "stripe_hosted"
+                        "merchant": {
+                            "capabilities": {
+                                "stripe_transfers": {
+                                    "requested": True
+                                }
                             }
                         }
                     },
                     "defaults": {
                         "responsibilities": {
-                            "losses_collector": "application",
-                            "fees_collector": "application"
+                            "fees_collector": "application",
+                            "losses_collector": "application"
                         }
                     }
                 }
             )
-            res_data = response.json()
-            if response.status_code not in [200, 201]:
-                raise Exception(f"Stripe v2 API Error: {res_data}")
+            print("✅ COMPTE CONNECT EXPRESS V2 CRÉÉ :", account.id)
 
-            stripe_account_id = res_data["id"]
-            print("✅ COMPTE CONNECT EXPRESS V2 CRÉÉ :", stripe_account_id)
-
-            # Passage du mode de virement en manuel
+            # Passage du mode de virement en manuel via la v1
             stripe.Account.modify(
-                stripe_account_id,
+                account.id,
                 settings={
                     "payouts": {
                         "schedule": {
@@ -137,12 +130,12 @@ def signup(
 
             profile = Profile(
                 user_id=new_user.id,
-                stripe_account_id=stripe_account_id
+                stripe_account_id=account.id
             )
             db.add(profile)
             db.commit()
             db.refresh(profile)
-            
+
         except Exception as e:
             print("❌ ERROR:", e)
             db.rollback()
