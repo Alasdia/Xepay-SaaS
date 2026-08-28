@@ -89,22 +89,33 @@ def signup(
         try:
             print("🚀 SIGNUP START")
             print("👉 Creating Stripe account for:", new_user.email)
-            account = stripe.Account.create(
-                type="express",
-                email=new_user.email,
-                settings={
-                  "payouts": {
-                    "schedule": {
-                      "interval": "manual"
-                    }
-                  }
+
+            client = stripe.StripeClient(stripe.api_key)
+        
+            # Le compte créé sera AUTOMATIQUEMENT un compte Express grâce à ton Dashboard
+            account = client.v2.core.accounts.create(
+                params={
+                    "contact_email": new_user.email
                 }
             )
-            print("✅ STRIPE ACCOUNT CREATED:", account.id)
+            print("✅ COMPTE CONNECT EXPRESS CRÉÉ :", account.id)
+
+            # Verrouillage du mode de virement en MANUEL
+            stripe.Account.modify(
+                account.id,
+                settings={
+                    "payouts": {
+                        "schedule": {
+                            "interval": "manual"
+                        }
+                    }
+                }
+            )
+            print("⚙️ VIREMENTS PASSÉS EN MODE MANUEL")
 
             profile = Profile(
                 user_id=new_user.id,
-                stripe_account_id=account.id 
+                stripe_account_id=account.id
             )
             db.add(profile)
             db.commit()
