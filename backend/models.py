@@ -142,6 +142,7 @@ class Withdrawal(Base):
     operator = Column(String)  
     phone = Column(String)
     reference = Column(String, unique=True, index=True)
+    stripe_payout_id =Column(String, unique=True, index=True, nullable=True)
     status = Column(String, default="pending") 
     created_at = Column(
         DateTime(timezone=True),

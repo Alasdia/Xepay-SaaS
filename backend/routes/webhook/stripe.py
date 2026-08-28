@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 import stripe
 
 from backend.database import get_db
-from backend.models import Profile
+from backend.models import Profile, Wallet, WalletTransaction, Withdrawal
 import stripe  
 import os
 
@@ -34,45 +34,78 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
         return {"status": "invalid_signature"}
 
     event_type = event["type"]
+    object_data = event["data"]["object"]
 
-    if event_type != "account.updated":
+    if event_type == "account.updated":
+        stripe_id = object_data["id"]
+        account = stripe.Account.retrieve(stripe_id)
+
+        print("===== STRIPE ACCOUNT =====")
+        print(account.to_dict())
+        print("==========================")
+
+        profile = db.query(Profile).filter(
+            Profile.stripe_account_id == stripe_id
+        ).first()
+
+        if profile:
+            individual = getattr(account, "individual", None)
+            first_name = ""
+            last_name = ""
+            phone = None
+
+            if individual:
+                first_name = getattr(individual, "first_name", "") or ""
+                last_name = getattr(individual, "last_name", "") or ""
+                phone = getattr(individual, "phone", None)
+
+            profile.full_name = f"{first_name} {last_name}".strip()
+            if phone:
+                profile.phone = phone
+
+            try:
+                db.commit()
+            except Exception as e:
+                db.rollback()
+                print(f"❌ DB error: {e}")
+                return {"status": "db_error"}
+
+
+    elif event_type in ["payout.paid", "payout.failed", "payout.canceled"]:
+        payout_id = object_data["id"]
+
+        wd = db.query(Withdrawal).filter(
+            Withdrawal.stripe_payout_id == payout_id
+        ).first()
+
+        if wd and wd.status not in ["success", "failed"]:
+            wallet = db.query(Wallet).filter(Wallet.id == wd.wallet_id).first()
+            tx = db.query(WalletTransaction).filter(
+                WalletTransaction.reference == wd.reference
+            ).first()
+
+            if event_type == "payout.paid":
+                wd.status = "success"
+                if tx:
+                    tx.status = "success"
+                print(f"✅ Payout {payout_id} payé avec succès.")
+
+            elif event_type in ["payout.failed", "payout.canceled"]:
+                wd.status = "failed"
+                
+                if wallet:
+                    wallet.pending -= wd.amount
+                    wallet.available += wd.amount
+                
+                if tx:
+                    tx.status = "failed"
+                    
+                print(f"❌ Payout {payout_id} échoué/annulé -> Rollback effectué.")
+
+            db.commit()
+
+    else:
         print(f"⚠️ Ignored event: {event_type}")
         return {"status": "ignored"}
 
-    account = event["data"]["object"]
-    stripe_id = account["id"]
-
-    account = stripe.Account.retrieve(stripe_id)
-
-    print("===== STRIPE ACCOUNT =====")
-    print(account.to_dict())
-    print("==========================")
-
-    profile = db.query(Profile).filter(
-        Profile.stripe_account_id == stripe_id
-    ).first()
-
-    if profile:
-        individual = getattr(account, "individual", None)
-
-        first_name = ""
-        last_name = ""
-        phone = None
-
-        if individual:
-            first_name = getattr(individual, "first_name", "") or ""
-            last_name = getattr(individual, "last_name", "") or ""
-            phone = getattr(individual, "phone", None)
-
-        profile.full_name = f"{first_name} {last_name}".strip()
-        
-        if phone:
-            profile.phone = phone
-
-        try:
-            db.commit()
-        except Exception as e:
-            db.rollback()
-            print(f"❌ DB error: {e}")
-            return {"status": "db_error"}
     return {"ok": True}
