@@ -201,6 +201,7 @@ body { background: #f8fafc !important; color: #111827 !important; }
 .btn-cancel-custom { background: #f3f4f6; color: #4b5563; border: 1px solid #e5e7eb; border-radius: 10px; transition: all 0.2s ease;}
 .btn-cancel-custom:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5;}
 .plan-card { opacity: 1 !important; }
+.hover-underline:hover { text-decoration: underline !important;}
 /* Responsive mobile */
 @media (max-width: 992px) { #modalUpgrade .modal-dialog { width: 100%; margin: 0; max-width: 100%; } #modalUpgrade .modal-body { padding: 20px; } .plans-section { padding: 0 15px 40px; } .plans-grid { grid-template-columns: 1fr; gap: 20px; } }
 @media (max-width: 576px) { .plan-name { font-size: 28px; } .plan-price .amount { font-size: 40px; } .plan-features li { font-size: 12px; } }
@@ -348,7 +349,10 @@ body { background: #f8fafc !important; color: #111827 !important; }
     <div id="payment-failed-alert" class="alert alert-warning d-none border-0 shadow-sm p-3 mb-3" style="border-radius: 8px;">
       <p class="mb-0 text-muted" style="font-size: 13px; line-height: 1.5;">
         ⚠️ Votre dernier paiement a échoué. 
-        <a href="javascript:void(0);" id="update-card-btn" class="fw-bold" style="color: #d97706; text-decoration: underline; cursor: pointer;">
+        <a href="javascript:void(0);" 
+          id="update-card-btn" 
+          class="fw-bold text-decoration-none hover-underline" 
+          style="color: #b45309; cursor: pointer;">
           Mettez à jour votre carte pour conserver votre accès Pro
         </a>
       </p>
