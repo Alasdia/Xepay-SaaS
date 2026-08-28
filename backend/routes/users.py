@@ -96,6 +96,7 @@ def signup(
                 headers={
                     "Authorization": f"Bearer {os.getenv('STRIPE_SECRET_KEY')}",
                     "Content-Type": "application/json",
+                    "Stripe-Version": "2024-12-18.acacia"
                 },
                 json={
                     "contact_email": new_user.email,
