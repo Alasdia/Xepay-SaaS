@@ -129,7 +129,7 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
             if not balance_tx:
                 return {"status": "waiting"}
 
-            currency = session["currency"].upper()
+            currency = session_dict.get("currency", "USD").upper()
 
             if currency == "XOF":
                 amount_local = amount_usd
@@ -144,7 +144,8 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                 merchant_amount = amount_usd - total_fee
                 amount_local = int(float(merchant_amount) * float(rate_used))
 
-            email_client = session.customer_details.email if session.customer_details else None
+            customer_details = session_dict.get("customer_details")
+            email_client = customer_details.get("email") if customer_details else None
 
             user = db.query(UserDB).filter(UserDB.id == user_id).first()
             if not user or not user.wallet:
@@ -180,26 +181,29 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
 
             wallet.balance += amount_local 
 
+            stripe_event_id = session_dict.get("id") 
+            stripe_status = session_dict.get("payment_status") or session_dict.get("status")
+            
             if event_type == "checkout.session.completed":
                 tx_status = "success"
                 tx_type = "deposit"
                 tx_direction = "in"
-                tx_description = f"Paiement reçu via le lien {link_id} par le client {email_client}"
+                tx_description = f"Paiement Stripe réussi (Session: {stripe_event_id}) pour le lien {link_id}"
             elif event_type in ["payment_intent.payment_failed", "payment_intent.canceled"]:
                 tx_status = "failed"
                 tx_type = "deposit"
                 tx_direction = "in"
-                tx_description = f"Échec ou annulation du paiement pour le lien {link_id}"
+                tx_description = f"Échec du paiement Stripe (Statut: {stripe_status}) pour le lien {link_id}"
             elif event_type == "charge.refunded":
                 tx_status = "refunded"
                 tx_type = "refund"
                 tx_direction = "out"
-                tx_description = f"Remboursement effectué pour la transaction {reference_key}"
+                tx_description = f"Remboursement de la charge Stripe {stripe_event_id}"
             else:
                 tx_status = "pending"
                 tx_type = "deposit"
                 tx_direction = "in"
-                tx_description = f"Événement Stripe {event_type}"
+                tx_description = f"Événement Stripe brut: {event_type} - Statut: {stripe_status}"
 
             tx = WalletTransaction(
                 user_id=user_id,
@@ -209,11 +213,10 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                 amount=amount_local,
                 status=tx_status, 
                 available_at=available_at,
-                reference=reference_key,
+                reference=reference_key, 
                 description=tx_description 
             )
             db.add(tx)
-
             db.commit()
             print("✅ WALLET CREDITED:", amount_local)
 
