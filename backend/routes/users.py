@@ -90,13 +90,35 @@ def signup(
             print("🚀 SIGNUP START")
             print("👉 Creating Stripe account for:", new_user.email)
 
-            account = stripe.Account.create(
-                type="express",
-                email=new_user.email,
-                capabilities={
-                    "transfers": {"requested": True},
-                    "card_payments": {"requested": True},
-                },
+            # Initialisation du client v2 Stripe
+            client = stripe.StripeClient(os.getenv("STRIPE_SECRET_KEY"))
+
+            # Création du compte via la v2
+            account = client.v2.core.accounts.create(
+                params={
+                    "contact_email": new_user.email,
+                    "dashboard": "express",
+                    "configuration": {
+                        "merchant": {
+                            "capabilities": {
+                                "card_payments": {
+                                    "requested": True
+                                }
+                            }
+                        }
+                    },
+                    "defaults": {
+                        "responsibilities": {
+                            "fees_collector": "application",
+                            "losses_collector": "application"
+                        }
+                    }
+                }
+            )
+
+            # Passage du calendrier de virement en manuel via la v1 (nécessaire pour la gestion des virements)
+            stripe.Account.modify(
+                account.id,
                 settings={
                     "payouts": {
                         "schedule": {
