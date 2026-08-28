@@ -98,6 +98,7 @@ def signup(
                     "contact_email": new_user.email,
                     "configuration": {
                         "recipient": {
+                            "dashboard": "express",
                             "capabilities": {
                                 "stripe_balance": {
                                     "stripe_transfers": {
