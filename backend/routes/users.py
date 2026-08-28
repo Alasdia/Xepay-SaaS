@@ -167,11 +167,11 @@ def signup(
             db.refresh(profile)
 
         except Exception as e:
-            print("❌ ERROR DETAIL:", repr(e))
+            print("❌ ERREUR CRITIQUE:", repr(e))
             import traceback
             traceback.print_exc()
             db.rollback()
-            raise e
+            raise HTTPException(status_code=500, detail=str(e))
 
         wallet = Wallet(
             user_id=new_user.id,
