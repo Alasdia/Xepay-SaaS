@@ -446,17 +446,26 @@ body { font-family:var(--font-b); background:var(--bg); color:var(--white); curs
           </div>
         </div>
         
-        <!-- 📍 INSÉRER LE SÉLECTEUR DE PAYS ICI -->
-        <div class="input-group" style="margin-top: 12px;">
-          <label style="display: block; font-size: 11px; color: #a1a1aa; margin-bottom: 6px; font-weight: 600;">PAYS DU COMPTE</label>
-          <select id="country" style="width: 100%; padding: 12px; background: #09090b; border: 1px solid #27272a; border-radius: 8px; color: #fff; font-size: 14px; outline: none;">
-            <option value="SN">🇸Sénégal</option>
-            <option value="CI">🇨Côte d'Ivoire</option>
-            <option value="BJ">🇧Bénin</option>
-            <option value="NE">🇳Niger</option>
-            <option value="US">🇺États-Unis</option>
-          </select>
+        <!-- PAYS DU COMPTE -->
+        <div class="field">
+          <label class="field-label">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" stroke="currentColor" stroke-width="1.8"/></svg>
+              Pays du compte
+          </label>
+          <div class="input-wrap">
+            <div class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="var(--violet)" stroke-width="1.5"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" stroke="var(--violet)" stroke-width="1.5"/></svg>
+            </div>
+            <select id="country" style="flex: 1; background: transparent; border: none; outline: none; font-family: var(--font-b); font-size: 13px; color: var(--white); height: 100%; cursor: pointer;">
+              <option value="SN" style="background: #050a14; color: #fff;">🇸🇳 Sénégal</option>
+              <option value="CI" style="background: #050a14; color: #fff;">🇨🇮 Côte d'Ivoire</option>
+              <option value="BJ" style="background: #050a14; color: #fff;">🇧🇯 Bénin</option>
+              <option value="NE" style="background: #050a14; color: #fff;">🇳🇪 Niger</option>
+              <option value="US" style="background: #050a14; color: #fff;">🇺🇸 États-Unis</option>
+            </select>
+          </div>
         </div>
+
         <!-- Strength indicator -->
         <div class="pw-strength" id="pwStrength">
           <div class="strength-bars">
