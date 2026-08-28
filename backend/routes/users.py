@@ -90,34 +90,13 @@ def signup(
             print("🚀 SIGNUP START")
             print("👉 Creating Stripe account for:", new_user.email)
 
-            client = stripe.StripeClient(stripe.api_key)
-
-            account = client.v2.core.accounts.create(
-                params={
-                    "contact_email": new_user.email,
-                    "dashboard": "express",
-                    "configuration": {
-                        "merchant": {
-                            "capabilities": {
-                                "stripe_transfers": {
-                                    "requested": True
-                                }
-                            }
-                        }
-                    },
-                    "defaults": {
-                        "responsibilities": {
-                            "fees_collector": "application",
-                            "losses_collector": "application"
-                        }
-                    }
-                }
-            )
-            print("✅ COMPTE CONNECT EXPRESS V2 CRÉÉ :", account.id)
-
-            # Passage du mode de virement en manuel via la v1
-            stripe.Account.modify(
-                account.id,
+            account = stripe.Account.create(
+                type="express",
+                email=new_user.email,
+                capabilities={
+                    "transfers": {"requested": True},
+                    "card_payments": {"requested": True},
+                },
                 settings={
                     "payouts": {
                         "schedule": {
@@ -126,7 +105,7 @@ def signup(
                     }
                 }
             )
-            print("⚙️ PAYOUT SCHEDULE SET TO MANUAL")
+            print("✅ COMPTE CONNECT EXPRESS CRÉÉ :", account.id)
 
             profile = Profile(
                 user_id=new_user.id,
