@@ -1479,12 +1479,11 @@ body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Robo
 
           const boutonAnnuler = estRetraitEnAttente 
             ? `<div style="margin-top: 8px; text-align: right;">
-                <button onclick="annulerRetrait('${tx.id}')" style="background: #fee2e2; color: #991b1b; border: 1px solid #f87171; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;">
+                <button onclick="annulerRetrait('${tx.id}')" style="background: #facc15; color: #111827; border: none; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;">
                   Annuler le retrait
                 </button>
               </div>` 
             : '';
-
             return `
             <div class="wallet-item" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px;">
               <div class="wallet-row">
