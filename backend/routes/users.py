@@ -97,6 +97,7 @@ def signup(
             user_country = getattr(user, "country", "SN").upper() if hasattr(user, "country") and user.country else "SN"
 
             african_countries = ["SN", "CI", "BJ", "NE"]
+            print("PAYS", african_countries)
 
             # 2. Définition de la configuration v2 selon les exigences des comptes v2 Stripe
             if user_country in african_countries:
