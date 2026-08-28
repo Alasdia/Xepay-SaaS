@@ -92,9 +92,7 @@ def signup(
 
             # Initialisation du client v2 Stripe
             client = stripe.StripeClient(os.getenv("STRIPE_SECRET_KEY"))
-            # 1. Récupération du pays transmis par le frontend (SN, CI, BJ, NE, US, etc.)
-            user_country = getattr(user, "country", "SN").upper() if hasattr(user, "country") else "SN"
-
+        
             # 1. Récupération du pays transmis par le frontend (SN, CI, BJ, NE, US, etc.)
             user_country = getattr(user, "country", "SN").upper() if hasattr(user, "country") and user.country else "SN"
 
