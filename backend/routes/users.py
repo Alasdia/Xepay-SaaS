@@ -121,6 +121,7 @@ def signup(
                     },
                 }
 
+            print("🚀 AVANT APPEL STRIPE V2")
             # 3. Création du compte Connect v2 Stripe avec la structure valide
             account = client.v2.core.accounts.create(
                 params={
