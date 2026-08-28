@@ -122,7 +122,7 @@ def signup(
                 }
 
             print("🚀 AVANT APPEL STRIPE V2")
-            # 3. Création du compte Connect v2 Stripe avec la structure valide
+            # 3. Création du compte Connect v2 Stripe avec la configuration dynamique
             account = client.v2.core.accounts.create(
                 params={
                     "contact_email": new_user.email,
@@ -130,15 +130,7 @@ def signup(
                         "country": user_country
                     },
                     "dashboard": "express",
-                    "configuration": {
-                        "merchant": {
-                            "capabilities": {
-                                "card_payments": {
-                                    "requested": True
-                                }
-                            }
-                        }
-                    },
+                    "configuration": account_configuration,
                     "defaults": {
                         "responsibilities": {
                             "fees_collector": "application",
