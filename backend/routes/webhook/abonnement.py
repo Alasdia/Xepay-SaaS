@@ -102,17 +102,19 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                 plan = sub_meta.get("plan", user.plan)
                 status = subscription.get("status")
 
+                user.plan = plan
+                user.subscription_status = status
+                user.cancel_at_period_end = subscription.get("cancel_at_period_end", False)
+
                 if status == "active":
                     current_period_end = datetime.fromtimestamp(
                         subscription["current_period_end"], 
                         tz=timezone.utc
-                    )
-                    user.plan = plan
+                    )                  
                     user.plan_expires_at = current_period_end
-                    user.subscription_status = status
-                    user.cancel_at_period_end = subscription.get("cancel_at_period_end", False)
-                    db.commit()
                     print(f"✅ ABONNEMENT PROLONGÉ JUSQU'À {current_period_end}")
+
+                db.commit()
 
         elif event_type == "customer.subscription.deleted":
             subscription = event["data"]["object"].to_dict()
