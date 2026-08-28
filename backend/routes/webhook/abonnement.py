@@ -96,7 +96,13 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
             sub_meta = subscription.get("metadata") or {}
             
             user_id = sub_meta.get("user_id")
-            user = db.query(UserDB).filter(UserDB.id == user_id).first() if user_id else None
+            stripe_sub_id = subscription.get("id")
+
+            user = None
+            if user_id:
+                user = db.query(UserDB).filter(UserDB.id == user_id).first()
+            if not user and stripe_sub_id:
+                user = db.query(UserDB).filter(UserDB.stripe_subscription_id == stripe_sub_id).first()
 
             if user:
                 plan = sub_meta.get("plan", user.plan)
@@ -106,13 +112,15 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                 user.subscription_status = status
                 user.cancel_at_period_end = subscription.get("cancel_at_period_end", False)
 
-                if status == "active":
-                    current_period_end = datetime.fromtimestamp(
-                        subscription["current_period_end"], 
-                        tz=timezone.utc
-                    )                  
-                    user.plan_expires_at = current_period_end
-                    print(f"✅ ABONNEMENT PROLONGÉ JUSQU'À {current_period_end}")
+                if subscription.get("status") == "active":
+                    raw_period_end = subscription.get("current_period_end")
+                    if raw_period_end:
+                        current_period_end = datetime.fromtimestamp(
+                            raw_period_end,
+                            tz=timezone.utc
+                        )
+                        user.plan_expires_at = current_period_end
+                        print(f"✅ ABONNEMENT PROLONGÉ JUSQU'À {current_period_end}")
 
                 db.commit()
 
