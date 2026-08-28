@@ -90,22 +90,21 @@ def signup(
             print("🚀 SIGNUP START")
             print("👉 Creating Stripe account for:", new_user.email)
 
-            client = stripe.StripeClient(stripe.api_key)
-        
-            # Création v2 valide avec les responsabilités obligatoires
-            account = client.v2.core.accounts.create(
-                params={
+            # Appel direct REST v2 pour contourner le typage du SDK Python
+            response = requests.post(
+                "https://api.stripe.com/v2/core/accounts",
+                headers={
+                    "Authorization": f"Bearer {os.getenv('STRIPE_SECRET_KEY')}",
+                    "Content-Type": "application/json",
+                },
+                json={
                     "contact_email": new_user.email,
+                    "dashboard": "express",
                     "configuration": {
-                        "dashboard": {
-                            "type": "express"
-                        },
                         "recipient": {
                             "capabilities": {
-                                "stripe_balance": {
-                                    "stripe_transfers": {
-                                        "requested": True
-                                    }
+                                "stripe_balance.stripe_transfers": {
+                                    "requested": True
                                 }
                             }
                         }
@@ -118,11 +117,16 @@ def signup(
                     }
                 }
             )
-            print("✅ COMPTE CONNECT EXPRESS V2 CRÉÉ :", account.id)
+            res_data = response.json()
+            if response.status_code not in [200, 201]:
+                raise Exception(f"Stripe v2 API Error: {res_data}")
 
-            # Passage des virements en manuel via la v1
+            stripe_account_id = res_data["id"]
+            print("✅ COMPTE CONNECT EXPRESS V2 CRÉÉ :", stripe_account_id)
+
+            # Passage du mode de virement en manuel
             stripe.Account.modify(
-                account.id,
+                stripe_account_id,
                 settings={
                     "payouts": {
                         "schedule": {
@@ -135,7 +139,7 @@ def signup(
 
             profile = Profile(
                 user_id=new_user.id,
-                stripe_account_id=account.id
+                stripe_account_id=stripe_account_id
             )
             db.add(profile)
             db.commit()
@@ -145,7 +149,7 @@ def signup(
             print("❌ ERROR:", e)
             db.rollback()
             raise e
-        
+
         wallet = Wallet(
             user_id=new_user.id,
             balance=0,
