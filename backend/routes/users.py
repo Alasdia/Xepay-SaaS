@@ -92,9 +92,36 @@ def signup(
 
             # Initialisation du client v2 Stripe
             client = stripe.StripeClient(os.getenv("STRIPE_SECRET_KEY"))
-            user_country = getattr(user, "country", "US").upper() if hasattr(user, "country") else "US"
+            # 1. Récupération du pays transmis par le frontend (SN, CI, BJ, NE, US, etc.)
+            user_country = getattr(user, "country", "SN").upper() if hasattr(user, "country") else "SN"
 
-            # Création du compte via la v2
+            # 2. Séparation de la configuration selon les capacités autorisées par Stripe dans ce pays
+            african_countries = ["SN", "CI", "BJ", "NE"]
+
+            if user_country in african_countries:
+                # Pour le Sénégal, Côte d'Ivoire, Bénin, Niger -> Transferts uniquement
+                config_payload = {
+                    "recipient": {
+                        "capabilities": {
+                            "transfers": {
+                                "requested": True
+                            }
+                        }
+                    }
+                }
+            else:
+                # Pour les pays supportant l'encaissement direct carte (ex: US, FR)
+                config_payload = {
+                    "merchant": {
+                        "capabilities": {
+                            "card_payments": {
+                                "requested": True
+                            }
+                        }
+                    }
+                }
+
+            # 3. Appels de création v2
             account = client.v2.core.accounts.create(
                 params={
                     "contact_email": new_user.email,
@@ -102,15 +129,7 @@ def signup(
                         "country": user_country
                     },
                     "dashboard": "express",
-                    "configuration": {
-                        "merchant": {
-                            "capabilities": {
-                                "card_payments": {
-                                    "requested": True
-                                }
-                            }
-                        }
-                    },
+                    "configuration": config_payload,
                     "defaults": {
                         "responsibilities": {
                             "fees_collector": "application",
