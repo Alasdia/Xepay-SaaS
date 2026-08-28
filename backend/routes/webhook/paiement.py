@@ -96,7 +96,7 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                 return {"status": "ignored"}
             
             # Référence unique basée sur le payment_intent ou la session
-            pi_id = session.get("payment_intent")
+            pi_id = session_dict.get("payment_intent")
             reference_key = f"pi_{pi_id}" if pi_id else f"pay_{session_dict.get('id')}"
 
             existing_tx = db.query(WalletTransaction).filter(
