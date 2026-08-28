@@ -118,13 +118,6 @@ def signup(
                             }
                         }
                     },
-                    "recipient": {
-                        "capabilities": {
-                            "stripe_transfers": {
-                                "requested": True
-                            }
-                        }
-                    }
                 }
 
             # 3. Création du compte Connect v2 Stripe avec la structure valide
@@ -135,7 +128,15 @@ def signup(
                         "country": user_country
                     },
                     "dashboard": "express",
-                    "configuration": account_configuration,
+                    "configuration": {
+                        "merchant": {
+                            "capabilities": {
+                                "card_payments": {
+                                    "requested": True
+                                }
+                            }
+                        }
+                    },
                     "defaults": {
                         "responsibilities": {
                             "fees_collector": "application",
