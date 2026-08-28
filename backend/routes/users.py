@@ -92,24 +92,26 @@ def signup(
 
             client = stripe.StripeClient(stripe.api_key)
         
-            # Création v2 complète avec la capability transfers ET le payout manuel direct
+            # 1. Création v2 officielle avec la configuration Recipient
             account = client.v2.core.accounts.create(
                 params={
                     "contact_email": new_user.email,
-                    "defaults": {
-                        "capabilities": {
-                            "stripe_balance": {
-                                "stripe_transfers": {
-                                    "requested": True
+                    "configuration": {
+                        "recipient": {
+                            "capabilities": {
+                                "stripe_balance": {
+                                    "stripe_transfers": {
+                                        "requested": True
+                                    }
                                 }
                             }
                         }
                     }
                 }
             )
-            print("✅ COMPTE CONNECT EXPRESS CRÉÉ :", account.id)
+            print("✅ COMPTE CONNECT EXPRESS V2 CRÉÉ :", account.id)
 
-            # Application du payout schedule manuel
+            # 2. Passage des payouts en manuel via l'API Accounts v1 avec l'id v2
             stripe.Account.modify(
                 account.id,
                 settings={
@@ -120,7 +122,7 @@ def signup(
                     }
                 }
             )
-            print("⚙️ VIREMENTS PASSÉS EN MODE MANUEL")
+            print("⚙️ PAYOUT SCHEDULE SET TO MANUAL")
 
             profile = Profile(
                 user_id=new_user.id,
