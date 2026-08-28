@@ -30,13 +30,13 @@ import requests
 import pyotp
 import os
 import stripe
-print("🔍 VERSION STRIPE ACTUELLE:", stripe.__version__)
+from importlib.metadata import version
+print("🔍 VERSION STRIPE ACTUELLE:", version("stripe"))
 import secrets
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 router = APIRouter()
-
 
 @router.post("/signup")
 def signup(
