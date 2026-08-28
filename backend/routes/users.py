@@ -113,7 +113,7 @@ def signup(
                     },
                     "dashboard": "express",
                     "configuration": {
-                        "capabilities": requested_capabilities
+                        "requested": requested_capabilities
                     },
                     "defaults": {
                         "responsibilities": {
