@@ -44,22 +44,16 @@ def signup(
     ):
 
     try:
-        # ✅ vérifier si user existe
         existing = db.query(UserDB).filter(UserDB.email == user.email).first()
 
         if existing:
             raise HTTPException(status_code=400, detail="User already exists")
 
-        # ✅ créer user (ORM → id auto généré)
         new_user = UserDB(
             email=user.email,
             password=hash_password(user.password)
         )
-        print("🚀 START SIGNUP")
         db.add(new_user)
-
-        print("👉 BEFORE FLUSH")
-
         db.flush()
         
         if user.invite_token:
@@ -94,19 +88,20 @@ def signup(
 
         try:
             print("🚀 SIGNUP START")
-            print("👉 Creating Stripe account for:", new_user.email)
-            account = stripe.Account.create(
-                type="express",
-                email=new_user.email,
-                settings={
-                  "payouts": {
-                    "schedule": {
-                      "interval": "manual"
+            print("👉 Creating Stripe account (v2) for:", new_user.email)
+
+            account = stripe.v2.core.accounts.create(
+                contact_email=new_user.email,
+                configuration={
+                    "merchant": {
+                        "payouts": {
+                            "schedule": {
+                                "interval": "manual"
+                            }
+                        }
                     }
-                  }
                 }
             )
-
             print("✅ STRIPE ACCOUNT CREATED:", account.id)
 
             profile = Profile(
@@ -121,8 +116,7 @@ def signup(
             print("❌ ERROR:", e)
             db.rollback()
             raise e
-        
-        # ✅ créer wallet automatiquement
+
         wallet = Wallet(
             user_id=new_user.id,
             balance=0,
