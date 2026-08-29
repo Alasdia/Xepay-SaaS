@@ -94,13 +94,10 @@ def signup(
             client = stripe.StripeClient(os.getenv("STRIPE_SECRET_KEY"))
         
             # 1. Récupération du pays transmis par le frontend (SN, CI, BJ, NE, US, etc.)
-            user_country = getattr(user, "country", "SN").upper() if hasattr(user, "country") and user.country else "SN"
-
-            african_countries = ["SN", "CI", "BJ", "NE"]
-            print("PAYS", african_countries)
+            user_country = getattr(user, "country", "US").upper() if hasattr(user, "country") and user.country else "US"
 
             # 2. Définition de la configuration v2 selon les exigences des comptes v2 Stripe
-            if user_country in african_countries:
+            if user_country:
                 account_configuration = {
                     "recipient": {
                         "capabilities": {
