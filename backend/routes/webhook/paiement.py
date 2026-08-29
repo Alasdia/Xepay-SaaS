@@ -62,7 +62,7 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                 db.commit()
                 print(f"❌ Transaction {reference} marquée comme échouée/annulée.")
                 if tx:
-                    user = db.query(UserDB).filter(UserDB.id == tx.user_id).filter()
+                    user = db.query(UserDB).filter(UserDB.id == tx.user_id).first()
                     if user and user.email:
                         send_payment_failed_email(user.email)
             return {"status": "ok"}
@@ -83,7 +83,7 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                 db.commit()
                 print(f"🔄 Transaction {reference} remboursée et solde mis à jour.")
                 if tx:
-                    user = db.query(UserDB).filter(UserDB.id == tx.user_id).filter()
+                    user = db.query(UserDB).filter(UserDB.id == tx.user_id).first()
                     if user and user.email:
                         send_payment_refunded_email(user.email, tx.amount)
             return {"status": "ok"}
