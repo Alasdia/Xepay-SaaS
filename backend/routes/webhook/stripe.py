@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 import stripe
 
 from backend.database import get_db
-from backend.models import Profile, Wallet, WalletTransaction, Withdrawal
+from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB
+from backend.services.email_service import send_account_updated_email, send_payout_success_email, send_payout_failed_email
 import stripe  
 import os
 
@@ -65,6 +66,11 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 
             try:
                 db.commit()
+
+                user = db.query(UserDB).filter(UserDB.id == profile.user_id).first()
+                if user and user.email:
+                    send_account_updated_email(user.email)
+
             except Exception as e:
                 db.rollback()
                 print(f"❌ DB error: {e}")
@@ -100,9 +106,16 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                     tx.status = "failed"
                     
                 print(f"❌ Payout {payout_id} échoué/annulé -> Rollback effectué.")
-
+                
             db.commit()
 
+            merchant = db.query(UserDB).filter(UserDB.id == wd.user_id).filter()
+            if merchant and merchant.email:
+                if event_type == "payout.paid":
+                    send_payout_success_email(merchant.email, wd.amount)
+                elif event_type in ["payout.failed", "payout.canceled"]:
+                    send_payout_failed_email(merchant.email, wd.amount)
+                    
     else:
         print(f"⚠️ Ignored event: {event_type}")
         return {"status": "ignored"}

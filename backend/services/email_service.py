@@ -228,3 +228,157 @@ def send_login_alert_email(email, device, ip):
     print("LOGIN ALERT EMAIL")
     print(response.status_code)
     print(response.text)
+
+def send_payment_failed_email(to_email, reason="Paiement échoué ou annulé"):
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": "Xepay <noreply@alasdia.com>",
+            "to": [to_email],
+            "subject": "Échec du paiement",
+            "html": f"""
+                <h2>Paiement non abouti ❌</h2>
+                <p>Le paiement n'a pas pu être finalisé.</p>
+                <p><b>Raison :</b> {reason}</p>
+            """
+        }
+    )
+    print("FAILED EMAIL", response.status_code, response.text)
+
+def send_payment_refunded_email(to_email, amount):
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": "Xepay <noreply@alasdia.com>",
+            "to": [to_email],
+            "subject": "Remboursement effectué",
+            "html": f"""
+                <h2>Remboursement confirmé 🔄</h2>
+                <p>Un montant de <b>{amount}</b> a été remboursé sur votre transaction.</p>
+            """
+        }
+    )
+    print("REFUND EMAIL", response.status_code, response.text)
+
+def send_payout_success_email(to_email, amount):
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": "Xepay <noreply@alasdia.com>",
+            "to": [to_email],
+            "subject": "Virement réussi",
+            "html": f"""
+                <h2>Virement vers votre compte exécuté ✅</h2>
+                <p>Votre virement d'un montant de <b>{amount}</b> a été effectué avec succès.</p>
+            """
+        }
+    )
+    print("PAYOUT SUCCESS EMAIL", response.status_code, response.text)
+
+def send_payout_failed_email(to_email, amount):
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": "Xepay <noreply@alasdia.com>",
+            "to": [to_email],
+            "subject": "Échec du virement",
+            "html": f"""
+                <h2>Virement échoué ou annulé ❌</h2>
+                <p>Le virement de <b>{amount}</b> n'a pas pu aboutir. Les fonds ont été recrédités sur votre solde disponible.</p>
+            """
+        }
+    )
+    print("PAYOUT FAILED EMAIL", response.status_code, response.text)
+
+def send_account_updated_email(to_email):
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": "Xepay <noreply@alasdia.com>",
+            "to": [to_email],
+            "subject": "Mise à jour de votre compte Stripe Connect",
+            "html": f"""
+                <h2>Compte mis à jour 🔄</h2>
+                <p>Les informations de votre profil et de votre compte Connect ont été synchronisées avec succès.</p>
+            """
+        }
+    )
+    print("ACCOUNT UPDATED EMAIL", response.status_code, response.text)
+
+def send_subscription_updated_email(to_email, plan, status):
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": "Xepay <noreply@alasdia.com>",
+            "to": [to_email],
+            "subject": "Mise à jour de votre abonnement Xepay",
+            "html": f"""
+                <h2>Abonnement mis à jour 🔄</h2>
+                <p>Votre abonnement pour le plan <b>{plan}</b> a été mis à jour.</p>
+                <p>Statut actuel : <b>{status}</b></p>
+            """
+        }
+    )
+    print("SUBSCRIPTION UPDATED EMAIL", response.status_code, response.text)
+
+def send_subscription_canceled_email(to_email):
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": "Xepay <noreply@alasdia.com>",
+            "to": [to_email],
+            "subject": "Résiliation de votre abonnement Xepay",
+            "html": f"""
+                <h2>Abonnement résilié ⚠️</h2>
+                <p>Votre abonnement a été résilié. Vous êtes retourné sur le plan gratuit (Free).</p>
+            """
+        }
+    )
+    print("SUBSCRIPTION CANCELED EMAIL", response.status_code, response.text)
+
+def send_payment_failed_subscription_email(to_email):
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": "Xepay <noreply@alasdia.com>",
+            "to": [to_email],
+            "subject": "Échec du prélèvement de votre abonnement",
+            "html": f"""
+                <h2>Échec de paiement ❌</h2>
+                <p>Le prélèvement automatique pour votre abonnement a échoué. Veuillez mettre à jour votre moyen de paiement.</p>
+            """
+        }
+    )
+    print("SUBSCRIPTION PAYMENT FAILED EMAIL", response.status_code, response.text)
