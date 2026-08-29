@@ -1127,7 +1127,6 @@ table{ color:#374151 !important; }
     }
     loadLinks();
 
-    // COPIER
     function copierLien(url) {
       navigator.clipboard.writeText(url);
       alert("Lien copié !");
@@ -1192,8 +1191,6 @@ table{ color:#374151 !important; }
 document.querySelectorAll(".upgrade-btn").forEach(btn => {
   btn.addEventListener("click", showUpgradeModal);
 });
-
-
 function showUpgradeModal(feature = null) {
   const plan = localStorage.getItem("plan");
 
@@ -1262,7 +1259,6 @@ function showUpgradeModal(feature = null) {
     }
   }
   loadWorkspaces();
-
 </script>
 <script>
 async function submitWithdraw() {
@@ -1375,9 +1371,9 @@ function showToast(message, type = "success") {
   toast.style.fontSize = "14px";
   toast.style.fontWeight = "500";
   toast.style.borderRadius = "6px";
-  toast.style.background = "transparent"; // ❗ plus de bloc
-  toast.style.color = "#22c55e"; // vert propre
-  toast.style.boxShadow = "none"; // ❗ enlève effet bouton
+  toast.style.background = "transparent"; 
+  toast.style.color = "#22c55e"; 
+  toast.style.boxShadow = "none"; 
   toast.style.zIndex = "9999";
 
   toast.style.opacity = "1";
@@ -1404,7 +1400,6 @@ window.archivedLink = async function(id) {
       alert(data.detail || "Erreur");
       return;
     }
-
     showToast("Lien archivé ✅");
     const el = document.getElementById(`link-${id}`);
     if (el) {
@@ -1449,10 +1444,8 @@ const params = new URLSearchParams(window.location.search)
 if (params.get("upgrade") === "1") {
     console.log("LIMIT REACHED")
 
-    // OPTION 1 (direct Stripe)
     upgrade("pro")
 
-    // OPTION 2 (plus propre UX)
 }
 </script>
 <script>
@@ -1524,7 +1517,6 @@ function updateUpgradeModal(plan, feature) {
       card.classList.remove("plan-disabled");
     });
 
-  // Cas Multi-utilisateurs
   if (feature === "multi-users") {
 
     document.querySelector(".plan-starter")
@@ -1536,7 +1528,6 @@ function updateUpgradeModal(plan, feature) {
     return;
   }
 
-  // Cas normal : flouter le plan actuel
   if (plan === "free") {
     document.querySelector(".plan-starter")
       .classList.add("plan-disabled");
@@ -1559,7 +1550,6 @@ function updateUpgradeModal(plan, feature) {
     window.location.href = "login.html"
   }
 </script>
-
 
 <script>
 (function() {
