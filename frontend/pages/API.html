@@ -878,7 +878,6 @@ async function loadWebhooks() {
     tbody.appendChild(tr)
   })
 }
-
 async function addWebhook() {
   const url = document.getElementById('whUrl').value.trim()
   if (!url) return alert('URL requise')
@@ -1188,7 +1187,6 @@ async function loadCurrentUser() {
 
   console.log("CURRENT USER:", user)
 
-  // 👉 stocker localement
   localStorage.setItem("plan", user.plan)
 
   return user
