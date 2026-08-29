@@ -102,6 +102,15 @@ def signup(
                         "country": user_country
                     },
                     "dashboard": "express",
+                    "configuration": {
+                        "merchant": {
+                            "capabilities": {
+                                "card_payments": {
+                                    "requested": True
+                                }
+                            }
+                        }
+                    },
                     "defaults": {
                         "responsibilities": {
                             "fees_collector": "application",
@@ -110,6 +119,7 @@ def signup(
                     }
                 }
             )
+
             # Passage du calendrier de virement en manuel via la v1 (nécessaire pour la gestion des virements)
             stripe.Account.modify(
                 account.id,
