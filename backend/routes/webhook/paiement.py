@@ -9,7 +9,9 @@ from backend.services.pdf_service import generate_invoice_pdf
 from backend.services.email_service import send_payment_email
 from backend.services.email_service import (
     send_payment_email,
-    send_merchant_notification
+    send_merchant_notification,
+    send_payment_failed_email,
+    send_payment_refunded_email
 )
 import traceback
 import hmac
@@ -52,13 +54,17 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
     try:
         if event_type in ["payment_intent.payment_failed", "payment_intent.canceled"]:
             pi_id = object_data["id"]
-            reference = f"pi_{pi_id}" # ou recherche via metadata si vous l'y stockez
+            reference = f"pi_{pi_id}"
 
             tx = db.query(WalletTransaction).filter(WalletTransaction.reference == reference).first()
             if tx and tx.status != "failed":
                 tx.status = "failed"
                 db.commit()
                 print(f"❌ Transaction {reference} marquée comme échouée/annulée.")
+                if tx:
+                    user = db.query(UserDB).filter(UserDB.id == tx.user_id).filter()
+                    if user and user.email:
+                        send_payment_failed_email(user.email)
             return {"status": "ok"}
 
         elif event_type == "charge.refunded":
@@ -76,6 +82,10 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
 
                 db.commit()
                 print(f"🔄 Transaction {reference} remboursée et solde mis à jour.")
+                if tx:
+                    user = db.query(UserDB).filter(UserDB.id == tx.user_id).filter()
+                    if user and user.email:
+                        send_payment_refunded_email(user.email, tx.amount)
             return {"status": "ok"}
 
         if event_type == "checkout.session.completed":

@@ -4,7 +4,12 @@ import os
 from datetime import datetime, timezone, timedelta
 from backend.database import SessionLocal
 from backend.models import UserDB
-from backend.services.email_service import send_subscription_email
+from backend.services.email_service import ( 
+    send_subscription_email,
+    send_subscription_updated_email,
+    send_subscription_canceled_email,
+    send_payment_failed_subscription_email
+)
 
 router = APIRouter()
 
@@ -124,6 +129,8 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                         print(f"✅ ABONNEMENT PROLONGÉ JUSQU'À {current_period_end}")
 
                 db.commit()
+                if user and user.email:
+                    send_subscription_updated_email(user.email, plan, status)
 
         elif event_type == "customer.subscription.deleted":
             subscription = event["data"]["object"].to_dict()
@@ -138,7 +145,9 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                 user.stripe_subscription_id = None
                 db.commit()
                 print("⚠️ ABONNEMENT RÉSILIÉ -> RETOUR AU PLAN FREE")
-
+                if user and user.email:
+                    send_subscription_canceled_email(user.email, plan, status)
+                
         elif event_type == "invoice.payment_failed":
             invoice = event["data"]["object"].to_dict()
             customer_id = invoice.get("customer")
@@ -150,7 +159,10 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                 user.subscription_status = "past_due"
                 db.commit()
                 print(f"❌ ÉCHEC DE PRÉLÈVEMENT POUR {customer_email} -> Statut passé à past_due")
-
+                target_email = customer_email or user.email
+                if target_email:
+                    send_payment_failed_subscription_email(target_email)
+                
     except Exception as e:
         db.rollback()
         print(f"❌ ERREUR WEBHOOK: {e}")
