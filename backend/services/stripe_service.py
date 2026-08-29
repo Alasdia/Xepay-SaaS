@@ -49,7 +49,8 @@ def create_checkout_session(
                 "application_fee_amount": int(amount * 0.06 * 100),  
                 "transfer_data": {
                     "destination": stripe_account_id
-                }
+                },
+                "on_behalf_of": stripe_account_id
             },
             metadata={
                 "user_id": str(user_id),
