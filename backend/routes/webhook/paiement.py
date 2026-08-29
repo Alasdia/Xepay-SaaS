@@ -78,7 +78,6 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                 print(f"🔄 Transaction {reference} remboursée et solde mis à jour.")
             return {"status": "ok"}
 
-        # 3. Gestion du succès via Checkout Session
         if event_type == "checkout.session.completed":
             session = object_data
 
@@ -95,7 +94,6 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                 print("❌ METADATA MANQUANTE")
                 return {"status": "ignored"}
             
-            # Référence unique basée sur le payment_intent ou la session
             pi_id = session_dict.get("payment_intent")
             reference_key = pi_id if pi_id else session_dict.get('id')
 
