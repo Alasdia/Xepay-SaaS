@@ -109,7 +109,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                 
             db.commit()
 
-            merchant = db.query(UserDB).filter(UserDB.id == wd.user_id).filter()
+            merchant = db.query(UserDB).filter(UserDB.id == wd.user_id).first()
             if merchant and merchant.email:
                 if event_type == "payout.paid":
                     send_payout_success_email(merchant.email, wd.amount)
