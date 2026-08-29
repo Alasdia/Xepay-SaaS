@@ -186,12 +186,12 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                 tx_status = "success"
                 tx_type = "deposit"
                 tx_direction = "in"
-                tx_description = f"Paiement Stripe réussi (Session: {stripe_event_id}) pour le lien {link_id}"
+                tx_description = f"Paiement Stripe réussi (Session: {stripe_event_id})"
             elif event_type in ["payment_intent.payment_failed", "payment_intent.canceled"]:
                 tx_status = "failed"
                 tx_type = "deposit"
                 tx_direction = "in"
-                tx_description = f"Échec du paiement Stripe (Statut: {stripe_status}) pour le lien {link_id}"
+                tx_description = f"Échec du paiement Stripe (Statut: {stripe_status})"
             elif event_type == "charge.refunded":
                 tx_status = "refunded"
                 tx_type = "refund"
