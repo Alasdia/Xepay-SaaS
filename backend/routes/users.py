@@ -93,31 +93,27 @@ def signup(
             # Initialisation du client v2 Stripe
             client = stripe.StripeClient(os.getenv("STRIPE_SECRET_KEY"))
         
-            # 1. Récupération du pays transmis par le frontend (SN, CI, BJ, NE, US, etc.)
             user_country = getattr(user, "country", "US").upper() if hasattr(user, "country") and user.country else "US"
 
             # 2. Définition de la configuration v2 selon les exigences des comptes v2 Stripe
-            if user_country:
-                account_configuration = {
-                    "recipient": {
-                        "capabilities": {
+            account_configuration = {
+                "merchant": {
+                    "capabilities": {
+                        "card_payments": {
+                            "requested": True
+                        }
+                    }
+                },
+                "recipient": {
+                    "capabilities": {
+                        "stripe_balance": {
                             "stripe_transfers": {
                                 "requested": True
                             }
                         }
                     }
                 }
-            else:
-                account_configuration = {
-                    "merchant": {
-                        "capabilities": {
-                            "card_payments": {
-                                "requested": True
-                            }
-                        }
-                    },
-                }
-
+            }
             print("🚀 AVANT APPEL STRIPE V2")
             # 3. Création du compte Connect v2 Stripe avec la structure valide
             account = client.v2.core.accounts.create(
