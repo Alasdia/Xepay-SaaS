@@ -50,7 +50,6 @@ def create_checkout_session(
                 "transfer_data": {
                     "destination": stripe_account_id
                 },
-                "on_behalf_of": stripe_account_id
             },
             metadata={
                 "user_id": str(user_id),

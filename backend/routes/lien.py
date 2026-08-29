@@ -344,7 +344,6 @@ def create_checkout(
     if not plan and not amount:
         return {"error": "Données manquantes"}
 
-    # 🔁 déterminer le mode automatiquement
     mode = "subscription" if plan else "payment"
 
     url = create_checkout_session(
