@@ -125,6 +125,9 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
             if intent and intent.latest_charge:
                 for _ in range(5):
                     charge = stripe.Charge.retrieve(intent.latest_charge)
+                    fee_id = charge.get("application_fee")
+                    transfer_id = charge.get("transfer")
+                    payment_method_id = charge.get("payment_method")
                     if charge.balance_transaction:
                         balance_tx = stripe.BalanceTransaction.retrieve(charge.balance_transaction)
                         amount_usd = balance_tx.amount / 100
@@ -213,6 +216,8 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                 tx_direction = "in"
                 tx_description = f"Événement Stripe brut: {event_type} - Statut: {stripe_status}"
 
+            print(f"DEBUG -> fee_id: {fee_id}, transfer_id: {transfer_id}, payment_method_id: {payment_method_id}")
+
             tx = WalletTransaction(
                 user_id=user_id,
                 wallet_id=wallet.id,
@@ -222,7 +227,10 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                 status=tx_status, 
                 available_at=available_at,
                 reference=reference_key, 
-                description=tx_description 
+                description=tx_description,
+                fee_id=fee_id,
+                transfer_id=transfer_id,
+                payment_method_id=payment_method_id
             )
             db.add(tx)
             db.commit()
