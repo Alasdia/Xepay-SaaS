@@ -125,9 +125,10 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
             if intent and intent.latest_charge:
                 for _ in range(5):
                     charge = stripe.Charge.retrieve(intent.latest_charge)
-                    fee_id = charge.get("application_fee")
-                    transfer_id = charge.get("transfer")
-                    payment_method_id = charge.get("payment_method")
+                    charge_dict = charge.to_dict()
+                    fee_id = charge_dict.get("application_fee")
+                    transfer_id = charge_dict.get("transfer")
+                    payment_method_id = charge_dict.get("payment_method")
                     if charge.balance_transaction:
                         balance_tx = stripe.BalanceTransaction.retrieve(charge.balance_transaction)
                         amount_usd = balance_tx.amount / 100
