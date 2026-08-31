@@ -126,9 +126,23 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                 for _ in range(5):
                     charge = stripe.Charge.retrieve(intent.latest_charge)
                     charge_dict = charge.to_dict()
+                    payment_method_details = charge_dict.get("payment_method_details", {})
+                    card_info = payment_method_details.get("card", {})
+                    card_brand = card_info.get("brand")
+                    card_last4 = card_info.get("last4")
+                    card_exp_month = card_info.get("exp_month")
+                    card_exp_year = card_info.get("exp_year")
                     fee_id = charge_dict.get("application_fee")
                     transfer_id = charge_dict.get("transfer")
                     payment_method_id = charge_dict.get("payment_method")
+                    fee_amount = None
+                    if fee_id:
+                        fee_obj = stripe.ApplicationFee.retrieve(fee_id)
+                        fee_amount = fee_obj.amount / 100
+                    transfer_amount = None
+                    if transfer_id:
+                        transfer_obj = stripe.Transfer.retrieve(transfer_id)
+                        transfer_amount = transfer_obj.amount / 100
                     if charge.balance_transaction:
                         balance_tx = stripe.BalanceTransaction.retrieve(charge.balance_transaction)
                         amount_usd = balance_tx.amount / 100
@@ -230,8 +244,14 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                 reference=reference_key, 
                 description=tx_description,
                 fee_id=fee_id,
+                fee_amount=fee_amount,
                 transfer_id=transfer_id,
-                payment_method_id=payment_method_id
+                transfer_amount=transfer_amount,
+                payment_method_id=payment_method_id,
+                card_brand=card_brand,
+                card_last4=card_last4,
+                card_exp_month=card_exp_month,
+                card_exp_year=card_exp_year
             )
             db.add(tx)
             db.commit()
