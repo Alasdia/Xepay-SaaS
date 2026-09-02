@@ -391,8 +391,8 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
           <button class="btn-api btn-out" onclick="copyKey('pubKey')"><i class="fa-regular fa-copy"></i> Copier</button>
         </div>
         <div style="margin-top:14px;padding-top:12px;border-top:1px solid #2a2f5e;font-size:12px;">
-          <span class="muted"> <i class="fa-solid fa-triangle-exclamation warning-icon"></i> Dernière utilisation :</span><br>
-          Aujourd'hui à <strong>14:32</strong> — IP <code style="color:#00d4ff;">41.202.xxx.xxx</code>
+          <span class="muted">Dernière utilisation :</span><br>
+          <span id="lastUsedTime">—</span> — IP <code id="lastUsedIp">—</code>
         </div>
       </div>
     </div>
@@ -967,7 +967,6 @@ async function loadApiKeys() {
     el.textContent = "sk_live_••••••••"
   }
 }
-
 async function regenKey() {
   if (!confirm("Régénérer la clé secrète ?")) return
   
@@ -1184,10 +1183,14 @@ async function loadCurrentUser() {
   })
 
   const user = await res.json()
-
-  console.log("CURRENT USER:", user)
-
   localStorage.setItem("plan", user.plan)
+
+  if (user.session) {
+    document.getElementById("lastUsedTime").textContent =
+      formatLastLogin(user.session.last_seen)
+    document.getElementById("lastUsedIp").textContent =
+      user.session.ip || "—"
+  }
 
   return user
 }

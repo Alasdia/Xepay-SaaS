@@ -617,7 +617,7 @@ def get_me(
         "session": {
             "device": user_agent,
             "ip": ip,
-            "last_seen": "Maintenant"
+            "last_seen": user.last_login.isoformat() if user.last_login else None
         }
     }
 
