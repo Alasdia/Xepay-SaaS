@@ -967,6 +967,45 @@ async function loadApiKeys() {
     el.textContent = "sk_live_••••••••"
   }
 }
+function formatLastLogin(date) {
+  if (!date) return "Jamais";
+  const last = new Date(date);
+  const now = new Date();
+  const diff = Math.floor((now - last) / 1000);
+  if (diff < 60) return "À l'instant";
+  const minutes = Math.floor(diff / 60);
+  if (minutes < 60) return `Il y a ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Il y a ${hours} h`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) {
+    return `Hier à ${last.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  }
+  return last.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+async function loadCurrentUser() {
+  const token = localStorage.getItem("token")
+
+  const res = await fetch("https://api.alasdia.com/me", {
+    headers: {
+      Authorization: "Bearer " + token,
+      "X-Workspace-Id": localStorage.getItem("workspace_id")
+    }
+  })
+
+  const user = await res.json()
+  localStorage.setItem("plan", user.plan)
+
+  if (user.session) {
+    document.getElementById("lastUsedTime").textContent =
+      formatLastLogin(user.session.last_seen)
+    document.getElementById("lastUsedIp").textContent =
+      user.session.ip || "—"
+  }
+
+  return user
+}
 async function regenKey() {
   if (!confirm("Régénérer la clé secrète ?")) return
   
@@ -1171,28 +1210,6 @@ function showSecretPopup(secret) {
 
     modal.appendChild(box);
     document.body.appendChild(modal);
-}
-async function loadCurrentUser() {
-  const token = localStorage.getItem("token")
-
-  const res = await fetch("https://api.alasdia.com/me", {
-    headers: {
-      Authorization: "Bearer " + token,
-      "X-Workspace-Id": localStorage.getItem("workspace_id")
-    }
-  })
-
-  const user = await res.json()
-  localStorage.setItem("plan", user.plan)
-
-  if (user.session) {
-    document.getElementById("lastUsedTime").textContent =
-      formatLastLogin(user.session.last_seen)
-    document.getElementById("lastUsedIp").textContent =
-      user.session.ip || "—"
-  }
-
-  return user
 }
 function renderPlanBadge(plan) {
   const el = document.getElementById("badge-plan")
