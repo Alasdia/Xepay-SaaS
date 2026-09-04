@@ -12,7 +12,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="responsive.css">
-
+<link rel="stylesheet" href="sidebar.css">
 <style>
   :root {
     --bg-deep: #ffffff;
@@ -469,109 +469,8 @@ tr:hover td { background: #ffffff; }
 </style>
 
 </head>
-<body>
-
-<!-- Sidebar -->
-<div id="sidebar" class="d-flex flex-column p-3">
-
-  <div class="mb-4 mt-2">
-    <h4 class="fw-bold" style="color: #111827;">⚡ Xepay</h4>
-    <small style="color: #6b7280;">
-      Tableau de bord marchand
-    </small>
-  </div>
-
-  <div class="mb-4">
-    <span id="badge-plan" class="badge-web3 pro">
-      PRO
-    </span>
-  </div>
-
-  <ul class="nav nav-pills flex-column gap-1">
-
-    <li class="nav-item">
-      <a href="./dashboard.html"
-         class="nav-link text-muted">
-        <i class="fa-solid fa-house"></i> Accueil
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a href="./transactions.html"
-         class="nav-link text-muted">
-          <i class="fa-solid fa-credit-card"></i> Transactions
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a href="./liens.html"
-         class="nav-link text-muted">
-          <i class="fa-solid fa-link"></i> Mes liens de paiement
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a href="API.html"
-         class="nav-link text-muted d-flex justify-content-between">
-         <i class="fa-solid fa-code"></i> API Access
-
-        <span class="badge-web3 pro">
-          Pro
-        </span>
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a href="multi-users.html"
-         class="nav-link text-dark active-link d-flex">
-
-        <span>
-          <i class="fa-solid fa-users"></i> Multi-utilisateurs
-        </span>
-
-        <span class="badge-web3 business">
-          Business
-        </span>
-
-      </a>
-    </li>
-
-    <li class="nav-item mt-2">
-      <a href="./profil.html"
-         class="nav-link text-dark">
-        <i class="fa-solid fa-user"></i> Profil / KYC
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a href="./sécurité.html"
-         class="nav-link text-muted">
-        <i class="fa-solid fa-shield-halved"></i> Sécurité
-      </a>
-    </li>
-
-  </ul>
-
-  <div class="mt-auto">
-    <div class="card border-0 p-3">
-      <p class="mb-2"
-         style="font-size:0.85rem;">
-        Débloquez plus de fonctionnalités
-      </p>
-      <button
-        class="btn btn-warning btn-sm w-100 fw-bold"
-        onclick="showUpgradeModal()">
-        ⚡ Upgrader
-      </button>
-    </div>
-    <a href="login.html"
-       onclick="logout()"
-       class="nav-link logout-link text-muted mt-3 fw-bold">
-         <i class="fa-solid fa-right-from-bracket"></i> Déconnexion
-    </a>
-  </div>
-
-</div>
+<body data-page="dashboard">
+<div id="sidebar-container"></div>
 <div id="businessLock" class="feature-lock d-none">
 
   <div class="feature-lock-card">
@@ -818,6 +717,7 @@ tr:hover td { background: #ffffff; }
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="sidebar.js" defer></script>
 <script>
   let users = []
 
