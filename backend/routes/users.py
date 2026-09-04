@@ -640,33 +640,33 @@ def delete_account(
 @router.get("/profile")
 def get_profile(
     membership: WorkspaceUser = Depends(require_manager),
-    current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db),
-    
 ):
-    
     owner_id = membership.workspace_id
-    print("ROUTE PROFILE LOADED")
-    
+
     profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
 
     if not profile:
-        profile = Profile(
-            user_id=owner_id,
-            full_name=None,
-            phone=None,
-        )
+        profile = Profile(user_id=owner_id, full_name=None, phone=None)
         db.add(profile)
         db.commit()
         db.refresh(profile)
 
-        print("PROFILE:", profile)
+    owner = db.query(UserDB).filter(UserDB.id == owner_id).first()
 
     return {
         "full_name": profile.full_name,
-        "email": current_user.email,
+        "email": owner.email,
         "phone": profile.phone,
-        "two_factor_enabled": current_user.two_factor_enabled,
+        "phone_verified": profile.phone_verified,
+        "two_factor_enabled": owner.two_factor_enabled,
+        "account_id": owner.account_id,
+        "last_login": owner.last_login,
+        "plan": owner.plan,
+        "plan_started_at": owner.plan_started_at,
+        "plan_expires_at": owner.plan_expires_at,
+        "subscription_status": owner.subscription_status,
+        "cancel_at_period_end": owner.cancel_at_period_end,
     }
 
 @router.get("/me/user-plan")

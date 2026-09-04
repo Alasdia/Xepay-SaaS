@@ -395,6 +395,7 @@ body { background: #f8fafc !important; color: #111827 !important; }
 </div>
 
 <!-- CARD PROFIL -->
+-->
 <div class="col-md-12">
   <div class="card-epay p-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -402,25 +403,47 @@ body { background: #f8fafc !important; color: #111827 !important; }
       <button class="btn btn-outline-light btn-sm">Modifier</button>
     </div>
 
-    <div class="row">
-      <div class="col-md-4">
+    <div class="row g-3">
+      <div class="col-md-3">
         <small class="text-muted">Nom</small>
         <div id="profile-name">—</div>
       </div>
-
-      <div class="col-md-4">
+      <div class="col-md-3">
         <small class="text-muted">Email</small>
         <div id="profile-email">—</div>
       </div>
-
-      <div class="col-md-4">
+      <div class="col-md-3">
         <small class="text-muted">Téléphone</small>
         <div id="profile-phone">—</div>
+        <span id="phone-verified-badge" class="status-badge status-warn" style="font-size:10px;">Non vérifié</span>
+      </div>
+      <div class="col-md-3">
+        <small class="text-muted">ID compte</small>
+        <div id="profile-account-id" style="font-family:monospace; font-size:13px;">—</div>
+      </div>
+    </div>
+
+    <div class="plan-divider my-3" style="background:#e5e7eb;"></div>
+
+    <div class="row g-3">
+      <div class="col-md-3">
+        <small class="text-muted">2FA</small>
+        <div id="profile-2fa">—</div>
+      </div>
+      <div class="col-md-3">
+        <small class="text-muted">Dernière connexion</small>
+        <div id="profile-last-login">—</div>
+      </div>
+      <div class="col-md-3">
+        <small class="text-muted">Abonnement depuis</small>
+        <div id="profile-plan-started">—</div>
+      </div>
+      <div class="col-md-3">
+        <small class="text-muted">Prochaine échéance</small>
+        <div id="profile-plan-expires">—</div>
       </div>
     </div>
   </div>
-  </div>
-
 </div>
 <!-- ── PLANS ── -->
 <div class="modal fade" id="modalUpgrade">
@@ -959,11 +982,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadProfile() {
   const token = localStorage.getItem("token")
-
-  if (!token) {
-    window.location.href = "login.html"
-    return
-  }
+  if (!token) { window.location.href = "login.html"; return }
 
   try {
     const res = await fetch("https://api.alasdia.com/profile", {
@@ -972,16 +991,36 @@ async function loadProfile() {
         "X-Workspace-Id": localStorage.getItem("workspace_id")
       }
     })
-
     const data = await res.json()
-
     console.log("PROFILE:", data)
 
-    // Injection dans le HTML
     document.getElementById("profile-name").innerText = data.full_name || "—"
     document.getElementById("profile-email").innerText = data.email || "—"
     document.getElementById("profile-phone").innerText = data.phone || "—"
+    document.getElementById("profile-account-id").innerText = data.account_id || "—"
 
+    const phoneBadge = document.getElementById("phone-verified-badge")
+    if (data.phone_verified) {
+      phoneBadge.innerText = "Vérifié"
+      phoneBadge.classList.remove("status-warn")
+      phoneBadge.classList.add("status-ok")
+    }
+    const twoFaEl = document.getElementById("profile-2fa")
+    twoFaEl.innerHTML = data.two_factor_enabled
+      ? '<span class="status-badge status-ok">Activée</span>'
+      : '<span class="status-badge status-warn">Désactivée</span>'
+
+    document.getElementById("profile-last-login").innerText = data.last_login
+      ? new Date(data.last_login).toLocaleString("fr-FR")
+      : "—"
+
+    document.getElementById("profile-plan-started").innerText = data.plan_started_at
+      ? new Date(data.plan_started_at).toLocaleDateString("fr-FR")
+      : "—"
+
+    document.getElementById("profile-plan-expires").innerText = data.plan_expires_at
+      ? new Date(data.plan_expires_at).toLocaleDateString("fr-FR") + (data.cancel_at_period_end ? " (résiliation prévue)" : "")
+      : "—"
   } catch (err) {
     console.error("PROFILE ERROR:", err)
   }
