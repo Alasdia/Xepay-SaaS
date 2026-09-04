@@ -39,21 +39,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body { background: #ffffff; color: #6b7280; font-family: "DM Sans", sans-serif; min-height: 100vh; overflow-x: hidden; }
-#sidebar { width: 260px; min-height: 100vh; background: #ffffff; border-right: 1px solid #e5e7eb; position: fixed; top: 0; left: 0; display: flex; flex-direction: column; padding: 16px; z-index: 100; }
-.sidebar::-webkit-scrollbar { width: 6px; }
-.sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
-#sidebar h4 { color: #374151 !important; }
-#sidebar p,
-#sidebar small { color: #9ca3af !important; }
-#sidebar .card { transition: all .25s ease; cursor: pointer; }
-#sidebar .card:hover { border: 1px solid #facc15 !important; background: #fffdf5 !important; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(250,204,21,.25); }
 #main-content { height: auto !important; min-height: auto !important; display: block; margin-left: 260px; padding: 28px 40px; width: calc(100% - 260px); position: relative; z-index: 1; }
-#sidebar .nav-link{ color:#374151 !important; border-radius:12px; transition:all .2s ease; display:flex; align-items:center; gap:8px; }
-#sidebar .nav-link:hover{ background:transparent !important; color:#f0b429 !important; font-weight:500; }
-#sidebar .nav-link.active-link{ background:transparent !important; color:#f0b429 !important; font-weight: 600; }
-#sidebar .nav-link:hover i{ color:#f0b429 !important; }
-#sidebar .nav-link.active-link i{ color:#f0b429 !important; }
-#sidebar .logout-link{ justify-content:center; }
 .plan-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: white; border: none; }
 .warning-icon{ font-size:10px; margin-right:5px; color:#facc15; opacity:.65; }
 .card-title-small i,
@@ -104,8 +90,8 @@ h3 i{ font-size:.85em; margin-right:6px; opacity:.75; }
 .event-tag { background: rgba(99,102,241,0.2); color: #a78bfa; border: 1px solid rgba(99,102,241,0.3); font-size: 10px; padding: 2px 7px; border-radius: 4px; font-family: monospace; margin-right: 4px; }
 .badge { display: inline-flex; align-items: center; justify-content: center; padding: 5px 12px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; position: relative; overflow: hidden; backdrop-filter: blur(6px); }
 .badge.free { color: #22c55e; background: linear-gradient(135deg, rgba(34,197,94,0.18), rgba(34,197,94,0.05) ); border: 1px solid rgba(34,197,94,0.4); box-shadow: 0 0 8px rgba(34,197,94,0.6), inset 0 0 6px rgba(34,197,94,0.25); }
-.badge.pro { color: #a855f7; background: linear-gradient( 135deg, rgba(168,85,247,0.20), rgba(168,85,247,0.05) ); border: 1px solid rgba(168,85,247,0.45); box-shadow: 0 0 12px rgba(168,85,247,0.7), inset 0 0 8px rgba(168,85,247,0.3); }
-.badge.business { color: #facc15; background: linear-gradient( 135deg, rgba(250,204,21,0.25), rgba(250,204,21,0.05) ); border: 1px solid rgba(250,204,21,0.6); box-shadow: 0 0 14px rgba(250,204,21,0.8), inset 0 0 10px rgba(250,204,21,0.35); }
+.badge.pro { color: #facc15; background: linear-gradient( 135deg, rgba(168,85,247,0.20), rgba(168,85,247,0.05) ); border: 1px solid rgba(168,85,247,0.45); box-shadow: 0 0 12px rgba(168,85,247,0.7), inset 0 0 8px rgba(168,85,247,0.3); }
+.badge.business { color: #df0e38; background: linear-gradient( 135deg, rgba(250,204,21,0.25), rgba(250,204,21,0.05) ); border: 1px solid rgba(250,204,21,0.6); box-shadow: 0 0 14px rgba(250,204,21,0.8), inset 0 0 10px rgba(250,204,21,0.35); }
 .badge::before { content: ""; position: absolute; top: 0; left: -60%; width: 40%; height: 100%; background: linear-gradient( 120deg, transparent, rgba(255,255,255,0.6), transparent); transform: skewX(-20deg); animation: shine 3s infinite; }
 @keyframes shine { 0% { left: -60%; } 100% { left: 120%; } }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.25s; }

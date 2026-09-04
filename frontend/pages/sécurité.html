@@ -27,7 +27,6 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
   --font-b: "DM Sans", sans-serif;
 }
 body { background: #ffffff; min-height: 100vh; color: #111827; position: relative; overflow-x: hidden; min-height: 100vh; }
-#sidebar { width: 260px; min-height: 100vh; background: #ffffff; border-right: 1px solid #e5e7eb; position: fixed; top: 0; left: 0; z-index: 100; padding: 20px; display: flex; flex-direction: column; min-width: 260px; }
 #main-content { margin-left: 260px; padding: 28px 32px;  width: calc(100% - 260px); min-width: 0; flex: 1; }
 .card-epay { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; color: #111827; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
 .card-epay:hover{ border-color:#f0b429; box-shadow:0 8px 24px rgba(240,180,41,.08); }
@@ -35,18 +34,6 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
 .form-select { background: #ffffff !important; border: 1px solid #d1d5db !important; color: #111827 !important; border-radius: 10px !important; }
 .form-control::placeholder { color: #6b7280 !important; opacity: 1; }
 .input-group-text { background: rgba(255,255,255,0.07) !important; border: 1px solid rgba(255,255,255,0.15) !important; color: white !important; }
-#sidebar .nav-link{ color:#374151 !important; border-radius:12px; transition:all .2s ease; display:flex; align-items:center; gap:8px; }
-#sidebar .nav-link:hover{ background:transparent !important; color:#f0b429 !important; font-weight:500; }
-#sidebar .nav-link.active-link{ background:transparent !important; color:#f0b429 !important; font-weight: 600; }
-#sidebar .nav-link:hover i,
-#sidebar .nav-link.active-link i{ color:#f0b429 !important; }
-#sidebar .logout-link{ justify-content:center; }
-#sidebar .card { transition: all .25s ease; cursor: pointer; }
-#sidebar .card:hover { border: 1px solid #facc15 !important; background: #fffdf5 !important; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(250,204,21,.25); }
-.upgrade-card{ background: rgba(255,255,255,0.1); border-radius: 12px; border: 1px solid transparent; transition: all .25s ease; }
-.upgrade-card:hover{ border: 1px solid #f0b429; transform: translateY(-2px); }
-.nav-lock{ display:flex; justify-content:space-between; align-items:center; }
-.nav-lock span:first-child{ display:flex; align-items:center; gap:12px; }
         .plan-badge {
           display: inline-flex;
           align-items: center;
