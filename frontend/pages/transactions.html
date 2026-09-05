@@ -1293,12 +1293,23 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
         const html = data.transactions.map(tx => {
           const estRetraitEnAttente = tx.type === 'withdraw' && (tx.status === 'pending' || (tx.description && tx.description.toLowerCase().includes('en attente')));
 
-          const boutonAnnuler = estRetraitEnAttente 
+          const boutonAnnuler = estRetraitEnAttente && tx.withdrawal_id
             ? `<div style="margin-top: 8px; text-align: right;">
-                <button onclick="annulerRetrait('${tx.withdrawal_id}')" style="background: #facc15; color: #111827; border: none; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;">
+                <button
+                  onclick="annulerRetrait(${tx.withdrawal_id})"
+                  style="
+                    background:#facc15;
+                    color:#111827;
+                    border:none;
+                    padding:5px 12px;
+                    border-radius:6px;
+                    font-size:11px;
+                    font-weight:600;
+                    cursor:pointer;
+                  ">
                   Annuler le retrait
                 </button>
-              </div>` 
+              </div>`
             : '';
             return `
             <div class="wallet-item" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px;">
@@ -1345,35 +1356,56 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
       }
     }
     async function annulerRetrait(retraitId) {
-      if (!confirm("Voulez-vous vraiment annuler ce retrait ? Les fonds seront recrédités.")) return;
-
+      console.log("ID DU RETRAIT À ANNULER :", retraitId);
+      if (!retraitId) {
+        showToast(
+            "Identifiant du retrait introuvable",
+            "error"
+        );
+        return;
+      }
+      if (!confirm(
+        "Voulez-vous vraiment annuler ce retrait ? Les fonds seront recrédités."
+      )) {
+        return;
+      }
       try {
         const token = localStorage.getItem("token");
         const workspaceId = localStorage.getItem("workspace_id");
-
-        const res = await fetch(`https://api.alasdia.com/withdrawals/${retraitId}/cancel`, {
-          method: "POST",
-          headers: {
-            "Authorization": "Bearer " + token,
-            "X-Workspace-Id": workspaceId,
-            "Content-Type": "application/json"
-          }
-        });
-
+        const res = await fetch(
+            `https://api.alasdia.com/withdrawals/${retraitId}/cancel`,
+            {
+                method: "POST",
+                headers: {
+                    "Authorization": "Bearer " + token,
+                    "X-Workspace-Id": workspaceId
+                }
+            }
+        );
         const data = await res.json();
-
+        console.log("RÉPONSE :", data);
         if (!res.ok) {
-          showToast(data.detail || "Erreur lors de l'annulation", "error");
-          return;
+            showToast(
+                data.detail || "Erreur lors de l'annulation",
+                "error"
+            );
+            return;
         }
-        showToast("Retrait annulé avec succès !", "success");
-    
-        loadWalletHistory();
-        if (typeof loadStats === 'function') loadStats();
-
+        showToast(
+            "Retrait annulé avec succès !",
+            "success"
+        );
+        await loadWalletHistory();
+        await chargerWallet();
       } catch (err) {
-        console.error(err);
-        showToast("Erreur de connexion au serveur", "error");
+        console.error(
+            "Erreur annulation retrait :",
+            err
+        );
+        showToast(
+            "Erreur de connexion au serveur",
+            "error"
+        );
       }
     }
     const confirmBtn = document.getElementById("confirmWithdrawBtn");

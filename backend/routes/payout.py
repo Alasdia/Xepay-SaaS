@@ -112,6 +112,7 @@ def get_wallet_history(
         wd = db.query(Withdrawal).filter(Withdrawal.reference == tx.reference).first()
         transactions_data.append({
             "id": wd.id if wd else tx.id,
+            "withdrawal_id": wd.id if wd else None,
             "amount": tx.amount,
             "direction": tx.direction,
             "type": tx.type,
@@ -421,43 +422,95 @@ def process_withdraw(
 
 @router.post("/withdrawals/{withdrawal_id}/cancel")
 async def cancel_withdrawal(
-    withdrawal_id: int, 
+    withdrawal_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user)
 ):
-    wd = db.query(Withdrawal).filter(Withdrawal.id == withdrawal_id).first()
-    
+    wd = (
+        db.query(Withdrawal)
+        .filter(
+            Withdrawal.id == withdrawal_id,
+            Withdrawal.user_id == current_user.id
+        )
+        .first()
+    )
     if not wd:
-        raise HTTPException(status_code=404, detail="Retrait introuvable.")
-    
+        raise HTTPException(
+            status_code=404,
+            detail="Retrait introuvable."
+        )
     if wd.status != "pending":
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail=f"Impossible d'annuler ce retrait car son statut est déjà '{wd.status}'."
         )
-
+    if not wd.stripe_payout_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Ce retrait ne possède pas de payout Stripe."
+        )
     try:
-        stripe.Payout.cancel(wd.stripe_payout_id)
-
+        payout = stripe.Payout.retrieve(
+            wd.stripe_payout_id
+        )
+        if payout.status != "pending":
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Ce retrait ne peut plus être annulé. "
+                    f"Statut Stripe : {payout.status}"
+                )
+            )
+        stripe.Payout.cancel(
+            wd.stripe_payout_id
+        )
         wd.status = "canceled"
-        
-        wallet = db.query(Wallet).filter(Wallet.id == wd.wallet_id).first()
-        if wallet:
-            wallet.pending -= wd.amount
-            wallet.available += wd.amount
-            
-        tx = db.query(WalletTransaction).filter(WalletTransaction.reference == wd.reference).first()
+        wd.processed_at = datetime.now(timezone.utc)
+        wallet = (
+            db.query(Wallet)
+            .filter(Wallet.id == wd.wallet_id)
+            .first()
+        )
+        if not wallet:
+            raise HTTPException(
+                status_code=500,
+                detail="Wallet introuvable."
+            )
+        wallet.pending -= wd.amount
+        wallet.available += wd.amount
+
+        if wallet.pending < 0:
+            wallet.pending = 0
+
+        tx = (
+            db.query(WalletTransaction)
+            .filter(
+                WalletTransaction.reference == wd.reference
+            )
+            .first()
+        )
         if tx:
             tx.status = "canceled"
-            
         db.commit()
 
-        return {"success": True, "message": "Retrait annulé avec succès et fonds recrédités."}
+        return {
+            "success": True,
+            "message": "Retrait annulé avec succès et fonds recrédités."
+        }
 
     except stripe.error.StripeError as e:
         db.rollback()
-        raise HTTPException(status_code=400, detail=f"Erreur Stripe : {e.user_message}")
+
+        raise HTTPException(
+            status_code=400,
+            detail=f"Erreur Stripe : {e.user_message or str(e)}"
+        )
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erreur interne : {str(e)}")
-
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur interne : {str(e)}"
+        )
