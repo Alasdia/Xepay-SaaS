@@ -107,20 +107,20 @@ def get_wallet_history(
         .order_by(WalletTransaction.created_at.desc())\
         .all()
 
-    return {
-        "transactions": [
-            {
-                "amount": tx.amount,
-                "direction": tx.direction,
-                "type": tx.type,
-                "description": tx.description,
-                "reference": tx.reference,
-                "created_at": tx.created_at.isoformat()
-            }
-            for tx in txs
-        ]
-    }
-        
+    transactions_data = []
+    for tx in txs:
+        wd = db.query(Withdrawal).filter(Withdrawal.reference == tx.reference).first()
+        transactions_data.append({
+            "id": wd.id if wd else tx.id,
+            "amount": tx.amount,
+            "direction": tx.direction,
+            "type": tx.type,
+            "description": tx.description,
+            "reference": tx.reference,
+            "created_at": tx.created_at.isoformat(),
+        })
+    return {"transactions": transactions_data}
+
 @router.post("/withdraw")
 def withdraw(
     req: WithdrawRequest, 
