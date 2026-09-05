@@ -873,7 +873,7 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
       lock.style.display = "none";
 
       loadStats();
-      loadTransactions();
+      chargerTransactions();
       chargerWallet();
       loadWalletHistory();
     })
@@ -971,95 +971,116 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
     const limit = 10;
     let isLoading = false;
     let currentType = "";
-
-    const badgeStatut = {
-      paid: `<span class="status-pill badge-success">Réussi</span>`,
-      pending: `<span class="status-pill badge-warning">En attente</span>`,
-      expired:  `<span class="status-pill badge-danger">Échoué</span>`
-    }
-
     const avatarPalette = ['#22d3ee','#facc15','#ec4899','#4ade80','#a78bfa','#fb923c','#60a5fa','#f87171'];
     function avatarColor(str) {
       let h = 0;
       for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % avatarPalette.length;
       return avatarPalette[h];
     }
-
+    const typeIcon = {
+      payment: "bi-credit-card",
+      withdraw: "bi-bank",
+      transfer: "bi-arrow-left-right"
+    };
+    function statusBadgeClass(status) {
+      if (["paid", "success"].includes(status)) return "badge-success";
+      if (["pending", "processing"].includes(status)) return "badge-warning";
+      return "badge-danger";
+    }
     function afficherTransactions(data) {
-      console.log("DATA REÇUE 👉", data) 
+      console.log("DATA REÇUE 👉", data)
       const tbody = document.getElementById('tbody-transactions')
       const vide = document.getElementById('etat-vide')
-
       if (data.length === 0) {
         tbody.innerHTML = ''
         vide.classList.remove('d-none')
         document.getElementById('nb-transactions').textContent = '0 transactions'
         return
       }
-
       vide.classList.add('d-none')
       document.getElementById('nb-transactions').textContent =
         `${data.length} transaction${data.length > 1 ? 's' : ''}`
+      const html = data.map((t, i) => {
+      const amount = (t.amount_local ?? t.amount);
+      const currency = (t.currency_local ?? t.currency);
+      const displayName = t.type === "payment" ? t.label : (t.label || "Transfert");
+      const color = avatarColor(displayName || 'x');
 
-      const html = data.map(t => {
-        const amount = (t.amount_local ?? t.amount);
-        const currency = (t.currency_local ?? t.currency);
-        const color = avatarColor(t.email || 'x');
-        return `
-          <tr>
-            <td>
-              <div class="d-flex align-items-center gap-3">
-                <div class="avatar" style="background:${color};">${t.email[0].toUpperCase()}</div>
-                <div>
-                  <div class="fw-semibold">${t.email}</div>
-                  <small style="color: #9ca3af; font-size:0.75rem;">Client</small>
-                </div>
+      return `
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-3">
+              <div class="avatar" style="background:${color};">
+                ${t.type === "payment"
+                  ? displayName[0].toUpperCase()
+                  : `<i class="bi ${typeIcon[t.type] || 'bi-arrow-left-right'}"></i>`}
               </div>
-            </td>
-
-            <td>
-              <span class="amount-cell">${amount.toLocaleString("fr-FR")}</span><span class="amount-currency">${currency}</span>
-            </td>
-
-            <td>
-              <span class="status-pill ${
-                t.status === "paid" ? "badge-success" :
-                t.status === "pending" ? "badge-warning" :
-                "badge-danger"
-              }">
-                ${statusMap[t.status] || t.status}
-              </span>
-            </td>
-
-            <td style="color: #6b7280; font-size: 0.85rem;">
-              ${
-                t.date && !isNaN(new Date(t.date))
-                 ? new Date(t.date).toLocaleDateString("fr-FR", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit"
-                 })
-                 :"N/A"
-              }
-            </td>
-
-            <td style="text-align:right;">
-              <button style="background:#f9fafb; border:1px solid #e5e7eb; color:#6b7280; width:32px; height:32px; border-radius:8px; cursor:pointer;">
-                <i class="bi bi-eye"></i>
-              </button>
-            </td>
-          </tr>
-        `
+              <div>
+                <div class="fw-semibold">${displayName}</div>
+                <small style="color: #9ca3af; font-size:0.75rem;">
+                  ${t.type === "payment" ? "Client" : t.type === "withdraw" ? "Retrait" : "Transfert"}
+                </small>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="amount-cell">${amount.toLocaleString("fr-FR")}</span><span class="amount-currency">${currency}</span>
+          </td>
+          <td>
+            <span class="status-pill ${statusBadgeClass(t.status)}">
+              ${statusMap[t.status] || t.status}
+            </span>
+          </td>
+          <td style="color: #6b7280; font-size: 0.85rem;">
+            ${
+              t.date && !isNaN(new Date(t.date))
+                ? new Date(t.date).toLocaleDateString("fr-FR", {
+                  day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+                })
+                : "N/A"
+            }
+          </td>
+          <td style="text-align:right;">
+            <button onclick='voirDetailActivite(${i})'
+                  style="background:#f9fafb; border:1px solid #e5e7eb; color:#6b7280; width:32px; height:32px; border-radius:8px; cursor:pointer;">
+              <i class="bi bi-eye"></i>
+            </button>
+          </td>
+        </tr>
+      `
       }).join('');
-
       if (offset === 0) {
         tbody.innerHTML = html;
       } else {
         tbody.innerHTML += html;
       }
-
+    }
+    function voirDetailActivite(index) {
+      const t = transactions[index];
+      if (!t) return;
+      const d = t.details || {};
+      let lignes = [];
+      if (t.type === "payment") {
+        lignes = [
+          `Montant d'origine : ${d.amount_origin ?? "-"} ${d.currency_origin ?? ""}`,
+          `Frais : ${d.fee_amount ?? 0}`,
+          `Carte : ${d.card_brand ?? "-"} •••• ${d.card_last4 ?? "----"}`,
+          `Session Stripe : ${d.stripe_session_id ?? "-"}`
+        ];
+      } else if (t.type === "withdraw") {
+        lignes = [
+          `Référence : ${d.reference ?? "-"}`,
+          `Payout Stripe : ${d.stripe_payout_id ?? "-"}`,
+          `Traité le : ${d.processed_at ? new Date(d.processed_at).toLocaleString("fr-FR") : "-"}`
+        ];
+      } else if (t.type === "transfer") {
+        lignes = [
+          `Référence : ${d.reference ?? "-"}`,
+          `Correspondant : ${d.counterparty_email ?? "-"}`,
+          `Frais : ${d.fee_amount ?? 0} XOF`
+        ];
+      }
+      showToast(lignes.join(" · "));
     }
     async function chargerTransactions() {
       console.log("CHARGER TRANSACTIONS CALLED")
@@ -1109,37 +1130,22 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
         }, 600)
       }
     }
-
     function filtrerTransactions() {
       const search = document.getElementById('search-input').value.toLowerCase()
       const statut = document.getElementById('filter-statut').value
-
       const filtered = transactions.filter(t => {
-
-        const matchSearch =
-            t.email.toLowerCase().includes(search)
-
-        const matchStatus =
-            !statut || t.status === statut
-
+        const matchSearch = (t.label || "").toLowerCase().includes(search)
+        const matchStatus = !statut || t.status === statut
         return matchSearch && matchStatus
       })
-
       afficherTransactions(filtered)
     }
-
     function resetFiltres() {
       document.getElementById('search-input').value = ''
       document.getElementById('filter-statut').value = ''
       document.getElementById('filter-devise').value = ''
     }
-
-    function voirDetail(email) {
-      const t = transactions.find(x => x.email === email)
-      showToast(`${t.client} — ${t.montant} ${t.devise} — ${t.statut}`)
-    }
     console.log("DATA =", transactions);
-
     function renderStats(stats) {
       document.getElementById("total-xof").innerText =
         (stats.total_received || 0).toLocaleString("fr-FR") + " XOF";
@@ -1275,110 +1281,6 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
 
       return result
     }
-    async function loadTransactions() {
-
-      const token = localStorage.getItem("token")
-      
-
-      console.log("LOAD START");
-      const table = document.getElementById("tbody-transactions");
-      table.innerHTML = "Chargement...";
-
-      if (!token) {
-        showToast("Session expirée, veuillez vous reconnecter", "warning")
-        window.location.href = "login.html"
-      }
-      console.log("TOKEN =", token)
-
-      const status = document.getElementById("statusFilter")?.value || "";
-      const currency = document.getElementById("currencyFilter")?.value || "";
-      const search = document.getElementById("searchInput")?.value || "";
-
-      let url = `https://api.alasdia.com/transactions?limit=${limit}&offset=${offset}&`;
-      if (status) url += `status=${status}&`;
-      if (currency) url += `currency=${currency}&`;
-      if (search) url += `email_search=${search}&`;
-
-       console.log("URL:", url);
-
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Authorization": "Bearer " + token,
-          "X-Workspace-Id": localStorage.getItem("workspace_id")
-        }
-      })
-      console.log("STATUS =", response.status)
-
-      if (response.status === 401) {
-        console.log("Token expiré → tentative de reconnexion")
-        window.location.href = "login.html"
-        return
-      }
-
-      const json = await response.json()
-
-      console.log("JSON =", json)
-
-      const data = json
-
-      console.log("DATA =", data)
-
-      if (response.status !== 200) {
-        console.log("Erreur API")
-        return
-      }
-
-      console.log("DATA =", data);
-      transactions = data.filter(tx => {
-        const email = (tx.email || "").toLowerCase();
-        const statusTx = (tx.status || "").toLowerCase();
-        const currencyTx = (tx.currency || "").toLowerCase();
-
-        return (
-          (!search || email.includes(search.toLowerCase())) &&
-          (!status || statusTx.includes(status.toLowerCase())) &&
-          (!currency || currencyTx === currency.toLowerCase())
-        );
-      });
-      console.log("TRANSACTIONS FINAL =", transactions)
-      
-      let rows = "";
-      console.log("DATES:", transactions.map(t => t.created_at))
-      transactions.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      transactions.forEach(tx => {
-          const amount = tx.amount_local || tx.amount;
-          const currency = tx.currency_local || tx.currency;
-          rows += `
-          <tr>
-                <td>${tx.email}</td>
-                <td>${amount.toLocaleString("fr-FR")} ${currency}</td>
-
-                <td>
-                    ${badgeStatut[tx.status] || `<span class="status-pill badge-danger">${tx.status}</span>`}
-                </td>
-
-                <td>
-                  ${
-                    tx.created_at
-                      ? new Date(tx.created_at).toLocaleDateString("fr-FR")
-                      : "-"
-                    }
-                </td>
-          </tr>
-          `;
-      });
-
-      table.innerHTML = rows;
-
-      afficherTransactions(transactions)
-
-      document.getElementById("statusFilter")?.addEventListener("change", loadTransactions);
-      document.getElementById("currencyFilter")?.addEventListener("change", loadTransactions);
-      document.getElementById("searchInput")?.addEventListener("input", loadTransactions);
-
-    }
-
     async function loadWalletHistory() {
       try {
         const token = localStorage.getItem("token");
