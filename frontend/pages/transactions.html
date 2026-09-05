@@ -558,6 +558,13 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
         <button class="chip" data-statut="pending" onclick="setStatutChip(this)">En attente</button>
         <button class="chip" data-statut="expired" onclick="setStatutChip(this)">Échoué</button>
 
+        <div class="date-group ms-2">
+          <button class="chip type-chip active" data-type="" onclick="setTypeChip(this)">Toute activité</button>
+          <button class="chip type-chip" data-type="payment" onclick="setTypeChip(this)">Paiements</button>
+          <button class="chip type-chip" data-type="withdraw" onclick="setTypeChip(this)">Retraits</button>
+          <button class="chip type-chip" data-type="transfer" onclick="setTypeChip(this)">Transferts</button>
+        </div>
+
         <select id="filter-statut" onchange="filtrerTransactions()">
           <option value="">Tous les statuts</option>
           <option value="paid">Réussi</option>
@@ -752,7 +759,14 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
       select.value = el.dataset.statut;
       select.dispatchEvent(new Event('change'));
     }
-
+    function setTypeChip(el) {
+      document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      currentType = el.dataset.type;
+      offset = 0;
+      transactions = [];
+      chargerTransactions();
+    }
     async function exportCSV() {
       console.log("CLICK OK")
 
@@ -956,6 +970,7 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
     let offset = 0;
     const limit = 10;
     let isLoading = false;
+    let currentType = "";
 
     const badgeStatut = {
       paid: `<span class="status-pill badge-success">Réussi</span>`,
@@ -1048,27 +1063,16 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
     }
     async function chargerTransactions() {
       console.log("CHARGER TRANSACTIONS CALLED")
-
       if (isLoading) return;
       isLoading = true;
-
       const loader = document.getElementById("loading-more");
       loader.classList.remove("d-none");
-
       try {
-        const raw = document.getElementById("filter-statut").value
-
-        const mapStatus = {
-          "Tous": "",
-          "Réussi": "paid",
-          "En attente": "pending",
-          "Échoué": "expired"
-        }
-
-        const status = mapStatus[raw] || ""
-
-        const url = `https://api.alasdia.com/transactions?offset=${offset}&limit=${limit}` + (status ? `&status=${status}` : "")
-
+        const statut = document.getElementById("filter-statut").value
+        const params = new URLSearchParams({ offset, limit })
+        if (currentType) params.append("type", currentType)
+        if (statut) params.append("status", statut)
+        const url = `https://api.alasdia.com/activity?${params}`
         const res = await fetch(url, {
           headers: {
             Authorization: "Bearer " + localStorage.getItem("token"),
@@ -1077,28 +1081,16 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
         })
         console.log("OFFSET =", offset)
         const data = await res.json()
-        console.log(
-          "OFFSET =", offset,
-          data.map(t => t.email)
-        )
-
+        console.log("OFFSET =", offset, data)
         transactions = [...transactions, ...data]
         afficherTransactions(data)
-
         offset += data.length;
-
-        if (data.length < limit) {
-          return;
-        }
-
       } catch (err) {
-        console.error("Erreur transactions:", err)
+        console.error("Erreur activity:", err)
       }
-
       isLoading = false;
       loader.classList.add("d-none");
     }
-
     async function rafraichir(btn) {
       try {
         btn.style.transition = "transform 0.6s linear"
