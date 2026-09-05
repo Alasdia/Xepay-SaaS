@@ -1412,51 +1412,57 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
 
     if (confirmBtn) {
       confirmBtn.addEventListener("click", async () => {
-      const token = localStorage.getItem("token");
-
-      const amount = parseFloat(document.getElementById("withdrawAmount").value);
-      
-      if (!amount || amount <= 0) {
-        alert("Montant invalide");
-        return;
-      }
-      try {
-        const res = await fetch("https://api.alasdia.com/withdraw", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-            "X-Workspace-Id": localStorage.getItem("workspace_id")
-          },
-          body: JSON.stringify({
-            amount,
-          })
-        });
-        const data = await res.json();
-
-        if (!res.ok) {
-          let message = "Impossible d'effectuer ce retrait";
-
-          if (data.detail === "Permission insuffisante") {
-            message = "Seul le propriétaire du compte peut effectuer un retrait";
-          } else if (typeof data.detail === "string") {
-            message = data.detail;
-          }
-          showToast(message, "error");
-          closeWithdrawModalCleanly();
+        const token = localStorage.getItem("token");
+        const amount = parseFloat(document.getElementById("withdrawAmount").value);
+        if (!amount || amount <= 0) {
+          alert("Montant invalide");
           return;
         }
-        showToast("Retrait envoyé avec succès");
-        closeWithdrawModalCleanly();
-        document.getElementById("withdrawAmount").value = "";
+        try {
+          const res = await fetch("https://api.alasdia.com/withdraw", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,
+              "X-Workspace-Id": localStorage.getItem("workspace_id")
+            },
+            body: JSON.stringify({ amount })
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            let message = "Impossible d'effectuer ce retrait";
+            if (data.detail === "Permission insuffisante") {
+              message = "Seul le propriétaire du compte peut effectuer un retrait";
+            } else if (typeof data.detail === "string") {
+              message = data.detail;
+            }
+            showToast(message, "error");
+            closeWithdrawModalCleanly();
+            return;
+          }
+          const res2 = await fetch(`https://api.alasdia.com/withdraw/${data.id}/process`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "X-Workspace-Id": localStorage.getItem("workspace_id")
+            }
+          });
+          const data2 = await res2.json();
+          if (!res2.ok) {
+            showToast(data2.detail || "Erreur lors du traitement Stripe", "error");
+            closeWithdrawModalCleanly();
+            return;
+          }
 
-        setTimeout(() => location.reload(), 1200);
-
-      } catch (err) {
-        showToast("Erreur serveur, veuillez réessayer", "error");
-        closeWithdrawModalCleanly();
-      }
-    });
+          showToast("Retrait envoyé avec succès");
+          closeWithdrawModalCleanly();
+          document.getElementById("withdrawAmount").value = "";
+          setTimeout(() => location.reload(), 1200);
+        } catch (err) {
+          showToast("Erreur serveur, veuillez réessayer", "error");
+          closeWithdrawModalCleanly();
+        }
+      });
     }
     const successCard = document.getElementById("successCard");
     const chartTooltip = document.getElementById("chartTooltip");
