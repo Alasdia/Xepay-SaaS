@@ -188,7 +188,6 @@ class Profile(Base):
     phone_verified = Column(Boolean, default=False)
     stripe_account_id = Column(String, nullable=True, index=True)
     
-
 class UserDB(Base):
     __tablename__ = "users"
 
@@ -219,8 +218,6 @@ class UserDB(Base):
     alert_payment = Column(Boolean, default=True)
     alert_suspect = Column(Boolean, default=True)
 
-
-
 class WorkspaceUser(Base):
     __tablename__ = "workspace_users"
 
@@ -228,8 +225,6 @@ class WorkspaceUser(Base):
     user_id = Column(String, ForeignKey("users.id"))
     workspace_id = Column(String, ForeignKey("users.id"))
     role = Column(String, default="member")
-
-
 
 class WorkspaceInvite(Base):
     __tablename__ = "workspace_invites"
@@ -306,8 +301,17 @@ class Payment(Base):
     link = relationship("Link")
     stripe_session_id = Column(String, nullable=True)
     stripe_account_id = Column(String, nullable=True)
-    
-   
+    stripe_payment_intent_id = Column(String, nullable=True, index=True)
+    fee_id = Column(String, nullable=True)
+    fee_amount = Column(Float, nullable=True)
+    transfer_id = Column(String, nullable=True)
+    transfer_amount = Column(Float, nullable=True)
+    payment_method_id = Column(String, nullable=True)
+    card_brand = Column(String, nullable=True)
+    card_last4 = Column(String, nullable=True)
+    card_exp_month = Column(Integer, nullable=True)
+    card_exp_year = Column(Integer, nullable=True)
+
 # --- SQLAlchemy (DB) ---
 class Link(Base):
     __tablename__ = "links"
@@ -329,8 +333,3 @@ class Link(Base):
     user = relationship("UserDB", back_populates="links")
     def __repr__(self):
         return f"<Link id={self.id} name={self.name} amount={self.amount}>"
-
-
-
-
-

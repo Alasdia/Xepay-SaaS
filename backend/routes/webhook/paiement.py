@@ -70,7 +70,7 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
         elif event_type == "charge.refunded":
             charge_id = object_data["id"]
             pi_id = object_data.get("payment_intent")
-            reference = f"pi_{pi_id}" if pi_id else f"ch_{charge_id}"
+            reference = pi_id
 
             tx = db.query(WalletTransaction).filter(WalletTransaction.reference == reference).first()
             if tx and tx.status != "refunded":
@@ -193,7 +193,17 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                 status="paid",
                 link_id=link_id,
                 stripe_session_id=session.id,
-                stripe_account_id=profile.stripe_account_id
+                stripe_account_id=profile.stripe_account_id,
+                stripe_payment_intent_id=pi_id,
+                payment_method_id=payment_method_id,
+                fee_id=fee_id,
+                fee_amount=fee_amount,
+                transfer_id=transfer_id,
+                transfer_amount=transfer_amount,
+                card_brand=card_brand,
+                card_last4=card_last4,
+                card_exp_month=card_exp_month,
+                card_exp_year=card_exp_year
             )
             db.add(payment)
             db.flush()
