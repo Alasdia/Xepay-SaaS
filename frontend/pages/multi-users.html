@@ -86,25 +86,6 @@ th{ color:#6b7280; }
     0 0 10px rgba(250,204,21,0.5),
     0 0 25px rgba(250,204,21,0.25);
 }
-
-/* SHIMMER */
-.badge-web3::after {
-  content: "";
-
-  position: absolute;
-  inset: 0;
-
-  background: linear-gradient(
-    120deg,
-    transparent,
-    rgba(255,255,255,0.5),
-    transparent
-  );
-
-  transform: translateX(-100%);
-  animation: shimmer 2.5s infinite;
-}
-
 @keyframes shimmer {
   100% {
     transform: translateX(100%);
