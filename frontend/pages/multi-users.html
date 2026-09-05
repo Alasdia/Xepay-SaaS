@@ -51,6 +51,60 @@ th{ color:#6b7280; }
 .lock-icon i{ font-size:34px; color:#facc15; }
 .lock-features{ display:flex; justify-content:center; flex-wrap:wrap; gap:10px; margin:24px 0; }
 .lock-features span{ background:#f9fafb; border:1px solid #e5e7eb; padding:8px 14px; border-radius:999px; font-size:13px; font-weight:600; }
+.badge-web3 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+  width: fit-content;
+}
+/* FREE */
+.badge-web3.free {
+  color: #22c55e;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.18);
+
+  box-shadow:
+    0 0 8px rgba(255,255,255,0.12),
+    0 0 18px rgba(255,255,255,0.06);
+}
+/* PRO */
+.badge-web3.pro { color: #facc15; background: #f5f3ff; border: 1px solid #c4b5fd; box-shadow: none; }
+/* BUSINESS */
+.badge-web3.business {
+  color: #df0e38;
+  background: rgba(250,204,21,0.08);
+  border: 1px solid rgba(250,204,21,0.5);
+
+  box-shadow:
+    0 0 10px rgba(250,204,21,0.5),
+    0 0 25px rgba(250,204,21,0.25);
+}
+
+/* SHIMMER */
+.badge-web3::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(255,255,255,0.5),
+    transparent
+  );
+
+  transform: translateX(-100%);
+  animation: shimmer 2.5s infinite;
+}
+
 @keyframes shimmer {
   100% {
     transform: translateX(100%);
