@@ -624,7 +624,17 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
       </div>
     </div>
   </div>
-
+<div class="modal fade" id="detailModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold">Détails</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4" id="detailModalBody"></div>
+    </div>
+  </div>
+</div>
 <!-- ── PLANS ── -->
 <div class="modal fade" id="modalUpgrade">
   <div class="modal-dialog modal-xl modal-dialog-centered">
@@ -996,9 +1006,8 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
       const currency = (t.currency_local ?? t.currency);
       const displayName = t.type === "payment" ? t.label : (t.label || "Transfert");
       const color = avatarColor(displayName || 'x');
-
       return `
-        <tr>
+        <tr onclick="voirDetailActivite(${i})" style="cursor:pointer;">
           <td>
             <div class="d-flex align-items-center gap-3">
               <div class="avatar" style="background:${color};">
@@ -1032,8 +1041,8 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
             }
           </td>
           <td style="text-align:right;">
-            <button onclick='voirDetailActivite(${i})'
-                  style="background:#f9fafb; border:1px solid #e5e7eb; color:#6b7280; width:32px; height:32px; border-radius:8px; cursor:pointer;">
+            <button onclick="event.stopPropagation()"
+                style="background:#f9fafb; border:1px solid #e5e7eb; color:#6b7280; width:32px; height:32px; border-radius:8px; cursor:pointer;">
               <i class="bi bi-eye"></i>
             </button>
           </td>
@@ -1050,28 +1059,34 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
       const t = transactions[index];
       if (!t) return;
       const d = t.details || {};
-      let lignes = [];
+      let rows = [];
       if (t.type === "payment") {
-        lignes = [
-          `Montant d'origine : ${d.amount_origin ?? "-"} ${d.currency_origin ?? ""}`,
-          `Frais : ${d.fee_amount ?? 0}`,
-          `Carte : ${d.card_brand ?? "-"} •••• ${d.card_last4 ?? "----"}`,
-          `Session Stripe : ${d.stripe_session_id ?? "-"}`
+        rows = [
+          ["Montant d'origine", `${d.amount_origin ?? "-"} ${d.currency_origin ?? ""}`],
+          ["Frais", d.fee_amount ?? 0],
+          ["Carte", `${d.card_brand ?? "-"} •••• ${d.card_last4 ?? "----"}`],
+          ["Session Stripe", d.stripe_session_id ?? "-"]
         ];
       } else if (t.type === "withdraw") {
-        lignes = [
-          `Référence : ${d.reference ?? "-"}`,
-          `Payout Stripe : ${d.stripe_payout_id ?? "-"}`,
-          `Traité le : ${d.processed_at ? new Date(d.processed_at).toLocaleString("fr-FR") : "-"}`
+        rows = [
+          ["Référence", d.reference ?? "-"],
+          ["Payout Stripe", d.stripe_payout_id ?? "-"],
+          ["Traité le", d.processed_at ? new Date(d.processed_at).toLocaleString("fr-FR") : "-"]
         ];
       } else if (t.type === "transfer") {
-        lignes = [
-          `Référence : ${d.reference ?? "-"}`,
-          `Correspondant : ${d.counterparty_email ?? "-"}`,
-          `Frais : ${d.fee_amount ?? 0} XOF`
+        rows = [
+          ["Référence", d.reference ?? "-"],
+          ["Correspondant", d.counterparty_email ?? "-"],
+          ["Frais", `${d.fee_amount ?? 0} XOF`]
         ];
       }
-      showToast(lignes.join(" · "));
+      document.getElementById("detailModalBody").innerHTML = rows.map(([label, value]) => `
+        <div class="d-flex justify-content-between py-2 border-bottom">
+          <span class="text-muted">${label}</span>
+          <span class="fw-semibold">${value}</span>
+        </div>
+      `).join("");
+      new bootstrap.Modal(document.getElementById("detailModal")).show();
     }
     async function chargerTransactions() {
       console.log("CHARGER TRANSACTIONS CALLED")
