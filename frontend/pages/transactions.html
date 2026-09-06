@@ -567,7 +567,15 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
           <i class="bi bi-arrow-clockwise"></i>
         </button>
       </div>
-
+    <!-- VUE DÉTAIL (cachée par défaut) -->
+    <div id="detail-view" class="table-wrap mt-3" style="display:none;">
+      <button onclick="fermerDetail()" class="btn btn-sm mb-3" style="background:#f9fafb; border:1px solid #e5e7eb; color:#6b7280;">
+        <i class="bi bi-arrow-left"></i> Retour
+      </button>
+      <h4 id="detail-title" class="fw-bold mb-1"></h4>
+      <div id="detail-sub" class="text-muted mb-4" style="font-size:0.85rem;"></div>
+      <div id="detail-body"></div>
+    </div>
     <!-- TABLEAU -->
     <div class="table-wrap mt-3">
       <div class="d-flex justify-content-between align-items-center mb-3">
@@ -1060,33 +1068,60 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
       if (!t) return;
       const d = t.details || {};
       let rows = [];
+      const displayName = t.type === "payment" ? t.label : (t.label || "Transfert");
+      const amount = (t.amount_local ?? t.amount);
+      const currency = (t.currency_local ?? t.currency);
       if (t.type === "payment") {
         rows = [
+          ["Montant reçu", `${amount.toLocaleString("fr-FR")} ${currency}`],
           ["Montant d'origine", `${d.amount_origin ?? "-"} ${d.currency_origin ?? ""}`],
-          ["Frais", d.fee_amount ?? 0],
+          ["Taux utilisé", d.rate_used ?? "-"],
+          ["Frais", `${d.fee_amount ?? 0}`],
           ["Carte", `${d.card_brand ?? "-"} •••• ${d.card_last4 ?? "----"}`],
-          ["Session Stripe", d.stripe_session_id ?? "-"]
+          ["Expiration carte", d.card_exp_month && d.card_exp_year ? `${d.card_exp_month}/${d.card_exp_year}` : "-"],
+          ["Session Stripe", d.stripe_session_id ?? "-"],
+          ["Payment Intent", d.stripe_payment_intent_id ?? "-"],
+          ["Compte Stripe", d.stripe_account_id ?? "-"],
+          ["Lien de paiement", d.link_id ?? "-"]
         ];
       } else if (t.type === "withdraw") {
         rows = [
+          ["Montant", `${amount.toLocaleString("fr-FR")} ${currency}`],
           ["Référence", d.reference ?? "-"],
           ["Payout Stripe", d.stripe_payout_id ?? "-"],
           ["Traité le", d.processed_at ? new Date(d.processed_at).toLocaleString("fr-FR") : "-"]
         ];
       } else if (t.type === "transfer") {
         rows = [
+          ["Montant", `${amount.toLocaleString("fr-FR")} ${currency}`],
           ["Référence", d.reference ?? "-"],
           ["Correspondant", d.counterparty_email ?? "-"],
-          ["Frais", `${d.fee_amount ?? 0} XOF`]
+          ["Frais", `${d.fee_amount ?? 0} XOF`],
+          ["Note", d.description ?? "-"]
         ];
       }
-      document.getElementById("detailModalBody").innerHTML = rows.map(([label, value]) => `
-        <div class="d-flex justify-content-between py-2 border-bottom">
+      document.getElementById("detail-title").innerText = displayName;
+      document.getElementById("detail-sub").innerText =
+        (t.type === "payment" ? "Paiement" : t.type === "withdraw" ? "Retrait" : "Transfert") +
+        " · " + statusMap[t.status] || t.status;
+      document.getElementById("detail-body").innerHTML = rows.map(([label, value]) => `
+        <div class="d-flex justify-content-between py-3 border-bottom">
           <span class="text-muted">${label}</span>
-          <span class="fw-semibold">${value}</span>
+          <span class="fw-semibold" style="text-align:right; max-width:60%; word-break:break-all;">${value}</span>
         </div>
       `).join("");
-      new bootstrap.Modal(document.getElementById("detailModal")).show();
+      document.querySelector(".row.g-3.mb-3").style.display = "none";
+      document.querySelector(".row.g-3.mb-4").style.display = "none";
+      document.querySelector(".toolbar").style.display = "none";
+      document.querySelector(".table-wrap:not(#detail-view)").style.display = "none";
+      document.getElementById("detail-view").style.display = "block";
+    }
+    function fermerDetail() {
+      document.querySelector(".row.g-3.mb-3").style.display = "";
+      document.querySelector(".row.g-3.mb-4").style.display = "";
+      document.querySelector(".toolbar").style.display = "";
+      document.querySelector(".table-wrap:not(#detail-view)").style.display = "";
+      document.getElementById("detail-view").style.display = "none";
     }
     async function chargerTransactions() {
       console.log("CHARGER TRANSACTIONS CALLED")
