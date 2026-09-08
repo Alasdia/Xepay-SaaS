@@ -40,7 +40,6 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
 
 body { background: #ffffff; color: #6b7280; font-family: "DM Sans", sans-serif; min-height: 100vh; overflow-x: hidden; }
 #main-content { height: auto !important; min-height: auto !important; display: block; margin-left: 260px; padding: 28px 40px; width: calc(100% - 260px); position: relative; z-index: 1; }
-.plan-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: white; border: none; }
 .warning-icon{ font-size:10px; margin-right:5px; color:#facc15; opacity:.65; }
 .card-title-small i,
 h1 i,
@@ -88,12 +87,6 @@ h3 i{ font-size:.85em; margin-right:6px; opacity:.75; }
 .url-mono { font-family: monospace; font-size: 11px; color: #6b7280; }
 .url-mono:hover { color: #facc15; }
 .event-tag { background: rgba(99,102,241,0.2); color: #a78bfa; border: 1px solid rgba(99,102,241,0.3); font-size: 10px; padding: 2px 7px; border-radius: 4px; font-family: monospace; margin-right: 4px; }
-.badge { display: inline-flex; align-items: center; justify-content: center; padding: 5px 12px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; position: relative; overflow: hidden; backdrop-filter: blur(6px); }
-.badge.free { color: #22c55e;}
-.badge.pro { color: #facc15; box-shadow: 0 0 12px rgba(248, 248, 248, 0.7), inset 0 0 8px rgba(255, 255, 255, 0.3); }
-.badge.business { color: #df0e38;}
-.badge::before { content: ""; position: absolute; top: 0; left: -60%; width: 40%; height: 100%; background: linear-gradient( 120deg, transparent, rgba(255,255,255,0.6), transparent); transform: skewX(-20deg); animation: shine 3s infinite; }
-@keyframes shine { 0% { left: -60%; } 100% { left: 120%; } }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
 .modal-overlay.open { opacity: 1; pointer-events: all; }
 .modal-box { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 28px; width: 460px; max-width: 95vw; color: #111827; }
@@ -1131,17 +1124,12 @@ function renderPlanBadge(plan) {
 }
 async function initPlan() {
   const user = await loadCurrentUser();
-
-  renderPlanBadge(user.plan);
-
   if (user.plan === "free") {
       document.body.classList.add("locked-page");
       showLockedOverlay("pro");
   }
 }
-
 initPlan();
-
 function checkApiAccess(event) {
     const plan = localStorage.getItem("plan");
 
@@ -1185,28 +1173,6 @@ function closePopup() {
     <button class="btn" onclick="closeSecretModal()">J’ai copié</button>
   </div>
 </div>
-<script>
-(function() {
-  const sidebar = document.getElementById("sidebar") || document.querySelector(".sidebar");
-  if (!sidebar) return;
-
-  const overlay = document.createElement("div");
-  overlay.className = "sidebar-overlay";
-  document.body.appendChild(overlay);
-
-  const btn = document.createElement("button");
-  btn.className = "dash-hamburger";
-  btn.innerHTML = "<span></span><span></span><span></span>";
-  document.body.appendChild(btn);
-
-  function open()  { sidebar.classList.add("open");    overlay.classList.add("active");    btn.classList.add("open");    document.body.style.overflow="hidden"; }
-  function close() { sidebar.classList.remove("open"); overlay.classList.remove("active"); btn.classList.remove("open"); document.body.style.overflow=""; }
-
-  btn.addEventListener("click", () => sidebar.classList.contains("open") ? close() : open());
-  overlay.addEventListener("click", close);
-  sidebar.querySelectorAll("a").forEach(a => a.addEventListener("click", close));
-})();
-</script>
 <script>
 function showUpgradeModal(feature = null) {
 
@@ -1252,13 +1218,6 @@ function showUpgradeModal(feature = null) {
 
   modal.show();
 }
-</script>
-<script>
-document.querySelectorAll('#sidebar a[href$=".html"]').forEach(link => {
-  const url = new URL(link.getAttribute("href"), window.location.origin);
-  url.searchParams.set("workspace_id", localStorage.getItem("workspace_id"));
-  link.setAttribute("href", url.pathname + url.search);
-});
 </script>
 <script>
 function showLockedOverlay(plan){

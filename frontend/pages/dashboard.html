@@ -231,30 +231,6 @@ table{ color:#374151 !important; }
           opacity: 1;
           transform: translateY(0);
         }
-        .plan-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          transition: all 0.25s ease;
-
-          padding: 6px 14px;
-          border-radius: 999px;
-
-          font-size: 13px;
-          font-weight: 600;
-
-          color: white;
-          border: none;
-        }
-        .plan-badge:hover {
-          transform: scale(1.05);
-        }
-        /* DOT */
-        .plan-badge .dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-        }
 /* ── PLANS ── */
 .plans-section{position:relative;z-index:2;max-width:1300px;margin:0 auto;padding:0 48px 100px}
 .plans-header{text-align:center;margin-bottom:52px}
@@ -690,13 +666,6 @@ table{ color:#374151 !important; }
   if (!token) {
     window.location.replace("login.html");
   }
-</script>
-<script>
-  document.querySelectorAll('#sidebar a[href$=".html"]').forEach(link => {
-    const url = new URL(link.getAttribute("href"), window.location.origin);
-    url.searchParams.set("workspace_id", localStorage.getItem("workspace_id"));
-    link.setAttribute("href", url.pathname + url.search);
-  });
 </script>
 <script>
   async function loadProfileHeader() {
@@ -1259,39 +1228,6 @@ async function submitWithdraw() {
 }
 </script>
 <script>
-function showToast(message, type = "success") {
-  let toast = document.getElementById("custom-toast");
-
-  if (!toast) {
-    toast = document.createElement("div");
-    toast.id = "custom-toast";
-    document.body.appendChild(toast);
-  }
-
-  toast.innerText = message;
-
-  // style minimaliste
-  toast.style.position = "fixed";
-  toast.style.top = "20%";
-  toast.style.left = "40%";
-  toast.style.transform = "translateX(-50%)";
-  toast.style.padding = "6px 12px";
-  toast.style.fontSize = "14px";
-  toast.style.fontWeight = "500";
-  toast.style.borderRadius = "6px";
-  toast.style.background = "transparent"; 
-  toast.style.color = "#22c55e"; 
-  toast.style.boxShadow = "none"; 
-  toast.style.zIndex = "9999";
-
-  toast.style.opacity = "1";
-
-  setTimeout(() => {
-    toast.style.opacity = "0";
-  }, 2000);
-}
-</script>
-<script>
 window.archivedLink = async function(id) {
   try {
     const res = await fetch(`https://api.alasdia.com/archive/${id}`, {
@@ -1357,48 +1293,6 @@ if (params.get("upgrade") === "1") {
 }
 </script>
 <script>
-async function loadUser() {
-  const token = localStorage.getItem("token")
-
-  const res = await fetch("https://api.alasdia.com/me/user-plan", {
-    headers: {
-      "Authorization": "Bearer " + token,
-      "X-Workspace-Id": localStorage.getItem("workspace_id")
-    }
-  })
-
-  const user = await res.json()
-  localStorage.setItem("plan", user.plan);
-
-  console.log("USER:", user)
-
-  updatePlanUI(user.plan)
-}
-
-function updatePlanUI(plan) {
-    const badge = document.getElementById("badge-plan")
-
-    badge.classList.remove("bg-success", "bg-warning", "bg-danger")
-
-    if (plan === "free") {
-        badge.innerHTML = "🟢 Free"
-        badge.classList.add("bg-success")
-    } 
-    else if (plan === "pro") {
-        badge.innerHTML = "🟡 Pro"
-        badge.classList.add("bg-warning")
-    } 
-    else if (plan === "business") {
-        badge.innerHTML = "🔴 Business"
-        badge.classList.add("bg-danger")
-    }
-
-    console.log("PLAN UI UPDATED:", plan)
-}
-
-loadUser()
-</script>
-<script>
 function checkApiAccess(event) {
     const plan = localStorage.getItem("plan");
 
@@ -1451,35 +1345,6 @@ function updateUpgradeModal(plan, feature) {
       .classList.add("plan-disabled");
   }
 }
-</script>
-<script>
-  function logout() {
-    localStorage.clear();
-    window.location.href = "login.html"
-  }
-</script>
-
-<script>
-(function() {
-  const sidebar = document.getElementById("sidebar") || document.querySelector(".sidebar");
-  if (!sidebar) return;
-
-  const overlay = document.createElement("div");
-  overlay.className = "sidebar-overlay";
-  document.body.appendChild(overlay);
-
-  const btn = document.createElement("button");
-  btn.className = "dash-hamburger";
-  btn.innerHTML = "<span></span><span></span><span></span>";
-  document.body.appendChild(btn);
-
-  function open()  { sidebar.classList.add("open");    overlay.classList.add("active");    btn.classList.add("open");    document.body.style.overflow="hidden"; }
-  function close() { sidebar.classList.remove("open"); overlay.classList.remove("active"); btn.classList.remove("open"); document.body.style.overflow=""; }
-
-  btn.addEventListener("click", () => sidebar.classList.contains("open") ? close() : open());
-  overlay.addEventListener("click", close);
-  sidebar.querySelectorAll("a").forEach(a => a.addEventListener("click", close));
-})();
 </script>
 <script>
 function showToast(message, type = "success") {

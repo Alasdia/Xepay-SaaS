@@ -17,11 +17,9 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
   --cyan: #00e5ff;
   --violet: #a855f7;
   --gold: #f0b429;
-
   --white: #ffffff;
   --muted: rgba(255,255,255,.55);
   --border: rgba(255,255,255,.12);
-
   --font-d: "DM Sans", sans-serif;
   --font-m: "DM Sans", sans-serif;
   --font-b: "DM Sans", sans-serif;
@@ -34,28 +32,6 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
 .form-select { background: #ffffff !important; border: 1px solid #d1d5db !important; color: #111827 !important; border-radius: 10px !important; }
 .form-control::placeholder { color: #6b7280 !important; opacity: 1; }
 .input-group-text { background: rgba(255,255,255,0.07) !important; border: 1px solid rgba(255,255,255,0.15) !important; color: white !important; }
-        .plan-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-
-          padding: 6px 14px;
-          border-radius: 999px;
-
-          font-size: 13px;
-          font-weight: 600;
-
-          position: relative;
-          background: rgba(255,255,255,0.05);
-          color: white;
-        }
-
-        /* DOT */
-        .plan-badge .dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-        }
         .input-wrapper {
           position: relative;
         }
@@ -517,39 +493,30 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
     const input = document.getElementById(id);
     input.type = input.type === "password" ? "text" : "password";
   }
-
   function checkStrength(password) {
     const bar = document.getElementById("pwd-strength-bar");
     const label = document.getElementById("pwd-strength-label");
-
     let score = 0;
-
     if (password.length >= 8) score++;
     if (/[A-Z]/.test(password)) score++;
     if (/[0-9]/.test(password)) score++;
     if (/[^A-Za-z0-9]/.test(password)) score++;
-
     const colors = ["danger", "warning", "info", "success"];
     const texts = ["Faible", "Moyen", "Correct", "Fort"];
-
     if (password.length === 0) {
         bar.style.width = "0%";
         label.innerText = "";
         return;
     }
-
     bar.style.width = ((score / 4) * 100) + "%";
     bar.className = "progress-bar bg-" + colors[Math.max(score - 1, 0)];
     label.innerText = "Force : " + texts[Math.max(score - 1, 0)];
   }
-
   async function changeMotDePasse() {
     const current_password = document.getElementById("pwd-actuel").value;
     const new_password = document.getElementById("pwd-nouveau").value;
     const confirm_password = document.getElementById("pwd-confirm").value;
-
     const token = localStorage.getItem("token");
-
     try {
         const response = await fetch("https://api.alasdia.com/change-password", {
             method: "POST",
@@ -564,32 +531,25 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
                 confirm_password
             })
         });
-
         const data = await response.json();
         console.log("Réponse backend :", data);
-
         if (!response.ok) {
             let message = data.detail || "Erreur";
-
           if (data.detail?.includes("Permission insuffisante")) {
             message = "Seul le propriétaire du compte peut modifier le mot de passe";
           }
             throw new Error(message);
         }
         showToast("Mot de passe mis à jour");
-
         document.getElementById("pwd-actuel").value = "";
         document.getElementById("pwd-nouveau").value = "";
         document.getElementById("pwd-confirm").value = "";
-
         document.getElementById("pwd-strength-bar").style.width = "0%";
         document.getElementById("pwd-strength-label").innerText = "";
-
     } catch (error) {
       showToast(error.message, "error");
     }
   }
-
   async function chargerUtilisateurConnecte() {
     try {
         const token = localStorage.getItem("token");
@@ -601,24 +561,18 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
               "X-Workspace-Id": localStorage.getItem("workspace_id")
             }
         });
-
         const data = await response.json();
-
         document.getElementById("session-email").innerText =
             data.email || "Utilisateur inconnu";
-
         if (data.session) {
             document.getElementById("session-device").innerText =
                 data.session.device || "Appareil inconnu";
-
             document.getElementById("session-location").innerText =
                 (data.session.ip || "IP inconnue") + " - " +
                 (data.session.last_seen || "Maintenant");
         }
-
     } catch (error) {
         console.error("Erreur user connecté :", error);
-
         document.getElementById("session-email").innerText =
             "Utilisateur inconnu";
     }
@@ -626,13 +580,9 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
   function deconnecterTout() {
     showToast("Toutes les autres sessions ont été déconnectées.");
   }
-
   chargerUtilisateurConnecte();
-
   async function chargerAlertes() {
-
     const token = localStorage.getItem("token");
-
     const res = await fetch(
       "https://api.alasdia.com/security/alerts",
       {
@@ -641,33 +591,23 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
         }
       }
     );
-
     const data = await res.json();
-
     document.getElementById("alert-login").checked =
       data.alert_login;
-
     document.getElementById("alert-payment").checked =
       data.alert_payment;
-
     document.getElementById("alert-suspect").checked =
       data.alert_suspect;
-
-
     document.getElementById("alert-login")
       .addEventListener("change", sauvegarderAlertes);
-
     document.getElementById("alert-payment")
       .addEventListener("change", sauvegarderAlertes);
-
     document.getElementById("alert-suspect")
       .addEventListener("change", sauvegarderAlertes);
   }
   chargerAlertes();
-
   async function sauvegarderAlertes() {
     const token = localStorage.getItem("token");
-
     try { 
       const res = await fetch("https://api.alasdia.com/security/alerts", {
         method: "POST",
@@ -681,26 +621,19 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
           alert_suspect: document.getElementById("alert-suspect").checked
         })
       });
-
       const data = await res.json();
-
       if (!res.ok) {
         throw new Error(data.detail || "Erreur");
       }
-
       console.log("Alertes sauvegardées :", data);
     } catch (error) {
       console.error("Erreur sauvegarde alertes :", error);
     }
   }
-
   async function supprimerCompte() {
     const confirmation = confirm("Voulez-vous vraiment supprimer votre compte ?");
-
     if (!confirmation) return;
-
     const token = localStorage.getItem("token");
-
     try {
       const response = await fetch("https://api.alasdia.com/delete-account", {
         method: "DELETE",
@@ -708,126 +641,39 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
           "Authorization": "Bearer " + token
         }
       });
-
       const data = await response.json();
-
       if (!response.ok) {
         throw new Error(data.detail || "Erreur suppression");
       }
-
       showToast("Compte supprimé avec succès");
-
       localStorage.removeItem("token");
       window.location.href = "login.html";
-
     } catch (error) {
       showToast(error.message, "error");
     }
   }
-  </script>
-  <script>
-async function loadUser() {
-  const token = localStorage.getItem("token")
-
-  const res = await fetch("https://api.alasdia.com/me/user-plan", {
-    headers: {
-      "Authorization": "Bearer " + token,
-      "X-Workspace-Id": localStorage.getItem("workspace_id")
-    }
-  })
-
-  const user = await res.json()
-
-  localStorage.setItem("plan", user.plan);
-
-  console.log("USER:", user)
-
-  updatePlanUI(user.plan)
-}
-
-function updatePlanUI(plan) {
-    const badge = document.getElementById("badge-plan")
-
-    badge.classList.remove("bg-success", "bg-warning", "bg-danger")
-
-    if (plan === "free") {
-        badge.innerHTML = "🟢 Free"
-        badge.classList.add("bg-success")
-    } 
-    else if (plan === "pro") {
-        badge.innerHTML = "🟡 Pro"
-        badge.classList.add("bg-warning")
-    } 
-    else if (plan === "business") {
-        badge.innerHTML = "🔴 Business"
-        badge.classList.add("bg-danger")
-    }
-
-    console.log("PLAN UI UPDATED:", plan)
-}
-
-loadUser()
-</script>
-<script>
-  function logout() {
-  localStorage.removeItem("token")
-  window.location.href = "login.html"
-}
-</script>
-
-<script>
-(function() {
-  const sidebar = document.getElementById("sidebar") || document.querySelector(".sidebar");
-  if (!sidebar) return;
-
-  const overlay = document.createElement("div");
-  overlay.className = "sidebar-overlay";
-  document.body.appendChild(overlay);
-
-  const btn = document.createElement("button");
-  btn.className = "dash-hamburger";
-  btn.innerHTML = "<span></span><span></span><span></span>";
-  document.body.appendChild(btn);
-
-  function open()  { sidebar.classList.add("open");    overlay.classList.add("active");    btn.classList.add("open");    document.body.style.overflow="hidden"; }
-  function close() { sidebar.classList.remove("open"); overlay.classList.remove("active"); btn.classList.remove("open"); document.body.style.overflow=""; }
-
-  btn.addEventListener("click", () => sidebar.classList.contains("open") ? close() : open());
-  overlay.addEventListener("click", close);
-  sidebar.querySelectorAll("a").forEach(a => a.addEventListener("click", close));
-})();
 </script>
 <script>
 function updateUpgradeModal(plan, feature) {
-
   document.querySelectorAll(".plan-card")
     .forEach(card => {
       card.classList.remove("plan-disabled");
     });
-
-  // Cas Multi-utilisateurs
   if (feature === "multi-users") {
-
     document.querySelector(".plan-starter")
       .classList.add("plan-disabled");
-
     document.querySelector(".plan-pro")
       .classList.add("plan-disabled");
-
     return;
   }
-
-  // Cas normal : flouter le plan actuel
   if (plan === "free") {
     document.querySelector(".plan-starter")
       .classList.add("plan-disabled");
   }
-
   if (plan === "pro") {
     document.querySelector(".plan-pro")
       .classList.add("plan-disabled");
   }
-
   if (plan === "business") {
     document.querySelector(".plan-business")
       .classList.add("plan-disabled");
@@ -837,7 +683,6 @@ function updateUpgradeModal(plan, feature) {
 <script>
 async function upgrade(plan) {
   const token = localStorage.getItem("token");
-
   const res = await fetch(
     "https://api.alasdia.com/create-checkout-session",
     {
@@ -851,50 +696,36 @@ async function upgrade(plan) {
       })
     }
   );
-
   const data = await res.json();
-
   console.log("STATUS:", res.status);
   console.log("DATA:", data);
-
   if (!res.ok) {
     showToast(data.detail || "Erreur Stripe");
     return;
   }
-
   window.location.href = data.url;
 }
 </script>
 <script>
 function showUpgradeModal(feature = null) {
   const plan = localStorage.getItem("plan");
-
   updateUpgradeModal(plan, feature);
-
   const modal = new bootstrap.Modal(
     document.getElementById("modalUpgrade")
   );
-
   modal.show();
 }
 </script>
 <script>
 function checkApiAccess(event) {
     const plan = localStorage.getItem("plan");
-
     if (plan === "pro" || plan === "business") {
         return;
     }
     sessionStorage.setItem("openApiUpgrade", "true");
 }
 </script>
-<script>
-document.querySelectorAll('#sidebar a[href$=".html"]').forEach(link => {
-  const url = new URL(link.getAttribute("href"), window.location.origin);
-  url.searchParams.set("workspace_id", localStorage.getItem("workspace_id"));
-  link.setAttribute("href", url.pathname + url.search);
-});
-</script>
+
 <script>
 function showToast(message, type = "success") {
   const container = document.getElementById("toast-container");
@@ -912,12 +743,10 @@ function showToast(message, type = "success") {
 <script>
 let twoFaModalInstance = null;
 let twoFaCurrentlyEnabled = false;
-
 async function loadTwoFaStatus() {
   const token = localStorage.getItem("token");
   const badge = document.getElementById("twofa-status-badge");
   const btn = document.getElementById("twofa-toggle-btn");
-
   try {
     const res = await fetch("https://api.alasdia.com/profile", {
       headers: {
@@ -926,7 +755,6 @@ async function loadTwoFaStatus() {
       }
     });
     const data = await res.json();
-
     twoFaCurrentlyEnabled = !!data.two_factor_enabled;
     updateTwoFaUI();
   } catch (error) {
@@ -934,11 +762,9 @@ async function loadTwoFaStatus() {
     badge.innerText = "Erreur";
   }
 }
-
 function updateTwoFaUI() {
   const badge = document.getElementById("twofa-status-badge");
   const btn = document.getElementById("twofa-toggle-btn");
-
   if (twoFaCurrentlyEnabled) {
     badge.innerText = "Activée";
     badge.style.background = "rgba(16,185,129,0.15)";
@@ -953,7 +779,6 @@ function updateTwoFaUI() {
     btn.className = "btn btn-warning fw-bold w-100";
   }
 }
-
 function handleTwoFaToggle() {
   if (twoFaCurrentlyEnabled) {
     disable2FA();
@@ -961,42 +786,33 @@ function handleTwoFaToggle() {
     setup2FA();
   }
 }
-
 async function setup2FA() {
   const token = localStorage.getItem("token");
-
   try {
     const res = await fetch("https://api.alasdia.com/2fa/setup", {
       method: "POST",
       headers: { "Authorization": "Bearer " + token }
     });
-
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Erreur");
-
     document.getElementById("twofa-qr-img").src = data.qr_code_base64;
     document.getElementById("twofa-secret-text").innerText = data.secret;
     document.getElementById("twofa-code").value = "";
-
     if (!twoFaModalInstance) {
       twoFaModalInstance = new bootstrap.Modal(document.getElementById("twoFaModal"));
     }
     twoFaModalInstance.show();
-
   } catch (error) {
     showToast(error.message, "error");
   }
 }
-
 async function verify2FA() {
   const token = localStorage.getItem("token");
   const code = document.getElementById("twofa-code").value.trim();
-
   if (!code || code.length !== 6) {
     showToast("Entrez un code à 6 chiffres", "error");
     return;
   }
-
   try {
     const res = await fetch("https://api.alasdia.com/2fa/verify", {
       method: "POST",
@@ -1006,44 +822,34 @@ async function verify2FA() {
       },
       body: JSON.stringify({ code })
     });
-
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Code incorrect");
-
     showToast("2FA activée avec succès");
     twoFaCurrentlyEnabled = true;
     updateTwoFaUI();
     twoFaModalInstance.hide();
-
   } catch (error) {
     showToast(error.message, "error");
   }
 }
-
 async function disable2FA() {
   const confirmation = confirm("Voulez-vous vraiment désactiver la 2FA ?");
   if (!confirmation) return;
-
   const token = localStorage.getItem("token");
-
   try {
     const res = await fetch("https://api.alasdia.com/2fa/disable", {
       method: "POST",
       headers: { "Authorization": "Bearer " + token }
     });
-
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Erreur");
-
     showToast("2FA désactivée");
     twoFaCurrentlyEnabled = false;
     updateTwoFaUI();
-
   } catch (error) {
     showToast(error.message, "error");
   }
 }
-
 loadTwoFaStatus();
 </script>
 
