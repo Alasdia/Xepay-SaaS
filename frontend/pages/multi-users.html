@@ -41,7 +41,6 @@ body {font-family: var(--font-d); background: #ffffff; color: #111827; margin: 0
 .user-email,
 td,
 th{ color:#6b7280; }
-.mono { font-family: 'JetBrains Mono', monospace; }
 #sidebar { width: 260px; background: #ffffff; position: fixed; top: 0; bottom: 0; left: 0; z-index: 100; padding: 20px; overflow-y: auto; border-right: 1px solid #e5e7eb; }
 #sidebar::-webkit-scrollbar { width: 6px; }
 #sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px;}
@@ -51,38 +50,6 @@ th{ color:#6b7280; }
 .lock-icon i{ font-size:34px; color:#facc15; }
 .lock-features{ display:flex; justify-content:center; flex-wrap:wrap; gap:10px; margin:24px 0; }
 .lock-features span{ background:#f9fafb; border:1px solid #e5e7eb; padding:8px 14px; border-radius:999px; font-size:13px; font-weight:600; }
-.badge-web3 {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  position: relative;
-  overflow: hidden;
-  width: fit-content;
-}
-/* FREE */
-.badge-web3.free {
-  color: #22c55e;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.18);
-
-  box-shadow:
-    0 0 8px rgba(255,255,255,0.12),
-    0 0 18px rgba(255,255,255,0.06);
-}
-/* PRO */
-.badge-web3.pro { color: #facc15; background: #f5f3ff; border: 1px solid #c4b5fd; box-shadow: none; }
-/* BUSINESS */
-.badge-web3.business { color: #df0e38; box-shadow: 0 0 12px rgba(248, 248, 248, 0.7), inset 0 0 8px rgba(255, 255, 255, 0.3);}
-@keyframes shimmer {
-  100% {
-    transform: translateX(100%);
-  }
-}  
   /* ---------- Main ---------- */
   main {
     flex: 1;
@@ -126,12 +93,6 @@ th{ color:#6b7280; }
     font-family: inherit;
     transition: transform 0.15s, box-shadow 0.2s;
   }
-.btn-primary { background: #facc15; background-size: 200% 200%; animation: none; color: #111827; border: none; font-weight: 700; }
-@keyframes gradientMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(250,204,21,0.25); background: #eab308; color: #111827; }
-.btn-ghost { background: #ffffff; color: #374151; border: 1px solid #d1d5db; }
-.btn-ghost:hover { background: #f9fafb; }
-
   /* ---------- Stats ---------- */
   .stats {
     display: grid;
