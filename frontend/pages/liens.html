@@ -17,7 +17,6 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
 <link rel="stylesheet" href="responsive.css">
 <link rel="stylesheet" href="sidebar.css">
 <style>
-
 :root {
   --cyan: #00e5ff;
   --violet: #a855f7;
@@ -25,7 +24,6 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
   --white: #ffffff;
   --muted: #6b7280;
   --border: #e5e7eb;
-
   --font-d: "DM Sans", sans-serif;
   --font-m: "DM Sans", sans-serif;
   --font-b: "DM Sans", sans-serif;
@@ -36,61 +34,16 @@ body {font-family: var(--font-d); background: #ffffff !important; color: #111827
 .card-epay { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; color: #374151; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
 .lien-card { background: #ffffff; border: 1px solid #e5e7eb; display: flex; flex-direction: column; border-radius: 14px; padding: 16px; margin-bottom: 12px; transition: .25s; }
 .lien-card:hover{ border-color:#facc15; box-shadow:0 8px 24px rgba(250,204,21,.12); }
-    .badge-statut-actif { background: #10b981; }
-    .badge-statut-inactif { background: #6b7280; }
-    .lien-url {
-      margin-top: 12px;
-      padding: 12px;
-      background: #0d1b3f;
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 8px;
-      font-family: monospace;
-    }
-    .actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap; 
-      margin-top: 10px;
-    }
-    .actions button {
-      flex: 1; 
-      min-width: 120px;
-      flex: 1;
-      border-radius: 6px;
-    }
-    .lien-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-    }
-
-    .lien-infos {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      min-width: 0; /* 🔥 évite overflow */
-    }
-
-    .lien-infos h6 {
-      margin: 0;
-    }
-
-    .lien-infos small {
-      display: block;
-      opacity: 0.75;
-      line-height: 1.2;
-      font-size: 13px;
-
-    }
-
-    .lien-status {
-      flex-shrink: 0;
-      white-space: nowrap;
-      font-weight: bold;
-    }
-    
+.badge-statut-actif { background: #10b981; }
+.badge-statut-inactif { background: #6b7280; }
+.lien-url { margin-top: 12px; padding: 12px; background: #0d1b3f; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-family: monospace;}
+.actions { display: flex; gap: 10px; flex-wrap: wrap;  margin-top: 10px;}
+.actions button { flex: 1;  min-width: 120px; flex: 1; border-radius: 6px;}
+.lien-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;}
+.lien-infos { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.lien-infos h6 { margin: 0;}
+.lien-infos small { display: block; opacity: 0.75; line-height: 1.2; font-size: 13px;}
+.lien-status { flex-shrink: 0; white-space: nowrap; font-weight: bold;}
 .montant { display: block; margin-top: 8px; font-size: 20px; font-weight: bold; color: #374151; line-height: 1.2; }
 .locked-page #main-content { filter: blur(8px); pointer-events: none; user-select: none; opacity: .5; position: relative; margin-left: 260px; padding: 28px; }
 #links-lock{ position: absolute; inset: 0; z-index: 999; display:flex; align-items:center; justify-content:center; top: 0; }
@@ -98,135 +51,50 @@ body {font-family: var(--font-d); background: #ffffff !important; color: #111827
 .lock-icon{ width:70px; height:70px; border-radius:50%; background:#fff6d6; color:#f0b429; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:16px; }
 .lock-card h2{ font-size:32px; margin-bottom:10px; color:#374151; }
 .lock-card p{ color:#6b7280; margin-bottom:25px; }
-    
-    .lien-url {
-      font-family: monospace;
-      padding: 10px;
-      border-radius: 6px;
-      margin-top: 10px;
-      transition: 0.3s;
-      word-break: break-all;
-      overflow-wrap: anywhere;
-    }
-    .lien-status.inactif {
-      color: #ff4d4d !important;
-      text-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
-      
-    }
-
-    .lien-url.inactif {
-      color: #ff4d4d !important;
-      background: rgba(255, 0, 0, 0.05) !important;
-      border: 1px solid rgba(255,77,77,0.4);;
-    }
-
-    .btn-delete-inactif {
-      background: rgba(255, 0, 0, 0.15);
-      color: #ff4d4d;
-      border: 1px solid #ff4d4d;
-    }
-
-    .btn-copy-inactif {
-      background: rgba(255, 0, 0, 0.15);
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-    .lien-status.actif {
-      color: #00ff88 !important;
-      text-shadow: 0 0 8px rgba(0, 255, 136, 0.07);
-    }
-
-    .lien-url.actif {
-      color: #00ff88 !important;
-      background: rgba(0, 255, 136, 0.05) !important;
-      border: 1px solid rgba(0, 255, 136, 0.04);
-    }
-    .locked-page #main-content {
-      filter: blur(8px);
-      pointer-events: none;
-      user-select: none;
-      opacity: 0.6;
-    }
-    .btn-copy-actif {
-      background: rgba(0, 255, 136, 0.15);
-      color: #00ff88;
-      border: 1px solid #00ff88;
-    }
-
-    .btn-delete-actif {
-      background: rgba(255, 0, 0, 0.15);
-      color: white;
-      border: 1px solid #ff4d4d;
-    }
-    .status-paid {
-      color: #00ff88;
-    }
-
-    .status-pending {
-      color: orange;
-    }
-    .modal-upgrade {
-      max-width: 900px;
-      width: 95%;
-    }
-    .status-active {
-      color: #00d4ff;
-    }
-
-    .status-expired {
-      color: red;
-    }
-
-    .btn-disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    .btn-delete-neutral {
-      background: rgba(255, 255, 255, 0.08);
-      color: #ccc;
-      border: 1px solid rgba(255,255,255,0.2);
-    }
-    .btn-copy-neutral {
-      background: rgba(255, 255, 255, 0.08);
-      color: #aaa;
-      border: 1px solid rgba(255,255,255,0.2);
-    }
-/* ── PLANS ── */
+.lien-url { font-family: monospace; padding: 10px; border-radius: 6px; margin-top: 10px; transition: 0.3s; word-break: break-all; overflow-wrap: anywhere;}
+.lien-status.inactif { color: #ff4d4d !important; text-shadow: 0 0 8px rgba(255, 0, 0, 0.6);}
+.lien-url.inactif { color: #ff4d4d !important; background: rgba(255, 0, 0, 0.05) !important; border: 1px solid rgba(255,77,77,0.4);;}
+.btn-delete-inactif { background: rgba(255, 0, 0, 0.15); color: #ff4d4d; border: 1px solid #ff4d4d;}
+.btn-copy-inactif { background: rgba(255, 0, 0, 0.15); opacity: 0.4; cursor: not-allowed;}
+.lien-status.actif { color: #00ff88 !important; text-shadow: 0 0 8px rgba(0, 255, 136, 0.07);}
+.lien-url.actif { color: #00ff88 !important; background: rgba(0, 255, 136, 0.05) !important; border: 1px solid rgba(0, 255, 136, 0.04);}
+.locked-page #main-content { filter: blur(8px); pointer-events: none; user-select: none; opacity: 0.6; }
+.btn-copy-actif { background: rgba(0, 255, 136, 0.15); color: #00ff88; border: 1px solid #00ff88;}
+.btn-delete-actif { background: rgba(255, 0, 0, 0.15); color: white; border: 1px solid #ff4d4d;}
+.status-paid { color: #00ff88;}
+.status-pending { color: orange;}
+.modal-upgrade { max-width: 900px; width: 95%;}
+.status-active { color: #00d4ff;}
+.status-expired { color: red;}
+.btn-disabled { opacity: 0.5; cursor: not-allowed;}
+.btn-delete-neutral { background: rgba(255, 255, 255, 0.08); color: #ccc; border: 1px solid rgba(255,255,255,0.2);}
+.btn-copy-neutral { background: rgba(255, 255, 255, 0.08); color: #aaa; border: 1px solid rgba(255,255,255,0.2);}
 .plans-section{position:relative;z-index:2;max-width:1300px;margin:0 auto;padding:0 48px 100px}
 .plans-header{text-align:center;margin-bottom:52px}
 .plans-header h2{font-family:var(--font-d);font-size:clamp(48px,5vw,76px);letter-spacing:.04em;line-height:.95;margin-bottom:14px}
 .plans-header h2 span{background:linear-gradient(90deg,var(--cyan),var(--violet));background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .plans-header p{font-size:15px;color:var(--muted);line-height:1.7;max-width:480px;margin:0 auto}
-
 .plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
 .plan-card{border-radius:22px;padding:36px 32px;background:rgba(6,12,22,.88);border:1px solid var(--border);position:relative;overflow:hidden;transition:transform .3s,box-shadow .3s,border-color .3s;opacity:0;transform:translateY(24px)}
 .plan-card.visible{opacity:1;transform:translateY(0);transition:opacity .65s ease,transform .65s ease,box-shadow .3s,border-color .3s}
 .plan-card:hover{transform:translateY(-6px);box-shadow:0 32px 80px rgba(0,0,0,.5)}
 .plan-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;opacity:0;transition:opacity .3s}
 .plan-card:hover::before{opacity:1}
-
-/* STARTER */
 .plan-starter{border-color:rgba(255,255,255,.09)}
 .plan-starter::before{background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent)}
 .plan-starter:hover{border-color:rgba(255,255,255,.16)}
-
-/* PRO - featured */
 .plan-pro{border-color:rgba(0,229,255,.28);background:linear-gradient(160deg,rgba(0,229,255,.06) 0%,rgba(168,85,247,.05) 100%);transform:translateY(-8px) !important}
 .plan-pro.visible{transform:translateY(-8px) !important}
 .plan-pro:hover{transform:translateY(-14px) !important;box-shadow:0 40px 100px rgba(0,0,0,.6),0 0 60px rgba(0,229,255,.1) !important}
 .plan-pro::before{background:linear-gradient(90deg,transparent,rgba(0,229,255,.5),rgba(168,85,247,.4),transparent);opacity:1}
 .plan-pro-badge{position:absolute;top:16px;right:16px;padding:4px 12px;border-radius:999px;background:linear-gradient(135deg,var(--cyan),var(--violet));color:#000;font-family:var(--font-m);font-size:9px;font-weight:700;letter-spacing:.1em}
-
-/* BUSINESS */
 .plan-business{border-color:rgba(240,180,41,.2)}
 .plan-business::before{background:linear-gradient(90deg,transparent,rgba(240,180,41,.3),transparent)}
 .plan-business:hover{border-color:rgba(240,180,41,.32)}
-
 .plan-tag{display:inline-block;padding:4px 10px;border-radius:999px;font-family:var(--font-m);font-size:9px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:16px}
 .tag-default{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border)}
 .tag-pro    {background:rgba(0,229,255,.1);color:var(--cyan);border:1px solid rgba(0,229,255,.25)}
 .tag-biz    {background:rgba(240,180,41,.1);color:var(--gold);border:1px solid rgba(240,180,41,.25)}
-
 .plan-name{font-family:var(--font-d);font-size:38px;letter-spacing:.06em;margin-bottom:4px;line-height:1}
 .plan-price{margin:18px 0;display:flex;align-items:baseline;gap:4px}
 .plan-price .amount{font-family:var(--font-d);font-size:60px;letter-spacing:.02em;line-height:1}
@@ -234,7 +102,6 @@ body {font-family: var(--font-d); background: #ffffff !important; color: #111827
 .plan-price .period{font-family:var(--font-m);font-size:12px;color:var(--muted);align-self:flex-end;padding-bottom:8px;letter-spacing:.06em}
 .plan-price-note{font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:.08em;margin-bottom:20px}
 .plan-divider{height:1px;background:var(--border);margin:20px 0}
-
 .plan-features{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
 .plan-features li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:rgba(255,255,255,.72);line-height:1.5}
 .pf-check{width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;margin-top:1px}
@@ -242,7 +109,6 @@ body {font-family: var(--font-d); background: #ffffff !important; color: #111827
 .pf-check-gold{background:rgba(240,180,41,.1);border:1px solid rgba(240,180,41,.25);color:var(--gold)}
 .pf-check-off{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--border)}
 .pf-limit{font-family:var(--font-m);font-size:10px;color:var(--muted);margin-left:28px;margin-top:2px}
-
 .plan-cta{display:block;width:100%;padding:14px;border-radius:12px;text-align:center;font-weight:700;font-size:14px;letter-spacing:.05em;text-decoration:none;transition:all .3s;cursor:pointer;border:none;font-family:var(--font-b)}
 .cta-default{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--white)}
 .cta-default:hover{background:rgba(255,255,255,.09);transform:translateY(-2px)}
@@ -254,7 +120,6 @@ body {font-family: var(--font-d); background: #ffffff !important; color: #111827
 .plan-disabled { filter: blur(3px) brightness(0.55); opacity: 0.6; pointer-events: none; position: relative; user-select: none; }
 .plan-disabled::after { content: "Plan actuel"; position: absolute; inset: 0; display: flex;align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: white; background: rgba(0,0,0,0.25); backdrop-filter: blur(2px); }
 .section-eyebrow { color: var(--cyan); font-size: 12px; font-weight: 700; letter-spacing: .25em; text-transform: uppercase; margin-bottom: 18px; }
-
 </style>
 </head>
 <body class="d-flex" data-page="liens">

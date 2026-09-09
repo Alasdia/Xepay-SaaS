@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500;600&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="responsive.css">
-
 <style>
 :root {
   --bg:       #020408;
@@ -27,13 +26,10 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 body{font-family:var(--font-b);background:var(--bg);color:var(--white);overflow-x:hidden;cursor:none}
-
 #cursor{position:fixed;width:10px;height:10px;background:var(--cyan);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .18s,height .18s;box-shadow:0 0 10px var(--cyan),0 0 24px rgba(0,229,255,.35)}
 #cursor-ring{position:fixed;width:34px;height:34px;border:1px solid rgba(0,229,255,.4);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:width .22s,height .22s}
 #bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
 .noise{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.028;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-
-/* ── NAV ── */
 nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:18px 48px;background:rgba(2,4,8,.72);backdrop-filter:blur(28px);border-bottom:1px solid var(--border)}
 .logo{font-family:var(--font-d);font-size:26px;letter-spacing:.12em;background:linear-gradient(90deg,var(--cyan),var(--violet));background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .nav-links{display:flex;align-items:center;gap:6px}
@@ -42,8 +38,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:cen
 .nav-links a.active{color:var(--cyan)}
 .btn-nav{padding:9px 20px;border-radius:10px;background:linear-gradient(135deg,rgba(0,229,255,.18),rgba(168,85,247,.18));border:1px solid rgba(0,229,255,.28);color:var(--white);font-size:13px;font-weight:700;text-decoration:none;transition:all .25s;box-shadow:0 0 18px rgba(0,229,255,.1)}
 .btn-nav:hover{box-shadow:0 0 32px rgba(0,229,255,.28);transform:translateY(-1px)}
-
-/* ── HERO ── */
 .hero{position:relative;z-index:2;padding:160px 48px 80px;max-width:1300px;margin:0 auto;text-align:center}
 .eyebrow{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border-radius:999px;border:1px solid rgba(0,229,255,.2);background:rgba(0,229,255,.05);font-family:var(--font-m);font-size:11px;color:var(--cyan);letter-spacing:.14em;margin-bottom:24px}
 .eyebrow::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);animation:blink 2s ease-in-out infinite}
@@ -56,8 +50,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:cen
 .stripe-badge .sb-label{font-family:var(--font-m);font-size:11px;color:rgba(255,255,255,.5);letter-spacing:.1em}
 .stripe-badge .sb-val{font-family:var(--font-m);font-size:11px;color:rgba(255,255,255,.85);font-weight:600;letter-spacing:.06em}
 .stripe-badge .sb-dot{width:5px;height:5px;border-radius:50%;background:rgba(99,91,255,.7)}
-
-/* ── ARCHITECTURE FLOW ── */
 .arch-section{position:relative;z-index:2;padding:80px 48px;max-width:1300px;margin:0 auto}
 .section-label{font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;text-align:center;margin-bottom:48px}
 .arch-flow{display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap}
@@ -72,22 +64,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:cen
 .arch-arrow-line{width:1px;height:40px;background:linear-gradient(180deg,rgba(0,229,255,.4),rgba(168,85,247,.4))}
 .arch-arrow-head{width:8px;height:8px;border-right:1px solid var(--cyan);border-bottom:1px solid var(--cyan);transform:rotate(45deg);margin-top:-6px}
 .arch-note{font-family:var(--font-m);font-size:9px;color:rgba(0,229,255,.5);letter-spacing:.08em}
-
-/* arch horizontal on wide screens */
 @media(min-width:900px){
   .arch-flow{flex-direction:row;flex-wrap:nowrap}
   .arch-arrow{flex-direction:row;padding:0;margin:0 8px}
   .arch-arrow-line{width:40px;height:1px;background:linear-gradient(90deg,rgba(0,229,255,.4),rgba(168,85,247,.4))}
   .arch-arrow-head{width:7px;height:7px;border-right:1px solid var(--cyan);border-bottom:1px solid var(--cyan);transform:rotate(-45deg);margin-top:0;margin-left:-5px}
 }
-
-/* Disclaimer strip */
 .disclaimer-strip{position:relative;z-index:2;margin:0 48px 60px;padding:20px 28px;border-radius:14px;background:rgba(240,180,41,.04);border:1px solid rgba(240,180,41,.16);display:flex;align-items:flex-start;gap:14px}
 .ds-icon{font-size:18px;flex-shrink:0;margin-top:1px}
 .ds-text{font-size:13px;line-height:1.7;color:rgba(255,255,255,.65)}
 .ds-text strong{color:var(--gold);font-weight:700}
-
-/* ── COMMISSION BLOCK ── */
 .commission-section{position:relative;z-index:2;max-width:1300px;margin:0 auto;padding:0 48px 80px}
 .commission-card{border-radius:24px;overflow:hidden;background:linear-gradient(135deg,rgba(0,229,255,.05) 0%,rgba(168,85,247,.05) 100%);border:1px solid rgba(0,229,255,.15);padding:52px;position:relative}
 .commission-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,229,255,.5),rgba(168,85,247,.4),transparent)}
@@ -110,43 +96,32 @@ nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:cen
 .ce-row:last-child{border-bottom:none;padding-top:8px;margin-top:4px}
 .ce-label{font-size:12px;color:var(--muted)}
 .ce-val{font-family:var(--font-m);font-size:12px;font-weight:600}
-
-/* ── PLANS ── */
 .plans-section{position:relative;z-index:2;max-width:1300px;margin:0 auto;padding:0 48px 100px}
 .plans-header{text-align:center;margin-bottom:52px}
 .plans-header h2{font-family:var(--font-d);font-size:clamp(48px,5vw,76px);letter-spacing:.04em;line-height:.95;margin-bottom:14px}
 .plans-header h2 span{background:linear-gradient(90deg,var(--cyan),var(--violet));background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .plans-header p{font-size:15px;color:var(--muted);line-height:1.7;max-width:480px;margin:0 auto}
-
 .plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
 .plan-card{border-radius:22px;padding:36px 32px;background:rgba(6,12,22,.88);border:1px solid var(--border);position:relative;overflow:hidden;transition:transform .3s,box-shadow .3s,border-color .3s;opacity:0;transform:translateY(24px)}
 .plan-card.visible{opacity:1;transform:translateY(0);transition:opacity .65s ease,transform .65s ease,box-shadow .3s,border-color .3s}
 .plan-card:hover{transform:translateY(-6px);box-shadow:0 32px 80px rgba(0,0,0,.5)}
 .plan-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;opacity:0;transition:opacity .3s}
 .plan-card:hover::before{opacity:1}
-
-/* STARTER */
 .plan-starter{border-color:rgba(255,255,255,.09)}
 .plan-starter::before{background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent)}
 .plan-starter:hover{border-color:rgba(255,255,255,.16)}
-
-/* PRO - featured */
 .plan-pro{border-color:rgba(0,229,255,.28);background:linear-gradient(160deg,rgba(0,229,255,.06) 0%,rgba(168,85,247,.05) 100%);transform:translateY(-8px) !important}
 .plan-pro.visible{transform:translateY(-8px) !important}
 .plan-pro:hover{transform:translateY(-14px) !important;box-shadow:0 40px 100px rgba(0,0,0,.6),0 0 60px rgba(0,229,255,.1) !important}
 .plan-pro::before{background:linear-gradient(90deg,transparent,rgba(0,229,255,.5),rgba(168,85,247,.4),transparent);opacity:1}
 .plan-pro-badge{position:absolute;top:16px;right:16px;padding:4px 12px;border-radius:999px;background:linear-gradient(135deg,var(--cyan),var(--violet));color:#000;font-family:var(--font-m);font-size:9px;font-weight:700;letter-spacing:.1em}
-
-/* BUSINESS */
 .plan-business{border-color:rgba(240,180,41,.2)}
 .plan-business::before{background:linear-gradient(90deg,transparent,rgba(240,180,41,.3),transparent)}
 .plan-business:hover{border-color:rgba(240,180,41,.32)}
-
 .plan-tag{display:inline-block;padding:4px 10px;border-radius:999px;font-family:var(--font-m);font-size:9px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:16px}
 .tag-default{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border)}
 .tag-pro    {background:rgba(0,229,255,.1);color:var(--cyan);border:1px solid rgba(0,229,255,.25)}
 .tag-biz    {background:rgba(240,180,41,.1);color:var(--gold);border:1px solid rgba(240,180,41,.25)}
-
 .plan-name{font-family:var(--font-d);font-size:38px;letter-spacing:.06em;margin-bottom:4px;line-height:1}
 .plan-price{margin:18px 0;display:flex;align-items:baseline;gap:4px}
 .plan-price .amount{font-family:var(--font-d);font-size:60px;letter-spacing:.02em;line-height:1}
@@ -154,7 +129,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:cen
 .plan-price .period{font-family:var(--font-m);font-size:12px;color:var(--muted);align-self:flex-end;padding-bottom:8px;letter-spacing:.06em}
 .plan-price-note{font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:.08em;margin-bottom:20px}
 .plan-divider{height:1px;background:var(--border);margin:20px 0}
-
 .plan-features{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
 .plan-features li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:rgba(255,255,255,.72);line-height:1.5}
 .pf-check{width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;margin-top:1px}
@@ -162,7 +136,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:cen
 .pf-check-gold{background:rgba(240,180,41,.1);border:1px solid rgba(240,180,41,.25);color:var(--gold)}
 .pf-check-off{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--border)}
 .pf-limit{font-family:var(--font-m);font-size:10px;color:var(--muted);margin-left:28px;margin-top:2px}
-
 .plan-cta{display:block;width:100%;padding:14px;border-radius:12px;text-align:center;font-weight:700;font-size:14px;letter-spacing:.05em;text-decoration:none;transition:all .3s;cursor:none;border:none;font-family:var(--font-b)}
 .cta-default{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--white)}
 .cta-default:hover{background:rgba(255,255,255,.09);transform:translateY(-2px)}
@@ -170,8 +143,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:cen
 .cta-primary:hover{box-shadow:0 14px 44px rgba(0,229,255,.4);transform:translateY(-2px)}
 .cta-gold{background:rgba(240,180,41,.1);border:1px solid rgba(240,180,41,.28);color:var(--gold)}
 .cta-gold:hover{background:rgba(240,180,41,.18);transform:translateY(-2px)}
-
-/* ── COMPARE TABLE ── */
 .compare-section{position:relative;z-index:2;max-width:1300px;margin:0 auto;padding:0 48px 100px}
 .compare-header{text-align:center;margin-bottom:40px}
 .compare-header h3{font-family:var(--font-d);font-size:clamp(36px,4vw,56px);letter-spacing:.05em;margin-bottom:10px}
@@ -189,8 +160,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:cen
 .ct-yes{color:var(--green);font-size:14px}
 .ct-no{color:rgba(255,255,255,.2);font-size:14px}
 .ct-lim{font-family:var(--font-m);font-size:11px;color:var(--gold)}
-
-/* ── HOW IT WORKS ── */
 .how-section{position:relative;z-index:2;max-width:1300px;margin:0 auto;padding:0 48px 80px}
 .how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .how-card{padding:28px;border-radius:18px;background:rgba(6,12,22,.85);border:1px solid var(--border);position:relative;overflow:hidden;transition:border-color .3s}
@@ -199,8 +168,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:cen
 .how-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:16px}
 .how-title{font-family:var(--font-d);font-size:24px;letter-spacing:.04em;margin-bottom:8px}
 .how-text{font-size:13px;line-height:1.75;color:var(--muted)}
-
-/* ── FAQ ── */
 .faq-section{position:relative;z-index:2;max-width:900px;margin:0 auto;padding:0 48px 100px}
 .faq-title{font-family:var(--font-d);font-size:clamp(40px,4vw,60px);letter-spacing:.05em;text-align:center;margin-bottom:40px}
 .faq-item{border-bottom:1px solid var(--border);overflow:hidden}
@@ -210,8 +177,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:cen
 .faq-item.open .faq-q-icon{background:rgba(0,229,255,.15);transform:rotate(45deg)}
 .faq-a{font-size:14px;line-height:1.8;color:var(--muted);max-height:0;overflow:hidden;transition:max-height .4s ease,padding .3s ease}
 .faq-item.open .faq-a{max-height:300px;padding-bottom:20px}
-
-/* ── CTA ── */
 .cta-strip{position:relative;z-index:2;margin:0 48px 80px;padding:64px 80px;border-radius:24px;text-align:center;overflow:hidden;background:linear-gradient(135deg,rgba(0,229,255,.05),rgba(168,85,247,.06),rgba(240,180,41,.03));border:1px solid rgba(0,229,255,.12)}
 .cta-strip::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,229,255,.45),rgba(168,85,247,.35),transparent)}
 .cta-strip h2{font-family:var(--font-d);font-size:clamp(44px,5vw,76px);letter-spacing:.04em;line-height:.95;margin-bottom:16px}
@@ -222,19 +187,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:cen
 .btn-primary:hover{transform:translateY(-3px) scale(1.02);box-shadow:0 18px 50px rgba(0,229,255,.45)}
 .btn-ghost{display:inline-flex;align-items:center;gap:8px;padding:15px 30px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:var(--white);font-weight:600;font-size:14px;text-decoration:none;cursor:none;transition:all .25s}
 .btn-ghost:hover{background:rgba(255,255,255,.08);transform:translateY(-2px)}
-
-/* ── FOOTER ── */
 footer{position:relative;z-index:2;border-top:1px solid var(--border);padding:26px 48px;display:flex;align-items:center;justify-content:space-between;background:rgba(2,4,8,.85);backdrop-filter:blur(12px)}
 .footer-links{display:flex;gap:22px}
 .footer-links a{font-size:12px;color:var(--muted);text-decoration:none;transition:color .2s}
 .footer-links a:hover{color:var(--white)}
 .footer-copy{font-family:var(--font-m);font-size:10px;color:rgba(255,255,255,.18);letter-spacing:.06em}
-
-/* ── DIVIDER ── */
 .sglow{position:relative;z-index:2;height:1px;background:linear-gradient(90deg,transparent,rgba(0,229,255,.1),rgba(168,85,247,.1),transparent);margin:0 48px 60px}
 .section-eyebrow{font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;text-align:center;margin-bottom:14px}
-
-/* REVEAL */
 .reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease}
 .reveal.visible{opacity:1;transform:translateY(0)}
 </style>
