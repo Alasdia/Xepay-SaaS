@@ -120,6 +120,7 @@ body { font-family: var(--font-d); background: #f8fafc !important; color: #11182
 .hover-underline:hover { text-decoration: underline !important;}
 @media (max-width: 992px) { #modalUpgrade .modal-dialog { width: 100%; margin: 0; max-width: 100%; } #modalUpgrade .modal-body { padding: 20px; } .plans-section { padding: 0 15px 40px; } .plans-grid { grid-template-columns: 1fr; gap: 20px; } }
 @media (max-width: 576px) { .plan-name { font-size: 28px; } .plan-price .amount { font-size: 40px; } .plan-features li { font-size: 12px; } }
+@media (max-width: 576px) { #modalCancelSub .modal-dialog {  display: flex !important;  align-items: center !important;  min-height: calc(100% - 1rem);  margin: 1rem auto;}}
 </style>
 </head>
 <body class="d-flex" style="margin: 0; padding: 0;" data-page="profile">
@@ -223,9 +224,7 @@ body { font-family: var(--font-d); background: #f8fafc !important; color: #11182
     </a>
   </div>
 </div>
-
 <!-- CARD PROFIL -->
--->
 <div class="col-md-12">
   <div class="card-epay p-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -642,7 +641,7 @@ async function initStripe() {
   }
 }
 function showCancelModal() {
-  const modal = new bootstrap.Modal(document.getElementById("modalCancelSub"));
+  const modal = new bootstrap.Modal(document.getElementById("btn-cancel-sub"));
   modal.show();
 }
 async function confirmCancelSubscription() {
@@ -651,10 +650,8 @@ async function confirmCancelSubscription() {
     btn.disabled = true;
     btn.innerText = "Résiliation...";
   }
-
   const token = localStorage.getItem("token");
   const workspaceId = localStorage.getItem("workspace_id");
-
   try {
     const res = await fetch("https://api.alasdia.com/me/plan/cancel", {
       method: "POST",
@@ -664,15 +661,12 @@ async function confirmCancelSubscription() {
         "X-Workspace-Id": workspaceId
       }
     });
-
     const data = await res.json();
-
     const modalEl = document.getElementById("modalCancelSub");
     if (modalEl) {
       const modal = bootstrap.Modal.getInstance(modalEl);
       if (modal) modal.hide();
     }
-
     if (res.ok) {
       showToast(data.message || "Abonnement résilié avec succès.", "warning");
       loadUser();
@@ -697,7 +691,6 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const token = localStorage.getItem("token");
         const workspaceId = localStorage.getItem("workspace_id");
-
         const res = await fetch('https://api.alasdia.com/me/create-portal-session', {
           method: 'POST',
           headers: {
@@ -706,7 +699,6 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
         const data = await res.json();
-
         if (res.ok && data.url) {
           window.location.href = data.url;
         } else {
@@ -721,7 +713,6 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadProfile() {
   const token = localStorage.getItem("token")
   if (!token) { window.location.href = "login.html"; return }
-
   try {
     const res = await fetch("https://api.alasdia.com/profile", {
       headers: {
@@ -731,12 +722,10 @@ async function loadProfile() {
     })
     const data = await res.json()
     console.log("PROFILE:", data)
-
     document.getElementById("profile-name").innerText = data.full_name || "—"
     document.getElementById("profile-email").innerText = data.email || "—"
     document.getElementById("profile-phone").innerText = data.phone || "—"
     document.getElementById("profile-account-id").innerText = data.account_id || "—"
-
     const phoneBadge = document.getElementById("phone-verified-badge")
     if (data.phone_verified) {
       phoneBadge.innerText = "Vérifié"
@@ -747,15 +736,12 @@ async function loadProfile() {
     twoFaEl.innerHTML = data.two_factor_enabled
       ? '<span class="status-badge status-ok">Activée</span>'
       : '<span class="status-badge status-warn">Désactivée</span>'
-
     document.getElementById("profile-last-login").innerText = data.last_login
       ? new Date(data.last_login).toLocaleString("fr-FR")
       : "—"
-
     document.getElementById("profile-plan-started").innerText = data.plan_started_at
       ? new Date(data.plan_started_at).toLocaleDateString("fr-FR")
       : "—"
-
     document.getElementById("profile-plan-expires").innerText = data.plan_expires_at
       ? new Date(data.plan_expires_at).toLocaleDateString("fr-FR") + (data.cancel_at_period_end ? " (résiliation prévue)" : "")
       : "—"
@@ -899,7 +885,6 @@ function showToast(message, type = "success") {
     </div>
   </div>
 </div>
-
 </body>
 </html>
 

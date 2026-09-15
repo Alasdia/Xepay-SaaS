@@ -16,15 +16,19 @@ async function initSidebar() {
   setupHamburger();
 }
 async function loadUser() {
-  const res = await fetch("https://api.alasdia.com/me/user-plan", {
-    headers: {
-      Authorization: "Bearer " + localStorage.getItem("token"),
-      "X-Workspace-Id": localStorage.getItem("workspace_id")
-    }
-  });
-  const user = await res.json();
-  localStorage.setItem("plan", user.plan);
-  updatePlanUI(user.plan);
+  const token = localStorage.getItem("token");
+  try {
+    const res = await fetch("https://api.alasdia.com/me/user-plan", {
+      headers: { Authorization: "Bearer " + token, "X-Workspace-Id": localStorage.getItem("workspace_id") }
+    });
+    const user = await res.json();
+    console.log("USER-PLAN RESPONSE:", res.status, user);
+    window.GLOBAL_PLAN = user;
+    localStorage.setItem("plan", user.plan);
+    updatePlanUI(user.plan);
+  } catch (err) {
+    console.error("ERREUR loadUser (sidebar):", err);
+  }
 }
 function logout() {
   localStorage.removeItem("token");

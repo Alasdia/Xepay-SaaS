@@ -18,32 +18,32 @@
     <ul class="nav nav-pills flex-column gap-1">
         <li class="nav-item">
             <a href="dashboard.html"
-                class="nav-link text-muted active-link">
+                class="nav-link text-muted" data-page="dashboard">
                   <i class="fa-solid fa-house"></i> Accueil
             </a>
         </li>
         <li class="nav-item">
             <a href="transactions.html"
-                class="nav-link text-muted">
+                class="nav-link text-muted" data-page="transactions">
                   <i class="fa-solid fa-credit-card"></i> Transactions
             </a>
         </li>
         <li class="nav-item">
-            <a href="liens.html" class="nav-link text-muted">
+            <a href="liens.html" class="nav-link text-muted" data-page="liens">
                 <i class="fa-solid fa-link"></i> Mes liens de paiement
             </a>
         </li>
 
         <!-- Fonctionnalité verrouillée (Free) -->
         <li class="nav-item">
-            <a href="API.html" class="nav-link text-muted d-flex justify-content-between"
+            <a href="API.html" class="nav-link text-muted d-flex justify-content-between" data-page="api"
                 onclick="checkApiAccess(event)">
                     <i class="fa-solid fa-code"></i> API Access
                 <span class="badge bg-warning text-dark">Pro</span>
             </a>
         </li>
         <li class="nav-item">
-            <a href="multi-users.html" class="nav-link text-muted d-flex justify-content-between"
+            <a href="multi-users.html" class="nav-link text-muted d-flex justify-content-between" data-page="multi-users"
                   onclick="checkMultiUsersAccess(event)">
                     <i class="fa-solid fa-users"></i> Multi-utilisateurs
                 <span class="badge bg-danger">Business</span>

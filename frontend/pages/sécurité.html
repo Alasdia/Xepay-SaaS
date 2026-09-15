@@ -24,7 +24,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
   --font-m: "DM Sans", sans-serif;
   --font-b: "DM Sans", sans-serif;
 }
-body { background: #ffffff; min-height: 100vh; color: #111827; position: relative; overflow-x: hidden; min-height: 100vh; }
+body { background: #ffffff; min-height: 100vh; color: #111827; position: relative; overflow-x: hidden; min-height: 100vh; font-family: var(--font-d); }
 #main-content { margin-left: 260px; padding: 28px 32px;  width: calc(100% - 260px); min-width: 0; flex: 1; }
 .card-epay { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; color: #111827; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
 .card-epay:hover{ border-color:#f0b429; box-shadow:0 8px 24px rgba(240,180,41,.08); }
@@ -203,7 +203,7 @@ body { background: #ffffff; min-height: 100vh; color: #111827; position: relativ
       <div class="session-card">
         <div class="d-flex justify-content-between align-items-center">
           <div>
-            <div class="fw-bold" id="session-device">Chargement...</div>
+            <div class="fw-bold text-muted" id="session-device">Chargement...</div>
             <small id="session-location">Chargement...</small>
 
             <div class="session-email" id="session-email">

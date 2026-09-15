@@ -79,6 +79,8 @@ table{ color:#374151 !important; }
 .toast-notif-item.error { border-left-color: #ef4444; }
 .toast-notif-item.warning { border-left-color: #facc15; }
 .toast-notif-item .icon { font-size: 16px; margin-top: 1px; }
+@keyframes toastIn { to { opacity: 1; transform: translateX(0); } }
+@keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
 #wallet-balance,
 #locked-amount,
 #total-xof { font-size: 20px; }
@@ -180,10 +182,9 @@ table{ color:#374151 !important; }
 #modalUpgrade .modal-content { background: #020408 !important; }
 #workspaceSwitcher{ min-width:240px; height:46px; background:#fffbea; border:1px solid #fde68a; border-radius:12px; padding:0 14px; color:#374151; font-weight:600; cursor:pointer; box-shadow: 0 2px 6px rgba(0,0,0,.04); }
 .plan-card { opacity: 1 !important; }
-/* Responsive mobile */
 @media (max-width: 992px) { #modalUpgrade .modal-dialog { width: 100%; margin: 0; max-width: 100%; } #modalUpgrade .modal-body { padding: 20px; } .plans-section { padding: 0 15px 40px; } .plans-grid { grid-template-columns: 1fr; gap: 20px; } }
 @media (max-width: 576px) { .plan-name { font-size: 28px; } .plan-price .amount { font-size: 40px; } .plan-features li { font-size: 12px; } }
-
+@media (max-width: 576px) { #withdrawModal .modal-dialog {  display: flex !important;  align-items: center !important;  min-height: calc(100% - 1rem);  margin: 1rem auto;  }}
 </style>
 </head>
 <body class="d-flex" style="margin: 0; padding: 0;" data-page="dashboard">
@@ -483,13 +484,11 @@ table{ color:#374151 !important; }
 <div class="modal fade" id="withdrawModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content bg-dark text-muted">
-
       <!-- HEADER -->
       <div class="modal-header border-0">
         <h5 class="modal-title">Retirer de l'argent</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-
       <!-- BODY -->
       <div class="modal-body">
         <div class="mb-3">
@@ -497,13 +496,11 @@ table{ color:#374151 !important; }
           <input type="number" id="withdrawAmount" class="form-control" placeholder="Ex: 5000">
         </div>
       </div>
-
       <!-- FOOTER -->
       <div class="modal-footer border-0">
         <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
         <button id="confirmWithdrawBtn" class="btn btn-success" onclick="submitWithdraw()">Confirmer</button>
       </div>
-
     </div>
   </div>
 </div>
@@ -1010,10 +1007,8 @@ function showUpgradeModal(feature = null) {
 <script>
 async function submitWithdraw() {
   const btn = document.getElementById("confirmWithdrawBtn");
-
   btn.innerText = "Envoi...";
   btn.disabled = true;
-
   try {
     const res = await fetch("https://api.alasdia.com/withdraw", {
       method: "POST",
@@ -1026,43 +1021,34 @@ async function submitWithdraw() {
         amount: parseFloat(document.getElementById("withdrawAmount").value)
       })
     });
-
     const data = await res.json();
     console.log("RESPONSE /withdraw:", data);
-
     if (!res.ok) {
       console.log("DETAIL:", data.detail);
-
-      let message = data.detail || "Erreur";
-      if (message.includes("Permission insuffisante")) {
+      let message = "Impossible d'effectuer ce retrait";
+      if (data.detail === "Permission insuffisante") {
         message = "Seul le propriétaire du compte peut effectuer un retrait";
+      } else if (typeof data.detail === "string") {
+        message = data.detail;
       }
-
       if (data.detail?.next_available_at) {
         const date = new Date(data.detail.next_available_at);
         message += `\n⏳ Disponible le ${date.toLocaleDateString("fr-FR")}`;
       }
-
       showToast(message, "error");
-
       btn.innerText = "Confirmer";
       btn.disabled = false;
       return;
     }
-
     if (!data.id) {
       console.error("❌ ID manquant :", data);
       showToast("Erreur: ID retrait manquant");
-
       btn.innerText = "Confirmer";
       btn.disabled = false;
       return;
     }
-
     const withdrawId = data.id;
-
     console.log("WITHDRAW ID:", withdrawId);
-
     const res2 = await fetch(`https://api.alasdia.com/withdraw/${withdrawId}/process`, {
       method: "POST",
       headers: {
@@ -1070,28 +1056,20 @@ async function submitWithdraw() {
         "X-Workspace-Id": localStorage.getItem("workspace_id")
       }
     });
-
     const data2 = await res2.json();
-
     if (!res2.ok) {
       showToast(data2.detail || "Erreur process");
       return;
     }
-
     showToast("Retrait envoyé !");
-
     const modalEl = document.getElementById("withdrawModal");
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.hide();
-
     btn.innerText = "Confirmer";
     btn.disabled = false;
-
   } catch (err) {
     console.error(err);
-
     showToast("Erreur serveur")
-
     btn.innerText = "Confirmer";
     btn.disabled = false;
   }
@@ -1107,9 +1085,7 @@ window.archivedLink = async function(id) {
         "X-Workspace-Id": localStorage.getItem("workspace_id")
       }
     });
-
     const data = await res.json();
-
     if (!res.ok) {
       alert(data.detail || "Erreur");
       return;
@@ -1119,7 +1095,6 @@ window.archivedLink = async function(id) {
     if (el) {
       el.remove();
     }
-
   } catch (err) {
     console.error(err);
     alert("Erreur serveur");
@@ -1165,14 +1140,12 @@ if (params.get("upgrade") === "1") {
 <script>
 function checkApiAccess(event) {
     const plan = localStorage.getItem("plan");
-
     if (plan === "free") {
         sessionStorage.setItem("openApiUpgrade", "true");
     }
 }
 function checkMultiUsersAccess(event) {
     const plan = localStorage.getItem("plan");
-
     if (plan !== "business") {
         sessionStorage.setItem(
             "openMultiUsersUpgrade",
@@ -1183,33 +1156,25 @@ function checkMultiUsersAccess(event) {
 </script>
 <script>
 function updateUpgradeModal(plan, feature) {
-
   document.querySelectorAll(".plan-card")
     .forEach(card => {
       card.classList.remove("plan-disabled");
     });
-
   if (feature === "multi-users") {
-
     document.querySelector(".plan-starter")
       .classList.add("plan-disabled");
-
     document.querySelector(".plan-pro")
       .classList.add("plan-disabled");
-
     return;
   }
-
   if (plan === "free") {
     document.querySelector(".plan-starter")
       .classList.add("plan-disabled");
   }
-
   if (plan === "pro") {
     document.querySelector(".plan-pro")
       .classList.add("plan-disabled");
   }
-
   if (plan === "business") {
     document.querySelector(".plan-business")
       .classList.add("plan-disabled");
@@ -1220,13 +1185,10 @@ function updateUpgradeModal(plan, feature) {
 function showToast(message, type = "success") {
   const container = document.getElementById("toast-container");
   const icons = { success: "✅", error: "⚠️", warning: "⏳" };
-
   const toast = document.createElement("div");
   toast.className = `toast-notif-item ${type}`;
   toast.innerHTML = `<span class="icon">${icons[type] || icons.success}</span><span>${message}</span>`;
-
   container.appendChild(toast);
-
   setTimeout(() => {
     toast.style.animation = "toastOut 0.3s ease forwards";
     setTimeout(() => toast.remove(), 300);
