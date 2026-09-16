@@ -1,4 +1,4 @@
-#sidebar{ background:#ffffff !important; border-right:1px solid #e5e7eb; box-shadow:0 2px 20px rgba(0,0,0,.04); }
+#sidebar{ background:#ffffff !important; border-right:1px solid #e5e7eb; box-shadow:0 2px 20px rgba(0,0,0,.04); z-index: 100; }
 #sidebar h4{ color:#111827 !important; }
 #sidebar small{ color:#6b7280 !important; }
 #sidebar .nav-link{ color:#6b7280 !important; border-radius:12px; padding:6px 10px; transition:.22s; display:flex; align-items:center; gap:8px; }
