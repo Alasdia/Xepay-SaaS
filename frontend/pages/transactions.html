@@ -15,6 +15,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
 <link rel="stylesheet" href="responsive.css">
 <link rel="stylesheet" href="sidebar.css">
 <link rel="stylesheet" href="transactions.css">
+<link rel="stylesheet" href="modal-upgrade.css">
 </head>
 <body class="d-flex" data-page="transactions">
 <div id="sidebar-container"></div>
@@ -284,121 +285,10 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     </div>
   </div>
 </div>
-<!-- ── PLANS ── -->
-<div class="modal fade" id="modalUpgrade">
-  <div class="modal-dialog modal-xl modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-body">
-        <section class="plans-section">
-          <div class="plans-header reveal">
-            <div class="section-eyebrow">Abonnements SaaS</div>
-              <h2>CHOISISSEZ VOTRE<br><span>PLAN DE GESTION</span></h2>
-              <p>La commission de 6% s'applique à tous les plans. L'abonnement détermine vos outils de gestion et vos limites opérationnelles.</p>
-            </div>
-
-            <div class="plans-grid">
-
-            <!-- STARTER -->
-            <div class="plan-card plan-starter reveal" style="transition-delay:.04s">
-              <div class="plan-tag tag-default">Free</div>
-              <div class="plan-name">FREE</div>
-              <div class="plan-price">
-                <div class="amount">0</div>
-                <div class="currency">xof</div>
-                <div class="period">/ mois</div>
-              </div>
-              <div class="plan-price-note">+ 6% par paiement réussi</div>
-              <div class="plan-divider"></div>
-              <ul class="plan-features">
-                <li>
-                  <div class="pf-check pf-check-on">✓</div>
-                  <div>
-                    <div>Liens de paiement</div>
-                    <div class="pf-limit">Jusqu'à 10 liens actifs</div>
-                  </div>
-                </li>
-                <li><div class="pf-check pf-check-on">✓</div><div>Dashboard temps réel</div></li>
-                <li><div class="pf-check pf-check-on">✓</div><div>Notifications email</div></li>
-                <li><div class="pf-check pf-check-on">✓</div><div>Compte Stripe Connect individuel</div></li>
-                <li><div class="pf-check pf-check-off">—</div><div style="color:var(--muted)">Historique des transactions</div></li>
-                <li><div class="pf-check pf-check-off">—</div><div style="color:var(--muted)">Statistiques avancées</div></li>
-                <li><div class="pf-check pf-check-off">—</div><div style="color:var(--muted)">Export CSV</div></li>
-                <li><div class="pf-check pf-check-off">—</div><div style="color:var(--muted)">Multi-utilisateurs</div></li>
-              </ul>
-              <a href="#" class="plan-cta cta-default">Plan actuel</a>
-            </div>
-
-            <!-- PRO -->
-            <div class="plan-card plan-pro reveal" style="transition-delay:.08s">
-              <div class="plan-pro-badge">POPULAIRE</div>
-              <div class="plan-tag tag-pro">Pro</div>
-              <div class="plan-name" style="background:linear-gradient(90deg,var(--cyan),#a5f3ff);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent">PRO</div>
-              <div class="plan-price">
-                <div class="amount" style="background:linear-gradient(90deg,var(--cyan),var(--violet));background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent">15500</div>
-                <div class="currency" style="color:var(--cyan)">xof</div>
-                <div class="period">/ mois</div>
-              </div>
-              <div class="plan-price-note">+ 6% par paiement réussi</div>
-              <div class="plan-divider" style="background:rgba(0,229,255,.15)"></div>
-              <ul class="plan-features">
-                <li>
-                  <div class="pf-check pf-check-on">✓</div>
-                  <div>
-                    <div>Liens de paiement</div>
-                    <div class="pf-limit">Jusqu'à 100 liens actifs</div>
-                  </div>
-                </li>
-                <li><div class="pf-check pf-check-on">✓</div><div>Dashboard temps réel</div></li>
-                <li><div class="pf-check pf-check-on">✓</div><div>Historique complet des transactions</div></li>
-                <li><div class="pf-check pf-check-on">✓</div><div><strong>Statistiques avancées</strong></div></li>
-                <li><div class="pf-check pf-check-on">✓</div><div><strong>Export CSV</strong></div></li>
-                <li><div class="pf-check pf-check-on">✓</div><div><strong>Notifications avancées</strong> (email + SMS)</div></li>
-                <li><div class="pf-check pf-check-on">✓</div><div><strong>Suivi et monitoring améliorés</strong></div></li>
-                <li><div class="pf-check pf-check-off">—</div><div style="color:var(--muted)">Multi-utilisateurs</div></li>
-              </ul>
-              <a href="#" class="plan-cta cta-primary" onclick="upgrade('pro'); return false;">Passer au Pro →</a>
-            </div>
-
-            <!-- BUSINESS -->
-            <div class="plan-card plan-business reveal" style="transition-delay:.12s">
-              <div class="plan-tag tag-biz">Business</div>
-              <div class="plan-name" style="background:linear-gradient(90deg,var(--gold),#ffd97d);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent">BUSINESS</div>
-              <div class="plan-price">
-                <div class="amount" style="color:var(--gold)">36000</div>
-                <div class="currency" style="color:var(--gold)">xof</div>
-                <div class="period">/ mois</div>
-              </div>
-              <div class="plan-price-note">+ 6% par paiement réussi</div>
-              <div class="plan-divider" style="background:rgba(240,180,41,.15)"></div>
-              <ul class="plan-features">
-                <li>
-                  <div class="pf-check pf-check-gold">✓</div>
-                  <div>
-                    <div>Liens de paiement</div>
-                    <div class="pf-limit">Illimités</div>
-                  </div>
-                </li>
-                <li><div class="pf-check pf-check-gold">✓</div><div>Tout le plan Pro inclus</div></li>
-                <li><div class="pf-check pf-check-gold">✓</div><div><strong>Multi-utilisateurs</strong></div></li>
-                <li><div class="pf-check pf-check-gold">✓</div><div><strong>Rôles et permissions</strong> (admin, agent, lecture)</div></li>
-                <li><div class="pf-check pf-check-gold">✓</div><div><strong>Outils d'équipe</strong></div></li>
-                <li><div class="pf-check pf-check-gold">✓</div><div><strong>Volumes élevés</strong> — limites étendues</div></li>
-                <li><div class="pf-check pf-check-gold">✓</div><div><strong>Support prioritaire</strong> dédié</div></li>
-                <li><div class="pf-check pf-check-gold">✓</div><div>KYB entreprise accompagné</div></li>
-              </ul>
-              <a href="#" class="plan-cta cta-gold" onclick="upgrade('business'); return false;">Choisir Business →</a>
-            </div>
-
-          </div>
-        </section>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="sidebar.js" defer></script>
+<script src="modal-upgrade.js" defer></script>
 <script src="transactions.js" defer></script>
 <div id="toast-container" class="toast-notif"></div>
 </body>

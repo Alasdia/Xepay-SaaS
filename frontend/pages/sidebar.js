@@ -22,7 +22,6 @@ async function loadUser() {
       headers: { Authorization: "Bearer " + token, "X-Workspace-Id": localStorage.getItem("workspace_id") }
     });
     const user = await res.json();
-    console.log("USER-PLAN RESPONSE:", res.status, user);
     window.GLOBAL_PLAN = user;
     localStorage.setItem("plan", user.plan);
     updatePlanUI(user.plan);
@@ -30,12 +29,16 @@ async function loadUser() {
     console.error("ERREUR loadUser (sidebar):", err);
   }
 }
+function updatePlanUI(plan) {
+  const badge = document.getElementById("badge-plan");
+  if (!badge) return;
+  badge.className = "badge " + plan;
+  badge.textContent = plan.toUpperCase();
+}
 function logout() {
   localStorage.removeItem("token");
   window.location.href = "login.html";
 }
-function setupHamburger() { /* garde la version existante, une seule fois ici */ }
-document.addEventListener("DOMContentLoaded", initSidebar);
 function setupHamburger() {
   const sidebar = document.getElementById("sidebar");
   if (!sidebar) return;
@@ -46,24 +49,20 @@ function setupHamburger() {
   btn.className = "dash-hamburger";
   btn.innerHTML = "<span></span><span></span><span></span>";
   document.body.appendChild(btn);
-  const open = () => { sidebar.classList.add("open"); overlay.classList.add("active"); btn.classList.add("open"); document.body.style.overflow = "hidden"; };
-  const close = () => { sidebar.classList.remove("open"); overlay.classList.remove("active"); btn.classList.remove("open"); document.body.style.overflow = ""; };
+  const open = () => {
+    sidebar.classList.add("open");
+    overlay.classList.add("active");
+    btn.classList.add("open");
+    document.body.style.overflow = "hidden";
+  };
+  const close = () => {
+    sidebar.classList.remove("open");
+    overlay.classList.remove("active");
+    btn.classList.remove("open");
+    document.body.style.overflow = "";
+  };
   btn.addEventListener("click", () => sidebar.classList.contains("open") ? close() : open());
   overlay.addEventListener("click", close);
   sidebar.querySelectorAll("a").forEach(a => a.addEventListener("click", close));
 }
-async function loadUser() {
-  const token = localStorage.getItem("token");
-  const res = await fetch("https://api.alasdia.com/me/user-plan", {
-    headers: { Authorization: "Bearer " + token, "X-Workspace-Id": localStorage.getItem("workspace_id") }
-  });
-  const user = await res.json();
-  window.GLOBAL_PLAN = user;
-  localStorage.setItem("plan", user.plan);
-  updatePlanUI(user.plan);
-}
-function updatePlanUI(plan) {
-  const badge = document.getElementById("badge-plan");
-  badge.className = "badge " + plan; 
-  badge.textContent = plan.toUpperCase();
-}
+document.addEventListener("DOMContentLoaded", initSidebar);
