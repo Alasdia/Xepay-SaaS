@@ -81,7 +81,7 @@ function handleFreeLimit(data) {
         document.getElementById("createLinkModal")
       )
       createModal.hide()
-      const upgradeModal = new bootstrap.Modal(
+      const upgradeModal = bootstrap.Modal(
         document.getElementById("modalUpgrade")
       )
       upgradeModal.show()
@@ -218,7 +218,7 @@ async function createLink() {
   if (!res.ok) {
     console.log("DATA:", data)
     if (data.detail && data.detail.upgrade === true) {
-      const modal = new bootstrap.Modal(document.getElementById("modalUpgrade"))
+      const modal = bootstrap.Modal(document.getElementById("modalUpgrade"))
       modal.show()
       return
     }
@@ -328,7 +328,7 @@ const createBtn = document.getElementById("createBtn")
   withdrawBtn.addEventListener("click", (e) => {
     e.preventDefault()
     if (window.user === "free") {
-      const upgradeModal = new bootstrap.Modal(
+      const upgradeModal = bootstrap.Modal(
         document.getElementById("modalUpgrade")
       )
       upgradeModal.show()
@@ -345,7 +345,7 @@ document.querySelectorAll(".upgrade-btn").forEach(btn => {
 function showUpgradeModal(feature = null) {
   const plan = localStorage.getItem("plan");
   updateUpgradeModal(plan, feature);
-  const modal = new bootstrap.Modal(
+  const modal = bootstrap.Modal(
     document.getElementById("modalUpgrade")
   );
   modal.show();
