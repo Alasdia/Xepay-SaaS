@@ -1,4 +1,4 @@
-async function loadUser() {
+async function loadPlanStatus() {
   const token = localStorage.getItem("token");
   if (!token) {
     window.location.href = "login.html";
@@ -359,7 +359,7 @@ async function loadProfile() {
 }
 document.addEventListener("DOMContentLoaded", () => {
   initStripe()
-  loadUser()
+  loadPlanStatus()
   loadProfile()
 })
 function updateUpgradeModal(plan, feature) {
