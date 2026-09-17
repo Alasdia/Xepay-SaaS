@@ -30,8 +30,8 @@ body {font-family: var(--font-d); background: #ffffff !important; color: #111827
 #links-lock{ position: fixed; inset: 0; z-index: 999; display:flex; align-items:center; justify-content:center; top: 0; }
 .lock-card{ width:340px; background:#ffffff; border:1px solid #e5e7eb; border-radius:14px; padding:28px 24px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.12); margin:auto; position:static; transform:none; }
 .lock-icon{ width:70px; height:70px; border-radius:50%; background:#fff6d6; color:#f0b429; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:16px; }
-.lock-card h2{ font-size:22px; margin-bottom:10px; color:#374151; }
-.lock-card p{ color:#6b7280; margin-bottom:25px; }
+.lock-card h2{ color: #545353; font-weight: 700;}
+.lock-card p{ color: #545353; font-size: 12px; line-height: 1.6; }
 .lien-url { font-family: monospace; padding: 10px; border-radius: 6px; margin-top: 10px; transition: 0.3s; word-break: break-all; overflow-wrap: anywhere;}
 .lien-status.inactif { color: #ff4d4d !important; text-shadow: 0 0 8px rgba(255, 0, 0, 0.6);}
 .lien-url.inactif { color: #ff4d4d !important; background: rgba(255, 0, 0, 0.05) !important; border: 1px solid rgba(255,77,77,0.4);;}
