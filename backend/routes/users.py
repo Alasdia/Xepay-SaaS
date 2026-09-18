@@ -127,6 +127,9 @@ def signup(
         return {"success": True}
     except Exception as e:
         db.rollback()
+        print("❌ ERREUR SIGNUP :", repr(e))
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.post("/login")
