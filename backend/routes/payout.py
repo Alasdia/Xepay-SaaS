@@ -304,16 +304,11 @@ def process_withdraw(
 async def cancel_withdrawal(
     withdrawal_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    workspace_id: str = Header(None, alias="X-Workspace-Id")
 ):
-    wd = (
-        db.query(Withdrawal)
-        .filter(
-            Withdrawal.id == withdrawal_id,
-            Withdrawal.user_id == current_user.id
-        )
-        .first()
-    )
+    owner_id = get_workspace_owner_id(current_user, workspace_id, db)
+    wd = (db.query(Withdrawal).filter(Withdrawal.id == withdrawal_id, Withdrawal.user_id == owner_id).first())
     if not wd:
         raise HTTPException(status_code=404, detail="Retrait introuvable.")
     if wd.status != "pending":
