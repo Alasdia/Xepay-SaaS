@@ -228,7 +228,7 @@ def withdraw(
     
 @router.post("/withdraw/{id}/process")
 def process_withdraw(
-    id: int, 
+    id: str, 
     db: Session = Depends(get_db)
 ):
     wd = db.query(Withdrawal)\
@@ -301,7 +301,7 @@ def process_withdraw(
 
 @router.post("/withdrawals/{withdrawal_id}/cancel")
 async def cancel_withdrawal(
-    withdrawal_id: int,
+    withdrawal_id: str,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
