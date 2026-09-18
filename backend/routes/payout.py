@@ -12,7 +12,7 @@ from backend.services.workspace_service import (
     get_workspace_owner_id
 )
 from sqlalchemy import func
-from backend.models import Payment, Link, UserDB, Profile
+from backend.models import Payment, Link, UserDB, Profile, generate_prefixed_id
 from fastapi import Request
 import json
 import time
@@ -191,7 +191,7 @@ def withdraw(
 
     print(f"[WITHDRAW AFTER] owner={owner_id} available={wallet.available} pending={wallet.pending}")
 
-    ref = f"wd_{uuid.uuid4()}"
+    ref = generate_prefixed_id("wd")
 
     print(f"[NEW WITHDRAW] owner={owner_id} amount={req.amount} ref={ref}")
 
@@ -318,7 +318,20 @@ async def cancel_withdrawal(
     if wd.status != "pending":
         raise HTTPException(status_code=400, detail=f"Impossible d'annuler ce retrait car son statut est déjà '{wd.status}'.")
     if not wd.stripe_payout_id:
-        raise HTTPException(status_code=400, detail="Ce retrait ne possède pas de payout Stripe.")
+        wd.status = "canceled"
+        wd.processed_at = datetime.now(timezone.utc)
+        wallet = (db.query(Wallet).filter(Wallet.id == wd.wallet_id).first())
+        if not wallet:
+            raise HTTPException(status_code=500, detail="Wallet introuvable.")
+        wallet.pending -= wd.amount
+        wallet.available += wd.amount
+        if wallet.pending < 0:
+            wallet.pending = 0
+        tx = (db.query(WalletTransaction).filter(WalletTransaction.reference == wd.reference).first())
+        if tx:
+            tx.status = "canceled"
+        db.commit()
+        return {"success": True, "message": "Retrait annulé et fonds recrédités."}
     try:
         payout = stripe.Payout.retrieve(
             wd.stripe_payout_id

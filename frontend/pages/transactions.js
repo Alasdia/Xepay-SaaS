@@ -504,6 +504,7 @@ async function loadWalletHistory() {
       }
     });
     const data = await res.json();
+    console.log("WALLET HISTORY :", data)
     if (!data.transactions || data.transactions.length === 0) {
       historyList.innerHTML = "<small>Aucun mouvement wallet</small>";
       return;
