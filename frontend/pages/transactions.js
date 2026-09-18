@@ -510,7 +510,7 @@ async function loadWalletHistory() {
       return;
     }
     const html = data.transactions.map(tx => {
-      const estRetraitEnAttente = tx.type === 'withdraw' && (tx.status === 'pending' || (tx.description && tx.description.toLowerCase().includes('en attente')));
+      const estRetraitEnAttente = tx.type === 'withdraw' && tx.status === 'pending';
       const boutonAnnuler = estRetraitEnAttente && tx.withdrawal_id
         ? `<div style="margin-top: 8px; text-align: right;">
             <button

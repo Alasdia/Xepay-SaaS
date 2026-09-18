@@ -326,6 +326,7 @@ async def cancel_withdrawal(
         tx = (db.query(WalletTransaction).filter(WalletTransaction.reference == wd.reference).first())
         if tx:
             tx.status = "canceled"
+            tx.description = "Retrait annulé"
         db.commit()
         return {"success": True, "message": "Retrait annulé et fonds recrédités."}
     try:
@@ -356,15 +357,10 @@ async def cancel_withdrawal(
         wallet.available += wd.amount
         if wallet.pending < 0:
             wallet.pending = 0
-        tx = (
-            db.query(WalletTransaction)
-            .filter(
-                WalletTransaction.reference == wd.reference
-            )
-            .first()
-        )
+        tx = (db.query(WalletTransaction).filter(WalletTransaction.reference == wd.reference).first())
         if tx:
             tx.status = "canceled"
+            tx.description = "Retrait annulé"
         db.commit()
         return {"success": True, "message": "Retrait annulé avec succès et fonds recrédités."}
     except stripe.error.StripeError as e:
