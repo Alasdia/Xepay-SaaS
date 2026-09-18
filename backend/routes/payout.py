@@ -117,6 +117,7 @@ def get_wallet_history(
             "amount": tx.amount,
             "direction": tx.direction,
             "type": tx.type,
+            "status": tx.status,
             "description": tx.description,
             "reference": tx.reference,
             "created_at": tx.created_at.isoformat(),

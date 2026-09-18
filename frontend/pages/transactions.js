@@ -514,7 +514,7 @@ async function loadWalletHistory() {
       const boutonAnnuler = estRetraitEnAttente && tx.withdrawal_id
         ? `<div style="margin-top: 8px; text-align: right;">
             <button
-              onclick="annulerRetrait(${tx.withdrawal_id})"
+              onclick="annulerRetrait('${tx.withdrawal_id}')"
               style="
                 background:#facc15;
                 color:#111827;
