@@ -676,13 +676,16 @@ if (confirmBtn) {
 }
 const successCard = document.getElementById("successCard");
 const chartTooltip = document.getElementById("chartTooltip");
-successCard.addEventListener("mouseenter", () => {
-  chartTooltip.style.display = "block";
-});
-successCard.addEventListener("mouseleave", () => {
-  chartTooltip.style.display = "none";
-});
+if (successCard && chartTooltip) {
+  successCard.addEventListener("mouseenter", () => {
+    chartTooltip.style.display = "block";
+  });
+  successCard.addEventListener("mouseleave", () => {
+    chartTooltip.style.display = "none";
+  });
+}
 const scrollBox = document.getElementById("transactions-scroll-box");
+if (scrollBox) {
   scrollBox.addEventListener("scroll", () => {
     const scrollTop = scrollBox.scrollTop;
     const visibleHeight = scrollBox.clientHeight;
@@ -690,7 +693,8 @@ const scrollBox = document.getElementById("transactions-scroll-box");
     if (scrollTop + visibleHeight >= totalHeight - 50) {
       chargerTransactions();
     }
-});
+  });
+}
 async function loadPlan() {
   try {
     const token = localStorage.getItem("token");
