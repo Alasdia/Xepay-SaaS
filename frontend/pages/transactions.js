@@ -560,6 +560,10 @@ async function loadWalletHistory() {
         `;
       }).join("");
       historyList.innerHTML = html;
+      console.log(
+        "HTML WALLET HISTORY :",
+        historyList.innerHTML
+      );
   } catch (e) {
     const historyList = document.getElementById("walletHistoryList");
     if (historyList) {
@@ -677,12 +681,12 @@ if (confirmBtn) {
 const successCard = document.getElementById("successCard");
 const chartTooltip = document.getElementById("chartTooltip");
 if (successCard && chartTooltip) {
-  successCard.addEventListener("mouseenter", () => {
-    chartTooltip.style.display = "block";
-  });
-  successCard.addEventListener("mouseleave", () => {
-    chartTooltip.style.display = "none";
-  });
+    successCard.addEventListener("mouseenter", () => {
+        chartTooltip.style.display = "block";
+    });
+    successCard.addEventListener("mouseleave", () => {
+        chartTooltip.style.display = "none";
+    });
 }
 const scrollBox = document.getElementById("transactions-scroll-box");
 if (scrollBox) {
