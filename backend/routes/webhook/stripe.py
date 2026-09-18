@@ -57,25 +57,23 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                 return {"status": "db_error"}
     elif event_type in ["payout.paid", "payout.failed", "payout.canceled"]:
         payout_id = object_data["id"]
-        wd = db.query(Withdrawal).filter(
-            Withdrawal.stripe_payout_id == payout_id
-        ).first()
+        wd = db.query(Withdrawal).filter(Withdrawal.stripe_payout_id == payout_id).first()
         if wd and wd.status not in ["success", "failed"]:
             wallet = db.query(Wallet).filter(Wallet.id == wd.wallet_id).first()
-            tx = db.query(WalletTransaction).filter(
-                WalletTransaction.reference == wd.reference
-            ).first()
+            tx = db.query(WalletTransaction).filter(WalletTransaction.reference == wd.reference).first()
             if event_type == "payout.paid":
                 wd.status = "success"
                 if tx:
                     tx.status = "success"
+                    tx.description = "Retrait réussi"
             elif event_type in ["payout.failed", "payout.canceled"]:
                 wd.status = "failed"
                 if wallet:
                     wallet.pending -= wd.amount
                     wallet.available += wd.amount
                 if tx:
-                    tx.status = "failed"                                
+                    tx.status = "failed"    
+                    tx.description = "Retrait échoué"                            
             db.commit()
             merchant = db.query(UserDB).filter(UserDB.id == wd.user_id).first()
             if merchant and merchant.email:

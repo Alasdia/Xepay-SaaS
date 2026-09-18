@@ -267,27 +267,22 @@ def process_withdraw(
     wd.status = "processing"
     db.flush()
     try:
-        payout = stripe.Payout.create(
-            amount=amount_cents,
-            currency="usd",
-            stripe_account=profile.stripe_account_id,
-            method="instant"
-        )
+        payout = stripe.Payout.create(amount=amount_cents, currency="usd", stripe_account=profile.stripe_account_id, method="instant")
         wd.status = payout["status"]
         wd.stripe_payout_id = payout["id"]
         wallet.pending -= wd.amount
         tx = db.query(WalletTransaction).filter(WalletTransaction.reference == wd.reference).first()
         if tx:
             tx.status = payout["status"]
+            tx.description = f"Retrait {payout['status']}"
     except Exception as e:
         wd.status = "failed"
         wallet.pending -= wd.amount
         wallet.available += wd.amount 
-        tx = db.query(WalletTransaction).filter(
-            WalletTransaction.reference == wd.reference
-        ).first()
+        tx = db.query(WalletTransaction).filter(WalletTransaction.reference == wd.reference).first()
         if tx:
             tx.status = "failed"
+            tx.description = "Retrait échoué"
     wd.processed_at = datetime.now(timezone.utc)
     db.commit()
     send_webhook_event(db, wd.user_id, "withdrawal.done", {
