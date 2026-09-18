@@ -136,7 +136,7 @@ class Withdrawal(Base):
 
     id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("wd"))
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
-    wallet_id = Column(string, ForeignKey("wallets.id"), nullable=False)
+    wallet_id = Column(String, ForeignKey("wallets.id"), nullable=False)
     amount = Column(Float, nullable=False)
     operator = Column(String)  
     phone = Column(String)
