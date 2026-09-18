@@ -571,6 +571,7 @@ async function loadWalletHistory() {
     }
   }
 }
+console.log("VERSION TEST XEPAY 001");
 async function annulerRetrait(retraitId) {
   console.log("ID DU RETRAIT À ANNULER :", retraitId);
   if (!retraitId) {
