@@ -76,10 +76,12 @@ def create_link(
         raise HTTPException(status_code=403, detail="Limite de paiements atteinte (10/mois)")
     if links_count >= LINK_LIMIT:
         raise HTTPException(status_code=403, detail="Limite de liens atteinte (30/mois)")
+    internal_id = str
     expires_at= datetime.now(timezone.utc) + timedelta(minutes=10)
     raw_token = str(uuid.uuid4())
     hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
     link = Link(
+        id=internal_id,
         token=hashed_token,
         user_id=owner_id,
         email=user.email,
