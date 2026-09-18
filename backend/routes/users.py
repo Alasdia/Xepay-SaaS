@@ -1026,34 +1026,6 @@ def accept_invite(
         url=f"https://alasdia.com/signup.html?token={token}"
     )
 
-@router.post("/auth/register")
-def register(data: dict, db: Session = Depends(get_db)):
-
-    user = UserDB(
-        email=data.get("email"),
-        name=data.get("name"),
-        role="Admin"
-    )
-
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-
-    # 🔥 ici seulement
-    user.owner_id = user.id
-
-    membership = WorkspaceUser(
-        id=str(uuid4()),  
-        user_id=user.id,
-        workspace_id=user.id,
-        role="OWNER"
-    )
-
-    db.add(membership)
-    db.commit()
-
-    return {"message": "Compte créé"}
-
 @router.put("/users/{user_id}/role")
 def update_role(
     user_id: str,
