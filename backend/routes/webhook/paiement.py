@@ -191,7 +191,14 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                 send_merchant_notification(user.email, payment)
             except Exception as e:
                 print(f"⚠️ Erreur génération PDF/Email: {e}")
-            wallet.balance += amount_local 
+            print("💰 AVANT CREDIT WALLET")
+            print("user_id:", user_id)
+            print("wallet_id:", wallet.id)
+            print("ancien balance:", wallet.balance)
+            print("montant à créditer:", amount_local)
+            wallet.balance += amount_local
+            print("💰 APRÈS CREDIT WALLET")
+            print("nouveau balance:", wallet.balance)
             stripe_event_id = session_dict.get("id") 
             stripe_status = session_dict.get("payment_status") or session_dict.get("status")
             if event_type == "checkout.session.completed":
