@@ -41,61 +41,32 @@ router = APIRouter()
 def signup(
     user: User, 
     db: Session = Depends(get_db)
-    ):
-
+):
     try:
         existing = db.query(UserDB).filter(UserDB.email == user.email).first()
-
         if existing:
             raise HTTPException(status_code=400, detail="User already exists")
-
         new_user = UserDB(
             email=user.email,
             password=hash_password(user.password)
         )
         db.add(new_user)
         db.flush()
-        
         if user.invite_token:
-
             token_hash = hashlib.sha256(
                 user.invite_token.encode()
             ).hexdigest()
-
-            invite = db.query(WorkspaceInvite).filter(
-                WorkspaceInvite.token_hash == token_hash,
-                WorkspaceInvite.used == False
-            ).first()
-
+            invite = db.query(WorkspaceInvite).filter(WorkspaceInvite.token_hash == token_hash, WorkspaceInvite.used == False).first()
             if invite:
-                membership = WorkspaceUser(
-                    user_id=new_user.id,
-                    workspace_id=invite.workspace_id,
-                    role=invite.role
-                )
+                membership = WorkspaceUser(user_id=new_user.id, workspace_id=invite.workspace_id, role=invite.role)
                 db.add(membership)
                 invite.used = True
-            
         else:
-            print("OWNER WORKSPACE FLOW")
-            membership = WorkspaceUser(
-                user_id=new_user.id,
-                workspace_id=new_user.id,
-                role="owner"
-            )
+            membership = WorkspaceUser(user_id=new_user.id, workspace_id=new_user.id, role="owner")
             db.add(membership)
-            print("WORKSPACE OBJECT ADDED")
-
         try:
-            print("🚀 SIGNUP START")
-            print("👉 Creating Stripe account for:", new_user.email)
-
-            # Initialisation du client v2 Stripe
             client = stripe.StripeClient(os.getenv("STRIPE_SECRET_KEY"))
-        
             user_country = getattr(user, "country", "US").upper() if hasattr(user, "country") and user.country else "US"
-
-            # 2. Définition de la configuration v2 selon les exigences des comptes v2 Stripe
             account_configuration = {
                 "merchant": {
                     "capabilities": {
@@ -114,8 +85,6 @@ def signup(
                     }
                 }
             }
-            print("🚀 AVANT APPEL STRIPE V2")
-            # 3. Création du compte Connect v2 Stripe avec la structure valide
             account = client.v2.core.accounts.create(
                 params={
                     "contact_email": new_user.email,
@@ -132,7 +101,6 @@ def signup(
                     }
                 }
             )
-            # Passage du calendrier de virement en manuel via la v1 (nécessaire pour la gestion des virements)
             stripe.Account.modify(
                 account.id,
                 settings={
@@ -143,38 +111,24 @@ def signup(
                     }
                 }
             )
-            print("✅ COMPTE CONNECT EXPRESS CRÉÉ :", account.id)
-
-            profile = Profile(
-                user_id=new_user.id,
-                stripe_account_id=account.id
-            )
+            profile = Profile(user_id=new_user.id, stripe_account_id=account.id)
             db.add(profile)
             db.commit()
             db.refresh(profile)
-
         except Exception as e:
             print("❌ ERREUR CRITIQUE:", repr(e))
             import traceback
             traceback.print_exc()
             db.rollback()
             raise HTTPException(status_code=500, detail=str(e))
-
-        wallet = Wallet(
-            user_id=new_user.id,
-            balance=0,
-            created_at=datetime.now(timezone.utc)
-        )
-
+        wallet = Wallet(user_id=new_user.id, balance=0, created_at=datetime.now(timezone.utc))
         db.add(wallet)
         db.commit()
         return {"success": True}
-    
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
     
-
 @router.post("/login")
 def login(
     request: Request,
@@ -183,53 +137,25 @@ def login(
 ):
     email = form_data.username
     password = form_data.password
-
     user = db.query(UserDB).filter(UserDB.email == email).first()
-
     if user and user.is_deleted:
         raise HTTPException(status_code=403, detail="Compte désactivé")
-
     if not user or not verify_password(password, user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    workspace_user = db.query(WorkspaceUser).filter(
-        WorkspaceUser.user_id == user.id,
-        WorkspaceUser.role == "owner"
-    ).first()
-
+    workspace_user = db.query(WorkspaceUser).filter(WorkspaceUser.user_id == user.id, WorkspaceUser.role == "owner").first()
     if not workspace_user:
-        workspace_user = db.query(WorkspaceUser).filter(
-            WorkspaceUser.user_id == user.id
-        ).first()
-
+        workspace_user = db.query(WorkspaceUser).filter(WorkspaceUser.user_id == user.id).first()
     user.last_login = datetime.now(timezone.utc)
     db.commit()
-
     if user.two_factor_enabled:
-        return {
-            "requires_2fa": True,
-            "email": user.email,
-            "workspace_id": workspace_user.workspace_id
-        }
-
+        return {"requires_2fa": True, "email": user.email, "workspace_id": workspace_user.workspace_id}
     ip = request.client.host
-    device = request.headers.get(
-        "user-agent",
-        "Appareil inconnu"
-    )
+    device = request.headers.get("user-agent", "Appareil inconnu")
     user.last_login = datetime.now(timezone.utc)
     db.commit()
-    print("LAST LOGIN SAVED:", user.last_login)
-
     token = create_access_token({"sub": user.email})
-
     if user.alert_login:
-        send_login_alert_email(
-            email=user.email,
-            device=device,
-            ip=ip
-        )
-
+        send_login_alert_email(email=user.email, device=device, ip=ip)
     return {
         "access_token": token,
         "token_type": "bearer",
@@ -242,7 +168,6 @@ def login(
 def get_security_alerts(
     current_user: UserDB = Depends(get_current_user)
 ):
-
     return {
         "alert_login": current_user.alert_login,
         "alert_payment": current_user.alert_payment,
@@ -255,13 +180,10 @@ def update_security_alerts(
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-
     current_user.alert_login = data.alert_login
     current_user.alert_payment = data.alert_payment
     current_user.alert_suspect = data.alert_suspect
-
     db.commit()
-
     return {
         "message": "Préférences de sécurité mises à jour"
     }

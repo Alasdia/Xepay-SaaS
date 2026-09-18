@@ -13,6 +13,7 @@ from backend.services.email_service import (
     send_payment_failed_email,
     send_payment_refunded_email
 )
+from backend.services.webhook_service import send_webhook_event
 import traceback
 import hmac
 import hashlib
@@ -56,6 +57,12 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                     user = db.query(UserDB).filter(UserDB.id == tx.user_id).first()
                     if user and user.email:
                         send_payment_failed_email(user.email)
+                    if user:
+                        send_webhook_event(db, user.id, "payment.failed", {
+                            "reference": reference,
+                            "amount": tx.amount,
+                            "status": "failed"
+                        })
             return {"status": "ok"}
         elif event_type == "charge.refunded":
             charge_id = object_data["id"]
@@ -68,10 +75,15 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                 if wallet:
                     wallet.balance -= tx.amount
                 db.commit()
-                if tx:
-                    user = db.query(UserDB).filter(UserDB.id == tx.user_id).first()
-                    if user and user.email:
-                        send_payment_refunded_email(user.email, tx.amount)
+                user = db.query(UserDB).filter(UserDB.id == tx.user_id).first()
+                if user and user.email:
+                    send_payment_refunded_email(user.email, tx.amount)
+                if user:
+                    send_webhook_event(db, user.id, "refund.issued", {
+                        "reference": reference,
+                        "amount": tx.amount,
+                        "status": "refunded"
+                    })    
             return {"status": "ok"}
         if event_type == "checkout.session.completed":
             session = object_data
@@ -224,6 +236,13 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
             )
             db.add(tx)
             db.commit()
+            send_webhook_event(db, user_id, "payment.success", {
+                "reference": reference_key,
+                "amount": amount_local,
+                "currency": "XOF",
+                "status": "paid",
+                "stripe_session_id": session_dict.get("id")
+            })
             return {"status": "ok"}
     except Exception as e:
         db.rollback()

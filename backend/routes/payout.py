@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import uuid
 from backend.database import get_db
 from backend.models import Wallet, Withdrawal, WithdrawRequest, WalletTransaction, WebhookDeliveryLog, Webhook
+from backend.services.webhook_service import send_webhook_event
 from backend.middleware.authorization import require_owner
 from backend.models import WorkspaceUser
 from backend.auth import get_current_user
@@ -230,77 +231,40 @@ def process_withdraw(
     id: int, 
     db: Session = Depends(get_db)
 ):
-    print("🔥 PROCESS WITHDRAW EXECUTÉ 🔥")
-
     wd = db.query(Withdrawal)\
         .filter(Withdrawal.id == id)\
         .with_for_update()\
         .first()
-
     if not wd:
         raise HTTPException(404, "Withdrawal not found")
-
     if wd.status in ["processing", "success"]:
         return {"error": "already processed"}
-
     wallet = db.query(Wallet)\
         .filter(Wallet.id == wd.wallet_id)\
         .with_for_update()\
         .first()
-
     if not wallet:
         raise HTTPException(404, "Wallet not found")
-
-    # 🔥 récupérer user (merchant)
     user = db.query(UserDB).filter(UserDB.id == wd.user_id).first()
-
     profile = db.query(Profile).filter(Profile.user_id == user.id).first()
-
     if not profile or not profile.stripe_account_id:
         raise HTTPException(400, "Stripe account not connected")
-    
-    # 🔐 vérifier Stripe account
     account = stripe.Account.retrieve(profile.stripe_account_id)
-    print("=== CAPABILITIES ===")
-    print(account.capabilities)
-
-    print("=== PAYOUTS ENABLED ===")
-    print(account.payouts_enabled)
-
-    print("=== REQUIREMENTS ===")
-    print(account.requirements)
-
     if not account["payouts_enabled"]:
         raise HTTPException(400, "Payouts not enabled")
-
     USD_RATE = 577.325
-
     usd_amount = wd.amount / USD_RATE
     amount_cents = int(usd_amount * 100)
-
     if amount_cents <= 0:
         raise HTTPException(400, "Amount too small")
-
-    # 💰 vérifier balance Stripe
     balance = stripe.Balance.retrieve(
         stripe_account=profile.stripe_account_id
     )
-    print("=== STRIPE DEBUG ===")
-    print("PENDING:", balance["pending"])
-    print("AVAILABLE:", balance["available"])
-    print("INSTANT:", balance["instant_available"])
-
     instant_available = sum(b["amount"] for b in balance["instant_available"])
-
-    print("INSTANT AVAILABLE:", instant_available)
-
     if instant_available < amount_cents:
         raise HTTPException(400, "Insufficient Stripe balance")
-
     wd.status = "processing"
     db.flush()
-    print("AVANT PAYOUT")
-
     try:
         payout = stripe.Payout.create(
             amount=amount_cents,
@@ -308,116 +272,31 @@ def process_withdraw(
             stripe_account=profile.stripe_account_id,
             method="instant"
         )
-        print("PAYOUT STATUS:", payout["status"])
-
-        print("APRES PAYOUT")
-
         wd.status = payout["status"]
         wd.stripe_payout_id = payout["id"]
-
         wallet.pending -= wd.amount
-
-        tx = db.query(WalletTransaction).filter(
-            WalletTransaction.reference == wd.reference
-        ).first()
-
+        tx = db.query(WalletTransaction).filter(WalletTransaction.reference == wd.reference).first()
         if tx:
             tx.status = payout["status"]
-
     except Exception as e:
-        print("Stripe error:", str(e))
-
         wd.status = "failed"
         wallet.pending -= wd.amount
         wallet.available += wd.amount 
-
         tx = db.query(WalletTransaction).filter(
             WalletTransaction.reference == wd.reference
         ).first()
-
         if tx:
             tx.status = "failed"
-
     wd.processed_at = datetime.now(timezone.utc)
     db.commit()
-
-    event_type = "withdrawal.done"
-    webhooks = db.query(Webhook).filter(
-        Webhook.user_id == wd.user_id,
-        Webhook.is_active == True
-    ).all()
-
-    for webhook in webhooks:
-        if event_type not in webhook.events.split(","):
-            continue
-
-        try:
-            payload = {
-                "id": f"evt_{uuid.uuid4().hex}",
-                "timestamp": int(time.time()),
-                "event": event_type,
-                "data": {
-                    "withdrawal_id": wd.id,
-                    "amount": wd.amount,
-                    "currency": "XOF",
-                    "status": wd.status,
-                    "reference": wd.reference,
-                    "stripe_payout_id": wd.stripe_payout_id
-                }
-            }
-
-            payload_bytes = json.dumps(payload).encode()
-            signature = hmac.new(
-                webhook.secret.encode(),
-                payload_bytes,
-                hashlib.sha256
-            ).hexdigest()
-
-            success = False
-            final_status_code = None
-            response = None
-
-            for attempt in range(3):
-                try:
-                    response = requests.post(
-                        webhook.url,
-                        json=payload,
-                        headers={
-                            "X-Signature": signature,
-                            "X-Epay-Event": event_type,
-                            "X-Epay-Timestamp": str(payload["timestamp"])
-                        },
-                        timeout=5
-                    )
-                    final_status_code = response.status_code
-                    if response.status_code == 200:
-                        success = True
-                        break
-                except Exception:
-                    final_status_code = 0
-                time.sleep(2)
-
-            log = WebhookDeliveryLog(
-                user_id=wd.user_id,
-                webhook_id=webhook.id,
-                url=webhook.url,
-                event=event_type,
-                status_code=final_status_code,
-                success=success
-            )
-            db.add(log)
-            
-            webhook.last_triggered = datetime.now(timezone.utc)
-            webhook.status = "active" if success else "error"
-            webhook.last_status_code = final_status_code
-            db.commit()
-
-        except Exception as e:
-            print("❌ Erreur webhook withdrawal:", e)
-            webhook.status = "error"
-            webhook.last_triggered = datetime.now(timezone.utc)
-            db.commit()
-
+    send_webhook_event(db, wd.user_id, "withdrawal.done", {
+        "withdrawal_id": wd.id,
+        "amount": wd.amount,
+        "currency": "XOF",
+        "status": wd.status,
+        "reference": wd.reference,
+        "stripe_payout_id": wd.stripe_payout_id
+    })
     return {"status": wd.status}
 
 @router.post("/withdrawals/{withdrawal_id}/cancel")
@@ -435,20 +314,11 @@ async def cancel_withdrawal(
         .first()
     )
     if not wd:
-        raise HTTPException(
-            status_code=404,
-            detail="Retrait introuvable."
-        )
+        raise HTTPException(status_code=404, detail="Retrait introuvable.")
     if wd.status != "pending":
-        raise HTTPException(
-            status_code=400,
-            detail=f"Impossible d'annuler ce retrait car son statut est déjà '{wd.status}'."
-        )
+        raise HTTPException(status_code=400, detail=f"Impossible d'annuler ce retrait car son statut est déjà '{wd.status}'.")
     if not wd.stripe_payout_id:
-        raise HTTPException(
-            status_code=400,
-            detail="Ce retrait ne possède pas de payout Stripe."
-        )
+        raise HTTPException(status_code=400, detail="Ce retrait ne possède pas de payout Stripe.")
     try:
         payout = stripe.Payout.retrieve(
             wd.stripe_payout_id
@@ -472,16 +342,11 @@ async def cancel_withdrawal(
             .first()
         )
         if not wallet:
-            raise HTTPException(
-                status_code=500,
-                detail="Wallet introuvable."
-            )
+            raise HTTPException(status_code=500, detail="Wallet introuvable.")
         wallet.pending -= wd.amount
         wallet.available += wd.amount
-
         if wallet.pending < 0:
             wallet.pending = 0
-
         tx = (
             db.query(WalletTransaction)
             .filter(
@@ -492,25 +357,13 @@ async def cancel_withdrawal(
         if tx:
             tx.status = "canceled"
         db.commit()
-
-        return {
-            "success": True,
-            "message": "Retrait annulé avec succès et fonds recrédités."
-        }
-
+        return {"success": True, "message": "Retrait annulé avec succès et fonds recrédités."}
     except stripe.error.StripeError as e:
         db.rollback()
-
-        raise HTTPException(
-            status_code=400,
-            detail=f"Erreur Stripe : {e.user_message or str(e)}"
-        )
+        raise HTTPException(status_code=400, detail=f"Erreur Stripe : {e.user_message or str(e)}")
     except HTTPException:
         db.rollback()
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Erreur interne : {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Erreur interne : {str(e)}")

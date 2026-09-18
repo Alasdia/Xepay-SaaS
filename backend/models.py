@@ -256,6 +256,8 @@ class Webhook(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     last_triggered = Column(DateTime(timezone=True), nullable=True)
     secret = Column(String, nullable=False)
+    status = Column(String, default="active")
+    last_status_code = Column(Integer, nullable=True)
 
     user = relationship("UserDB", back_populates="webhooks")
 
