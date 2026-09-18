@@ -811,16 +811,17 @@ async function upgrade(plan) {
   }
   window.location.href = data.url;
 }
-document
-  .getElementById("modalUpgrade")
-  .addEventListener("shown.bs.modal", () => {
+const modalUpgradeEl = document.getElementById("modalUpgrade");
+if (modalUpgradeEl) {
+  modalUpgradeEl.addEventListener("shown.bs.modal", () => {
     document.querySelectorAll("#modalUpgrade .reveal")
       .forEach((el, index) => {
         setTimeout(() => {
           el.classList.add("visible");
         }, index * 100);
       });
-});
+  });
+}
 function showToast(message, type = "success") {
   const container = document.getElementById("toast-container");
   const icons = { success: "✅", error: "⚠️", warning: "⏳" };
