@@ -553,7 +553,7 @@ async function loadWalletHistory() {
             </div>
             <div class="wallet-row">
               <span class="wallet-label">Note :</span>
-              <span class="wallet-value">${tx.description || "-"}</span>
+              <span class="wallet-value">${display_status || "-"}</span>
             </div>
             ${boutonAnnuler}
           </div>
