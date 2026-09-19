@@ -207,7 +207,7 @@ function afficherTransactions(data) {
   const html = data.map((t, i) => {
   const amount = (t.amount_local ?? t.amount);
   const currency = (t.currency_local ?? t.currency);
-  const displayName = t.type === "payment" ? t.label : (t.label || "Transfert");
+  const displayName = t.type === "payment" ? (t.label || "Client") : (t.label || "Transfert");
   const color = avatarColor(displayName || 'x');
   return `
     <tr onclick="voirDetailActivite(${i})" style="cursor:pointer;">
@@ -215,7 +215,7 @@ function afficherTransactions(data) {
         <div class="d-flex align-items-center gap-3">
           <div class="avatar" style="background:${color};">
             ${t.type === "payment"
-              ? displayName[0].toUpperCase()
+              ? (displayName ? displayName[0].toUpperCase() : "?")
               : `<i class="bi ${typeIcon[t.type] || 'bi-arrow-left-right'}"></i>`}
           </div>
           <div>
@@ -394,16 +394,17 @@ function renderStats(stats) {
   );
 }
 function renderLinksKPI(plan) {
+  const usage = plan.usage || {};
   const createdEl = document.getElementById("links-created");
   const paidEl = document.getElementById("links-paid");
   const barEl = document.getElementById("links-progress-bar");
-  const linksLimitText = plan.links_limit === null ? "Illimité" : plan.links_limit;
-  const paidLimitText = plan.paid_limit === null ? "Illimité" : plan.paid_limit;
-  if (createdEl) createdEl.innerText = `${plan.paid_count} / ${paidLimitText}`;
+  const linksLimitText = usage.links_limit === null ? "Illimité" : usage.links_limit;
+  const paidLimitText = usage.paid_limit === null ? "Illimité" : usage.paid_limit;
+  if (createdEl) createdEl.innerText = `${usage.paid_count ?? 0} / ${paidLimitText}`;
   if (paidEl) paidEl.innerText = `Sur un maximum de ${linksLimitText} liens créés`;
   if (barEl) {
-    const pct = plan.paid_limit > 0
-      ? Math.min(100, (plan.paid_count / plan.paid_limit) * 100)
+    const pct = usage.paid_limit > 0
+      ? Math.min(100, (usage.paid_count / usage.paid_limit) * 100)
       : 0;
     barEl.style.width = pct + "%";
   }
