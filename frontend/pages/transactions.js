@@ -628,10 +628,13 @@ async function annulerRetrait(retraitId) {
 const confirmBtn = document.getElementById("confirmWithdrawBtn");
 if (confirmBtn) {
   confirmBtn.addEventListener("click", async () => {
+    if (confirmBtn.disabled) return;
+    confirmBtn.disabled = true;
     const token = localStorage.getItem("token");
     const amount = parseFloat(document.getElementById("withdrawAmount").value);
     if (!amount || amount <= 0) {
       alert("Montant invalide");
+      confirmBtn.disabled = false;
       return;
     }
     try {
@@ -676,6 +679,8 @@ if (confirmBtn) {
     } catch (err) {
       showToast("Erreur serveur, veuillez réessayer", "error");
       closeWithdrawModalCleanly();
+    } finally {
+      confirmBtn.disabled = false;
     }
   });
 }

@@ -152,7 +152,7 @@ class Withdrawal(Base):
 class WalletTransaction(Base):
     __tablename__ = "wallet_transactions"
 
-    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("watr"))
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("txn"))
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     wallet_id = Column(String, ForeignKey("wallets.id"), nullable=False)
     type = Column(String, nullable=False)
