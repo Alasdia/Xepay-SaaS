@@ -196,14 +196,16 @@ function afficherTransactions(data) {
   const tbody = document.getElementById('tbody-transactions')
   const vide = document.getElementById('etat-vide')
   if (data.length === 0) {
-    tbody.innerHTML = ''
-    vide.classList.remove('d-none')
-    document.getElementById('nb-transactions').textContent = '0 transactions'
+    if (offset === 0) {
+      tbody.innerHTML = ''
+      vide.classList.remove('d-none')
+      document.getElementById('nb-transactions').textContent = '0 transactions'
+    }
     return
   }
   vide.classList.add('d-none')
   document.getElementById('nb-transactions').textContent =
-    `${data.length} transaction${data.length > 1 ? 's' : ''}`
+    `${transactions.length} transaction${transactions.length > 1 ? 's' : ''}`
   const html = data.map((t, i) => {
   const amount = (t.amount_local ?? t.amount);
   const currency = (t.currency_local ?? t.currency);
