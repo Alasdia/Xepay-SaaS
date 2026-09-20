@@ -917,6 +917,12 @@ async function initStripeBalanceReport() {
         const data = await res.json();
         return data.client_secret;
       },
+      appearance: {
+        overlays: "dialog",
+        variables: {
+          colorPrimary: "#facc15",
+        },
+      },
     });
     const balanceReport = stripeConnectInstance.create("balance-report");
     mount.innerHTML = "";
