@@ -57,7 +57,7 @@ def download_financial_report(
         raise HTTPException(504, "Le rapport prend trop de temps à se générer, réessaie dans un instant")
     file_id = run.result.id
     file_url = f"https://files.stripe.com/v1/files/{file_id}/contents"
-    resp = requests.get(file_url, auth=(stripe.api_key, ""))
+    resp = requests.get(file_url, auth=(stripe.api_key, ""), headers={"Stripe-Account": profile.stripe_account_id})
     if resp.status_code != 200:
         raise HTTPException(500, "Impossible de récupérer le fichier du rapport")
     return StreamingResponse(
