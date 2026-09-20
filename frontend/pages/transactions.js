@@ -901,6 +901,7 @@ function showToast(message, type = "success") {
 async function initStripeBalanceReport() {
   const container = document.getElementById("stripe-balance-report-container");
   const mount = document.getElementById("stripe-balance-report");
+  const layout = document.querySelector(".dashboard-layout"); 
   if (!container || !mount) return;
   try {
     const stripeConnectInstance = window.StripeConnect.init({
@@ -928,11 +929,15 @@ async function initStripeBalanceReport() {
     mount.innerHTML = "";
     mount.appendChild(balanceReport);
     container.style.display = "block";
+    if (layout) layout.classList.add("with-report");
   } catch (err) {
     console.error("Erreur chargement rapport Stripe:", err);
     showToast("Impossible de charger le rapport Stripe", "error");
   }
 }
-document.addEventListener("DOMContentLoaded", () => {
-  initStripeBalanceReport();
-});
+function fermerRapportStripe() {
+  const container = document.getElementById("stripe-balance-report-container");
+  const layout = document.querySelector(".dashboard-layout");
+  if (container) container.style.display = "none";
+  if (layout) layout.classList.remove("with-report");
+}
