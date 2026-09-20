@@ -898,3 +898,35 @@ function showToast(message, type = "success") {
     setTimeout(() => toast.remove(), 300);
   }, 3500);
 }
+async function initStripeBalanceReport() {
+  const container = document.getElementById("stripe-balance-report-container");
+  const mount = document.getElementById("stripe-balance-report");
+  if (!container || !mount) return;
+  try {
+    const stripeConnectInstance = window.StripeConnect.init({
+      publishableKey: "pk_test_51TJYk921oAuf4OUmVuqkub7cs2OUkWGpYlS4IgpfZrF7p6lY4v1YxRirVv1QSZD8Qof4JU78mmLgexh5wINo0vlo00c7HTwz5x",
+      fetchClientSecret: async () => {
+        const res = await fetch("https://api.alasdia.com/reports/connect-session", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + localStorage.getItem("token"),
+            "X-Workspace-Id": localStorage.getItem("workspace_id")
+          }
+        });
+        if (!res.ok) throw new Error("Impossible de créer la session Stripe");
+        const data = await res.json();
+        return data.client_secret;
+      },
+    });
+    const balanceReport = stripeConnectInstance.create("balance-report");
+    mount.innerHTML = "";
+    mount.appendChild(balanceReport);
+    container.style.display = "block";
+  } catch (err) {
+    console.error("Erreur chargement rapport Stripe:", err);
+    showToast("Impossible de charger le rapport Stripe", "error");
+  }
+}
+document.addEventListener("DOMContentLoaded", () => {
+  initStripeBalanceReport();
+});

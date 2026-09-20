@@ -65,3 +65,22 @@ def download_financial_report(
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename=rapport_financier_{start_date}_{end_date}.csv"}
     )
+@router.post("/reports/connect-session")
+def create_connect_session(
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_manager)
+):
+    owner_id = membership.workspace_id
+    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
+    if not profile or not profile.stripe_account_id:
+        raise HTTPException(400, "Compte Stripe non connecté")
+    try:
+        account_session = stripe.AccountSession.create(
+            account=profile.stripe_account_id,
+            components={
+                "balance_report": {"enabled": True}
+            },
+        )
+    except stripe.error.StripeError as e:
+        raise HTTPException(400, f"Erreur Stripe : {e.user_message or str(e)}")
+    return {"client_secret": account_session.client_secret}
