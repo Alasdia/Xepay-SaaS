@@ -13,6 +13,62 @@ function setTypeChip(el) {
   transactions = [];
   chargerTransactions();
 }
+async function downloadFinancialReport() {
+  const startDate = document.getElementById("startDate").value;
+  const endDate = document.getElementById("endDate").value;
+  if (!startDate || !endDate) {
+    showToast("Sélectionne une période (du / au) avant de générer le rapport", "warning");
+    return;
+  }
+  const btn = document.getElementById("exportFinancialReportBtn");
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<i class="bi bi-hourglass-split me-1"></i> Génération en cours...`;
+  try {
+    const res = await fetch(
+      `https://api.alasdia.com/reports/financial?start_date=${startDate}&end_date=${endDate}`,
+      {
+        headers: {
+          "Authorization": "Bearer " + localStorage.getItem("token"),
+          "X-Workspace-Id": localStorage.getItem("workspace_id")
+        }
+      }
+    );
+    if (res.status === 403) {
+      showUpgradeModal();
+      return;
+    }
+    if (!res.ok) {
+      let message = "Erreur lors de la génération du rapport";
+      try {
+        const data = await res.json();
+        if (typeof data.detail === "string") message = data.detail;
+      } catch (e) {}
+      showToast(message, "error");
+      return;
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `rapport_financier_${startDate}_${endDate}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    showToast("Rapport téléchargé avec succès");
+  } catch (err) {
+    showToast("Erreur de connexion au serveur", "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+}
+document.addEventListener("DOMContentLoaded", () => {
+  const reportBtn = document.getElementById("exportFinancialReportBtn");
+  if (reportBtn) {
+    reportBtn.addEventListener("click", downloadFinancialReport);
+  }
+});
 async function exportCSV() {
   console.log("CLICK OK")
   const startDate = document.getElementById("startDate").value
