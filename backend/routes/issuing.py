@@ -1,9 +1,12 @@
+import os
 import stripe
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import Profile, WorkspaceUser
 from backend.middleware.authorization import require_manager
+
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 router = APIRouter()
 
@@ -17,10 +20,8 @@ def create_virtual_card(
     profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
     if not profile or not profile.stripe_account_id:
         raise HTTPException(400, "Compte Stripe non connecté")
-
     holder_type = cardholder_data.get("type", "individual")
     card_currency = cardholder_data.get("currency", "usd").lower()
-
     try:
         cardholder_params = {
             "type": holder_type,
@@ -29,7 +30,7 @@ def create_virtual_card(
             "billing": {
                 "address": {
                     "line1": cardholder_data.get("address_line1"),
-                    "line2": cardholder_data.get("line2"), 
+                    "line2": cardholder_data.get("address_line2"), 
                     "city": cardholder_data.get("city"),
                     "state": cardholder_data.get("state"),       
                     "postal_code": cardholder_data.get("postal_code"), 

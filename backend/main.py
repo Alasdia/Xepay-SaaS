@@ -27,7 +27,7 @@ from backend.routes.app import router as ai_router
 from backend.auth import router as auth_router
 from backend.routes.account_id import router as account_router
 from backend.routes import reports
-
+from backend.routes import issuing
 app = FastAPI()
 
 app.add_middleware(
@@ -56,7 +56,7 @@ app.include_router(ai_router)
 app.include_router(auth_router)
 app.include_router(account_router)
 app.include_router(reports.router)
-
+app.include_router(issuing.router)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app.mount(
     "/static",
