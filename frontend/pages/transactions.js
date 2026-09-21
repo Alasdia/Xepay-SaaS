@@ -66,7 +66,7 @@ async function downloadFinancialReport() {
 document.addEventListener("DOMContentLoaded", () => {
   const reportBtn = document.getElementById("exportFinancialReportBtn");
   if (reportBtn) {
-    reportBtn.addEventListener("click", downloadFinancialReport);
+    reportBtn.addEventListener("click", initStripeBalanceReport);
   }
 });
 async function exportCSV() {
