@@ -446,3 +446,52 @@ function showToast(message, type = "success") {
     setTimeout(() => toast.remove(), 300);
   }, 3500);
 }
+document.addEventListener("DOMContentLoaded", () => {
+  const createCardBtn = document.getElementById("btn-create-card");
+  if (createCardBtn) {
+    createCardBtn.addEventListener("click", async () => {
+      const form = document.getElementById("virtual-card-form");
+      const formData = new FormData(form);
+      const payload = {
+        type: formData.get("type"),
+        currency: formData.get("currency"),
+        name: formData.get("name"),
+        email: formData.get("email"),
+        limit_amount: parseInt(formData.get("limit_amount") || 50000),
+        address_line1: formData.get("address_line1"),
+        city: formData.get("city"),
+        state: formData.get("state"),
+        postal_code: formData.get("postal_code"),
+        country: "US"
+      };
+      createCardBtn.disabled = true;
+      createCardBtn.innerText = "Création en cours...";
+      try {
+        const token = localStorage.getItem("token");
+        const workspaceId = localStorage.getItem("workspace_id");
+        const res = await fetch("https://api.alasdia.com/issuing/create-virtual-card", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token,
+            "X-Workspace-Id": workspaceId
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(`Carte créée avec succès ! ID: ${data.card_id}`, "success");
+          form.reset();
+        } else {
+          showToast(data.detail || "Erreur lors de la création de la carte", "error");
+        }
+      } catch (err) {
+        console.error("Erreur Issuing:", err);
+        showToast("Erreur de connexion au serveur", "error");
+      } finally {
+        createCardBtn.disabled = false;
+        createCardBtn.innerText = "Créer la carte virtuelle";
+      }
+    });
+  }
+});

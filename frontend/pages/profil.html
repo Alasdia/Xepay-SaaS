@@ -116,6 +116,73 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     </a>
   </div>
 </div>
+<!-- CARD CARTES VIRTUELLES ISSUING -->
+<div class="col-md-6">
+  <div class="card-epay p-4 h-100 d-flex flex-column justify-content-between">
+    <div>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold mb-0 text-muted"><i class="fa-solid fa-credit-card"></i> Cartes Virtuelles (Issuing)</h6>
+        <span id="issuing-status-badge" class="status-badge status-warn">Vérification...</span>
+      </div>
+      <p class="text-muted small mb-3">
+        Générez et gérez des cartes virtuelles pour vos dépenses professionnelles ou celles de vos équipes.
+      </p>
+      <!-- Formulaire rapide de création -->
+      <form id="virtual-card-form" class="d-flex flex-column gap-2 mb-3">
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label text-dark" style="font-size: 11px;">Type</label>
+            <select name="type" class="form-select form-select-sm text-dark bg-light">
+              <option value="company">Entreprise (LLC)</option>
+              <option value="individual">Particulier</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label text-dark" style="font-size: 11px;">Devise</label>
+            <select name="currency" class="form-select form-select-sm text-dark bg-light">
+              <option value="usd">USD ($)</option>
+              <option value="eur">EUR (€)</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="form-label text-dark" style="font-size: 11px;">Nom du porteur / LLC</label>
+          <input type="text" name="name" class="form-control form-control-sm text-dark bg-light" placeholder="Ex: Xepay LLC" required>
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label text-dark" style="font-size: 11px;">Email</label>
+            <input type="email" name="email" class="form-control form-control-sm text-dark bg-light" placeholder="email@domain.com" required>
+          </div>
+          <div class="col-6">
+            <label class="form-label text-dark" style="font-size: 11px;">Limite (en centimes)</label>
+            <input type="number" name="limit_amount" class="form-control form-control-sm text-dark bg-light" value="50000" required>
+          </div>
+        </div>
+        <!-- Adresse de la LLC US -->
+        <div class="row g-2">
+          <div class="col-8">
+            <input type="text" name="address_line1" class="form-control form-control-sm text-dark bg-light" placeholder="Adresse Ligne 1 (Street)" required>
+          </div>
+          <div class="col-4">
+            <input type="text" name="postal_code" class="form-control form-control-sm text-dark bg-light" placeholder="Zip code" required>
+          </div>
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <input type="text" name="city" class="form-control form-control-sm text-dark bg-light" placeholder="Ville" required>
+          </div>
+          <div class="col-6">
+            <input type="text" name="state" class="form-control form-control-sm text-dark bg-light" placeholder="État (ex: DE, WY)" required>
+          </div>
+        </div>
+      </form>
+    </div>
+    <button id="btn-create-card" type="button" class="btn btn-warning w-100 fw-bold text-dark">
+      Créer la carte virtuelle
+    </button>
+  </div>
+</div>
 <!-- CARD PROFIL -->
 <div class="col-md-12">
   <div class="card-epay p-4">
