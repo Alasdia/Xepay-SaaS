@@ -167,3 +167,4 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
 @media (max-width: 1200px) {.dashboard-layout.with-report { grid-template-columns: 1fr; }}
 @media (max-width: 960px) { .lock-overlay { left: 0;}.plans-grid { grid-template-columns: 1fr;} .plans-section { padding: 0 10px 30px;}}
 @media (max-width: 576px) { #withdrawModal .modal-dialog {  display: flex !important;  align-items: center !important;  min-height: calc(100% - 1rem);  margin: 1rem auto;  }}
+ 
