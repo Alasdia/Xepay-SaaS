@@ -899,10 +899,14 @@ function showToast(message, type = "success") {
   }, 3500);
 }
 async function initStripeBalanceReport() {
-  const container = document.getElementById("stripe-balance-report-container");
   const mount = document.getElementById("stripe-balance-report");
-  const layout = document.querySelector(".dashboard-layout"); 
-  if (!container || !mount) return;
+  if (!mount) return;
+  const modalEl = document.getElementById("stripeReportModal");
+  if (modalEl) {
+    const stripeModal = new bootstrap.Modal(modalEl);
+    stripeModal.show();
+  }
+  if (mount.hasChildNodes()) return;
   try {
     const stripeConnectInstance = window.StripeConnect.init({
       publishableKey: "pk_test_51TJYk921oAuf4OUmVuqkub7cs2OUkWGpYlS4IgpfZrF7p6lY4v1YxRirVv1QSZD8Qof4JU78mmLgexh5wINo0vlo00c7HTwz5x",
@@ -928,16 +932,9 @@ async function initStripeBalanceReport() {
     const balanceReport = stripeConnectInstance.create("balance-report");
     mount.innerHTML = "";
     mount.appendChild(balanceReport);
-    container.style.display = "block";
-    if (layout) layout.classList.add("with-report");
   } catch (err) {
     console.error("Erreur chargement rapport Stripe:", err);
     showToast("Impossible de charger le rapport Stripe", "error");
   }
 }
-function fermerRapportStripe() {
-  const container = document.getElementById("stripe-balance-report-container");
-  const layout = document.querySelector(".dashboard-layout");
-  if (container) container.style.display = "none";
-  if (layout) layout.classList.remove("with-report");
-}
+
