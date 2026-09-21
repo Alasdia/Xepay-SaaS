@@ -70,18 +70,15 @@ def signup(
             account_configuration = {
                 "merchant": {
                     "capabilities": {
-                        "card_payments": {
-                            "requested": True
-                        }
+                        "card_payments": {"requested": True}
                     }
                 },
                 "recipient": {
                     "capabilities": {
                         "stripe_balance": {
-                            "stripe_transfers": {
-                                "requested": True
-                            }
-                        }
+                            "stripe_transfers": {"requested": True}                         
+                        },
+                        "card_issuing": {"requested": True}
                     }
                 }
             }
@@ -340,6 +337,11 @@ def create_onboarding_link(
         account = stripe.Account.create(
             type="express",
             email=workspace_user.email,
+            capabilities={
+                "card_payments": {"requested": True},
+                "transfers": {"requested": True},
+                "card_issuing": {"requested": True},
+            },
         )
         profile.stripe_account_id = account.id
         db.commit()
