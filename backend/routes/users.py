@@ -70,15 +70,18 @@ def signup(
             account_configuration = {
                 "merchant": {
                     "capabilities": {
-                        "card_payments": {"requested": True}
+                        "card_payments": {
+                            "requested": True
+                        }
                     }
                 },
                 "recipient": {
                     "capabilities": {
                         "stripe_balance": {
-                            "stripe_transfers": {"requested": True}                         
-                        },
-                        "card_issuing": {"requested": True}
+                            "stripe_transfers": {
+                                "requested": True
+                            }
+                        }
                     }
                 }
             }
@@ -108,6 +111,15 @@ def signup(
                     }
                 }
             )
+            try:
+                stripe.Account.modify(
+                    account.id,
+                    capabilities={
+                        "card_issuing": {"requested": True}
+                    }
+                )
+            except stripe.error.StripeError as e:
+                print("⚠️ Issuing non activé (pays non éligible ou autre) :", repr(e))
             profile = Profile(user_id=new_user.id, stripe_account_id=account.id)
             db.add(profile)
             db.commit()
@@ -337,11 +349,6 @@ def create_onboarding_link(
         account = stripe.Account.create(
             type="express",
             email=workspace_user.email,
-            capabilities={
-                "card_payments": {"requested": True},
-                "transfers": {"requested": True},
-                "card_issuing": {"requested": True},
-            },
         )
         profile.stripe_account_id = account.id
         db.commit()
