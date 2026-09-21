@@ -13,7 +13,7 @@ function setTypeChip(el) {
   transactions = [];
   chargerTransactions();
 }
-async function downloadFinancialReport(format = 'csv') {
+async function downloadFinancialReport() {
   const startDate = document.getElementById("startDate").value;
   const endDate = document.getElementById("endDate").value;
   if (!startDate || !endDate) {
@@ -21,14 +21,12 @@ async function downloadFinancialReport(format = 'csv') {
     return;
   }
   const btn = document.getElementById("exportFinancialReportBtn");
-  const originalText = btn ? btn.innerHTML : "";
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = `<i class="bi bi-hourglass-split me-1"></i> Génération en cours...`;
-  }
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<i class="bi bi-hourglass-split me-1"></i> Génération en cours...`;
   try {
     const res = await fetch(
-      `https://api.alasdia.com/reports/financial?start_date=${startDate}&end_date=${endDate}&format=${format}`,
+      `https://api.alasdia.com/reports/financial?start_date=${startDate}&end_date=${endDate}`,
       {
         headers: {
           "Authorization": "Bearer " + localStorage.getItem("token"),
@@ -53,38 +51,22 @@ async function downloadFinancialReport(format = 'csv') {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `rapport_financier_${startDate}_${endDate}.${format}`;
+    a.download = `rapport_financier_${startDate}_${endDate}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
-    showToast(`Rapport ${format.toUpperCase()} téléchargé avec succès`);
+    showToast("Rapport téléchargé avec succès");
   } catch (err) {
     showToast("Erreur de connexion au serveur", "error");
   } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = originalText;
-    }
+    btn.disabled = false;
+    btn.innerHTML = originalText;
   }
 }
 document.addEventListener("DOMContentLoaded", () => {
   const reportBtn = document.getElementById("exportFinancialReportBtn");
   if (reportBtn) {
     reportBtn.addEventListener("click", initStripeBalanceReport);
-  }
-  const btnCSV = document.getElementById("btnExportFinancialCSV");
-  if (btnCSV) {
-    btnCSV.addEventListener("click", (e) => {
-      e.preventDefault();
-      downloadFinancialReport('csv');
-    });
-  }
-  const btnPDF = document.getElementById("btnExportFinancialPDF");
-  if (btnPDF) {
-    btnPDF.addEventListener("click", (e) => {
-      e.preventDefault();
-      downloadFinancialReport('pdf');
-    });
   }
 });
 async function exportCSV() {
