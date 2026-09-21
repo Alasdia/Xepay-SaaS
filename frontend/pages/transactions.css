@@ -162,11 +162,12 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
 .plan-disabled { filter: blur(3px) brightness(0.55); opacity: 0.6; pointer-events: none; position: relative; user-select: none; }
 .plan-disabled::after { content: "Plan actuel"; position: absolute; inset: 0; display: flex;align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: white; background: rgba(0,0,0,0.25); backdrop-filter: blur(2px); }
 .section-eyebrow { color: var(--cyan); font-size: 12px; letter-spacing: .25em; text-transform: uppercase; font-weight: 700; margin-bottom: 18px; }
-.dashboard-layout { display: grid; grid-template-columns: 1fr; gap: 20px;}
-.dashboard-layout.with-report { display: grid; grid-template-columns: 1fr 450px; align-items: start;}
-.stripe-report-container, 
-.card-epay:has(#stripe-balance-report) { max-height: calc(100vh - 120px); overflow-y: auto;}
-@media (max-width: 1200px) {.dashboard-layout.with-report { grid-template-columns: 1fr; }}
+.dashboard-layout { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start;}
+.dashboard-layout.with-report { grid-template-columns: 1fr 450px;}
+.dashboard-layout.with-report .right-section,
+#stripe-balance-report-container { display: block !important; max-height: calc(100vh - 120px); overflow-y: auto; position: sticky; top: 20px;}
+#stripe-balance-report-container .table-wrap { min-height: auto !important; height: 100%;}
+@media (max-width: 1200px) {.dashboard-layout.with-report { grid-template-columns: 1fr; }.dashboard-layout.with-report .right-section { position: static; max-height: none }}
 @media (max-width: 960px) { .lock-overlay { left: 0;}.plans-grid { grid-template-columns: 1fr;} .plans-section { padding: 0 10px 30px;}}
 @media (max-width: 576px) { #withdrawModal .modal-dialog {  display: flex !important;  align-items: center !important;  min-height: calc(100% - 1rem);  margin: 1rem auto;  }}
  
