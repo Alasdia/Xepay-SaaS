@@ -20,12 +20,15 @@ def create_virtual_card(
     profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
     if not profile or not profile.stripe_account_id:
         raise HTTPException(400, "Compte Stripe non connecté")
+    name = cardholder_data.get("name")
+    if not name or not name.strip():
+        raise HTTPException(400, "Le nom du porteur ou de la LLC est obligatoire.")
     holder_type = cardholder_data.get("type", "individual")
     card_currency = cardholder_data.get("currency", "usd").lower()
     try:
         cardholder_params = {
             "type": holder_type,
-            "name": cardholder_data.get("name"),
+            "name": name.strip(),
             "email": cardholder_data.get("email"),
             "billing": {
                 "address": {
@@ -40,8 +43,8 @@ def create_virtual_card(
             "stripe_account": profile.stripe_account_id,
         }
         if holder_type == "individual":
-            cardholder_params["phone_number"] = cardholder_data.get("phone_number")
-        cardholder = stripe.issuing.Cardholder.create(**cardholder_params)
+            cardholder_params["phone_number"] = cardholder_data.get("phone_number")            
+        cardholder = stripe.issuing.Cardholder.create(**cardholder_params)       
         card = stripe.issuing.Card.create(
             cardholder=cardholder.id,
             currency=card_currency,
@@ -53,7 +56,7 @@ def create_virtual_card(
                 }]
             },
             stripe_account=profile.stripe_account_id,
-        )
+        )       
         return {
             "success": True,
             "cardholder_id": cardholder.id,

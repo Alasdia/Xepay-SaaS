@@ -126,59 +126,59 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
       </div>
       <p class="text-muted small mb-3">
         Générez et gérez des cartes virtuelles pour vos dépenses professionnelles ou celles de vos équipes.
-      </p>
+      </p>      
       <!-- Formulaire rapide de création -->
       <form id="virtual-card-form" class="d-flex flex-column gap-2 mb-3">
         <div class="row g-2">
           <div class="col-6">
-            <label class="form-label text-dark" style="font-size: 11px;">Type</label>
-            <select name="type" class="form-select form-select-sm text-dark bg-light">
+            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Type</label>
+            <select name="type" class="form-select form-select-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;">
               <option value="company">Entreprise (LLC)</option>
               <option value="individual">Particulier</option>
             </select>
           </div>
           <div class="col-6">
-            <label class="form-label text-dark" style="font-size: 11px;">Devise</label>
-            <select name="currency" class="form-select form-select-sm text-dark bg-light">
+            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Devise</label>
+            <select name="currency" class="form-select form-select-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;">
               <option value="usd">USD ($)</option>
               <option value="eur">EUR (€)</option>
             </select>
           </div>
-        </div>
+        </div>       
         <div>
-          <label class="form-label text-dark" style="font-size: 11px;">Nom du porteur / LLC</label>
-          <input type="text" name="name" class="form-control form-control-sm text-dark bg-light" placeholder="Ex: Xepay LLC" required>
-        </div>
+          <label class="form-label text-dark fw-bold" style="font-size: 11px;">Nom du porteur / LLC</label>
+          <input type="text" name="name" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Ex: Xepay LLC" required>
+        </div>       
         <div class="row g-2">
           <div class="col-6">
-            <label class="form-label text-dark" style="font-size: 11px;">Email</label>
-            <input type="email" name="email" class="form-control form-control-sm text-dark bg-light" placeholder="email@domain.com" required>
+            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Email</label>
+            <input type="email" name="email" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="email@domain.com" required>
           </div>
           <div class="col-6">
-            <label class="form-label text-dark" style="font-size: 11px;">Limite (en centimes)</label>
-            <input type="number" name="limit_amount" class="form-control form-control-sm text-dark bg-light" value="50000" required>
+            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Limite (en centimes)</label>
+            <input type="number" name="limit_amount" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" value="50000" required>
           </div>
-        </div>
+        </div>      
         <!-- Adresse de la LLC US -->
-        <div class="row g-2">
+        <div class="row g-2 mt-1">
           <div class="col-8">
-            <input type="text" name="address_line1" class="form-control form-control-sm text-dark bg-light" placeholder="Adresse Ligne 1 (Street)" required>
+            <input type="text" name="address_line1" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Adresse Ligne 1 (Street)" required>
           </div>
           <div class="col-4">
-            <input type="text" name="postal_code" class="form-control form-control-sm text-dark bg-light" placeholder="Zip code" required>
+            <input type="text" name="postal_code" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Zip code" required>
           </div>
         </div>
         <div class="row g-2">
           <div class="col-6">
-            <input type="text" name="city" class="form-control form-control-sm text-dark bg-light" placeholder="Ville" required>
+            <input type="text" name="city" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Ville" required>
           </div>
           <div class="col-6">
-            <input type="text" name="state" class="form-control form-control-sm text-dark bg-light" placeholder="État (ex: DE, WY)" required>
+            <input type="text" name="state" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="État (ex: DE, WY)" required>
           </div>
         </div>
       </form>
     </div>
-    <button id="btn-create-card" type="button" class="btn btn-warning w-100 fw-bold text-dark">
+    <button id="btn-create-card" type="button" class="btn btn-warning w-100 fw-bold text-dark mt-3">
       Créer la carte virtuelle
     </button>
   </div>
