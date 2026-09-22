@@ -972,25 +972,43 @@ async function loadConnectWidgets(accountId) {
         console.error("Erreur widgets Connect :", error);
     }
 }
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", () => {
+  const normalView = document.getElementById("transactions-normal-view");
+  const stripeView = document.getElementById("stripe-connect-view");
+  const showStripeBtn = document.getElementById("showStripeActivityBtn");
+  const backBtn = document.getElementById("backToTransactionsBtn");
+  let widgetsLoaded = false;
+  showStripeBtn?.addEventListener("click", async () => {
+    normalView.style.display = "none";
+    stripeView.style.display = "block";
+    if (widgetsLoaded) return;
+    showStripeBtn.disabled = true;
     try {
-        const res = await fetch("https://api.alasdia.com/stripe/status", {
-            headers: {
-                "Authorization": "Bearer " + localStorage.getItem("token"),
-                "X-Workspace-Id": localStorage.getItem("workspace_id")
-            }
-        });
-        if (!res.ok) {
-            throw new Error(await res.text());
+      const res = await fetch("https://api.alasdia.com/stripe/status", {
+        headers: {
+          "Authorization": "Bearer " + localStorage.getItem("token"),
+          "X-Workspace-Id": localStorage.getItem("workspace_id")
         }
-        const data = await res.json();
-        const accountId = data.profile?.stripe_account_id;
-        if (!accountId) {
-            console.error("stripe_account_id introuvable", data);
-            return;
-        }
-        loadConnectWidgets(accountId);
+      });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      const data = await res.json();
+      const accountId = data.profile?.stripe_account_id;
+      if (!accountId) {
+        throw new Error("stripe_account_id introuvable");
+      }
+      await loadConnectWidgets(accountId);
+      widgetsLoaded = true;
     } catch (error) {
-        console.error("Erreur chargement widgets Connect :", error);
+      console.error("Erreur chargement Stripe Connect :", error);
+      showToast("Impossible de charger l'activité Stripe Connect", "error");
+    } finally {
+      showStripeBtn.disabled = false;
     }
+  });
+  backBtn?.addEventListener("click", () => {
+    stripeView.style.display = "none";
+    normalView.style.display = "block";
+  });
 });

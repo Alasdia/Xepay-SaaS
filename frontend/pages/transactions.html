@@ -34,7 +34,7 @@
 </div>
 
 <div id="main-content" class="flex-grow-1">
-
+  <div id="transactions-normal-view">
   <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
     <div>
       <h4 class="page-title text-muted"><i class="fa-solid fa-credit-card"></i> Transactions</h4>
@@ -44,6 +44,10 @@
       <button id="exportFinancialReportBtn" class="btn btn-export">
         <i class="bi bi-bank me-1"></i>
           Rapport financier Stripe
+      </button>
+      <button id="showStripeActivityBtn" class="btn btn-export">
+        <i class="bi bi-stripe me-1"></i>
+        Activité Stripe Connect
       </button>
       <button id="exportBtn" class="btn btn-export">
         <i class="bi bi-download me-1"></i>
@@ -58,36 +62,8 @@
 
   <!-- Conteneur principal grille/flex -->
   <div class="dashboard-layout">
-    
     <!-- Colonne de gauche (Contenu principal) -->
     <div class="main-dashboard-content">
-      <!-- STRIPE CONNECT : WIDGETS D'ACTIVITÉ -->
-      <div class="card-epay p-4 mb-4">
-        <h5 class="fw-bold mb-3">
-          Activités Stripe Connect
-        </h5>
-        <!-- Paiements -->
-        <div class="mb-4">
-          <h6>Paiements</h6>
-          <div id="connect-payments"></div>
-        </div>
-        <!-- Transferts -->
-        <div class="mb-4">
-          <h6>Transferts</h6>
-          <div id="connect-transfers"></div>
-        </div>
-        <!-- Virements -->
-        <div class="mb-4">
-          <h6>Virements</h6>
-          <div id="connect-payouts"></div>
-        </div>
-        <!-- Frais Stripe -->
-        <div class="mb-4">
-          <h6>Frais Stripe</h6>
-          <div id="connect-fees"></div>
-        </div>
-      </div>
-      <!-- FIN WIDGETS STRIPE CONNECT -->
       <!-- KPI LIGNE 1 -->
       <div class="row g-3 mb-3">
         <div class="col-md-4">
@@ -260,6 +236,36 @@
       </div>
     </div>
   </div> 
+  </div>
+  <!-- VUE STRIPE CONNECT -->
+  <div id="stripe-connect-view" style="display: none;">
+    <div class="d-flex justify-content-between align-items-center
+              flex-wrap gap-3 mb-4">
+      <div>
+        <h4 class="page-title text-muted">
+          <i class="bi bi-stripe"></i>
+          Activité Stripe Connect
+        </h4>
+        <div class="page-subtitle">
+          Consultez vos paiements et versements Stripe
+        </div>
+      </div>
+      <button id="backToTransactionsBtn" class="btn btn-export">
+        <i class="bi bi-arrow-left me-1"></i>
+        Retour aux transactions
+      </button>
+    </div>
+    <!-- WIDGET PAIEMENTS -->
+    <div class="card-epay p-4 mb-4">
+      <h5 class="fw-bold mb-3">Paiements Stripe</h5>
+      <div id="connect-payments"></div>
+    </div>
+    <!-- WIDGET VIREMENTS -->
+    <div class="card-epay p-4 mb-4">
+      <h5 class="fw-bold mb-3">Virements Stripe</h5>
+      <div id="connect-payouts"></div>
+    </div>
+  </div>
 </div>
 <!-- Modal du Rapport de Solde Stripe -->
 <div class="modal fade" id="stripeReportModal" tabindex="-1" aria-hidden="true">

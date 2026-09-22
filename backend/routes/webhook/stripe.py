@@ -152,37 +152,3 @@ def create_connect_activity_session(
         }
     except stripe.error.StripeError as e:
         raise HTTPException(status_code=400, detail=e.user_message or str(e))
-
-@router.get("/stripe/connect/{account_id}/activity")
-def get_connect_activity(
-    account_id: str,
-    db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager)
-):
-    get_authorized_connect_profile(account_id, db, membership)
-    try:
-        transfers = stripe.Transfer.list(destination=account_id,limit=100)
-        balance_transactions = (
-            stripe.BalanceTransaction.list(stripe_account=account_id, limit=100)
-        )
-        application_fees = [
-            fee.to_dict_recursive()
-            for fee in stripe.ApplicationFee.list(
-                limit=100
-            ).auto_paging_iter()
-            if fee.account == account_id
-        ]
-        return {
-            "account_id": account_id,
-            "transfers": [
-                item.to_dict_recursive()
-                for item in transfers.data
-            ],
-            "balance_transactions": [
-                item.to_dict_recursive()
-                for item in balance_transactions.data
-            ],
-            "application_fees": application_fees
-        }
-    except stripe.error.StripeError as e:
-        raise HTTPException(status_code=400, detail=e.user_message or str(e))
