@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, HTTPException
 from sqlalchemy.orm import Session
 import stripe
 
 from backend.database import get_db
-from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB
+from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser
+from backend.middleware.authorization import require_manager
 from backend.services.email_service import send_account_updated_email, send_payout_success_email, send_payout_failed_email
 import stripe  
 import os
@@ -32,9 +33,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     if event_type == "account.updated":
         stripe_id = object_data["id"]
         account = stripe.Account.retrieve(stripe_id)
-        profile = db.query(Profile).filter(
-            Profile.stripe_account_id == stripe_id
-        ).first()
+        profile = db.query(Profile).filter(Profile.stripe_account_id == stripe_id).first()
         if profile:
             individual = getattr(account, "individual", None)
             first_name = ""
@@ -84,3 +83,26 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     else:
         return {"status": "ignored"}
     return {"ok": True}
+
+@router.post("/stripe/account-session")
+def create_account_session(
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_manager)
+):
+    profile = db.query(Profile).filter(Profile.user_id == membership.workspace_id).first()
+    if not profile or not profile.stripe_account_id:
+        raise HTTPException(status_code=404, detail="Compte Stripe introuvable")
+    try:
+        session = stripe.AccountSession.create(
+            account=profile.stripe_account_id,
+            components={
+                "account_management": {
+                    "enabled": True
+                }
+            }
+        )
+        return {
+            "client_secret": session.client_secret
+        }
+    except stripe.error.StripeError as e:
+        raise HTTPException(status_code=400, detail=e.user_message or str(e))

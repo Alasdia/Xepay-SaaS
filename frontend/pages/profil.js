@@ -361,6 +361,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initStripe()
   loadPlanStatus()
   loadProfile()
+  loadStripeAccountManagement().catch(console.error)
 })
 function updateUpgradeModal(plan, feature) {
   document.querySelectorAll(".plan-card")
@@ -495,3 +496,31 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+async function loadStripeAccountManagement() {
+  const token = localStorage.getItem("token");
+  const workspaceId = localStorage.getItem("workspace_id");
+  const res = await fetch(
+    "https://api.alasdia.com/stripe/account-session",
+    {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + token,
+        "X-Workspace-Id": workspaceId
+      }
+    }
+  );
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.detail || "Erreur Stripe");
+  }
+  const stripeConnect = StripeConnect.init({
+    publishableKey: "pk_test_TA_CLE_PUBLIABLE",
+    fetchClientSecret: () =>
+      Promise.resolve(data.client_secret)
+  });
+  const component =
+    stripeConnect.create("account-management");
+  document
+    .getElementById("stripe-account-management")
+    .appendChild(component);
+}
