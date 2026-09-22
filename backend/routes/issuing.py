@@ -64,5 +64,13 @@ def create_virtual_card(
             "currency": card.currency,
             "status": card.status
         }
+        
     except stripe.error.StripeError as e:
+        print("🔥 STRIPE ISSUING ERROR 🔥")
+        print("type:", type(e).__name__)
+        print("user_message:", e.user_message)
+        print("message:", str(e))
+        print("code:", getattr(e, "code", None))
+        print("param:", getattr(e, "param", None))
+        print("decline_code:", getattr(e, "decline_code", None))
         raise HTTPException(400, f"Erreur Stripe Issuing : {e.user_message or str(e)}")
