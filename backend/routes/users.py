@@ -118,14 +118,8 @@ def signup(
                         "card_issuing": {"requested": True}
                     }
                 )
-                print("✅ CARD ISSUING demandé pour", account.id)
             except stripe.error.StripeError as e:
-                print("❌ ERREUR ACTIVATION ISSUING")
-                print("MESSAGE :", str(e))
-                print("USER MESSAGE :", getattr(e, "user_message", None))
-                print("CODE :", getattr(e, "code", None))
-                print("PARAM :", getattr(e, "param", None))
-                raise
+                print("⚠️ Issuing non activé (pays non éligible ou autre) :", repr(e))
             profile = Profile(user_id=new_user.id, stripe_account_id=account.id)
             db.add(profile)
             db.commit()
