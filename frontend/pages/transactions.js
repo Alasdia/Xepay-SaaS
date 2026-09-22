@@ -972,6 +972,25 @@ async function loadConnectWidgets(accountId) {
         console.error("Erreur widgets Connect :", error);
     }
 }
-document.addEventListener("DOMContentLoaded", () => {
-    loadConnectWidgets();
+document.addEventListener("DOMContentLoaded", async () => {
+    try {
+        const res = await fetch("https://api.alasdia.com/stripe/status", {
+            headers: {
+                "Authorization": "Bearer " + localStorage.getItem("token"),
+                "X-Workspace-Id": localStorage.getItem("workspace_id")
+            }
+        });
+        if (!res.ok) {
+            throw new Error(await res.text());
+        }
+        const data = await res.json();
+        const accountId = data.profile?.stripe_account_id;
+        if (!accountId) {
+            console.error("stripe_account_id introuvable", data);
+            return;
+        }
+        loadConnectWidgets(accountId);
+    } catch (error) {
+        console.error("Erreur chargement widgets Connect :", error);
+    }
 });

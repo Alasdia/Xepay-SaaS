@@ -106,6 +106,7 @@ def create_account_session(
         }
     except stripe.error.StripeError as e:
         raise HTTPException(status_code=400, detail=e.user_message or str(e))
+    
 
 def get_authorized_connect_profile(
     account_id: str,

@@ -548,6 +548,14 @@ def get_me(
             "balance": wallet.balance,
             "created_at": wallet.created_at
         },
+        "profile": {
+            "stripe_account_id": (
+                db.query(Profile)
+                .filter(Profile.user_id == owner_id)
+                .first()
+                .stripe_account_id
+            )
+        },
         "session": {
             "device": user_agent,
             "ip": ip,
