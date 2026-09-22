@@ -185,57 +185,16 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     </button>
   </div>
 </div>
-<!-- CARD PROFIL -->
-<div class="col-md-12">
-  <div class="card-epay p-4">
+<!-- WIDGET STRIPE -->
+<div class="col-md-6">
+  <div class="card-epay p-4 h-100">
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <h6 class="fw-bold mb-0 text-muted"><i class="fa-solid fa-user"></i> Profil</h6>
-      <button class="btn btn-outline-light btn-sm">Modifier</button>
+      <h6 class="fw-bold mb-0 text-muted">
+        <i class="fa-brands fa-stripe"></i> Informations du compte Stripe
+      </h6>
     </div>
-
-    <div class="row g-3">
-      <div class="col-md-3">
-        <small class="text-muted">Nom</small>
-        <div id="profile-name">—</div>
-      </div>
-      <div class="col-md-3">
-        <small class="text-muted">Email</small>
-        <div id="profile-email">—</div>
-      </div>
-      <div class="col-md-3">
-        <small class="text-muted">Téléphone</small>
-        <div id="profile-phone">—</div>
-        <span id="phone-verified-badge" class="status-badge status-warn" style="font-size:10px;">Non vérifié</span>
-      </div>
-      <div class="col-md-3">
-        <small class="text-muted">ID compte</small>
-        <div id="profile-account-id" style="font-family:monospace; font-size:13px;">—</div>
-      </div>
-    </div>
-
-    <div class="plan-divider my-3" style="background:#e5e7eb;"></div>
-
-    <div class="row g-3">
-      <div class="col-md-3">
-        <small class="text-muted">2FA</small>
-        <div id="profile-2fa">—</div>
-      </div>
-      <div class="col-md-3">
-        <small class="text-muted">Dernière connexion</small>
-        <div id="profile-last-login">—</div>
-      </div>
-      <div class="col-md-3">
-        <small class="text-muted">Abonnement depuis</small>
-        <div id="profile-plan-started">—</div>
-      </div>
-      <div class="col-md-3">
-        <small class="text-muted">Prochaine échéance</small>
-        <div id="profile-plan-expires">—</div>
-      </div>
-    </div>
+    <div id="stripe-account-management"></div>
   </div>
-</div>
-</div>
 </div>
 <div id="toast-container" class="toast-notif"></div>
 <div class="modal fade" id="modalCancelSub" tabindex="-1" aria-hidden="true">
