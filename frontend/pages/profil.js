@@ -514,7 +514,7 @@ async function loadStripeAccountManagement() {
     throw new Error(data.detail || "Erreur Stripe");
   }
   const stripeConnect = StripeConnect.init({
-    publishableKey: "pk_test_TA_CLE_PUBLIABLE",
+    publishableKey: "pk_test_51TJYk921oAuf4OUmVuqkub7cs2OUkWGpYlS4IgpfZrF7p6lY4v1YxRirVv1QSZD8Qof4JU78mmLgexh5wINo0vlo00c7HTwz5x",
     fetchClientSecret: () =>
       Promise.resolve(data.client_secret)
   });
