@@ -48,10 +48,8 @@ def create_virtual_card(
         print("===== STRIPE ACCOUNT =====")
         print("ID:", account.id)
         print("TYPE:", account.type)
-        print("CARD_ISSUING:", account.capabilities.card_issuing)
-        print("CARD_PAYMENTS:", account.capabilities.card_payments)
-        print("TRANSFERS:", account.capabilities.transfers)
-        print("==========================")    
+        print("CAPABILITIES:", account.capabilities.to_dict())
+        print("==========================") 
         cardholder = stripe.issuing.Cardholder.create(**cardholder_params)       
         card = stripe.issuing.Card.create(
             cardholder=cardholder.id,
