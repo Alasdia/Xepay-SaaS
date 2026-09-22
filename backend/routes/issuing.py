@@ -43,7 +43,15 @@ def create_virtual_card(
             "stripe_account": profile.stripe_account_id,
         }
         if holder_type == "individual":
-            cardholder_params["phone_number"] = cardholder_data.get("phone_number")            
+            cardholder_params["phone_number"] = cardholder_data.get("phone_number")  
+        account = stripe.Account.retrieve(profile.stripe_account_id)
+        print("===== STRIPE ACCOUNT =====")
+        print("ID:", account.id)
+        print("TYPE:", account.type)
+        print("CARD_ISSUING:", account.capabilities.get("card_issuing"))
+        print("CARD_PAYMENTS:", account.capabilities.get("card_payments"))
+        print("TRANSFERS:", account.capabilities.get("transfers"))
+        print("==========================")          
         cardholder = stripe.issuing.Cardholder.create(**cardholder_params)       
         card = stripe.issuing.Card.create(
             cardholder=cardholder.id,
