@@ -972,3 +972,6 @@ async function loadConnectWidgets(accountId) {
         console.error("Erreur widgets Connect :", error);
     }
 }
+document.addEventListener("DOMContentLoaded", () => {
+    loadConnectWidgets();
+});
