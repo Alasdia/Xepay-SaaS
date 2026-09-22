@@ -937,4 +937,38 @@ async function initStripeBalanceReport() {
     showToast("Impossible de charger le rapport Stripe", "error");
   }
 }
+async function loadConnectWidgets(accountId) {
+    try {
+        const response = await fetch(
+            `https://api.alasdia.com/stripe/connect/${accountId}/account-session`,
+            {
+                method: "POST",
+                headers: {
+                    "Authorization":
+                        "Bearer " + localStorage.getItem("token"),
 
+                    "X-Workspace-Id":
+                        localStorage.getItem("workspace_id")
+                }
+            }
+        );
+        if (!response.ok) {
+            throw new Error(await response.text());
+        }
+        const data = await response.json();
+        const connectInstance = StripeConnect.init({
+            publishableKey: "pk_test_51TJYk921oAuf4OUmVuqkub7cs2OUkWGpYlS4IgpfZrF7p6lY4v1YxRirVv1QSZD8Qof4JU78mmLgexh5wINo0vlo00c7HTwz5x",
+            fetchClientSecret: async () => data.client_secret
+        });
+        const payments = connectInstance.create("payments");
+        document
+            .getElementById("connect-payments")
+            .replaceChildren(payments);
+        const payouts = connectInstance.create("payouts");
+        document
+            .getElementById("connect-payouts")
+            .replaceChildren(payouts);
+    } catch (error) {
+        console.error("Erreur widgets Connect :", error);
+    }
+}

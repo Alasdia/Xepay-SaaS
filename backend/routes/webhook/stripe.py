@@ -106,3 +106,82 @@ def create_account_session(
         }
     except stripe.error.StripeError as e:
         raise HTTPException(status_code=400, detail=e.user_message or str(e))
+
+def get_authorized_connect_profile(
+    account_id: str,
+    db: Session,
+    membership: WorkspaceUser
+):
+    profile = db.query(Profile).filter(Profile.stripe_account_id == account_id,Profile.user_id == membership.workspace_id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Compte Connect introuvable ou non autorisé")
+    return profile
+
+@router.post("/stripe/connect/{account_id}/account-session")
+def create_connect_activity_session(
+    account_id: str,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_manager)
+):
+    get_authorized_connect_profile(account_id, db, membership)
+    try:
+        session = stripe.AccountSession.create(
+            account=account_id,
+            components={
+                "payments": {
+                    "enabled": True,
+                    "features": {
+                        "refund_management": False,
+                        "dispute_management": False,
+                        "capture_payments": False
+                    }
+                },
+                "payouts": {
+                    "enabled": True,
+                    "features": {
+                        "standard_payouts": False,
+                        "instant_payouts": False
+                    }
+                }
+            }
+        )
+        return {
+            "account_id": account_id,
+            "client_secret": session.client_secret
+        }
+    except stripe.error.StripeError as e:
+        raise HTTPException(status_code=400, detail=e.user_message or str(e))
+
+@router.get("/stripe/connect/{account_id}/activity")
+def get_connect_activity(
+    account_id: str,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_manager)
+):
+    get_authorized_connect_profile(account_id, db, membership)
+    try:
+        transfers = stripe.Transfer.list(destination=account_id,limit=100)
+        balance_transactions = (
+            stripe.BalanceTransaction.list(stripe_account=account_id, limit=100)
+        )
+        application_fees = [
+            fee.to_dict_recursive()
+            for fee in stripe.ApplicationFee.list(
+                limit=100
+            ).auto_paging_iter()
+            if fee.account == account_id
+        ]
+        return {
+            "account_id": account_id,
+            "transfers": [
+                item.to_dict_recursive()
+                for item in transfers.data
+            ],
+            "balance_transactions": [
+                item.to_dict_recursive()
+                for item in balance_transactions.data
+            ],
+            "application_fees": application_fees
+        }
+    except stripe.error.StripeError as e:
+        raise HTTPException(status_code=400, detail=e.user_message or str(e))

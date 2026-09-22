@@ -61,6 +61,33 @@
     
     <!-- Colonne de gauche (Contenu principal) -->
     <div class="main-dashboard-content">
+      <!-- STRIPE CONNECT : WIDGETS D'ACTIVITÉ -->
+      <div class="card-epay p-4 mb-4">
+        <h5 class="fw-bold mb-3">
+          Activités Stripe Connect
+        </h5>
+        <!-- Paiements -->
+        <div class="mb-4">
+          <h6>Paiements</h6>
+          <div id="connect-payments"></div>
+        </div>
+        <!-- Transferts -->
+        <div class="mb-4">
+          <h6>Transferts</h6>
+          <div id="connect-transfers"></div>
+        </div>
+        <!-- Virements -->
+        <div class="mb-4">
+          <h6>Virements</h6>
+          <div id="connect-payouts"></div>
+        </div>
+        <!-- Frais Stripe -->
+        <div class="mb-4">
+          <h6>Frais Stripe</h6>
+          <div id="connect-fees"></div>
+        </div>
+      </div>
+      <!-- FIN WIDGETS STRIPE CONNECT -->
       <!-- KPI LIGNE 1 -->
       <div class="row g-3 mb-3">
         <div class="col-md-4">
@@ -287,6 +314,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="sidebar.js" defer></script>
 <script src="modal-upgrade.js" defer></script>
+<script src="https://connect-js.stripe.com/v1.0/connect.js"></script>
 <script src="transactions.js?v=3" defer></script>
 <div id="toast-container" class="toast-notif"></div>
 </body>
