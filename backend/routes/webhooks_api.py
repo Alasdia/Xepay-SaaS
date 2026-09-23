@@ -9,8 +9,9 @@ import httpx
 from datetime import datetime, timezone
 import secrets
 import uuid
-
-secret = secrets.token_hex(32)
+import hmac
+import hashlib
+import json
 
 router = APIRouter()
 
@@ -18,7 +19,6 @@ class WebhookCreate(BaseModel):
     url: str
     events: List[str]
 
-# GET — lister les webhooks
 @router.get("/webhooks-api")
 def get_webhooks(
     current_user: UserDB = Depends(get_current_user),
@@ -36,7 +36,6 @@ def get_webhooks(
         for w in webhooks
     ]
 
-# POST — créer un webhook
 @router.post("/webhooks-api")
 def create_webhook(
     data: WebhookCreate,
@@ -59,7 +58,6 @@ def create_webhook(
         "secret": webhook.secret
     }
 
-# DELETE — supprimer un webhook
 @router.delete("/webhooks-api/{webhook_id}")
 def delete_webhook(
     webhook_id: str,
@@ -126,30 +124,36 @@ async def test_webhook(
     error_message = None
 
     try:
+        raw_body = json.dumps(
+            payload,
+            separators=(",", ":"),
+            ensure_ascii=False
+        ).encode("utf-8")
+        signature = hmac.new(
+            webhook.secret.encode("utf-8"),
+            raw_body,
+            hashlib.sha256
+        ).hexdigest()
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.post(
                 webhook.url,
-                json=payload,
+                content=raw_body,
                 headers={
                     "Content-Type": "application/json",
-                    "X-Xepay-Event": payload["event"]
+                    "X-Xepay-Signature": signature,
+                    "X-Xepay-Event": payload["event"],
+                    "X-Xepay-Timestamp": str(payload["timestamp"])
                 }
             )
-
         status_code = response.status_code
         success = 200 <= status_code < 300
-
         if not success:
             error_message = f"HTTP {status_code}"
-
     except httpx.TimeoutException:
         error_message = "Timeout lors de l'envoi du webhook"
-
     except httpx.RequestError as e:
         error_message = str(e)
-
     webhook.last_triggered = now
-
     log = WebhookDeliveryLog(
         user_id=current_user.id,
         webhook_id=webhook.id,
@@ -159,10 +163,8 @@ async def test_webhook(
         success=success,
         created_at=now
     )
-
     db.add(log)
     db.commit()
-
     return {
         "success": success,
         "status_code": status_code,
