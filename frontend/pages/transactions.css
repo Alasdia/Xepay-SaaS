@@ -56,6 +56,12 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
 .mini-progress { height: 4px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; margin-top: 10px; }
 .mini-progress-bar { height: 100%; background: linear-gradient(90deg, #06b6d4, #a78bfa); border-radius: 999px; transition: width 0.4s ease; }
 .table-wrap { font-size: 14px;}
+#wallet-balance,
+#locked-amount,
+#pending-xof,
+#links-created,
+#success-rate,
+#total-xof { font-size: 20px; font-family: var(--font-m); }
 .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .search-wrap { position: relative; flex: 1; min-width: 240px;}
 .search-wrap i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.4); pointer-events: none;}
