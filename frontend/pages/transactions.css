@@ -291,6 +291,91 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
   }
 }
 /* =========================================
+   XEPAY — ALIGNER LES 4 FILTRES STATUT
+   SUR UNE SEULE LIGNE MOBILE
+========================================= */
+
+@media (max-width: 767.98px) {
+
+  /* Toolbar en grille */
+  .toolbar {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    align-items: center !important;
+  }
+
+  /* Recherche sur toute la largeur */
+  .toolbar > .search-wrap {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Dates sur toute la largeur */
+  .toolbar > .date-group:not(:has(.type-chip)) {
+    grid-column: 1 / -1 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Les 4 filtres de statut sur une ligne */
+  .toolbar > .chip:not(.type-chip) {
+    grid-column: auto !important;
+    display: flex !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 9px 2px !important;
+    margin: 0 !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Toute activité / Paiements / Retraits / Transferts */
+  .toolbar > .date-group:has(.type-chip) {
+    grid-column: 1 / -1 !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    gap: 6px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .toolbar > .date-group:has(.type-chip) > .type-chip {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 9px 2px !important;
+    font-size: 10px !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Bouton actualiser sur toute la largeur */
+  .toolbar > .btn-refresh {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+  }
+
+  #filter-statut {
+    display: none !important;
+  }
+}
+/* =========================================
    XEPAY — TABLEAU MOBILE
 ========================================= */
 @media (max-width: 767.98px) {
