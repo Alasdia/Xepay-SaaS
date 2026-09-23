@@ -23,65 +23,159 @@ function toggleSecret() {
   }
 }
 async function loadWebhooks() {
-  const token = localStorage.getItem("token")
-  const res = await fetch("https://api.alasdia.com/webhooks-api", {
-    headers: { Authorization: "Bearer " + token }
-  })
-  const data = await res.json()
-  const tbody = document.getElementById("webhookTable")
-  tbody.innerHTML = ""
-  data.forEach(w => {
-    const tr = document.createElement("tr")
-    tr.innerHTML = `
-      <td class="url-mono">${w.url}</td>
-      <td>${w.events.map(e => `<span class="event-tag">${e}</span>`).join("")}</td>
-      <td>
-        <span class="${w.is_active ? 'badge-active' : 'badge-inactive'}">
-          ${w.is_active ? 'Actif' : 'Inactif'}
-        </span>
-      </td>
-      <td class="muted" style="font-size:12px">
-        ${
-          w.last_triggered
-            ? new Date(w.last_triggered).toLocaleString("fr-FR", {
-                dateStyle: "short",
-                timeStyle: "medium"
-              })
-            : "Jamais"
+  const token = localStorage.getItem("token");
+  try {
+    const res = await fetch(
+      "https://api.alasdia.com/webhooks-api",
+      {
+        headers: {
+          Authorization: "Bearer " + token,
+          "X-Workspace-Id": localStorage.getItem("workspace_id")
         }
-      </td>
-      <td>
-        <button class="icon-btn" onclick="testWebhook(${w.id})">▶</button>
-        <button class="icon-btn" onclick="deleteWebhook(${w.id}, this)">🗑</button>
-      </td>
-    `
-    tbody.appendChild(tr)
-  })
+      }
+    );
+    if (!res.ok) {
+      throw new Error("Impossible de charger les webhooks");
+    }
+    const data = await res.json();
+    const tbody = document.getElementById("webhookTable");
+    tbody.innerHTML = "";
+    if (!data.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" class="muted" style="text-align:center;padding:25px;">
+            Aucun webhook configuré
+          </td>
+        </tr>
+      `;
+      return;
+    }
+    data.forEach(w => {
+      const tr = document.createElement("tr");
+      const eventsHTML = w.events
+        .map(event => `
+          <span class="event-tag">${event}</span>
+        `)
+        .join("");
+      const lastTriggered = w.last_triggered
+        ? new Date(w.last_triggered).toLocaleString("fr-FR", {
+            dateStyle: "short",
+            timeStyle: "medium"
+          })
+        : "Jamais";
+      tr.innerHTML = `
+        <td class="url-mono">${escapeHTML(w.url)}</td>
+        <td>
+          ${eventsHTML}
+        </td>
+        <td>
+          <span class="${
+            w.is_active
+              ? "badge-active"
+              : "badge-inactive"
+          }">
+            ● ${w.is_active ? "Actif" : "Inactif"}
+          </span>
+        </td>
+        <td class="muted" style="font-size:12px;">
+          ${lastTriggered}
+        </td>
+        <td>
+          <button
+            class="icon-btn"
+            onclick="testWebhook('${w.id}')"
+            title="Tester">
+            <i class="fa-solid fa-vial"></i>
+          </button>
+          <button
+            class="icon-btn"
+            onclick="deleteWebhook('${w.id}', this)"
+            title="Supprimer">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch (error) {
+    console.error("Erreur loadWebhooks:", error);
+    document.getElementById("webhookTable").innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align:center;color:#ff4757;padding:20px;">
+          Impossible de charger les webhooks
+        </td>
+      </tr>
+    `;
+  }
+}
+function escapeHTML(value) {
+  const div = document.createElement("div");
+  div.textContent = value ?? "";
+  return div.innerHTML;
 }
 async function addWebhook() {
-  const url = document.getElementById('whUrl').value.trim()
-  if (!url) return alert('URL requise')
-  const events = ['ev1','ev2','ev3','ev4']
+  const url = document.getElementById("whUrl").value.trim();
+  if (!url) {
+    alert("URL requise");
+    return;
+  }
+  const events = ["ev1", "ev2", "ev3", "ev4"]
     .filter(id => document.getElementById(id).checked)
-    .map(id => ({'ev1':'payment.success','ev2':'payment.failed','ev3':'withdrawal.done','ev4':'refund.issued'}[id]))
-  if (!events.length) return alert('Sélectionnez un événement')
-  const token = localStorage.getItem("token")
-  const res = await fetch("https://api.alasdia.com/webhooks-api", {
-    method: "POST",
-    headers: { 
-      Authorization: "Bearer " + token, 
-      "Content-Type": "application/json",
-      "X-Workspace-Id": localStorage.getItem("workspace_id")
-    },
-    body: JSON.stringify({ url, events })
-  })
-  const result = await res.json()
-  showSecret(result.secret)
-  if (!res.ok) return alert("Erreur")
-  closeModal()
-  showToast('✅ Webhook ajouté !', '#00e676')
-  document.getElementById('whUrl').value = ''
-  loadWebhooks()
+    .map(id => ({
+      ev1: "payment.success",
+      ev2: "payment.failed",
+      ev3: "withdrawal.done",
+      ev4: "refund.issued"
+    }[id]));
+  if (!events.length) {
+    alert("Sélectionnez un événement");
+    return;
+  }
+  const token = localStorage.getItem("token");
+  try {
+    const res = await fetch(
+      "https://api.alasdia.com/webhooks-api",
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+          "X-Workspace-Id":
+            localStorage.getItem("workspace_id")
+        },
+        body: JSON.stringify({
+          url: url,
+          events: events
+        })
+      }
+    );
+    const result = await res.json();
+    if (!res.ok) {
+      throw new Error(
+        result.detail || "Erreur lors de la création du webhook"
+      );
+    }
+    if (result.secret) {
+      showSecret(result.secret);
+    }
+    closeModal();
+    document.getElementById("whUrl").value = "";
+    document
+      .querySelectorAll("#modalOverlay input[type='checkbox']")
+      .forEach(input => {
+        input.checked = false;
+      });
+    document.getElementById("ev1").checked = true;
+    showToast(
+      "Webhook ajouté !",
+      "#00e676"
+    );
+    await loadWebhooks();
+    await loadStats();
+  } catch (error) {
+    console.error("Erreur création webhook:", error);
+    alert(error.message);
+  }
 }
 async function deleteWebhook(id, btn) {
   if (!confirm('Supprimer ?')) return
@@ -240,38 +334,41 @@ function toggleLogs() {
   loadLogs();
 }
 async function loadStats() {
-  const token = localStorage.getItem("token")
-  console.log("TOKEN 👉", token)
-  const res = await fetch("https://api.alasdia.com/logs/stats", {
-      method: "GET",
-      headers: {
-        "Authorization": "Bearer " + token,
-        "Content-Type": "application/json",
-        "X-Workspace-Id": localStorage.getItem("workspace_id")
+  const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(
+        "https://api.alasdia.com/logs/stats",
+          {
+            headers: {
+              Authorization: "Bearer " + token,
+              "X-Workspace-Id": localStorage.getItem("workspace_id")
+            }
+          }
+      );
+      if (!res.ok) {
+        throw new Error("Erreur chargement statistiques");
       }
-  })
-  const data = await res.json()
-  console.log("STATS:", data)
-  if (!data || typeof data.calls_this_month === "undefined") return
-  document.querySelector(".stat-value.cyan").innerText =
-    data.calls_this_month
-  document.querySelector(".stat-value.green").innerText =
-    (data.success_rate ?? 0).toFixed(1) + "%"
-  document.querySelector(".stat-value.yellow").innerText =
-    data.active_webhooks
-  document.getElementById("webhookText").innerText =
-  `${data.total_webhooks} endpoints configurés`
-  document.getElementById("errorsText").innerText =
-  `${data.errors} erreurs sur ${data.calls_this_month}`
-  const g = data.growth ?? 0
-  const growthEl = document.getElementById("growthText")
-  if (g > 0) {
-    growthEl.innerText = `+${g}% vs mois dernier`
-  } else if (g < 0) {
-    growthEl.innerText = `${g}% vs mois dernier`
-  } else {
-    growthEl.innerText = "Stable vs mois dernier"
-  }
+      const data = await res.json();
+      document.getElementById("callsThisMonth").textContent =
+          data.calls_this_month ?? 0;
+      document.getElementById("successRate").textContent =
+          `${Number(data.success_rate ?? 0).toFixed(1)}%`;
+      document.getElementById("activeWebhooks").textContent =
+          data.active_webhooks ?? 0;
+      document.getElementById("webhookText").textContent =
+          `${data.total_webhooks ?? 0} endpoints configurés`;
+      document.getElementById("errorsText").textContent =
+          `${data.errors ?? 0} erreurs`;
+      const growth = Number(data.growth ?? 0);
+      document.getElementById("growthText").textContent =
+          growth > 0
+              ? `+${growth}% vs mois dernier`
+              : growth < 0
+                  ? `${growth}% vs mois dernier`
+                  : "Stable vs mois dernier";
+    } catch (error) {
+        console.error("Erreur statistiques :", error);
+    }
 }
 loadStats()
 function showSecretPopup(secret) {

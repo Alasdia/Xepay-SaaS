@@ -58,7 +58,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     <div class="col-md-4">
       <div class="card-dark">
         <div class="card-title-small">Taux de succès</div>
-        <div class="stat-value green"></div>
+        <div class="stat-value green" id="successRate">0%</div>
         <div class="muted" id="errorsText" style="font-size:12px;margin-top:4px;"></div>
       </div>
     </div>
@@ -78,7 +78,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
         <div class="card-title-small"><i class="fa-solid fa-key"></i> Clés API</div>
         <div class="key-row">
           <span class="key-label">Publique</span>
-          <span class="key-value" id="pubKey">pk_live_aXz8Km3nQpRt7wYdLs</span>
+          <span class="key-value" id="pubKey">Chargement...</span>
           <button class="icon-btn" onclick="copyKey('pubKey')"><i class="fa-regular fa-copy"></i></button>
         </div>
         <div class="key-row">
@@ -121,25 +121,9 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
       <thead><tr><th>URL</th><th>Événements</th><th>Statut</th><th>Dernier envoi</th><th>Actions</th></tr></thead>
       <tbody id="webhookTable">
         <tr>
-          <td class="url-mono">https://monsite.com/webhook</td>
-          <td><span class="event-tag">payment.success</span><span class="event-tag">payment.failed</span></td>
-          <td><span class="badge-active">● Actif</span></td>
-          <td class="muted" style="font-size:12px;">Il y a 2 min</td>
-          <td><button class="icon-btn" onclick="testWebhook(this)"><i class="fa-solid fa-vial"></i></button> <button class="icon-btn" onclick="deleteWebhook(this)"><i class="fa-solid fa-trash"></i></button></td>
-        </tr>
-        <tr>
-          <td class="url-mono">https://erp.monentreprise.ci/pay</td>
-          <td><span class="event-tag">withdrawal.done</span></td>
-          <td><span class="badge-active">● Actif</span></td>
-          <td class="muted" style="font-size:12px;">Hier 18:44</td>
-          <td><button class="icon-btn" onclick="testWebhook(this)"><i class="fa-solid fa-vial"></i></button> <button class="icon-btn" onclick="deleteWebhook(this)"><i class="fa-solid fa-trash"></i></button></td>
-        </tr>
-        <tr>
-          <td class="url-mono">https://staging.monsite.com/hook</td>
-          <td><span class="event-tag">payment.success</span></td>
-          <td><span class="badge-inactive">● Inactif</span></td>
-          <td class="muted" style="font-size:12px;">Il y a 5 jours</td>
-          <td><button class="icon-btn" onclick="testWebhook(this)"><i class="fa-solid fa-vial"></i></button> <button class="icon-btn" onclick="deleteWebhook(this)"><i class="fa-solid fa-trash"></i></button></td>
+          <td colspan="5" class="text-center muted">
+            Chargement des webhooks...
+          </td>
         </tr>
       </tbody>
     </table>
@@ -180,8 +164,7 @@ Content-Type: application/json</code></pre>
 
   <div class="code-block">
     <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-
-<pre><code>whsec_xxxxxxxxxxxxxxxxx</code></pre>
+    <pre><code id="webhookSecretExample">Votre secret apparaît lors de la création du webhook.</code></pre>
   </div>
 
   <!-- Signature Formula -->
@@ -203,22 +186,22 @@ Content-Type: application/json</code></pre>
   </div>
 
   <!-- Payload -->
-  <h3 style="margin-top:28px;"><i class="fa-solid fa-file-code"></i> Payload</h3>
-
+  <h3 style="margin-top:28px;">
+    <i class="fa-solid fa-file-code"></i> Payload
+  </h3>
   <div class="code-block">
     <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-
-<pre><code class="language-json">{
-  "id": "evt_a5e4b117ffac459fbadda638a143e293",
-  "timestamp": 1778878576,
-  "event": "payment.success",
-  "data": {
-    "amount": 67000,
-    "currency": "XOF",
-    "user_id": "uuid",
-    "link_id": "uuid"
-  }
-}</code></pre>
+    <pre><code class="language-json">{
+    "id": "evt_&lt;event_id&gt;",
+    "timestamp": "&lt;unix_timestamp&gt;",
+    "event": "payment.success",
+    "data": {
+      "amount": "&lt;payment_amount&gt;",
+      "currency": "&lt;payment_currency&gt;",
+      "user_id": "&lt;user_id&gt;",
+      "link_id": "&lt;link_id&gt;"
+    }
+  }</code></pre>
   </div>
 
   <!-- Node -->

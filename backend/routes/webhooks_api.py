@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.database import get_db
-from backend.models import UserDB, Webhook, WebhookDeliveryLog
+from backend.models import UserDB, Webhook, WebhookDeliveryLog, Payment
 from backend.auth import get_current_user
 from pydantic import BaseModel
 from typing import List
 import httpx
 from datetime import datetime, timezone
 import secrets
+import uuid
 
 secret = secrets.token_hex(32)
 
@@ -47,7 +48,7 @@ def create_webhook(
         url=data.url,
         events=",".join(data.events),
         is_active=True,
-        secret=secrets.token_hex(32)
+        secret="whsec_" + secrets.token_hex(32)
     )
     db.add(webhook)
     db.commit()
@@ -61,7 +62,7 @@ def create_webhook(
 # DELETE — supprimer un webhook
 @router.delete("/webhooks-api/{webhook_id}")
 def delete_webhook(
-    webhook_id: int,
+    webhook_id: str,
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -77,10 +78,9 @@ def delete_webhook(
     db.commit()
     return {"message": "Webhook supprimé"}
 
-# POST — tester un webhook
 @router.post("/webhooks-api/{webhook_id}/test")
 async def test_webhook(
-    webhook_id: int,
+    webhook_id: str,
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -91,47 +91,81 @@ async def test_webhook(
 
     if not webhook:
         raise HTTPException(
-            status_code=404, 
+            status_code=404,
             detail="Webhook introuvable"
         )
 
-    status_code = None
+    # Récupérer un paiement réel de l'utilisateur
+    payment = db.query(Payment).filter(
+        Payment.user_id == current_user.id,
+        Payment.status == "paid"
+    ).order_by(Payment.created_at.desc()).first()
+
+    if not payment:
+        raise HTTPException(
+            status_code=400,
+            detail="Aucun paiement réussi disponible pour effectuer le test"
+        )
+
+    now = datetime.now(timezone.utc)
+
+    payload = {
+        "id": f"evt_{uuid.uuid4().hex}",
+        "timestamp": int(now.timestamp()),
+        "event": "payment.success",
+        "data": {
+            "amount": payment.amount_local,
+            "currency": payment.currency_local,
+            "user_id": str(payment.user_id),
+            "link_id": str(payment.link_id)
+        }
+    }
+
+    status_code = 0
     success = False
+    error_message = None
 
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=10) as client:
             response = await client.post(
                 webhook.url,
-                json={
-                    "event": "test",
-                    "message": "Ceci est un test ePay"
-                },
-                timeout=10
+                json=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Xepay-Event": payload["event"]
+                }
             )
+
         status_code = response.status_code
         success = 200 <= status_code < 300
 
-    except Exception as e:
-        status_code = 0  
-        success = False
-        print("🔥 ERREUR WEBHOOK:", str(e))
+        if not success:
+            error_message = f"HTTP {status_code}"
 
-    now = datetime.now(timezone.utc)
+    except httpx.TimeoutException:
+        error_message = "Timeout lors de l'envoi du webhook"
+
+    except httpx.RequestError as e:
+        error_message = str(e)
+
     webhook.last_triggered = now
 
     log = WebhookDeliveryLog(
         user_id=current_user.id,
         webhook_id=webhook.id,
         url=webhook.url,
-        event="test",
+        event=payload["event"],
         status_code=status_code,
         success=success,
         created_at=now
     )
+
     db.add(log)
     db.commit()
 
-    if not success:
-        return {"error": "Échec de l'envoi du webhook", "status_code": status_code}
-
-    return {"message": "Test envoyé !"}
+    return {
+        "success": success,
+        "status_code": status_code,
+        "error": error_message,
+        "event_id": payload["id"]
+    }
