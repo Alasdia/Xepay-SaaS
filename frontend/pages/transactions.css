@@ -180,7 +180,6 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
  .kpi-label { font-size: 0.65rem !important; line-height: 1.4; overflow-wrap: anywhere;}
  .kpi-value { font-size: clamp(1rem, 4.5vw, 1.35rem) !important; line-height: 1.3; overflow-wrap: anywhere;}
  .kpi-sub { font-size: 0.7rem !important; line-height: 1.4;}
- .main-dashboard-content > .row:first-child > .col-md-4:first-child { grid-column: 1 / -1;}
  .retrait-btn { padding: 6px 10px !important; font-size: 0.75rem !important; white-space: nowrap;}
  .mini-progress { max-width: 100%;}
  .toolbar {display: flex !important; flex-wrap: wrap; align-items: center; gap: 8px !important; width: 100%; min-width: 0;}
@@ -202,3 +201,48 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
  #detail-view { overflow-wrap: anywhere;}
 }
 @media (max-width: 380px) {.main-dashboard-content > .row { gap: 7px !important;}.card-epay { padding: 10px !important;}.kpi-value { font-size: 1rem !important;}.toolbar > .chip:not(.type-chip) { font-size: 0.65rem !important;}}
+/* =========================================
+   XEPAY — KPI 2 PAR LIGNE SUR MOBILE
+========================================= */
+@media (max-width: 767.98px) {
+ .main-dashboard-content > .row {display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px !important; margin: 0 0 16px !important; }
+ .main-dashboard-content > .row > .col-md-4 { width: 100% !important; max-width: 100% !important; min-width: 0 !important; padding: 0 !important; grid-column: auto !important; }
+ .wallet-hover-wrapper,
+ .wallet-hover-wrapper > .card-epay { width: 100%; min-width: 0;}
+ .card-epay { height: 100%; min-width: 0; padding: 14px !important; box-sizing: border-box; overflow-wrap: anywhere; }
+ .kpi-value,
+ #wallet-balance,
+ #locked-amount,
+ #pending-xof,
+ #links-created,
+ #success-rate,
+ #total-xof { font-size: clamp(15px, 4vw, 20px) !important; line-height: 1.3 !important; overflow-wrap: anywhere;}
+}
+/* =========================================
+   XEPAY — FILTRES MOBILE
+========================================= */
+@media (max-width: 767.98px) {
+ .toolbar { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; width: 100%; min-width: 0; align-items: stretch;}
+ .toolbar > .search-wrap { grid-column: 1 / -1; width: 100%; min-width: 0;}
+ .search-input { width: 100%; box-sizing: border-box;}
+ .toolbar > .date-group:not(:has(.type-chip)) { grid-column: 1 / -1; display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px !important; min-width: 0; margin: 0 !important; }
+ .date-pill { width: 100%; min-width: 0; box-sizing: border-box;}
+ .date-pill input { width: 100%; min-width: 0;}
+ .toolbar > .chip:not(.type-chip) { width: 100%; min-width: 0; margin: 0 !important; text-align: center; white-space: normal; box-sizing: border-box;}
+ .toolbar > .date-group:has(.type-chip) { grid-column: 1 / -1; display: flex !important; flex-wrap: nowrap !important; gap: 8px !important; width: 100%; min-width: 0; overflow-x: auto; margin: 0 !important; padding-bottom: 6px; }
+ .type-chip { flex: 0 0 auto; white-space: nowrap;}
+ .toolbar > .btn-refresh { grid-column: 1 / -1; width: 100%; min-height: 44px;}
+ #filter-statut { display: none !important;}
+}
+/* =========================================
+   XEPAY — TABLEAU MOBILE
+========================================= */
+@media (max-width: 767.98px) {
+ .table-wrap { width: 100%; min-width: 0; max-width: 100%; padding: 14px !important; box-sizing: border-box;}
+ #transactions-scroll-box { display: block; width: 100%; max-width: 100%; overflow-x: auto !important; overflow-y: auto; -webkit-overflow-scrolling: touch;}
+ #transactions-scroll-box table { width: 100%; min-width: 600px; margin-bottom: 0; color: #111827 !important;}
+ #transactions-scroll-box thead th { background: #f9fafb !important; color: #6b7280 !important; white-space: nowrap; font-size: 12px;}
+ #transactions-scroll-box tbody td { background: #ffffff !important; color: #111827 !important; white-space: nowrap; font-size: 13px; padding: 12px 10px !important; }
+ #transactions-scroll-box .amount-cell { color: #111827 !important; }
+ #transactions-scroll-box .amount-currency { color: #6b7280 !important;}
+}
