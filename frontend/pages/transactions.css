@@ -219,21 +219,18 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
  #total-xof { font-size: clamp(15px, 4vw, 20px) !important; line-height: 1.3 !important; overflow-wrap: anywhere;}
 }
 /* =========================================
-   XEPAY — FILTRES MOBILE
+   XEPAY — FILTRES MOBILE : 4 BOUTONS SUR UNE LIGNE
 ========================================= */
 @media (max-width: 767.98px) {
- .toolbar { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; width: 100%; min-width: 0; align-items: stretch;}
- .toolbar > .search-wrap { grid-column: 1 / -1; width: 100%; min-width: 0;}
+ .toolbar {display: flex !important; flex-wrap: wrap !important; align-items: center; gap: 8px !important; width: 100%; min-width: 0;}
+ .toolbar > .search-wrap { flex: 0 0 100% !important; width: 100%; min-width: 0;}
  .search-input { width: 100%; box-sizing: border-box;}
- .toolbar > .date-group:not(:has(.type-chip)) { grid-column: 1 / -1; display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px !important; min-width: 0; margin: 0 !important; }
- .date-pill { width: 100%; min-width: 0; box-sizing: border-box;}
- .date-pill input { width: 100%; min-width: 0;}
- .toolbar > .chip:not(.type-chip) { width: 100%; min-width: 0; margin: 0 !important; text-align: center; white-space: normal; box-sizing: border-box;}
- .toolbar > .date-group:has(.type-chip) { grid-column: 1 / -1; display: flex !important; flex-wrap: nowrap !important; gap: 8px !important; width: 100%; min-width: 0; overflow-x: auto; margin: 0 !important; padding-bottom: 6px; }
+ .toolbar > .chip:not(.type-chip) { display: flex !important; flex: 1 1 0 !important; width: auto !important; min-width: 0 !important; justify-content: center; align-items: center; padding: 9px 2px !important; margin: 0 !important; font-size: 11px !important; text-align: center; white-space: nowrap !important; box-sizing: border-box;}
+ .toolbar > .date-group { max-width: 100%; min-width: 0;}
+ .toolbar > .date-group:has(.type-chip) { display: flex !important; flex-wrap: nowrap !important; gap: 8px !important; width: 100%; overflow-x: auto; }
  .type-chip { flex: 0 0 auto; white-space: nowrap;}
- .toolbar > .btn-refresh { grid-column: 1 / -1; width: 100%; min-height: 44px;}
- #filter-statut { display: none !important;}
-}
+ .toolbar > .btn-refresh { flex: 0 0 100%; width: 100%; min-height: 44px;}
+ #filter-statut {display: none !important;}}
 /* =========================================
    XEPAY — TABLEAU MOBILE
 ========================================= */
