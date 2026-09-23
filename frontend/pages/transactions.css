@@ -269,6 +269,28 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
   }
 }
 /* =========================================
+   XEPAY — FILTRES STATUT : 4 SUR UNE LIGNE
+========================================= */
+@media (max-width: 767.98px) {
+  .toolbar > .chip:not(.type-chip) {
+    display: flex !important;
+    flex: 0 0 calc((100% - 24px) / 4) !important;
+    width: calc((100% - 24px) / 4) !important;
+    min-width: 0 !important;
+    max-width: calc((100% - 24px) / 4) !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 9px 2px !important;
+    margin: 0 !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+    text-align: center !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    box-sizing: border-box !important;
+  }
+}
+/* =========================================
    XEPAY — TABLEAU MOBILE
 ========================================= */
 @media (max-width: 767.98px) {
