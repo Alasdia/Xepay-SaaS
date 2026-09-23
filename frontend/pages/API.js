@@ -191,15 +191,38 @@ async function deleteWebhook(id, btn) {
   showToast('🗑 Supprimé', '#ff4757')
 }
 async function testWebhook(id) {
-  const token = localStorage.getItem("token")
-  await fetch(`https://api.alasdia.com/webhooks-api/${id}/test`, {
-    method: "POST",
-    headers: { 
-      Authorization: "Bearer " + token,
-      "X-Workspace-Id": localStorage.getItem("workspace_id")
+  const token = localStorage.getItem("token");
+  try {
+    const res = await fetch(
+      `https://api.alasdia.com/webhooks-api/${id}/test`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "X-Workspace-Id": localStorage.getItem("workspace_id")
+        }
+      }
+    );
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || "Échec du test webhook");
     }
-  })
-  showToast('🧪 Test envoyé !', '#00d4ff')
+    if (data.success) {
+      showToast(
+        `Test réussi — HTTP ${data.status_code}`,
+        "#00e676"
+      );
+    } else {
+      showToast(
+        `Échec — HTTP ${data.status_code || "inconnu"} : ${data.error || "Erreur"}`,
+        "#ff4757"
+      );
+    }
+    await loadWebhooks();
+  } catch (error) {
+    console.error("Erreur test webhook :", error);
+    showToast(error.message, "#ff4757");
+  }
 }
 function openModal() { document.getElementById('modalOverlay').classList.add('open') }
 function closeModal(e) { if (!e || e.target === document.getElementById('modalOverlay')) document.getElementById('modalOverlay').classList.remove('open') }
