@@ -8,10 +8,15 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from backend.models import Webhook, WebhookDeliveryLog
 
-def send_webhook_event(db: Session, user_id: str, event_type: str, data: dict):
+def send_webhook_event(
+    db: Session,
+    user_id: str,
+    event_type: str,
+    data: dict
+):
     """
-    Envoie un événement webhook à tous les endpoints actifs du marchand
-    qui sont abonnés à ce type d'événement.
+    Envoie un événement webhook aux endpoints actifs
+    abonnés à cet événement.
     """
     webhooks = db.query(Webhook).filter(Webhook.user_id == user_id, Webhook.is_active == True).all()
     for webhook in webhooks:
@@ -23,43 +28,52 @@ def send_webhook_event(db: Session, user_id: str, event_type: str, data: dict):
             "event": event_type,
             "data": data
         }
-        payload_bytes = json.dumps(payload).encode()
+        raw_body = json.dumps(
+            payload,
+            separators=(",", ":"),
+            ensure_ascii=False
+        ).encode("utf-8")
         signature = hmac.new(
-            webhook.secret.encode(),
-            payload_bytes,
+            webhook.secret.encode("utf-8"),
+            raw_body,
             hashlib.sha256
         ).hexdigest()
         success = False
-        final_status_code = None
+        final_status_code = 0
         for attempt in range(3):
             try:
                 response = requests.post(
                     webhook.url,
-                    json=payload,
+                    content=raw_body,
                     headers={
-                        "X-Signature": signature,
-                        "X-Epay-Event": event_type,
-                        "X-Epay-Timestamp": str(payload["timestamp"])
+                        "Content-Type": "application/json",
+                        "X-Xepay-Signature": signature,
+                        "X-Xepay-Event": event_type,
+                        "X-Xepay-Timestamp": str(
+                            payload["timestamp"]
+                        )
                     },
                     timeout=5
                 )
                 final_status_code = response.status_code
-                if response.status_code == 200:
+                if 200 <= response.status_code < 300:
                     success = True
                     break
-            except Exception:
+            except requests.RequestException:
                 final_status_code = 0
-            time.sleep(2)
+            if attempt < 2:
+                time.sleep(2)
         log = WebhookDeliveryLog(
             user_id=user_id,
             webhook_id=webhook.id,
             url=webhook.url,
             event=event_type,
             status_code=final_status_code,
-            success=success
+            success=success,
+            created_at=datetime.now(timezone.utc)
         )
         db.add(log)
         webhook.last_triggered = datetime.now(timezone.utc)
         webhook.status = "active" if success else "error"
         webhook.last_status_code = final_status_code
-        db.commit()
+    db.commit()
