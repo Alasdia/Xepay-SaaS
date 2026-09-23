@@ -36,7 +36,6 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
 .card-epay { background: #ffffff !important; border: 1px solid #e5e7eb !important;  border-radius: 16px; color: #111827 !important; backdrop-filter: blur(10px); box-shadow: none; padding: 22px 24px; transition: .25s; }
 .card-epay:hover{ border-color:#facc15 !important; box-shadow: 0 10px 25px rgba(250,204,21,.15); }
 .kpi-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; color: #9ca3af !important; font-weight: 600; margin-bottom: 10px; }
-.kpi-value { font-size: 20px; font-family: var(--font-m); font-weight: 600; color: #374151 !important; line-height: 1.1; letter-spacing: -0.5px; }
 .kpi-sub { font-size: 13px; color: #6b7280; margin-top: 6px; }
 .btn-cyan{ background:#facc15 !important; border:2px solid #facc15 !important; color:#111827 !important; font-weight:800; }
 .btn-cyan:hover{ background:#eab308 !important; border-color:#eab308 !important; }
