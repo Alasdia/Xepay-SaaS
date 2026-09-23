@@ -171,7 +171,7 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
 .dashboard-layout { display: block;}
 #stripeReportModal .modal-body { max-height: 75vh; overflow-y: auto;}
 #main-content .kpi-value,
-#main-content #links-created {font-size: 20px !important; font-family: "DM Sans", sans-serif !important;}
+#main-content #links-created {font-family: "DM Sans", sans-serif !important; font-size: 20px !important; font-weight: 700 !important; line-height: 1.2 !important; letter-spacing: normal;}
 @media (max-width: 960px) { .lock-overlay { left: 0;}.plans-grid { grid-template-columns: 1fr;} .plans-section { padding: 0 10px 30px;}}
 @media (max-width: 576px) { #withdrawModal .modal-dialog {  display: flex !important;  align-items: center !important;  min-height: calc(100% - 1rem);  margin: 1rem auto;  }}
  
