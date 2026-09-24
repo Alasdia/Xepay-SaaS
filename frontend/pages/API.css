@@ -207,27 +207,27 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
   }
   .row.g-3.mb-4:has(> .col-md-4)::-webkit-scrollbar { display: none; }
   .row.g-3.mb-4:has(> .col-md-4) > .col-md-4 {
-    flex: 0 0 155px;
-    max-width: 155px;
-    width: 155px;
+    flex: 0 0 130px;
+    max-width: 130px;
+    width: 130px;
     padding-left: 0;
     padding-right: 0;
   }
   .row.g-3.mb-4:has(> .col-md-4) .card-dark {
-    padding: 10px !important;
+    padding: 8px !important;
     height: 100%;
     overflow: hidden;
     box-sizing: border-box;
   }
   .row.g-3.mb-4:has(> .col-md-4) .card-title-small {
-    font-size: 9px;
-    margin-bottom: 6px;
+    font-size: 8px;
+    margin-bottom: 5px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .row.g-3.mb-4:has(> .col-md-4) .stat-value {
-    font-size: 16px !important;
+    font-size: 14px !important;
   }
   /* masque les sous-textes (croissance, erreurs, endpoints configurés) pour gagner de la place */
   .row.g-3.mb-4:has(> .col-md-4) .muted {

@@ -220,35 +220,40 @@ tr:hover td { background: #ffffff; }
   }
   .stats::-webkit-scrollbar { display: none; }
   .stat {
-    flex: 0 0 145px;
-    max-width: 145px;
-    width: 145px;
-    padding: 12px 12px;
+    flex: 0 0 125px;
+    max-width: 125px;
+    width: 125px;
+    padding: 10px 10px;
   }
   .stat-label {
-    font-size: 9px;
+    font-size: 8px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .stat-value { font-size: 16px !important; }
+  .stat-value { font-size: 14px !important; }
   .stat-sub { display: none; } /* masque "sur 10 inclus", "expire sous 7 jours", etc. */
 
-  /* ---- 3. Toolbar : recherche + filtres ---- */
+  /* ---- 3. Toolbar : recherche pleine largeur, filtres de rôle sur une ligne scrollable ---- */
   .toolbar {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
   }
   .search { min-width: unset; width: 100%; }
-  .toolbar > .filter-chip {
-    display: inline-flex;
-  }
-  /* les chips de rôle sur une ligne, scroll horizontal */
-  .toolbar {
+  .filter-chip-row {
+    display: flex;
     flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 6px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
-  .toolbar::after { content: ""; }
+  .filter-chip-row::-webkit-scrollbar { display: none; }
+  .filter-chip-row .filter-chip {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
 
   /* ---- 4. Tableau utilisateurs : scroll horizontal, colonnes déjà masquées via les media queries existantes ---- */
   .table-wrap {
