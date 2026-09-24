@@ -40,7 +40,7 @@
       <h4 class="page-title text-muted"><i class="fa-solid fa-credit-card"></i> Transactions</h4>
       <div class="page-subtitle">Historique de tous vos paiements</div>
     </div>
-    <div class="d-flex gap-2">
+    <div id="export-actions" class="d-flex gap-2">
       <button id="exportFinancialReportBtn" class="btn btn-export">
         <i class="bi bi-bank me-1"></i>
           Rapport financier Stripe
@@ -65,7 +65,7 @@
     <!-- Colonne de gauche (Contenu principal) -->
     <div class="main-dashboard-content">
       <!-- KPI LIGNE 1 -->
-      <div class="row g-3 mb-4">
+      <div id="kpi-row" class="row g-3 mb-4">
         <div class="col-md-4">
           <div class="wallet-hover-wrapper position-relative">
             <div class="card-epay">
@@ -150,20 +150,24 @@
 
       <!-- FILTRES -->
       <div class="toolbar">
-        <div class="search-wrap">
-          <i class="bi bi-search"></i>
-          <input type="text" id="search-input" class="search-input" placeholder="Rechercher par client, email..." oninput="filtrerTransactions()">
-        </div>
-
-        <div class="date-group">
-          <div class="date-pill">
-            <small>Du</small>
-            <input type="date" id="startDate">
+        <div class="filter-row-1">
+          <div class="search-wrap">
+            <i class="bi bi-search"></i>
+            <input type="text" id="search-input" class="search-input" placeholder="Rechercher par client, email..." oninput="filtrerTransactions()">
           </div>
-          <div class="date-pill">
-            <small>Au</small>
-            <input type="date" id="endDate">
+          <div class="date-group">
+            <div class="date-pill">
+              <small>Du</small>
+              <input type="date" id="startDate">
+            </div>
+            <div class="date-pill">
+              <small>Au</small>
+              <input type="date" id="endDate">
+            </div>
           </div>
+          <button onclick="rafraichir(this)" class="btn btn-refresh">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
         </div>
 
         <button class="chip active" data-statut="" onclick="setStatutChip(this)">Tous</button>
@@ -185,9 +189,6 @@
           <option value="expired">Échoué</option>
         </select>
 
-        <button onclick="rafraichir(this)" class="btn btn-refresh">
-          <i class="bi bi-arrow-clockwise"></i>
-        </button>
       </div>
 
       <!-- VUE DÉTAIL -->

@@ -173,271 +173,164 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
 #main-content #links-created {font-family: "DM Sans", sans-serif !important; font-size: 20px !important; font-weight: 700 !important; line-height: 1.2 !important; letter-spacing: normal;}
 @media (max-width: 960px) { .lock-overlay { left: 0;}.plans-grid { grid-template-columns: 1fr;} .plans-section { padding: 0 10px 30px;}}
 @media (max-width: 576px) { #withdrawModal .modal-dialog {  display: flex !important;  align-items: center !important;  min-height: calc(100% - 1rem);  margin: 1rem auto;  }}
-/* ==========================================
-   XEPAY — MOBILE TRANSACTIONS
-========================================== */
-
-@media screen and (max-width: 576px) {
+/* ============================================
+   XEPAY — Mobile transactions (à ajouter à responsive.css)
+   ============================================ */
+@media (max-width: 768px) {
 
   #main-content {
-    padding: 14px 10px !important;
-    min-width: 0 !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
+    padding: 16px;
   }
 
-  #transactions-normal-view,
-  .main-dashboard-content {
-    width: 100% !important;
-    min-width: 0 !important;
+  /* ---- 1. Boutons export : ligne unique, scroll horizontal ---- */
+  #export-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  #export-actions::-webkit-scrollbar { display: none; }
+  #export-actions .btn-export {
+    flex: 0 0 auto;
+    font-size: 12px;
+    padding: 8px 12px;
+    white-space: nowrap;
   }
 
-
-  /* ======================================
-     1. LES 6 KPI SUR UNE SEULE LIGNE
-     Cartes ~250 x 92 px + scroll horizontal
-  ====================================== */
-
-  .main-dashboard-content > .row.g-3.mb-4 {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: stretch !important;
-
-    gap: 12px !important;
-
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 0 16px !important;
-    padding: 2px 2px 10px !important;
-
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-
-    -webkit-overflow-scrolling: touch !important;
-    scrollbar-width: thin !important;
-    scroll-snap-type: x proximity;
+  /* ---- 2. Les 6 KPI : ligne unique, même taille, scroll horizontal ---- */
+  #kpi-row {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 10px;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+    margin-left: 0;
+    margin-right: 0;
+    scrollbar-width: none;
+  }
+  #kpi-row::-webkit-scrollbar { display: none; }
+  #kpi-row > [class*="col-"] {
+    flex: 0 0 150px;
+    max-width: 150px;
+    width: 150px;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  #kpi-row .card-epay {
+    padding: 14px 14px;
+    min-height: auto;
+  }
+  #kpi-row .kpi-label {
+    font-size: 10px;
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.6px;
+  }
+  #kpi-row .kpi-value,
+  #kpi-row h4 {
+    font-size: 16px !important;
+  }
+  /* masque les sous-titres sur les 6 KPI */
+  #kpi-row .kpi-sub {
+    display: none;
+  }
+  #kpi-row .retrait-btn {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+  #kpi-row #chartTooltip {
+    display: none !important; /* évite un popup géant sur mobile */
   }
 
-  /* Chaque colonne KPI conserve sa largeur */
-  .main-dashboard-content > .row.g-3.mb-4 > [class*="col-"] {
-    flex: 0 0 250px !important;
-    width: 250px !important;
-    min-width: 250px !important;
-    max-width: 250px !important;
-
-    padding: 0 !important;
-    margin: 0 !important;
-
-    scroll-snap-align: start;
+  /* ---- 3. Filtres ---- */
+  /* masque les chips de statut (Tous / Réussi / En attente / Échoué) */
+  .toolbar .chip:not(.type-chip) {
+    display: none;
   }
 
-  /* Le wrapper du solde ne doit pas rétrécir */
-  .main-dashboard-content .wallet-hover-wrapper {
-    width: 100% !important;
-    min-width: 0 !important;
+  /* recherche + dates + refresh sur une seule ligne, scroll horizontal */
+  .filter-row-1 {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .filter-row-1::-webkit-scrollbar { display: none; }
+  .filter-row-1 .search-wrap {
+    flex: 0 0 200px;
+    min-width: 200px;
+  }
+  .filter-row-1 .date-group {
+    flex: 0 0 auto;
+  }
+  .filter-row-1 .date-pill input[type="date"] {
+    width: 90px;
+  }
+  .filter-row-1 .btn-refresh {
+    flex: 0 0 auto;
   }
 
-  /* Dimensions et apparence des cartes KPI */
-  .main-dashboard-content > .row.g-3.mb-4 .card-epay {
-    width: 100% !important;
-    min-width: 250px !important;
-    max-width: 250px !important;
-    height: 92px !important;
-    min-height: 92px !important;
-
-    padding: 14px 14px !important;
-    margin: 0 !important;
-
-    box-sizing: border-box !important;
-    border-radius: 14px !important;
-
-    background: #171717 !important;
-    border: 1px solid #262626 !important;
-    box-shadow: none !important;
-
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: center !important;
+  /* chips d'activité (Toute activité / Paiements / Retraits / Transferts) sur une ligne */
+  .toolbar .date-group.ms-2 {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    gap: 6px;
+    margin-left: 0;
+    scrollbar-width: none;
+  }
+  .toolbar .date-group.ms-2::-webkit-scrollbar { display: none; }
+  .toolbar .type-chip {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    font-size: 12px;
+    padding: 6px 12px;
   }
 
-  /* Masquer les informations secondaires */
-  .main-dashboard-content > .row.g-3.mb-4 .kpi-sub,
-  .main-dashboard-content > .row.g-3.mb-4 .mini-progress,
-  .main-dashboard-content > .row.g-3.mb-4 #locked-countdown,
-  .main-dashboard-content > .row.g-3.mb-4 #links-paid {
-    display: none !important;
+  /* ---- 4. Tableau : version mobile propre ---- */
+  .table-wrap {
+    padding: 12px 10px;
+    border-radius: 12px;
   }
-
-  /* Titres KPI */
-  .main-dashboard-content > .row.g-3.mb-4 .kpi-label {
-    font-size: 18px !important;
-    line-height: 1.2 !important;
-    letter-spacing: 0 !important;
-    font-weight: 600 !important;
-
-    margin: 0 0 8px !important;
-
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
+  .table-wrap .table-title {
+    font-size: 15px;
   }
-
-  /* Valeurs KPI */
-  .main-dashboard-content > .row.g-3.mb-4 .kpi-value,
-  .main-dashboard-content > .row.g-3.mb-4 #wallet-balance,
-  .main-dashboard-content > .row.g-3.mb-4 #locked-amount,
-  .main-dashboard-content > .row.g-3.mb-4 #total-xof,
-  .main-dashboard-content > .row.g-3.mb-4 #pending-xof,
-  .main-dashboard-content > .row.g-3.mb-4 #links-created,
-  .main-dashboard-content > .row.g-3.mb-4 #success-rate {
-    display: block !important;
-
-    font-size: 26px !important;
-    line-height: 1.15 !important;
-    font-weight: 800 !important;
-    letter-spacing: 0 !important;
-
-    margin: 0 !important;
-    white-space: nowrap !important;
+  #transactions-scroll-box {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
-
-  .main-dashboard-content > .row.g-3.mb-4 .retrait-btn {
-    font-size: 10px !important;
-    padding: 5px 8px !important;
+  .table {
+    min-width: 560px; /* force le scroll horizontal plutôt que d'écraser les colonnes */
+    font-size: 12px;
   }
-
-
-  /* ======================================
-     2. FILTRES EMAIL + DATES SUR UNE LIGNE
-  ====================================== */
-
-  .toolbar {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
-    align-items: center !important;
-
-    gap: 8px !important;
-    width: 100% !important;
-    min-width: 0 !important;
+  .table thead th {
+    padding: 10px 10px;
+    font-size: 10px;
   }
-
-  /* Champ Email */
-  .toolbar > .search-wrap {
-    display: block !important;
-
-    flex: 1 1 55% !important;
-    width: auto !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
+  .table tbody td {
+    padding: 10px 10px;
   }
-
-  .toolbar > .search-wrap .search-input {
-    width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-    height: 42px !important;
-    padding: 8px 8px 8px 32px !important;
-    font-size: 11px !important;
+  .avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
   }
-
-  /* Groupe Date début + Date fin */
-  .toolbar > .date-group:not(.ms-2) {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-
-    flex: 1 1 40% !important;
-    width: auto !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-
-    gap: 5px !important;
-    margin: 0 !important;
+  .status-pill {
+    font-size: 10px;
+    padding: 3px 8px;
   }
-
-  .toolbar > .date-group:not(.ms-2) .date-pill {
-    display: flex !important;
-    flex: 1 1 0 !important;
-
-    width: 50% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-
-    height: 42px !important;
-    padding: 0 5px !important;
-    gap: 3px !important;
-    box-sizing: border-box !important;
+  .amount-cell {
+    font-size: 0.85rem;
   }
-
-  .toolbar > .date-group:not(.ms-2) .date-pill small {
-    display: none !important;
-  }
-
-  .toolbar > .date-group:not(.ms-2) input[type="date"] {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-
-    font-size: 10px !important;
-    padding: 0 !important;
-  }
-
-
-  /* ======================================
-     3. FILTRES D'ACTIVITÉ EN DESSOUS
-  ====================================== */
-
-  .toolbar > .date-group.ms-2 {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-
-    flex: 0 0 100% !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-
-    gap: 6px !important;
-    margin: 4px 0 0 !important;
-
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
-    scrollbar-width: none !important;
-  }
-
-  .toolbar > .date-group.ms-2::-webkit-scrollbar {
-    display: none !important;
-  }
-
-  .toolbar > .date-group.ms-2 > .type-chip {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-
-    flex: 0 0 auto !important;
-    width: auto !important;
-
-    padding: 8px 10px !important;
-    margin: 0 !important;
-
-    font-size: 10px !important;
-    white-space: nowrap !important;
-  }
-
-
-  /* ======================================
-     4. MASQUER LES FILTRES DE STATUT
-  ====================================== */
-
-  .toolbar > button.chip[data-statut],
-  .toolbar > #filter-statut,
-  #filter-statut {
-    display: none !important;
-  }
-
 }
