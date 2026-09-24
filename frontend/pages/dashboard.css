@@ -154,3 +154,134 @@ table{ color:#374151 !important; }
 @media (max-width: 992px) { #modalUpgrade .modal-dialog { width: 100%; margin: 0; max-width: 100%; } #modalUpgrade .modal-body { padding: 20px; } .plans-section { padding: 0 15px 40px; } .plans-grid { grid-template-columns: 1fr; gap: 20px; } }
 @media (max-width: 576px) { .plan-name { font-size: 28px; } .plan-price .amount { font-size: 40px; } .plan-features li { font-size: 12px; } }
 @media (max-width: 576px) { #withdrawModal .modal-dialog {  display: flex !important;  align-items: center !important;  min-height: calc(100% - 1rem);  margin: 1rem auto;  }}
+/* ============================================
+   XEPAY — Mobile dashboard (à ajouter à dashboard.css ou responsive.css)
+   ============================================ */
+@media (max-width: 768px) {
+
+  /* #main-content a des styles inline (margin-left / padding) : !important nécessaire pour les battre */
+  #main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 72px 16px 32px !important; /* 72px = place pour le hamburger */
+  }
+
+  /* ---- 1. En-tête : texte + workspace switcher + bouton Pro ---- */
+  #main-content > .d-flex.justify-content-between.align-items-center.mb-4 {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 14px;
+  }
+  #welcomeText { font-size: 18px; }
+  #main-content > .d-flex.justify-content-between.align-items-center.mb-4
+    > div[style*="display: flex"] {
+    width: 100%;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  #workspaceSwitcher {
+    min-width: 0 !important;
+    flex: 1 1 auto;
+    font-size: 13px !important;
+  }
+  .upgrade-btn {
+    flex: 0 0 auto;
+    font-size: 12px !important;
+    padding: 10px 14px !important;
+  }
+
+  /* ---- 2. Bannière upgrade : empilée, bouton pleine largeur ---- */
+  #main-content > .p-3.mb-4.d-flex.justify-content-between.align-items-center {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 10px;
+  }
+  #main-content > .p-3.mb-4.d-flex.justify-content-between.align-items-center span {
+    font-size: 13px;
+  }
+  #main-content > .p-3.mb-4.d-flex.justify-content-between.align-items-center .btn {
+    width: 100%;
+    margin-left: 0 !important;
+  }
+
+  /* ---- 3. KPI (Solde / Verrouillé / Total reçu) : ligne unique, scroll horizontal ---- */
+  .row.g-3.mb-3 {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 10px;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+    margin-left: 0;
+    margin-right: 0;
+    scrollbar-width: none;
+  }
+  .row.g-3.mb-3::-webkit-scrollbar { display: none; }
+  .row.g-3.mb-3 > [class*="col-"] {
+    flex: 0 0 160px;
+    max-width: 160px;
+    width: 160px;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .row.g-3.mb-3 .card-epay {
+    padding: 10px !important;
+    height: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .row.g-3.mb-3 small.text-muted {
+    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+  }
+  .row.g-3.mb-3 h4 {
+    font-size: 15px !important;
+    margin-top: 4px !important;
+  }
+  /* masque le sous-texte type "Disponible maintenant / dans 21h..." pour gagner de la place */
+  .row.g-3.mb-3 small.d-block.mt-1 {
+    display: none !important;
+  }
+  /* la carte Solde garde son bouton "Retirer" dans la carte, sur la même ligne que le titre */
+  .row.g-3.mb-3 .wallet-hover-wrapper .card-epay .d-flex.justify-content-between.align-items-start {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  .row.g-3.mb-3 .wallet-hover-wrapper .card-epay .d-flex > div:first-child {
+    min-width: 0;
+    overflow: hidden;
+  }
+  .row.g-3.mb-3 .wallet-hover-wrapper .card-epay h4 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #withdrawBtn {
+    flex: 0 0 auto;
+    font-size: 10px !important;
+    padding: 4px 8px !important;
+    white-space: nowrap;
+  }
+
+  /* ---- 4. Barre "Transactions ce mois" ---- */
+  .card-epay.p-3.mb-4 { padding: 14px !important; }
+  .card-epay.p-3.mb-4 .d-flex.justify-content-between.mb-2 {
+    font-size: 13px;
+  }
+
+  /* ---- 5. Bloc "Créer un paiement" ---- */
+  .card-epay.p-4.mt-4.text-center { padding: 20px 16px !important; }
+  .card-epay.p-4.mt-4.text-center h5 { font-size: 16px; }
+  .card-epay.p-4.mt-4.text-center p { font-size: 13px; }
+
+  /* ---- 6. Bloc "Débloquez plus de fonctionnalités" ---- */
+  .card-epay.p-5.text-center.mt-4 { padding: 24px 16px !important; }
+  .card-epay.p-5.text-center.mt-4 h4 { font-size: 17px; }
+  .card-epay.p-5.text-center.mt-4 p { font-size: 13px; }
+
+  /* ---- 7. Liens de paiement générés ---- */
+  #links-container { padding: 0 !important; }
+}
