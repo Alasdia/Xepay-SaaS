@@ -189,6 +189,12 @@ table{ color:#374151 !important; }
     font-size: 12px !important;
     padding: 10px 14px !important;
   }
+  #export-actions #withdrawBtn {
+    flex: 0 0 auto;
+    font-size: 12px !important;
+    padding: 10px 14px !important;
+    white-space: nowrap;
+  }
 
   /* ---- 2. Bannière upgrade : empilée, bouton pleine largeur ---- */
   #main-content > .p-3.mb-4.d-flex.justify-content-between.align-items-center {
@@ -244,26 +250,6 @@ table{ color:#374151 !important; }
   /* masque le sous-texte type "Disponible maintenant / dans 21h..." pour gagner de la place */
   .row.g-3.mb-3 small.d-block.mt-1 {
     display: none !important;
-  }
-  /* la carte Solde garde son bouton "Retirer" dans la carte, sur la même ligne que le titre */
-  .row.g-3.mb-3 .wallet-hover-wrapper .card-epay .d-flex.justify-content-between.align-items-start {
-    flex-wrap: nowrap;
-    gap: 6px;
-  }
-  .row.g-3.mb-3 .wallet-hover-wrapper .card-epay .d-flex > div:first-child {
-    min-width: 0;
-    overflow: hidden;
-  }
-  .row.g-3.mb-3 .wallet-hover-wrapper .card-epay h4 {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  #withdrawBtn {
-    flex: 0 0 auto;
-    font-size: 10px !important;
-    padding: 4px 8px !important;
-    white-space: nowrap;
   }
 
   /* ---- 4. Barre "Transactions ce mois" ---- */
