@@ -202,180 +202,6 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
 }
 @media (max-width: 380px) {.main-dashboard-content > .row { gap: 7px !important;}.card-epay { padding: 10px !important;}.kpi-value { font-size: 1rem !important;}.toolbar > .chip:not(.type-chip) { font-size: 0.65rem !important;}}
 /* =========================================
-   XEPAY — KPI 2 PAR LIGNE SUR MOBILE
-========================================= */
-@media (max-width: 767.98px) {
- .main-dashboard-content > .row {display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px !important; margin: 0 0 16px !important; }
- .main-dashboard-content > .row > .col-md-4 { width: 100% !important; max-width: 100% !important; min-width: 0 !important; padding: 0 !important; grid-column: auto !important; }
- .wallet-hover-wrapper,
- .wallet-hover-wrapper > .card-epay { width: 100%; min-width: 0;}
- .card-epay { height: 100%; min-width: 0; padding: 14px !important; box-sizing: border-box; overflow-wrap: anywhere; }
- .kpi-value,
- #wallet-balance,
- #locked-amount,
- #pending-xof,
- #links-created,
- #success-rate,
- #total-xof { font-size: clamp(15px, 4vw, 20px) !important; line-height: 1.3 !important; overflow-wrap: anywhere;}
-}
-/* =========================================
-   XEPAY — FILTRES MOBILE
-========================================= */
-@media (max-width: 767.98px) {
- .toolbar { display: flex !important; flex-wrap: wrap !important; gap: 8px !important; width: 100%; min-width: 0; align-items: center;}
- .toolbar > .search-wrap { grid-column: 1 / -1; width: 100%; min-width: 0;}
- .search-input { width: 100%; box-sizing: border-box;}
- .toolbar > .date-group:not(:has(.type-chip)) { grid-column: 1 / -1; display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px !important; min-width: 0; margin: 0 !important; }
- .date-pill { width: 100%; min-width: 0; box-sizing: border-box;}
- .date-pill input { width: 100%; min-width: 0;}
- .toolbar > .date-group:has(.type-chip) { grid-column: 1 / -1; display: flex !important; flex-wrap: nowrap !important; gap: 8px !important; width: 100%; min-width: 0; overflow-x: auto; margin: 0 !important; padding-bottom: 6px; }
- .type-chip { flex: 0 0 auto; white-space: nowrap;}
- .toolbar > .btn-refresh { grid-column: 1 / -1; width: 100%; min-height: 44px;}
- #filter-statut { display: none !important;}
- .toolbar > .chip:not(.type-chip) { flex: 1 1 0 !important; width: auto !important; min-width: 0 !important; margin: 0 !important; padding: 8px 2px !important; text-align: center; white-space: nowrap !important; font-size: 11px !important; box-sizing: border-box;}
-}
-/* =========================================
-   XEPAY — FIX FINAL FILTRES ACTIVITÉ MOBILE
-========================================= */
-@media (max-width: 767.98px) {
-  .toolbar > .date-group.ms-2:has(.type-chip) {
-    display: grid !important;
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    flex: 0 0 100% !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    gap: 6px !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: visible !important;
-    box-sizing: border-box !important;
-  }
-  .toolbar > .date-group.ms-2:has(.type-chip) > .type-chip {
-    display: flex !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    flex: none !important;
-    justify-content: center !important;
-    align-items: center !important;
-    padding: 9px 2px !important;
-    margin: 0 !important;
-    font-size: 10px !important;
-    line-height: 1.2 !important;
-    text-align: center !important;
-    white-space: normal !important;
-    overflow-wrap: anywhere !important;
-    box-sizing: border-box !important;
-  }
-}
-/* =========================================
-   XEPAY — FILTRES STATUT : 4 SUR UNE LIGNE
-========================================= */
-@media (max-width: 767.98px) {
-  .toolbar > .chip:not(.type-chip) {
-    display: flex !important;
-    flex: 0 0 calc((100% - 24px) / 4) !important;
-    width: calc((100% - 24px) / 4) !important;
-    min-width: 0 !important;
-    max-width: calc((100% - 24px) / 4) !important;
-    justify-content: center !important;
-    align-items: center !important;
-    padding: 9px 2px !important;
-    margin: 0 !important;
-    font-size: 10px !important;
-    line-height: 1.2 !important;
-    text-align: center !important;
-    white-space: normal !important;
-    overflow-wrap: anywhere !important;
-    box-sizing: border-box !important;
-  }
-}
-/* =========================================
-   XEPAY — ALIGNER LES 4 FILTRES STATUT
-   SUR UNE SEULE LIGNE MOBILE
-========================================= */
-
-@media (max-width: 767.98px) {
-
-  /* Toolbar en grille */
-  .toolbar {
-    display: grid !important;
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    gap: 8px !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    align-items: center !important;
-  }
-
-  /* Recherche sur toute la largeur */
-  .toolbar > .search-wrap {
-    grid-column: 1 / -1 !important;
-    width: 100% !important;
-    min-width: 0 !important;
-  }
-
-  /* Dates sur toute la largeur */
-  .toolbar > .date-group:not(:has(.type-chip)) {
-    grid-column: 1 / -1 !important;
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    width: 100% !important;
-    min-width: 0 !important;
-  }
-
-  /* Les 4 filtres de statut sur une ligne */
-  .toolbar > .chip:not(.type-chip) {
-    grid-column: auto !important;
-    display: flex !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    justify-content: center !important;
-    align-items: center !important;
-    padding: 9px 2px !important;
-    margin: 0 !important;
-    font-size: 10px !important;
-    line-height: 1.2 !important;
-    text-align: center !important;
-    white-space: nowrap !important;
-    box-sizing: border-box !important;
-  }
-
-  /* Toute activité / Paiements / Retraits / Transferts */
-  .toolbar > .date-group:has(.type-chip) {
-    grid-column: 1 / -1 !important;
-    display: grid !important;
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    gap: 6px !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: visible !important;
-  }
-
-  .toolbar > .date-group:has(.type-chip) > .type-chip {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    padding: 9px 2px !important;
-    font-size: 10px !important;
-    text-align: center !important;
-    white-space: nowrap !important;
-    box-sizing: border-box !important;
-  }
-
-  /* Bouton actualiser sur toute la largeur */
-  .toolbar > .btn-refresh {
-    grid-column: 1 / -1 !important;
-    width: 100% !important;
-  }
-
-  #filter-statut {
-    display: none !important;
-  }
-}
-/* =========================================
    XEPAY — TABLEAU MOBILE
 ========================================= */
 @media (max-width: 767.98px) {
@@ -386,4 +212,81 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
  #transactions-scroll-box tbody td { background: #ffffff !important; color: #111827 !important; white-space: nowrap; font-size: 13px; padding: 12px 10px !important; }
  #transactions-scroll-box .amount-cell { color: #111827 !important; }
  #transactions-scroll-box .amount-currency { color: #6b7280 !important;}
+}
+/* =========================================
+   XEPAY — MOBILE : KPI FINANCIERS UNIQUEMENT
+========================================= */
+@media (max-width: 767.98px) {
+
+  /* 3 KPI financiers sur une seule ligne */
+  .main-dashboard-content > .row {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    margin: 0 0 14px !important;
+  }
+
+  .main-dashboard-content > .row > [class*="col-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Masquer les KPI Business */
+  .main-dashboard-content > .row > div:has(#links-created),
+  .main-dashboard-content > .row > div:has(#success-rate),
+  .main-dashboard-content > .row > div:has(#pending-xof) {
+    display: none !important;
+  }
+
+  /* Cartes KPI compactes */
+  .main-dashboard-content .card-epay {
+    padding: 9px 5px !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Réduire les titres */
+  .main-dashboard-content .kpi-label {
+    font-size: 9px !important;
+    line-height: 1.2 !important;
+    letter-spacing: 0 !important;
+    margin-bottom: 5px !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* Réduire les montants pour tenir sur une ligne */
+  .main-dashboard-content .kpi-value,
+  .main-dashboard-content #wallet-balance,
+  .main-dashboard-content #locked-amount,
+  .main-dashboard-content #total-xof {
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    letter-spacing: -0.3px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+  }
+
+  .main-dashboard-content .kpi-sub {
+    font-size: 9px !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Masquer UNIQUEMENT les 4 filtres de statut :
+     Tout, Réussi, En attente, Échoué */
+  .toolbar > .chip:not(.type-chip) {
+    display: none !important;
+  }
+
+  /* Conserver les filtres d'activité :
+     Toute activité, Paiements, Retraits, Transferts */
+}
+@media (max-width: 767.98px) {
+  .toolbar > .chip:not(.type-chip) {
+    display: none !important;
+  }
 }
