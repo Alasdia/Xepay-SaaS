@@ -343,7 +343,7 @@ function voirDetailActivite(index) {
       ["Référence", d.reference ?? "-"],
       ["Payout Stripe", d.stripe_payout_id ?? "-"],
       ["Traité le", d.processed_at ? new Date(d.processed_at).toLocaleString("fr-FR") : "-"]
-        ];
+    ];
   } else if (t.type === "transfer") {
     rows = [
       ["Montant", `${amount.toLocaleString("fr-FR")} ${currency}`],
@@ -363,15 +363,13 @@ function voirDetailActivite(index) {
       <span class="fw-semibold" style="text-align:right; max-width:60%; word-break:break-all;">${value}</span>
     </div>
   `).join("");
-  document.querySelector(".row.g-3.mb-3").style.display = "none";
-  document.querySelector(".row.g-3.mb-4").style.display = "none";
+  document.getElementById("kpi-row").style.display = "none";
   document.querySelector(".toolbar").style.display = "none";
   document.querySelector(".table-wrap:not(#detail-view)").style.display = "none";
   document.getElementById("detail-view").style.display = "block";
 }
 function fermerDetail() {
-  document.querySelector(".row.g-3.mb-3").style.display = "";
-  document.querySelector(".row.g-3.mb-4").style.display = "";
+  document.getElementById("kpi-row").style.display = "";
   document.querySelector(".toolbar").style.display = "";
   document.querySelector(".table-wrap:not(#detail-view)").style.display = "";
   document.getElementById("detail-view").style.display = "none";

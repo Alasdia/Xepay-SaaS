@@ -225,12 +225,17 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
     width: 150px;
     padding-left: 0;
     padding-right: 0;
+    display: flex; /* pour que la carte puisse s'étirer à la même hauteur */
+  }
+  #kpi-row > [class*="col-"] > .card-epay,
+  #kpi-row > [class*="col-"] > .wallet-hover-wrapper {
+    width: 100%;
   }
   #kpi-row .card-epay {
     padding: 10px 10px;
     min-height: auto;
+    height: 100%; /* toutes les cartes prennent la hauteur de la plus grande */
     overflow: hidden; /* empêche tout élément interne de déborder de la carte */
-    width: 100%;
     box-sizing: border-box;
   }
   #kpi-row .mini-progress {
@@ -317,29 +322,33 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
   #transactions-scroll-box {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    max-height: 60vh !important; /* + de lignes visibles dès l'ouverture sur mobile */
   }
   .table {
     min-width: 560px; /* force le scroll horizontal plutôt que d'écraser les colonnes */
     font-size: 12px;
   }
   .table thead th {
-    padding: 10px 10px;
-    font-size: 10px;
+    padding: 8px 8px;
+    font-size: 9px;
   }
   .table tbody td {
-    padding: 10px 10px;
+    padding: 8px 8px;
+  }
+  .table td .d-flex.align-items-center.gap-3 {
+    gap: 6px !important;
   }
   .avatar {
-    width: 28px;
-    height: 28px;
-    font-size: 11px;
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
   }
   .status-pill {
-    font-size: 10px;
-    padding: 3px 8px;
+    font-size: 9px;
+    padding: 2px 7px;
   }
   .amount-cell {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
   }
 }
 /* ── Bouton hamburger (dashboard) ── */
