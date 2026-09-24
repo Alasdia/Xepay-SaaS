@@ -199,6 +199,12 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
     padding: 8px 12px;
     white-space: nowrap;
   }
+  #export-actions .retrait-btn {
+    flex: 0 0 auto;
+    font-size: 12px;
+    padding: 8px 12px;
+    white-space: nowrap;
+  }
 
   /* ---- 2. Les 6 KPI : ligne unique, même taille, scroll horizontal ---- */
   #kpi-row {
@@ -228,33 +234,23 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
     box-sizing: border-box;
   }
   #kpi-row .mini-progress {
-    width: 100%;
-    margin-left: 0;
-    margin-right: 0;
-    box-sizing: border-box;
+    display: none; /* barre de progression masquée sous "Paiements réussis" */
   }
   #kpi-row .kpi-label {
-    font-size: 9px;
+    font-size: 10px;
     margin-bottom: 6px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    letter-spacing: 0.4px;
+    letter-spacing: 0.6px;
   }
   #kpi-row .kpi-value,
   #kpi-row h4 {
-    font-size: 12px !important;
-    white-space: normal !important; /* le montant peut passer à la ligne au lieu d'être coupé */
-    line-height: 1.25 !important;
-    word-break: break-word;
+    font-size: 16px !important;
   }
   /* masque les sous-titres sur les 6 KPI */
   #kpi-row .kpi-sub {
     display: none;
-  }
-  #kpi-row .retrait-btn {
-    font-size: 8px;
-    padding: 3px 6px;
   }
   #kpi-row #chartTooltip {
     display: none !important; /* évite un popup géant sur mobile */
@@ -344,28 +340,6 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
   }
   .amount-cell {
     font-size: 0.85rem;
-  }
-
-  /* ---- 5. Bouton "Retirer" : reste au même niveau que le titre, jamais en dessous ---- */
-  #kpi-row .wallet-hover-wrapper .card-epay > .d-flex {
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 6px;
-  }
-  #kpi-row .wallet-hover-wrapper .card-epay > .d-flex > div:first-child {
-    min-width: 0; /* laisse le texte se compresser au lieu de pousser le bouton */
-    overflow: hidden;
-  }
-  #kpi-row .wallet-hover-wrapper .card-epay .kpi-value {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  #kpi-row .wallet-hover-wrapper .card-epay .retrait-btn {
-    flex: 0 0 auto;
-    font-size: 8px;
-    padding: 3px 6px;
-    white-space: nowrap;
   }
 }
 /* ── Bouton hamburger (dashboard) ── */

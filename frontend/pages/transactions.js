@@ -1012,3 +1012,24 @@ document.addEventListener("DOMContentLoaded", () => {
     normalView.style.display = "block";
   });
 });
+(function () {
+  const btn = document.getElementById('retraitBtn');
+  const exportActions = document.getElementById('export-actions');
+  if (!btn || !exportActions) return;
+  const originalParent = btn.parentElement;
+  const originalNextSibling = btn.nextSibling;
+  function placeButton(mq) {
+    if (mq.matches) {
+      exportActions.prepend(btn);
+    } else {
+      if (originalNextSibling) {
+        originalParent.insertBefore(btn, originalNextSibling);
+      } else {
+        originalParent.appendChild(btn);
+      }
+    }
+  }
+  const mq = window.matchMedia('(max-width: 768px)');
+  placeButton(mq);
+  mq.addEventListener('change', placeButton);
+})();
