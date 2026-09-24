@@ -173,27 +173,45 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
 #main-content #links-created {font-family: "DM Sans", sans-serif !important; font-size: 20px !important; font-weight: 700 !important; line-height: 1.2 !important; letter-spacing: normal;}
 @media (max-width: 960px) { .lock-overlay { left: 0;}.plans-grid { grid-template-columns: 1fr;} .plans-section { padding: 0 10px 30px;}}
 @media (max-width: 576px) { #withdrawModal .modal-dialog {  display: flex !important;  align-items: center !important;  min-height: calc(100% - 1rem);  margin: 1rem auto;  }}
-/* =========================================
-   VERSION MOBILE — TRANSACTIONS XEPAY
-========================================= */
+/* ==========================================
+   XEPAY — MOBILE TRANSACTIONS
+========================================== */
 
-@media (max-width: 576px) {
+@media screen and (max-width: 576px) {
 
-  /* -----------------------------------------
-     1. KPI : 6 cartes en défilement horizontal
-  ----------------------------------------- */
+  /* ESPACEMENT GLOBAL */
+  #main-content {
+    padding: 14px 10px !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  #transactions-normal-view,
+  .main-dashboard-content {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+
+  /* ======================================
+     1. LES 6 KPI — CARROUSEL HORIZONTAL
+  ====================================== */
 
   .main-dashboard-content > .row.g-3.mb-4 {
     display: flex !important;
+    flex-direction: row !important;
     flex-wrap: nowrap !important;
-    gap: 12px !important;
+    align-items: stretch !important;
+
+    gap: 8px !important;
+
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 16px !important;
+    padding: 2px 2px 10px !important;
 
     overflow-x: auto !important;
     overflow-y: hidden !important;
-
-    width: 100% !important;
-    margin: 0 0 20px !important;
-    padding: 4px 2px 12px !important;
 
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
@@ -201,48 +219,64 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
   }
 
   .main-dashboard-content > .row.g-3.mb-4::-webkit-scrollbar {
-    display: none;
+    display: none !important;
   }
 
-  /* Chaque colonne KPI garde une largeur fixe */
-  .main-dashboard-content > .row.g-3.mb-4 > [class*="col-"] {
-    flex: 0 0 155px !important;
-    width: 155px !important;
-    max-width: 155px !important;
-    min-width: 155px !important;
+  /* Colonnes KPI : largeur réduite */
+  .main-dashboard-content > .row.g-3.mb-4 > .col-md-4 {
+    flex: 0 0 125px !important;
+    width: 125px !important;
+    min-width: 125px !important;
+    max-width: 125px !important;
 
     padding: 0 !important;
+    margin: 0 !important;
+
     scroll-snap-align: start;
   }
 
-  /* Cartes KPI */
-  .main-dashboard-content > .row.g-3.mb-4 .card-epay {
-    height: 100% !important;
-    min-height: 95px !important;
-
-    padding: 13px 11px !important;
-    border-radius: 13px !important;
-
-    background: #ffffff !important;
-    border: 1px solid #e5e7eb !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+  /* Wrapper du premier KPI */
+  .main-dashboard-content .wallet-hover-wrapper {
+    width: 100% !important;
+    min-width: 0 !important;
   }
 
-  /* Enlever les sous-titres des KPI */
+  /* Cartes KPI compactes */
+  .main-dashboard-content > .row.g-3.mb-4 .card-epay {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 78px !important;
+    height: 100% !important;
+
+    padding: 10px 8px !important;
+    margin: 0 !important;
+
+    border-radius: 10px !important;
+    box-sizing: border-box !important;
+
+    background: #fff !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,.04) !important;
+  }
+
+  /* Retirer les sous-titres et éléments secondaires */
   .main-dashboard-content > .row.g-3.mb-4 .kpi-sub,
-  .main-dashboard-content > .row.g-3.mb-4 .mini-progress {
+  .main-dashboard-content > .row.g-3.mb-4 .mini-progress,
+  .main-dashboard-content > .row.g-3.mb-4 #locked-countdown,
+  .main-dashboard-content > .row.g-3.mb-4 #links-paid {
     display: none !important;
   }
 
   /* Titres KPI */
   .main-dashboard-content > .row.g-3.mb-4 .kpi-label {
-    font-size: 10px !important;
-    line-height: 1.35 !important;
-    letter-spacing: 0.3px !important;
-    margin-bottom: 9px !important;
+    font-size: 9px !important;
+    line-height: 1.25 !important;
+    letter-spacing: 0 !important;
+    font-weight: 700 !important;
 
+    margin: 0 0 7px !important;
     white-space: normal !important;
-    overflow-wrap: break-word;
+    overflow-wrap: anywhere !important;
   }
 
   /* Valeurs KPI */
@@ -253,42 +287,54 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
   .main-dashboard-content > .row.g-3.mb-4 #pending-xof,
   .main-dashboard-content > .row.g-3.mb-4 #links-created,
   .main-dashboard-content > .row.g-3.mb-4 #success-rate {
-    font-size: 15px !important;
-    line-height: 1.25 !important;
+    display: block !important;
+
+    font-size: 12px !important;
+    line-height: 1.2 !important;
     font-weight: 800 !important;
-    letter-spacing: -0.4px !important;
+    letter-spacing: -0.3px !important;
 
-    white-space: nowrap !important;
     margin: 0 !important;
-  }
-
-  /* Bouton Retirer dans le KPI Solde */
-  .main-dashboard-content > .row.g-3.mb-4 .retrait-btn {
-    font-size: 10px !important;
-    padding: 5px 7px !important;
     white-space: nowrap !important;
   }
 
-  /* -----------------------------------------
-     2. Les 4 boutons d'action en une ligne
-     Rapport Stripe / Activité Stripe /
-     Export CSV / Export PDF
-  ----------------------------------------- */
+  /* Bouton Retirer */
+  .main-dashboard-content > .row.g-3.mb-4 .retrait-btn {
+    font-size: 9px !important;
+    line-height: 1 !important;
+    padding: 5px 6px !important;
+    border-radius: 6px !important;
+  }
+
+
+  /* ======================================
+     2. LES 4 BOUTONS D'ACTION
+     Rapport / Stripe / CSV / PDF
+  ====================================== */
+
+  #transactions-normal-view > .d-flex.justify-content-between.align-items-center {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
 
   #transactions-normal-view > .d-flex.justify-content-between
   > .d-flex.gap-2 {
     display: flex !important;
+    flex-direction: row !important;
     flex-wrap: nowrap !important;
-    gap: 6px !important;
+    align-items: center !important;
 
+    gap: 5px !important;
     width: 100% !important;
-    max-width: 100% !important;
+    min-width: 0 !important;
 
     overflow-x: auto !important;
     overflow-y: hidden !important;
 
     padding: 2px 0 8px !important;
-    margin-top: 10px !important;
+    margin: 0 !important;
 
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
@@ -296,50 +342,61 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
 
   #transactions-normal-view > .d-flex.justify-content-between
   > .d-flex.gap-2::-webkit-scrollbar {
-    display: none;
+    display: none !important;
   }
 
+  /* Boutons compacts, sans retour à la ligne */
   #transactions-normal-view > .d-flex.justify-content-between
-  > .d-flex.gap-2 .btn-export {
+  > .d-flex.gap-2 > .btn-export {
     flex: 0 0 auto !important;
     width: auto !important;
+    max-width: 115px !important;
+    min-width: 0 !important;
 
-    font-size: 10px !important;
+    padding: 7px 8px !important;
+    margin: 0 !important;
+
+    font-size: 9px !important;
     line-height: 1.2 !important;
-    padding: 8px 10px !important;
+    font-weight: 700 !important;
 
-    border-radius: 8px !important;
     white-space: nowrap !important;
+    border-radius: 7px !important;
   }
 
-  /* -----------------------------------------
-     3. Masquer les filtres de statut
-     Tous / Réussi / En attente / Échoué
-  ----------------------------------------- */
 
-  .toolbar > .chip[data-statut],
+  /* ======================================
+     3. MASQUER LES FILTRES DE STATUT
+  ====================================== */
+
+  .toolbar > button.chip[data-statut],
   .toolbar > #filter-statut,
   #filter-statut {
     display: none !important;
   }
 
-  /* -----------------------------------------
-     4. Filtres d'activité sur une seule ligne
+
+  /* ======================================
+     4. FILTRES D'ACTIVITÉ
      Toute activité / Paiements / Retraits /
      Transferts
-  ----------------------------------------- */
+  ====================================== */
 
+  /* Le groupe devient une ligne horizontale */
   .toolbar > .date-group.ms-2 {
     display: flex !important;
+    flex-direction: row !important;
     flex-wrap: nowrap !important;
     align-items: center !important;
-    gap: 7px !important;
+    justify-content: flex-start !important;
 
+    flex: 0 0 100% !important;
     width: 100% !important;
-    max-width: 100% !important;
     min-width: 0 !important;
+    max-width: 100% !important;
 
-    margin: 8px 0 0 !important;
+    gap: 6px !important;
+    margin: 10px 0 0 !important;
     padding: 2px 0 8px !important;
 
     overflow-x: auto !important;
@@ -350,19 +407,69 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
   }
 
   .toolbar > .date-group.ms-2::-webkit-scrollbar {
-    display: none;
+    display: none !important;
   }
 
-  /* Chaque filtre garde sa taille et reste sur la ligne */
-  .toolbar > .date-group.ms-2 .type-chip {
+  /* Les 4 filtres restent côte à côte */
+  .toolbar > .date-group.ms-2 > .type-chip {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
     flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
 
-    font-size: 11px !important;
+    padding: 8px 10px !important;
+    margin: 0 !important;
+
+    font-size: 10px !important;
     line-height: 1.2 !important;
-    padding: 9px 12px !important;
+    font-weight: 700 !important;
 
-    border-radius: 999px !important;
     white-space: nowrap !important;
+    border-radius: 999px !important;
+  }
+
+
+  /* ======================================
+     5. BARRE DE RECHERCHE ET DATES
+  ====================================== */
+
+  .toolbar {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .toolbar > .search-wrap {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .toolbar > .date-group:not(.ms-2) {
+    display: flex !important;
+    flex: 1 1 100% !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .toolbar > .date-group:not(.ms-2) .date-pill {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    padding: 0 6px !important;
+  }
+
+  .toolbar > .date-group:not(.ms-2) input[type="date"] {
+    width: 100% !important;
+    min-width: 0 !important;
+    font-size: 10px !important;
   }
 
 }
