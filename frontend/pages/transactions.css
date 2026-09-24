@@ -220,14 +220,8 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
     padding-left: 0;
     padding-right: 0;
   }
-  /* la carte solde a un bouton en plus : un peu plus large pour ne pas déborder */
-  #kpi-row > [class*="col-"]:has(.wallet-hover-wrapper) {
-    flex: 0 0 175px;
-    max-width: 175px;
-    width: 175px;
-  }
   #kpi-row .card-epay {
-    padding: 12px 12px;
+    padding: 10px 10px;
     min-height: auto;
     overflow: hidden; /* empêche tout élément interne de déborder de la carte */
     width: 100%;
@@ -240,24 +234,27 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
     box-sizing: border-box;
   }
   #kpi-row .kpi-label {
-    font-size: 10px;
+    font-size: 9px;
     margin-bottom: 6px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.4px;
   }
   #kpi-row .kpi-value,
   #kpi-row h4 {
-    font-size: 16px !important;
+    font-size: 12px !important;
+    white-space: normal !important; /* le montant peut passer à la ligne au lieu d'être coupé */
+    line-height: 1.25 !important;
+    word-break: break-word;
   }
   /* masque les sous-titres sur les 6 KPI */
   #kpi-row .kpi-sub {
     display: none;
   }
   #kpi-row .retrait-btn {
-    font-size: 10px;
-    padding: 4px 8px;
+    font-size: 8px;
+    padding: 3px 6px;
   }
   #kpi-row #chartTooltip {
     display: none !important; /* évite un popup géant sur mobile */
@@ -366,8 +363,8 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
   }
   #kpi-row .wallet-hover-wrapper .card-epay .retrait-btn {
     flex: 0 0 auto;
-    font-size: 9px;
-    padding: 4px 7px;
+    font-size: 8px;
+    padding: 3px 6px;
     white-space: nowrap;
   }
 }
