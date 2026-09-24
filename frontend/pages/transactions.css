@@ -220,9 +220,24 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
     padding-left: 0;
     padding-right: 0;
   }
+  /* la carte solde a un bouton en plus : un peu plus large pour ne pas déborder */
+  #kpi-row > [class*="col-"]:has(.wallet-hover-wrapper) {
+    flex: 0 0 175px;
+    max-width: 175px;
+    width: 175px;
+  }
   #kpi-row .card-epay {
-    padding: 14px 14px;
+    padding: 12px 12px;
     min-height: auto;
+    overflow: hidden; /* empêche tout élément interne de déborder de la carte */
+    width: 100%;
+    box-sizing: border-box;
+  }
+  #kpi-row .mini-progress {
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    box-sizing: border-box;
   }
   #kpi-row .kpi-label {
     font-size: 10px;
@@ -332,6 +347,28 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
   }
   .amount-cell {
     font-size: 0.85rem;
+  }
+
+  /* ---- 5. Bouton "Retirer" : reste au même niveau que le titre, jamais en dessous ---- */
+  #kpi-row .wallet-hover-wrapper .card-epay > .d-flex {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+  }
+  #kpi-row .wallet-hover-wrapper .card-epay > .d-flex > div:first-child {
+    min-width: 0; /* laisse le texte se compresser au lieu de pousser le bouton */
+    overflow: hidden;
+  }
+  #kpi-row .wallet-hover-wrapper .card-epay .kpi-value {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #kpi-row .wallet-hover-wrapper .card-epay .retrait-btn {
+    flex: 0 0 auto;
+    font-size: 9px;
+    padding: 4px 7px;
+    white-space: nowrap;
   }
 }
 /* ── Bouton hamburger (dashboard) ── */
