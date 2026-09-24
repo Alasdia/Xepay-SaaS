@@ -554,13 +554,13 @@ async function upgrade(plan) {
   }
   window.location.href = data.url;
 }
-document
-  .getElementById("modalUpgrade")
-  .addEventListener("shown.bs.modal", () => {
+document.addEventListener("shown.bs.modal", (e) => {
+  if (e.target.id === "modalUpgrade") {
     document.querySelectorAll("#modalUpgrade .reveal")
       .forEach((el, index) => {
         setTimeout(() => {
           el.classList.add("visible");
         }, index * 100);
       });
+  }
 });
