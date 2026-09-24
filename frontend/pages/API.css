@@ -182,13 +182,11 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
    XEPAY — Mobile API Access (à ajouter à API.css)
    ============================================ */
 @media (max-width: 768px) {
-
   #main-content {
     margin-left: 0 !important;
     width: 100% !important;
     padding: 72px 16px 32px !important;
   }
-
   /* ---- 1. En-tête ---- */
   #main-content h1 { font-size: 19px !important; }
   #main-content .mb-4 p { font-size: 13px; }
