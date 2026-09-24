@@ -178,3 +178,98 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
 .secret-modal-content { background: #1e1e2f; color: #ffffff; padding: 25px; border-radius: 12px; width: 400px; max-width: 100%; text-align: center; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);}
 .secret-box input { min-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis;}
 @media (max-width: 960px) { .plans-grid { grid-template-columns: 1fr; } .plans-section { padding: 0 10px 30px; } .feature-lock { left: 0;} }
+/* ============================================
+   XEPAY — Mobile API Access (à ajouter à API.css)
+   ============================================ */
+@media (max-width: 768px) {
+
+  #main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 72px 16px 32px !important;
+  }
+
+  /* ---- 1. En-tête ---- */
+  #main-content h1 { font-size: 19px !important; }
+  #main-content .mb-4 p { font-size: 13px; }
+
+  /* ---- 2. Stats (Appels API / Taux de succès / Webhooks actifs) : scroll horizontal ---- */
+  .row.g-3.mb-4:has(> .col-md-4) {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 10px;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+    margin-left: 0;
+    margin-right: 0;
+    scrollbar-width: none;
+  }
+  .row.g-3.mb-4:has(> .col-md-4)::-webkit-scrollbar { display: none; }
+  .row.g-3.mb-4:has(> .col-md-4) > .col-md-4 {
+    flex: 0 0 155px;
+    max-width: 155px;
+    width: 155px;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .row.g-3.mb-4:has(> .col-md-4) .card-dark {
+    padding: 10px !important;
+    height: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .row.g-3.mb-4:has(> .col-md-4) .card-title-small {
+    font-size: 9px;
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .row.g-3.mb-4:has(> .col-md-4) .stat-value {
+    font-size: 16px !important;
+  }
+  /* masque les sous-textes (croissance, erreurs, endpoints configurés) pour gagner de la place */
+  .row.g-3.mb-4:has(> .col-md-4) .muted {
+    display: none !important;
+  }
+
+  /* ---- 3. Clés API + Logs récents : empilés pleine largeur (pas de scroll ici) ---- */
+  .row.g-3.mb-4:has(> .col-md-6) > .col-md-6 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+  .key-row {
+    flex-wrap: wrap;
+    padding: 8px 10px;
+  }
+  .key-label { min-width: 55px; font-size: 11px; }
+  .key-value { font-size: 11px; }
+
+  /* ---- 4. Tableau des webhooks : scroll horizontal ---- */
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .wh-table { min-width: 520px; }
+  .wh-table th { padding: 8px 8px; font-size: 9px; }
+  .wh-table td { padding: 8px 8px; font-size: 12px; }
+
+  /* ---- 5. Doc Webhook API : padding réduit, code toujours scrollable ---- */
+  .doc-card {
+    padding: 16px !important;
+    max-height: none !important; /* laisse la doc respirer verticalement sur mobile */
+  }
+  .doc-card h2 { font-size: 18px; }
+  .doc-card h3 { font-size: 15px; }
+  .doc-card p { font-size: 13px; }
+  pre { padding: 14px; font-size: 12px; }
+  .copy-btn { padding: 5px 9px; font-size: 11px; top: 8px; right: 8px; }
+
+  /* ---- 6. Tables Réponses HTTP / Événements : scroll horizontal ---- */
+  .retry-table { display: block; overflow-x: auto; white-space: nowrap; }
+  .retry-table th, .retry-table td { padding: 10px 12px; font-size: 12px; }
+
+  /* ---- 7. Modal ajout de webhook ---- */
+  .modal-box { padding: 20px; width: 92vw; }
+}

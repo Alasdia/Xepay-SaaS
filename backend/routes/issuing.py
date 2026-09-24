@@ -45,11 +45,6 @@ def create_virtual_card(
         if holder_type == "individual":
             cardholder_params["phone_number"] = cardholder_data.get("phone_number")  
         account = stripe.Account.retrieve(profile.stripe_account_id)
-        print("===== STRIPE ACCOUNT =====")
-        print("ID:", account.id)
-        print("TYPE:", account.type)
-        print("CAPABILITIES:", account.capabilities.to_dict())
-        print("==========================") 
         cardholder = stripe.issuing.Cardholder.create(**cardholder_params)       
         card = stripe.issuing.Card.create(
             cardholder=cardholder.id,
@@ -70,13 +65,5 @@ def create_virtual_card(
             "currency": card.currency,
             "status": card.status
         }
-        
     except stripe.error.StripeError as e:
-        print("🔥 STRIPE ISSUING ERROR 🔥")
-        print("type:", type(e).__name__)
-        print("user_message:", e.user_message)
-        print("message:", str(e))
-        print("code:", getattr(e, "code", None))
-        print("param:", getattr(e, "param", None))
-        print("decline_code:", getattr(e, "decline_code", None))
         raise HTTPException(400, f"Erreur Stripe Issuing : {e.user_message or str(e)}")

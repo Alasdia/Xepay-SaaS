@@ -172,3 +172,94 @@ tr:hover td { background: #ffffff; }
 .reveal.visible { opacity: 1; transform: translateY(0); transition: all .6s ease; }
 .section-eyebrow { color: var(--cyan); font-size: 12px; letter-spacing: .25em; text-transform: uppercase; font-weight: 700; margin-bottom: 18px; }
 @media (max-width: 900px) { .plans-grid { grid-template-columns: 1fr; } .plans-section { padding: 0 10px 30px; } }
+/* ============================================
+   XEPAY — Mobile Multi-utilisateurs (à ajouter à multi-users.css)
+   ============================================ */
+@media (max-width: 768px) {
+
+  main {
+    margin-left: 0 !important;
+    padding: 72px 16px 32px !important;
+  }
+
+  /* ---- 1. En-tête : titre + workspace switcher + bouton Ajouter ---- */
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .header-title { font-size: 19px; }
+  .header p { font-size: 13px; }
+  .header > div[style*="display:flex"] {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  #workspaceSwitcher {
+    min-width: 0 !important;
+    flex: 1 1 auto;
+    height: 40px !important;
+    font-size: 12px !important;
+  }
+  .header .btn-primary {
+    flex: 0 0 auto;
+    font-size: 12px;
+    padding: 10px 14px;
+    white-space: nowrap;
+  }
+
+  /* ---- 2. Stats (4 cartes) : scroll horizontal ---- */
+  .stats {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 10px;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+    scrollbar-width: none;
+  }
+  .stats::-webkit-scrollbar { display: none; }
+  .stat {
+    flex: 0 0 145px;
+    max-width: 145px;
+    width: 145px;
+    padding: 12px 12px;
+  }
+  .stat-label {
+    font-size: 9px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .stat-value { font-size: 16px !important; }
+  .stat-sub { display: none; } /* masque "sur 10 inclus", "expire sous 7 jours", etc. */
+
+  /* ---- 3. Toolbar : recherche + filtres ---- */
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .search { min-width: unset; width: 100%; }
+  .toolbar > .filter-chip {
+    display: inline-flex;
+  }
+  /* les chips de rôle sur une ligne, scroll horizontal */
+  .toolbar {
+    flex-wrap: nowrap;
+  }
+  .toolbar::after { content: ""; }
+
+  /* ---- 4. Tableau utilisateurs : scroll horizontal, colonnes déjà masquées via les media queries existantes ---- */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  table { min-width: 480px; }
+  th, td { padding: 10px 12px; font-size: 12px; }
+  .avatar { width: 30px; height: 30px; font-size: 11px; }
+
+  /* ---- 5. Modal inviter un utilisateur ---- */
+  .custom-modal { padding: 22px; width: 92vw; }
+  .custom-modal h2 { font-size: 22px; }
+}

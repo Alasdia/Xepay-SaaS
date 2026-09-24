@@ -17,6 +17,7 @@ from backend.models import Link, Payment
 from backend.models import PaymentResponse
 from backend.middleware.authorization import require_admin, require_owner, require_member, require_manager
 from backend.models import Link, WorkspaceUser, generate_prefixed_id
+from backend.services.stripe_service import create_checkout_session
 from backend.models import Payment
 from backend.services.rates import get_live_rate
 from backend.models import UserDB
@@ -199,7 +200,6 @@ def get_links(
 
 @router.get("/pay/{token}")
 def get_payment(token: str):
-    from backend.services.stripe_service import create_checkout_session
     db = SessionLocal()
     hashed = hashlib.sha256(token.encode()).hexdigest()
     link = db.query(Link).filter(Link.token == hashed).first()
