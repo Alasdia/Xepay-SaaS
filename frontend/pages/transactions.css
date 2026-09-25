@@ -171,6 +171,30 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
 #stripeReportModal .modal-body { max-height: 75vh; overflow-y: auto;}
 #main-content .kpi-value,
 #main-content #links-created {font-family: "DM Sans", sans-serif !important; font-size: 20px !important; font-weight: 700 !important; line-height: 1.2 !important; letter-spacing: normal;}
+.filter-row-1 { display: flex; align-items: center; gap: 10px; width: 100%; flex-wrap: nowrap;
+}
+
+.filter-row-1 .search-wrap {
+    flex: 1 1 auto;
+    min-width: 240px;
+}
+
+.filter-row-1 .date-group {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-row-1 .btn-refresh {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 @media (max-width: 960px) { .lock-overlay { left: 0;}.plans-grid { grid-template-columns: 1fr;} .plans-section { padding: 0 10px 30px;}}
 @media (max-width: 576px) { #withdrawModal .modal-dialog {  display: flex !important;  align-items: center !important;  min-height: calc(100% - 1rem);  margin: 1rem auto;  }}
 /* ============================================
