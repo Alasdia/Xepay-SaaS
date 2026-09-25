@@ -251,6 +251,8 @@ tr:hover td { background: #ffffff; }
     gap: 6px;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    min-width: 0; /* empêche le flex item de s'étirer au-delà de son parent au lieu de scroller */
+    width: 100%;
   }
   .filter-chip-row::-webkit-scrollbar { display: none; }
   .filter-chip-row .filter-chip {
