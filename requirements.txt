@@ -2,6 +2,7 @@ fastapi
 uvicorn
 sqlalchemy
 psycopg2-binary
+psycopg[binary]
 python-dotenv
 stripe>=15.6.0
 requests
