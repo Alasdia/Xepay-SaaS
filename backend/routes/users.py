@@ -7,7 +7,7 @@ from backend.services.workspace_service import (
     get_workspace_owner_id
 )
 from backend.security import verify_password, create_access_token
-from backend.middleware.authorization import require_admin, require_owner, require_member, require_manager
+from backend.middleware.authorization import require_admin, require_owner, require_member, require_manager, normalize_role, require_business
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import text
 from datetime import datetime, timezone
@@ -24,6 +24,7 @@ import os, shutil
 from fastapi.responses import FileResponse
 from fastapi import FastAPI, Request
 from backend.services.email_service import send_invitation_email, send_login_alert_email
+from backend.services.rate_limit import allow_attempt, reset as reset_rate_limit
 from backend.security import hash_password, verify_password, decrypt_secret
 from math import ceil
 import requests
@@ -35,6 +36,18 @@ import secrets
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 router = APIRouter()
+
+# Rôles qu'un admin peut attribuer via PUT /users/{user_id}/role ou POST /invites.
+# "owner" est volontairement exclu : le transfert de propriété est un flux distinct,
+# non couvert ici, et ne doit pas pouvoir être obtenu par une simple attribution de rôle.
+ASSIGNABLE_ROLES = {"admin", "manager", "membre", "lecteur"}
+
+
+def _validate_assignable_role(role) -> str:
+    normalized = normalize_role(role) if isinstance(role, str) else ""
+    if normalized not in ASSIGNABLE_ROLES:
+        raise HTTPException(400, "Rôle invalide")
+    return normalized
 
 
 @router.post("/signup")
@@ -478,26 +491,42 @@ def change_password(
 @router.post("/reset-password")
 def reset_password(
     data: ResetPasswordRequest,
+    request: Request,
     db: Session = Depends(get_db)
 ):
+    ip = request.client.host if request.client else "unknown"
+    normalized_email = data.email.strip().lower()
+    email_ip_key = f"reset-password:{normalized_email}:{ip}"
+    ip_key = f"reset-password:ip:{ip}"
+    email_key = f"reset-password:email:{normalized_email}"
+
+    if not allow_attempt(email_ip_key) or not allow_attempt(ip_key) or not allow_attempt(email_key):
+        raise HTTPException(status_code=429, detail="Trop de tentatives. Réessayez plus tard.")
+
+    generic_error = HTTPException(status_code=400, detail="Impossible de vérifier les informations de réinitialisation.")
+
     user = db.query(UserDB).filter(UserDB.email == data.email).first()
     if not user:
-        raise HTTPException(status_code=404, detail="Compte introuvable")
+        raise generic_error
 
     if not user.two_factor_secret:
-        raise HTTPException(status_code=400, detail="L'authentification 2FA n'est pas configurée pour ce compte")
+        raise generic_error
 
     secret = decrypt_secret(user.two_factor_secret)
     totp = pyotp.TOTP(secret)
 
     if not totp.verify(data.code):
-        raise HTTPException(status_code=400, detail="Code Google Authenticator invalide ou expiré")
+        raise generic_error
 
     if data.new_password != data.confirm_password:
         raise HTTPException(status_code=400, detail="Les mots de passe ne correspondent pas")
 
     user.password = hash_password(data.new_password)
     db.commit()
+
+    reset_rate_limit(email_ip_key)
+    reset_rate_limit(ip_key)
+    reset_rate_limit(email_key)
 
     return {"message": "Mot de passe mis à jour avec succès"}
 
@@ -761,52 +790,6 @@ def create_portal_session(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/change-plan")
-def change_plan(
-    data: PlanUpdate,
-    membership: WorkspaceUser = Depends(require_owner),
-    db: Session = Depends(get_db),
-
-):
-    owner_id = membership.workspace_id
-
-    user = db.query(UserDB).filter(UserDB.id == owner_id).first()
-    print("===== CHANGE PLAN =====")
-    print("USER:", user.email)
-    print("OLD PLAN:", user.plan)
-    print("NEW PLAN:", data.plan)
-
-    if not user:
-        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
-
-    allowed_plans = ["free", "starter", "pro", "business"]
-
-    if data.plan not in allowed_plans:
-        raise HTTPException(status_code=400, detail="Plan invalide")
-
-    user.plan = data.plan
-
-    if data.plan in ["pro", "business"]:
-        now = datetime.now(timezone.utc)
-
-        user.plan_started_at = now
-        user.plan_expires_at = now + timedelta(days=30)
-
-        print("START:", user.plan_started_at)
-        print("END:", user.plan_expires_at)
-    else:
-        user.plan_expires_at = None
-
-    db.commit()
-
-    print("COMMIT DONE")
-
-    return {
-        "message": "Plan mis à jour",
-        "plan": user.plan
-    }
-
-
 @router.get("/dashboard")
 def dashboard():
     return FileResponse("html/dashboard.html")
@@ -815,7 +798,8 @@ def dashboard():
 @router.get("/users")
 def get_users(
     membership: WorkspaceUser = Depends(require_member),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: UserDB = Depends(require_business)
 ):
     workspace_id = membership.workspace_id
 
@@ -848,7 +832,8 @@ def get_users(
 def create_user(
     data: dict,
     membership: WorkspaceUser = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: UserDB = Depends(require_business)
 ):
     workspace_id = membership.workspace_id
 
@@ -860,7 +845,7 @@ def create_user(
         membership = WorkspaceUser(
             user_id=existing.id,
             workspace_id=workspace_id,
-            role=data.get("role", "member")
+            role=_validate_assignable_role(data.get("role", "membre"))
         )
         db.add(membership)
         db.commit()
@@ -881,7 +866,7 @@ def create_user(
     membership = WorkspaceUser(
         user_id=user.id,
         workspace_id=workspace_id,
-        role=data.get("role", "member")
+        role=_validate_assignable_role(data.get("role", "membre"))
     )
     db.add(membership)
     db.commit()
@@ -897,11 +882,12 @@ def create_invite(
     data: dict,
     membership: WorkspaceUser = Depends(require_admin),
     db: Session = Depends(get_db),
-    current_user: UserDB = Depends(get_current_user)
+    current_user: UserDB = Depends(get_current_user),
+    _: UserDB = Depends(require_business)
 ):
     workspace_id = membership.workspace_id
     email = data.get("email")
-    role = data.get("role", "member")
+    role = _validate_assignable_role(data.get("role", "membre"))
 
     if not email:
         raise HTTPException(400, "Email requis")
@@ -956,7 +942,8 @@ def create_invite(
 @router.get("/invites")
 def get_invites(
     membership: WorkspaceUser = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: UserDB = Depends(require_business)
 ):
     workspace_id = membership.workspace_id
 
@@ -1051,7 +1038,8 @@ def update_role(
     user_id: str,
     data: dict,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_admin)
+    membership: WorkspaceUser = Depends(require_admin),
+    _: UserDB = Depends(require_business)
 ):
 
     user = db.query(UserDB).filter(UserDB.id == user_id).first()
@@ -1073,7 +1061,7 @@ def update_role(
     if user.id == workspace_id:
         raise HTTPException(400, "Impossible de modifier le propriétaire")
 
-    target_membership.role = data.get("role")
+    target_membership.role = _validate_assignable_role(data.get("role"))
     db.commit()
 
     return {"message": "Rôle mis à jour"}
@@ -1082,7 +1070,8 @@ def update_role(
 def toggle_user(
     user_id: str,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_admin)
+    membership: WorkspaceUser = Depends(require_admin),
+    _: UserDB = Depends(require_business)
 ):
     user = db.query(UserDB).filter(UserDB.id == user_id).first()
 
@@ -1113,7 +1102,8 @@ def delete_user(
     user_id: str,
     db: Session = Depends(get_db),
     membership: WorkspaceUser = Depends(require_admin),
-    current_user: UserDB = Depends(get_current_user)
+    current_user: UserDB = Depends(get_current_user),
+    _: UserDB = Depends(require_business)
 ):
     user = db.query(UserDB).filter(UserDB.id == user_id).first()
 

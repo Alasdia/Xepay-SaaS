@@ -19,3 +19,4 @@ matplotlib
 pyotp
 qrcode[pil]
 pydantic[email]
+redis

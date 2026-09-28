@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import UserDB, Webhook, WebhookDeliveryLog, Payment
 from backend.auth import get_current_user
+from backend.middleware.authorization import require_pro_or_business
+from backend.security import assert_public_webhook_url
 from pydantic import BaseModel
 from typing import List
 import httpx
@@ -21,7 +23,7 @@ class WebhookCreate(BaseModel):
 
 @router.get("/webhooks-api")
 def get_webhooks(
-    current_user: UserDB = Depends(get_current_user),
+    current_user: UserDB = Depends(require_pro_or_business),
     db: Session = Depends(get_db)
 ):
     webhooks = db.query(Webhook).filter(Webhook.user_id == current_user.id).all()
@@ -39,9 +41,14 @@ def get_webhooks(
 @router.post("/webhooks-api")
 def create_webhook(
     data: WebhookCreate,
-    current_user: UserDB = Depends(get_current_user),
+    current_user: UserDB = Depends(require_pro_or_business),
     db: Session = Depends(get_db)
 ):
+    try:
+        assert_public_webhook_url(data.url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     webhook = Webhook(
         user_id=current_user.id,
         url=data.url,
@@ -61,7 +68,7 @@ def create_webhook(
 @router.delete("/webhooks-api/{webhook_id}")
 def delete_webhook(
     webhook_id: str,
-    current_user: UserDB = Depends(get_current_user),
+    current_user: UserDB = Depends(require_pro_or_business),
     db: Session = Depends(get_db)
 ):
     
@@ -79,7 +86,7 @@ def delete_webhook(
 @router.post("/webhooks-api/{webhook_id}/test")
 async def test_webhook(
     webhook_id: str,
-    current_user: UserDB = Depends(get_current_user),
+    current_user: UserDB = Depends(require_pro_or_business),
     db: Session = Depends(get_db)
 ):
     webhook = db.query(Webhook).filter(
@@ -124,6 +131,7 @@ async def test_webhook(
     error_message = None
 
     try:
+        assert_public_webhook_url(webhook.url)
         raw_body = json.dumps(
             payload,
             separators=(",", ":"),
@@ -152,6 +160,8 @@ async def test_webhook(
     except httpx.TimeoutException:
         error_message = "Timeout lors de l'envoi du webhook"
     except httpx.RequestError as e:
+        error_message = str(e)
+    except ValueError as e:
         error_message = str(e)
     webhook.last_triggered = now
     log = WebhookDeliveryLog(

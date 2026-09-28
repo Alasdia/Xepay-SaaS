@@ -7,6 +7,7 @@ import requests
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from backend.models import Webhook, WebhookDeliveryLog
+from backend.security import assert_public_webhook_url
 
 def send_webhook_event(
     db: Session,
@@ -40,29 +41,34 @@ def send_webhook_event(
         ).hexdigest()
         success = False
         final_status_code = 0
-        for attempt in range(3):
-            try:
-                response = requests.post(
-                    webhook.url,
-                    content=raw_body,
-                    headers={
-                        "Content-Type": "application/json",
-                        "X-Xepay-Signature": signature,
-                        "X-Xepay-Event": event_type,
-                        "X-Xepay-Timestamp": str(
-                            payload["timestamp"]
-                        )
-                    },
-                    timeout=5
-                )
-                final_status_code = response.status_code
-                if 200 <= response.status_code < 300:
-                    success = True
-                    break
-            except requests.RequestException:
-                final_status_code = 0
-            if attempt < 2:
-                time.sleep(2)
+        try:
+            assert_public_webhook_url(webhook.url)
+        except ValueError:
+            pass
+        else:
+            for attempt in range(3):
+                try:
+                    response = requests.post(
+                        webhook.url,
+                        content=raw_body,
+                        headers={
+                            "Content-Type": "application/json",
+                            "X-Xepay-Signature": signature,
+                            "X-Xepay-Event": event_type,
+                            "X-Xepay-Timestamp": str(
+                                payload["timestamp"]
+                            )
+                        },
+                        timeout=5
+                    )
+                    final_status_code = response.status_code
+                    if 200 <= response.status_code < 300:
+                        success = True
+                        break
+                except requests.RequestException:
+                    final_status_code = 0
+                if attempt < 2:
+                    time.sleep(2)
         log = WebhookDeliveryLog(
             user_id=user_id,
             webhook_id=webhook.id,

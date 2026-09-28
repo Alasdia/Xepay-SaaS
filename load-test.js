@@ -9,26 +9,37 @@ const params = {
         Authorization: `Bearer ${TOKEN}`,
         Accept: 'application/json',
     },
+    timeout: '30s',
 };
 
 export const options = {
     stages: [
+        { duration: '30s', target: 100 },
         { duration: '30s', target: 250 },
         { duration: '30s', target: 500 },
-        { duration: '30s', target: 750 },
-        { duration: '30s', target: 1000 },
-        { duration: '1m', target: 1000 },
+        { duration: '1m', target: 500 },
         { duration: '30s', target: 0 },
     ],
+
+    thresholds: {
+        http_req_duration: ['p(95)<3000'],
+    },
 };
 
 function get(path) {
     const res = http.get(`${BASE_URL}${path}`, params);
 
     check(res, {
-        [`GET ${path} = 2xx`]: r =>
+        [`${path} → 2xx`]: r =>
             r.status >= 200 && r.status < 300,
     });
+
+    // Affiche uniquement les erreurs
+    if (res.status < 200 || res.status >= 300) {
+        console.log(
+            `❌ ${path} | HTTP ${res.status} | ${res.error || 'no error'}`
+        );
+    }
 
     return res;
 }
@@ -36,36 +47,37 @@ function get(path) {
 export default function () {
 
     get('/me');
-    sleep(1);
-
-    get('/me/plan');
-    sleep(1);
-
+    get('/profile');
     get('/me/user-plan');
-    sleep(1);
+    get('/me/plan');
 
-    get('/stats');
-    sleep(1);
+    get('/security/alerts');
 
-    get('/wallet/history');
-    sleep(1);
+    get('/workspaces/me');
+    get('/users');
+    get('/invites');
 
-    get('/links/dashnoard');
-    sleep(1);
-
-    get('/links');
-    sleep(1);
-
-    get('/links');
-    sleep(1);
+    get('/stripe/status');
 
     get('/wallet/me');
-    sleep(1);
+    get('/wallet/history');
+    get('/wallet');
 
-    get('/logs');
-    sleep(1);
+    get('/links');
+    get('/links/dashboard');
 
     get('/activity');
+    get('/logs');
+    get('/logs/stats');
 
-    sleep(2);
+    get('/stats');
+
+    get('/webhooks-api');
+
+    get('/api-keys');
+
+    get('/export/csv');
+    get('/export/pdf');
+
+    sleep(1);
 }

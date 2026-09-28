@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from backend.database import SessionLocal
 from backend.models import WebhookDeliveryLog
 from backend.auth import get_current_user
+from backend.middleware.authorization import require_pro_or_business
 from backend.models import Webhook
 from datetime import timezone, datetime
 from backend.auth import get_current_user
@@ -18,9 +19,9 @@ def get_db():
 
 @router.get("/logs")
 def get_logs(
-    limit: int = 5, 
+    limit: int = 5,
     db: Session = Depends(get_db),
-    user = Depends(get_current_user)
+    user = Depends(require_pro_or_business)
 ):
     logs = db.query(WebhookDeliveryLog)\
         .filter(WebhookDeliveryLog.user_id == user.id)\
@@ -40,7 +41,7 @@ def get_logs(
 @router.get("/logs/stats")
 def logs_stats(
     db: Session = Depends(get_db),
-    user = Depends(get_current_user)
+    user = Depends(require_pro_or_business)
 ):
     total = db.query(WebhookDeliveryLog).filter(WebhookDeliveryLog.user_id == user.id).count()
     success = db.query(WebhookDeliveryLog).filter(WebhookDeliveryLog.user_id == user.id, WebhookDeliveryLog.success == True).count()

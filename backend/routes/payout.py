@@ -26,7 +26,6 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
-print(stripe.api_key)
 
 
 router = APIRouter()
@@ -224,11 +223,12 @@ def withdraw(
     
 @router.post("/withdraw/{id}/process")
 def process_withdraw(
-    id: str, 
-    db: Session = Depends(get_db)
+    id: str,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_owner)
 ):
     wd = db.query(Withdrawal)\
-        .filter(Withdrawal.id == id)\
+        .filter(Withdrawal.id == id, Withdrawal.user_id == membership.workspace_id)\
         .with_for_update()\
         .first()
     if not wd:
