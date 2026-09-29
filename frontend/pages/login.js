@@ -90,8 +90,11 @@ let twoFaWorkspaceId = '';
 let twoFaPreAuthToken = '';
 
 function handleSubmit() {
+  const forgotOpen = document.getElementById('forgot-fields').style.display !== 'none';
   if (awaitingTwoFa) {
     verifyTwoFaCode();
+  } else if (forgotOpen) {
+    submitForgotPassword();
   } else {
     login();
   }
