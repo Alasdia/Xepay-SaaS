@@ -6,7 +6,7 @@ from backend.auth import get_current_user
 from backend.services.workspace_service import (
     get_workspace_owner_id
 )
-from backend.security import verify_password, create_access_token
+from backend.security import verify_password, create_access_token, create_2fa_pending_token
 from backend.middleware.authorization import require_admin, require_owner, require_member, require_manager, normalize_role, require_business
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import text
@@ -173,7 +173,13 @@ def login(
     user.last_login = datetime.now(timezone.utc)
     db.commit()
     if user.two_factor_enabled:
-        return {"requires_2fa": True, "email": user.email, "workspace_id": workspace_user.workspace_id}
+        pre_auth_token = create_2fa_pending_token(user.email)
+        return {
+            "requires_2fa": True,
+            "email": user.email,
+            "workspace_id": workspace_user.workspace_id,
+            "pre_auth_token": pre_auth_token
+        }
     ip = request.client.host
     device = request.headers.get("user-agent", "Appareil inconnu")
     user.last_login = datetime.now(timezone.utc)

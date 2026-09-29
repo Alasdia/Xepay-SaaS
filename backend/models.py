@@ -45,6 +45,7 @@ class ProfileRequest(BaseModel):
 class LoginTwoFAVerify(BaseModel):
     email: str
     code: str
+    pre_auth_token: str
 
 class PaymentCreate(BaseModel):
     email: str

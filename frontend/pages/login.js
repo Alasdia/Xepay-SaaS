@@ -87,6 +87,7 @@ function togglePw() {
 let awaitingTwoFa = false;
 let twoFaEmail = '';
 let twoFaWorkspaceId = '';
+let twoFaPreAuthToken = '';
 
 function handleSubmit() {
   if (awaitingTwoFa) {
@@ -173,6 +174,7 @@ async function login() {
       awaitingTwoFa = true;
       twoFaEmail = data.email;
       twoFaWorkspaceId = data.workspace_id;
+      twoFaPreAuthToken = data.pre_auth_token;
       document.getElementById('twofa-field').style.display = 'block';
       document.getElementById('email').disabled = true;
       document.getElementById('password').disabled = true;
@@ -208,7 +210,7 @@ async function verifyTwoFaCode() {
     const response = await fetch('https://api.alasdia.com/auth/2fa/verify-login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: twoFaEmail, code })
+      body: JSON.stringify({ email: twoFaEmail, code, pre_auth_token: twoFaPreAuthToken })
     });
     const data = await response.json();
     if (!response.ok) {

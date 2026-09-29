@@ -20,6 +20,7 @@ if not SECRET_KEY:
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
+PRE_AUTH_TOKEN_EXPIRE_MINUTES = 5
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -69,6 +70,32 @@ def decode_token(token: str):
             algorithms=[ALGORITHM]
         )
         if payload.get("type") != "access":
+            return None
+        return payload
+    except JWTError:
+        return None
+
+# =========================
+# 🔐 PRE-AUTH TOKEN (étape 1 -> étape 2 du login 2FA)
+# =========================
+
+def create_2fa_pending_token(email: str) -> str:
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(minutes=PRE_AUTH_TOKEN_EXPIRE_MINUTES)
+    payload = {
+        "sub": email,
+        "iat": now,
+        "exp": expire,
+        "jti": str(uuid4()),
+        "type": "2fa_pending",
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def decode_2fa_pending_token(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != "2fa_pending":
             return None
         return payload
     except JWTError:
