@@ -1,63 +1,46 @@
+import { getSkeleton } from "./skeletons.js";
+
 // Router maison — history.pushState/popstate, sans dépendance externe.
 // Chaque route associe un pattern de path (params :nommés) à une fonction
 // mountView(container, params) qui doit retourner { unmount() } (ou rien).
 // Le router se charge d'appeler unmount() de la vue précédente avant de
 // monter la suivante, et gère les routes protégées (redirection login).
 
-// Loader commun aux 7 vues. Chaque vue écrit elle-même son HTML final dans
-// #main-content dès que son CSS est chargé (voir core/styleLoader.js) — un
-// loader inséré DANS #main-content serait donc écrasé par cette même
-// écriture avant la fin de la durée minimale voulue. Il est donc rendu à
-// part, en position:fixed, calé en JS sur le rect réel de #main-content
-// (jamais sur la sidebar, quel que soit le breakpoint), et retiré seulement
-// une fois la vue montée ET la durée minimale écoulée.
-const LOADER_OVERLAY_ID = "spa-nav-loader-overlay";
-const LOADER_OVERLAY_HTML = `
-<div class="spinner-border" role="status" style="width:1.5rem;height:1.5rem;border-width:.2em;color:#facc15;">
-  <span class="visually-hidden">Chargement...</span>
-</div>
-`;
+// Skeleton de navigation commun aux 7 vues (structure propre à chaque vue :
+// core/skeletons.js, styles : skeleton.css chargé en permanence par le
+// shell). Chaque vue écrit elle-même son HTML final dans #main-content dès
+// que son CSS est chargé (voir core/styleLoader.js) — un skeleton inséré
+// DANS #main-content serait donc écrasé par cette même écriture avant la fin
+// de la durée minimale voulue. Il est donc rendu à part, en position:fixed,
+// calé en JS sur le rect réel de #main-content (jamais sur la sidebar, quel
+// que soit le breakpoint), puis entièrement supprimé du DOM une fois la vue
+// montée ET la durée minimale écoulée.
+const SKELETON_OVERLAY_ID = "spa-nav-loader-overlay";
 
-// Durée minimale d'affichage du loader pour éviter un flash instantané.
-const MIN_LOADER_MS = 2000;
+// Durée minimale d'affichage du skeleton pour éviter un flash instantané.
+const MIN_SKELETON_MS = 1800;
 // Garde-fou global : si mountView() reste bloqué (au-delà du timeout déjà
 // géré par setViewStyles côté CSS), on ne bloque jamais indéfiniment le
-// router — la vue précédente ou le loader restent affichés au pire.
+// router — la vue précédente ou le skeleton restent affichés au pire.
 const MOUNT_SAFETY_TIMEOUT_MS = 8000;
-
-function getLoaderOverlay() {
-  let overlay = document.getElementById(LOADER_OVERLAY_ID);
-  if (!overlay) {
-    overlay = document.createElement("div");
-    overlay.id = LOADER_OVERLAY_ID;
-    overlay.style.position = "fixed";
-    overlay.style.bottom = "0";
-    overlay.style.display = "flex";
-    overlay.style.alignItems = "center";
-    overlay.style.justifyContent = "center";
-    overlay.style.background = "#ffffff";
-    overlay.style.zIndex = "400";
-    overlay.innerHTML = LOADER_OVERLAY_HTML;
-    document.body.appendChild(overlay);
-  }
-  return overlay;
-}
 
 // Calé sur le rect réel de #main-content (jamais un left/width figé) afin
 // de ne jamais recouvrir la sidebar, y compris sous le breakpoint mobile où
 // #main-content perd son margin-left.
-function showLoaderOverlay(container) {
-  const overlay = getLoaderOverlay();
+function showSkeleton(container, routeName) {
+  removeSkeleton();
+  const overlay = document.createElement("div");
+  overlay.id = SKELETON_OVERLAY_ID;
   const rect = container.getBoundingClientRect();
   overlay.style.top = `${rect.top}px`;
   overlay.style.left = `${rect.left}px`;
   overlay.style.width = `${rect.width}px`;
-  overlay.style.display = "flex";
+  overlay.innerHTML = getSkeleton(routeName);
+  document.body.appendChild(overlay);
 }
 
-function hideLoaderOverlay() {
-  const overlay = document.getElementById(LOADER_OVERLAY_ID);
-  if (overlay) overlay.style.display = "none";
+function removeSkeleton() {
+  document.getElementById(SKELETON_OVERLAY_ID)?.remove();
 }
 
 const routes = [];
@@ -135,23 +118,23 @@ async function render(pathname) {
 
   const myToken = ++navToken;
   const container = document.getElementById("main-content");
-  showLoaderOverlay(container);
-  const loaderStart = Date.now();
+  showSkeleton(container, route.name);
+  const skeletonStart = Date.now();
 
   const mountPromise = Promise.resolve(route.mountView(container, params));
   const safetyTimeout = new Promise((resolve) => setTimeout(resolve, MOUNT_SAFETY_TIMEOUT_MS));
   const result = await Promise.race([mountPromise, safetyTimeout]);
 
-  const elapsed = Date.now() - loaderStart;
-  if (elapsed < MIN_LOADER_MS) {
-    await new Promise((resolve) => setTimeout(resolve, MIN_LOADER_MS - elapsed));
+  const elapsed = Date.now() - skeletonStart;
+  if (elapsed < MIN_SKELETON_MS) {
+    await new Promise((resolve) => setTimeout(resolve, MIN_SKELETON_MS - elapsed));
   }
 
   // Navigation dépassée par une navigation plus récente pendant l'attente :
-  // ne pas masquer son overlay ni écraser son currentUnmount avec le nôtre.
+  // ne pas retirer son skeleton ni écraser son currentUnmount avec le nôtre.
   if (myToken !== navToken) return;
 
-  hideLoaderOverlay();
+  removeSkeleton();
   if (result && typeof result.unmount === "function") {
     currentUnmount = result.unmount;
   }

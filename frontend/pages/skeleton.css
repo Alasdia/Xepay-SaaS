@@ -1,0 +1,115 @@
+/* Skeleton de navigation SPA — injecté par spa/core/router.js dans un
+   overlay rendu hors de #main-content (voir le commentaire du router), puis
+   entièrement supprimé quand la vue réelle est prête.
+
+   Chargé en permanence par dashboard.html, jamais permuté : le skeleton doit
+   être stylé AVANT que le CSS propre à la vue soit chargé par
+   spa/core/styleLoader.js. Ne cible que ses propres classes .sk-* et son
+   overlay — aucune interaction avec la sidebar, les modales Upgrade ou les
+   cartes de verrouillage "Passer au Pro". */
+
+:root {
+  --sk-base: #edeff2;
+  --sk-highlight: #f8f9fb;
+  --sk-border: #e9ebef;
+}
+
+/* Overlay calé en JS (top/left/width) sur le rect réel de #main-content :
+   il ne recouvre donc jamais la sidebar. Le padding reprend celui partagé de
+   #main-content pour que le skeleton tombe à l'aplomb du contenu réel. */
+#spa-nav-loader-overlay {
+  position: fixed;
+  bottom: 0;
+  z-index: 400;
+  background: #ffffff;
+  padding: 28px 40px;
+  overflow: hidden;
+}
+
+/* Lumière qui balaie horizontalement le placeholder. */
+.sk-shimmer {
+  background-color: var(--sk-base);
+  background-image: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, var(--sk-highlight) 50%, rgba(255, 255, 255, 0) 100%);
+  background-repeat: no-repeat;
+  background-size: 65% 100%;
+  border-radius: 8px;
+  animation: sk-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes sk-shimmer {
+  0% { background-position: -80% 0; }
+  100% { background-position: 180% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-shimmer { animation: none; }
+}
+
+/* Primitives */
+.sk-line { height: 12px; }
+.sk-line + .sk-line { margin-top: 10px; }
+.sk-line.lg { height: 24px; border-radius: 6px; }
+.sk-line.sm { height: 9px; }
+.sk-btn { height: 38px; width: 132px; border-radius: 10px; }
+.sk-btn.sm { height: 32px; width: 96px; }
+.sk-badge { height: 24px; width: 84px; border-radius: 999px; }
+.sk-circle { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; }
+.sk-chart { height: 220px; border-radius: 12px; }
+.sk-input { height: 42px; border-radius: 10px; }
+
+.sk-w-15 { width: 15%; }
+.sk-w-25 { width: 25%; }
+.sk-w-35 { width: 35%; }
+.sk-w-50 { width: 50%; }
+.sk-w-60 { width: 60%; }
+.sk-w-75 { width: 75%; }
+.sk-w-90 { width: 90%; }
+.sk-w-100 { width: 100%; }
+
+/* Conteneurs */
+.sk-card {
+  background: #ffffff;
+  border: 1px solid var(--sk-border);
+  border-radius: 16px;
+  padding: 20px;
+}
+.sk-card + .sk-card { margin-top: 16px; }
+
+.sk-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+.sk-head-actions { display: flex; gap: 10px; flex-shrink: 0; }
+
+.sk-row { display: grid; gap: 16px; margin-bottom: 16px; }
+.sk-row.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sk-row.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.sk-row.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+.sk-stack { display: flex; flex-direction: column; gap: 16px; }
+.sk-inline { display: flex; align-items: center; gap: 12px; }
+.sk-between { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.sk-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Lignes de tableau */
+.sk-tr {
+  display: grid;
+  grid-template-columns: 2.2fr 1fr 1fr 1fr 0.8fr;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--sk-border);
+}
+.sk-tr:last-child { border-bottom: none; }
+
+@media (max-width: 960px) {
+  #spa-nav-loader-overlay { padding: 20px; }
+  .sk-row.cols-2,
+  .sk-row.cols-3,
+  .sk-row.cols-4 { grid-template-columns: minmax(0, 1fr); }
+  .sk-tr { grid-template-columns: 2fr 1fr 1fr; }
+  .sk-tr > :nth-child(n + 4) { display: none; }
+}
