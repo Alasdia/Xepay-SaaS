@@ -334,6 +334,7 @@ export async function mount(container) {
 
   return {
     unmount() {
+      document.body.classList.remove("locked-page");
       scrollBox.removeEventListener("scroll", onScroll);
       delete window.genererLien;
       delete window.supprimer;

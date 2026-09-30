@@ -24,8 +24,10 @@
 /* Portée à #main-content (au lieu d'un reset universel *) : ce reset ne
    doit affecter que le contenu propre à cette vue, pas les éléments
    partagés vivant ailleurs dans le document (sidebar, modale upgrade,
-   toasts). */
-#main-content, #main-content * { box-sizing: border-box; margin: 0; padding: 0; }
+   toasts). :where() garde la portée mais annule la spécificité de l'ID,
+   sinon la règle bat les classes .row/.col-* de Bootstrap et écrase leurs
+   gouttières (cause de la dégradation de layout observée). */
+:where(#main-content, #main-content *) { box-sizing: border-box; margin: 0; padding: 0; }
 body {font-family: var(--font-d); background: #ffffff; color: #111827; margin: 0; min-height: 100vh; overflow-x: hidden; transform: none !important; color: var(--text); min-height: 100vh; display: flex; font-size: 16px; }
 .header p,
 .user-email,
@@ -49,8 +51,12 @@ th{ color:#6b7280; }
    Dans la SPA, le contenu de cette vue est injecté directement dans
    #main-content (le conteneur partagé unique) — cibler encore <main> ici
    cumulait deux fois margin-left:260px (une fois via #main-content hérité
-   de sidebar.css, une fois via cette règle), d'où le décalage constaté. */
-#main-content { flex: 1; padding: 36px 44px; max-width: 100%; }
+   de sidebar.css, une fois via cette règle), d'où le décalage constaté.
+   flex:1/max-width:100% sont retirés : ils entraient en conflit avec le
+   width:calc(100% - 260px) partagé de sidebar.css (deux mécanismes de
+   dimensionnement sur le même élément) — seul le padding propre à cette
+   vue est conservé, la marge/largeur venant uniquement du style partagé. */
+#main-content { padding: 36px 44px; }
 .header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px; flex-wrap: wrap; gap: 16px;}
 .header-title { display: flex; align-items: center; gap: 14px; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;}
 .header-title .tag { font-size: 11px; padding: 4px 10px; background: var(--accent-pink); border-radius: 6px; letter-spacing: 1px; font-weight: 700;}

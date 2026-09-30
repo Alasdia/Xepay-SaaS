@@ -6,3 +6,10 @@
 #modalUpgrade { z-index: 999999 !important; }
 #modalUpgrade .modal-dialog { max-width: 1300px; width: 95%; margin: 1rem auto; }
 #modalUpgrade .modal-content { max-height: 90vh; overflow-y: auto; overflow-x: hidden; }
+
+/* Backdrop partagé Bootstrap (une seule instance ajoutée à document.body
+   quel que soit la vue) : centralisé ici pour que le flou du contenu
+   derrière la modale soit identique sur les 7 vues, sans dépendre d'une
+   règle dupliquée dans le CSS de chaque vue. Le modal lui-même (au-dessus
+   du backdrop, z-index 999999) n'est jamais concerné par ce flou. */
+.modal-backdrop { background: rgba(0,0,0,0.6) !important; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }

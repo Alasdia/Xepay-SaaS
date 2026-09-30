@@ -603,6 +603,7 @@ export async function mount(container) {
 
   return {
     unmount() {
+      document.body.classList.remove("locked-page");
       document.removeEventListener("shown.bs.modal", onShownUpgrade);
       delete window.copyCode;
       delete window.toggleSecret;

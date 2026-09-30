@@ -148,7 +148,6 @@ table{ color:#374151 !important; }
 .plan-disabled::after { content: "Plan actuel"; position: absolute; inset: 0; display: flex;align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: white; background: rgba(0,0,0,0.25); backdrop-filter: blur(2px); }
 .section-eyebrow { color: var(--cyan); font-size: 12px; letter-spacing: .25em; text-transform: uppercase; font-weight: 700; margin-bottom: 18px; }
 .locked-page #main-content {filter: blur(8px); pointer-events: none; user-select: none; opacity: 0.6; }
-.modal-backdrop { background: rgba(0,0,0,0.6) !important; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 #workspaceSwitcher{ min-width:240px; height:46px; background:#fffbea; border:1px solid #fde68a; border-radius:12px; padding:0 14px; color:#374151; font-weight:600; cursor:pointer; box-shadow: 0 2px 6px rgba(0,0,0,.04); }
 .plan-card { opacity: 1 !important; }
 @media (max-width: 992px) { #modalUpgrade .modal-dialog { width: 100%; margin: 0; max-width: 100%; } #modalUpgrade .modal-body { padding: 20px; } .plans-section { padding: 0 15px 40px; } .plans-grid { grid-template-columns: 1fr; gap: 20px; } }

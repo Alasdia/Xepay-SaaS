@@ -9,12 +9,21 @@
 // par le HTML réel de la vue seulement une fois son CSS chargé (voir
 // core/styleLoader.js) — le contenu non stylé n'est ainsi jamais visible.
 const LOADER_HTML = `
-<div class="spa-route-loader" style="display:flex;align-items:center;justify-content:center;min-height:60vh;">
-  <div class="spinner-border" role="status" style="width:3rem;height:3rem;color:#facc15;">
+<div class="spa-route-loader" style="display:flex;align-items:center;justify-content:center;min-height:50vh;">
+  <div class="spinner-border" role="status" style="width:2rem;height:2rem;color:#facc15;">
     <span class="visually-hidden">Chargement...</span>
   </div>
 </div>
 `;
+
+// Durée minimale d'affichage du loader pour éviter un flash instantané
+// (garantit aussi que la plupart des appels de données déclenchés en
+// fire-and-forget au sein de mount() ont eu le temps de résoudre).
+const MIN_LOADER_MS = 1000;
+// Garde-fou global : si mountView() reste bloqué (au-delà du timeout déjà
+// géré par setViewStyles côté CSS), on ne bloque jamais indéfiniment le
+// router — la vue précédente ou le loader restent affichés au pire.
+const MOUNT_SAFETY_TIMEOUT_MS = 8000;
 
 const routes = [];
 let currentUnmount = null;
@@ -90,7 +99,17 @@ async function render(pathname) {
 
   const container = document.getElementById("main-content");
   container.innerHTML = LOADER_HTML;
-  const result = await route.mountView(container, params);
+  const loaderStart = Date.now();
+
+  const mountPromise = Promise.resolve(route.mountView(container, params));
+  const safetyTimeout = new Promise((resolve) => setTimeout(resolve, MOUNT_SAFETY_TIMEOUT_MS));
+  const result = await Promise.race([mountPromise, safetyTimeout]);
+
+  const elapsed = Date.now() - loaderStart;
+  if (elapsed < MIN_LOADER_MS) {
+    await new Promise((resolve) => setTimeout(resolve, MIN_LOADER_MS - elapsed));
+  }
+
   if (result && typeof result.unmount === "function") {
     currentUnmount = result.unmount;
   }
