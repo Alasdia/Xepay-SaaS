@@ -1,235 +1,39 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>dashboard - Xepay</title>
-<link
-rel="stylesheet"
-href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+<title>Dashboard - Xepay</title>
+<!-- Shell SPA : ce fichier est le point de montage unique du Dashboard.
+     Le contenu spécifique à chaque vue (Dashboard, Transactions, Liens,
+     API, Multi-users, Profil, Sécurité) est injecté dynamiquement par
+     spa/app.js dans #main-content — voir spa/views/*.js. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500;600&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="sidebar.css">
 <link rel="stylesheet" href="modal-upgrade.css">
-<link rel="stylesheet" href="dashboard.css">
 </head>
-<body class="d-flex" style="margin: 0; padding: 0;" data-page="dashboard">
+<body class="d-flex" style="margin: 0; padding: 0;">
+<!-- Le positionnement de #main-content (margin-left/padding) est fourni par
+     le CSS propre à chaque vue (dashboard.css, transactions.css, liens.css,
+     API.css, sécurité.css définissent tous #main-content{margin-left:260px}),
+     chargé dynamiquement par spa/core/styleLoader.js. Exception : profil.css
+     ne le définit pas (l'ancienne page s'appuyait sur un style inline) —
+     spa/views/profil.js applique l'équivalent en JS au montage. -->
 <div id="sidebar-container"></div>
-<!-- Contenu principal décalé -->
-<div style="margin-left: 260px; padding: 28px 40px;" id="main-content" class="w-100">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h4 class="fw-bold mb-1 text-muted" id="welcomeText">Bienvenu</h4>
-            <small class="text-muted d-block">
-                Plan <span id="plan-label" class="text-success fw-bold">Free</span> 10 paiements par mois
-            </small>
-
-            <small class="text-muted d-block mt-1">
-                Commencez à recevoir vos paiements facilement.
-                Passez au plan Pro pour plus de volume et de fonctionnalités.
-            </small>
-        </div>
-        
-        <div id="export-actions" style="display: flex; align-items: center; gap: 16px; flex-shrink: 0;">
-          <select id="workspaceSwitcher" style="margin-right: 16px;"></select>
-          <button class="btn btn-warning fw-bold px-4 upgrade-btn" style="white-space: nowrap;">
-            ⚡ Passer au Pro
-          </button>
-        </div>
-    </div>
-
-    <!-- Bannière upgrade -->
-    <div class="p-3 mb-4 d-flex justify-content-between align-items-center"
-        style="background:rgba(245,158,11,0.15);
-            border:1px solid rgba(245,158,11,0.3);
-            border-radius:12px;">
-        <span>🚀 <strong>10/10 Paiements </strong> réussi — Passez au Pro pour ne plus être limité.</span>
-        <button class="btn btn-warning btn-sm fw-bold ms-3 upgrade-btn">
-            Upgrader →
-        </button>
-    </div>
-
-    <!-- KPI rapides -->
-    <!-- FINANCE -->
-    <div class="row g-3 mb-3">
-        <!-- Solde disponible -->
-        <div class="col-md-4">
-          <div class="wallet-hover-wrapper position-relative">
-
-            <div class="card-epay p-3">
-              <div class="d-flex justify-content-between align-items-start">
-                <div>
-                  <small class="text-muted"> Total Solde</small>
-                  <h4 id="wallet-balance" class="fw-bold mt-1 text-dark text-muted">0 XOF</h4>
-                </div>
-
-                <button 
-                    id="withdrawBtn"
-                    class="btn btn-outline-light"
-                >
-                  Retirer
-                </button>
-              </div>
-              <small class="text-muted d-block mt-1">Disponible maintenant</small>
-            </div>
-          </div>
-        </div>
-
-        <!-- Montant verrouillé -->
-        <div class="col-md-4">
-          <div class="card-epay p-3">
-            <small class="text-muted">Montant verrouillé</small>
-            <h4 id="locked-amount" class="fw-bold mt-1 text-dark tex text-muted">0 XOF</h4>
-            <small id="nextAvailableText" class="text-muted d-block mt-1"></small>
-          </div>
-        </div>
-
-        <!-- Total reçu -->
-        <div class="col-md-4">
-            <div class="card-epay p-3">
-                <small class="text-muted">Total reçu</small>
-                <h4 id="total-xof" class="fw-bold mt-1 text-muted">0 XOF</h4>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Barre progression plan -->
-    <div class="card-epay p-3 mb-4">
-        <div class="d-flex justify-content-between mb-2">
-            <span>Transactions ce mois</span>
-            <span id="plan-usage" class="fw-bold">0 / 0</span>
-        </div>
-        <div class="progress" style="height:8px;">
-            <div class="progress-bar bg-warning progress-bar-custom" style="width:30%"></div>
-        </div>
-        <small class="text-muted mt-2 d-block">
-            Plan Free — <a href="#" class="text-warning" onclick="showUpgradeModal()">Upgrader</a>
-        </small>
-    </div>
-
-    <div class="card-epay p-4 mt-4 text-center">
-
-        <h5 class="mb-3">Créer un paiement</h5>
-
-        <p class="text-muted mb-3">
-            Générez un lien et recevez de l’argent instantanément
-        </p>
-
-        <button class="btn-create-link w-100"
-            data-bs-toggle="modal"
-            data-bs-target="#createLinkModal">
-               🚀 Recevoir un paiement
-        </button>
-
-    </div>
-
-    <div id="links-container" class="mt-4" style="width:100%; padding: 0 20px;"></div>
-    <p class="text-muted mb-2">
-        Recevez de l'argent en USD, EUR et converti automatiquement en XOF
-    </p>
-
-    <div class="card-epay p-5 text-center mt-4">
-        <div style="font-size:3rem;">🚀</div>
-        <h4 class="fw-bold mt-3 text-muted">Débloquez plus de fonctionnalités</h4>
-        <p class="text-muted mb-4">
-            Passez au plan Pro pour accéder aux graphiques avancés,
-            aux exports CSV/PDF et à plus de transactions.
-        </p>
-        <button class="btn btn-warning px-4 fw-bold" onclick="showUpgradeModal()">
-            Voir les offres
-        </button>
-    </div>
-</div>
-
-<div class="modal fade" id="createLinkModal" tabindex="-1">
-  <div class="modal-dialog modal-xl">
-    <div class="modal-content">
-
-      <div class="modal-header">
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-
-      <div class="modal-body p-4">
-
-        <h5 class="mb-4 text-muted">Créer un lien de paiement</h5>
-
-        <!-- Nom du lien -->
-        <div class="mb-3">
-          <label class="form-label text-light">Nom du lien</label>
-          <input class="form-control" placeholder="Ex: Prestation Design">
-        </div>
-
-        <!-- Montant -->
-        <div class="mb-4">
-          <label class="form-label text-light">
-             Montant <span class="text-secondary">(obligatoire)</span>
-           </label>
-
-           <div class="d-flex gap-2">
-             <input id="amount" type="number" class="form-control" placeholder="0.00">
-
-              <select id="currency" class="form-select" style="max-width: 110px;">
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-              </select>
-           </div>
-        </div>
-      </div>
-
-      <div class="modal-footer border-0 d-flex justify-content-end gap-2 px-4 pb-4">
-
-        <button class="btn btn-secondary" data-bs-dismiss="modal">
-          Annuler
-        </button>
-
-        <button id="createBtn" class="btn btn-warning fw-bold">
-          🚀 Créer
-        </button>
-
-       </div>
-
-    </div>
-  </div>
-</div>
-<div class="modal fade" id="withdrawModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content bg-dark text-muted">
-      <!-- HEADER -->
-      <div class="modal-header border-0">
-        <h5 class="modal-title">Retirer de l'argent</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <!-- BODY -->
-      <div class="modal-body">
-        <div class="mb-3">
-          <label class="form-label">Montant</label>
-          <input type="number" id="withdrawAmount" class="form-control" placeholder="Ex: 5000">
-        </div>
-      </div>
-      <!-- FOOTER -->
-      <div class="modal-footer border-0">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-        <button id="confirmWithdrawBtn" class="btn btn-success" onclick="submitWithdraw()">Confirmer</button>
-      </div>
-    </div>
-  </div>
-</div>
-<div id="toast" class="custom-toast">
-  ✅ Retrait envoyé
-</div>
+<div id="main-content"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="sidebar.js" defer></script>
-<script src="modal-upgrade.js" defer></script>
-<script id="upgrade-handler"></script>
-<script src="dashboard.js" defer></script>
+<script src="https://connect-js.stripe.com/v1.0/connect.js"></script>
 <div id="toast-container" class="toast-notif"></div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script type="module" src="/spa/app.js"></script>
 </body>
 </html>
