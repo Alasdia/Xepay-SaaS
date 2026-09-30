@@ -86,7 +86,10 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
 .table tbody td { padding: 14px 18px; vertical-align: middle; border-color: rgba(255,255,255,0.05); background: transparent !important; font-size: 14px; }
 .amount-cell { font-weight: 700; color: #111827; font-size: 0.95rem; }
 .amount-currency { color: #6b7280; font-size: 12px; font-weight: 500; margin-left: 4px; }
-.locked-page #main-content { filter: blur(8px); pointer-events: none; user-select: none; opacity: 0.6; }
+/* Flou porté par le wrapper de contenu (#transactions-normal-view), pas
+   par #main-content : #transactions-lock est un frère placé AVANT ce
+   wrapper dans le DOM, donc il reste net et cliquable au-dessus du flou. */
+.locked-page #transactions-normal-view { filter: blur(8px); pointer-events: none; user-select: none; opacity: 0.6; }
 .avatar { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; color: #0b1138; flex-shrink: 0; }
 .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; text-transform: capitalize; letter-spacing: 0.3px; }
 .status-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }

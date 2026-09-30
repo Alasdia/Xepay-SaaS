@@ -11,6 +11,7 @@ const TEMPLATE = `
     <button class="btn btn-warning fw-bold" onclick="upgrade('pro')">⚡ Passer au Pro</button>
   </div>
 </div>
+<div id="api-content">
 <div class="mb-4">
   <h1 style="font-size:24px;font-weight:700;"><i class="fa-solid fa-code"></i> API Access <span class="badge pro">PRO</span></h1>
   <p class="muted" style="font-size:14px;margin-top:6px;">Gérez vos clés API et configurez vos webhooks pour intégrer Xepay dans vos applications.</p>
@@ -187,6 +188,7 @@ const TEMPLATE = `
   </table>
   <h3 style="margin-top:28px;"><i class="fa-solid fa-flask"></i> Test rapide</h3>
   <p style="opacity:0.8;">Utilisez <strong>webhook.site</strong> pour tester et inspecter les requêtes webhook.</p>
+</div>
 </div>
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
   <div class="modal-box">

@@ -28,7 +28,12 @@ body {font-family: var(--font-d); background: #ffffff !important; color: #111827
 .lien-infos small { display: block; opacity: 0.75; line-height: 1.2; font-size: 13px;}
 .lien-status { flex-shrink: 0; white-space: nowrap; font-weight: bold;}
 .montant { display: block; margin-top: 8px; font-size: 20px; font-weight: bold; color: #374151; line-height: 1.2; }
-.locked-page #main-content { filter: blur(8px); pointer-events: none; user-select: none; opacity: .5; position: relative; margin-left: 260px; padding: 28px; }
+/* Flou porté par le wrapper de contenu (#main-content-inner), pas par
+   #main-content lui-même : #links-lock est un frère placé AVANT ce wrapper
+   dans le DOM, donc il reste net et cliquable au-dessus du flou. Cibler
+   #main-content floutait aussi #links-lock (descendant + filter crée un
+   nouveau containing block pour son position:fixed). */
+.locked-page #main-content-inner { filter: blur(8px); pointer-events: none; user-select: none; opacity: 0.6; }
 #links-lock{ position: fixed; inset: 0; z-index: 999; display:flex; align-items:center; justify-content:center; top: 0; }
 .lock-card{ width:340px; background:#ffffff; border:1px solid #e5e7eb; border-radius:14px; padding:28px 24px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.12); margin:auto; position:static; transform:none; }
 .lock-icon{ width:70px; height:70px; border-radius:50%; background:#fff6d6; color:#f0b429; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:16px; }
@@ -41,7 +46,6 @@ body {font-family: var(--font-d); background: #ffffff !important; color: #111827
 .btn-copy-inactif { background: rgba(255, 0, 0, 0.15); opacity: 0.4; cursor: not-allowed;}
 .lien-status.actif { color: #00ff88 !important; text-shadow: 0 0 8px rgba(0, 255, 136, 0.07);}
 .lien-url.actif { color: #00ff88 !important; background: rgba(0, 255, 136, 0.05) !important; border: 1px solid rgba(0, 255, 136, 0.04);}
-.locked-page #main-content { filter: blur(8px); pointer-events: none; user-select: none; opacity: 0.6; }
 .btn-copy-actif { background: rgba(0, 255, 136, 0.15); color: #00ff88; border: 1px solid #00ff88;}
 .btn-delete-actif { background: rgba(255, 0, 0, 0.15); color: white; border: 1px solid #ff4d4d;}
 .status-paid { color: #00ff88;}

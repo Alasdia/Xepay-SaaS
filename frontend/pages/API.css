@@ -172,7 +172,10 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
 .plan-disabled { filter: blur(3px) brightness(0.55); opacity: 0.6; pointer-events: none; position: relative; user-select: none; }
 .plan-disabled::after { content: "Plan actuel"; position: absolute; inset: 0; display: flex;align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: white; background: rgba(0,0,0,0.25); backdrop-filter: blur(2px); }
 .section-eyebrow { color: var(--cyan); font-size: 12px; letter-spacing: .25em; text-transform: uppercase; font-weight: 700; margin-bottom: 18px; }
-.locked-page #main-content {filter: blur(8px); pointer-events: none; user-select: none; opacity: 0.6; }
+/* Flou porté par le wrapper de contenu (#api-content), pas par
+   #main-content : #featureLock est un frère placé AVANT ce wrapper dans
+   le DOM, donc il reste net et cliquable au-dessus du flou. */
+.locked-page #api-content {filter: blur(8px); pointer-events: none; user-select: none; opacity: 0.6; }
 .secret-modal { position: fixed; inset: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 999999; padding: 20px;}
 .secret-modal.hidden { display: none !important;}
 .secret-modal-content { background: #1e1e2f; color: #ffffff; padding: 25px; border-radius: 12px; width: 400px; max-width: 100%; text-align: center; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);}

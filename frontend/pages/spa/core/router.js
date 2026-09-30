@@ -4,29 +4,65 @@
 // Le router se charge d'appeler unmount() de la vue précédente avant de
 // monter la suivante, et gère les routes protégées (redirection login).
 
-// Loader commun aux 7 vues, affiché immédiatement dans #main-content dès
-// qu'une navigation démarre (la sidebar n'est jamais touchée) et remplacé
-// par le HTML réel de la vue seulement une fois son CSS chargé (voir
-// core/styleLoader.js) — le contenu non stylé n'est ainsi jamais visible.
-const LOADER_HTML = `
-<div class="spa-route-loader" style="display:flex;align-items:center;justify-content:center;min-height:50vh;">
-  <div class="spinner-border" role="status" style="width:2rem;height:2rem;color:#facc15;">
-    <span class="visually-hidden">Chargement...</span>
-  </div>
+// Loader commun aux 7 vues. Chaque vue écrit elle-même son HTML final dans
+// #main-content dès que son CSS est chargé (voir core/styleLoader.js) — un
+// loader inséré DANS #main-content serait donc écrasé par cette même
+// écriture avant la fin de la durée minimale voulue. Il est donc rendu à
+// part, en position:fixed, calé en JS sur le rect réel de #main-content
+// (jamais sur la sidebar, quel que soit le breakpoint), et retiré seulement
+// une fois la vue montée ET la durée minimale écoulée.
+const LOADER_OVERLAY_ID = "spa-nav-loader-overlay";
+const LOADER_OVERLAY_HTML = `
+<div class="spinner-border" role="status" style="width:1.5rem;height:1.5rem;border-width:.2em;color:#facc15;">
+  <span class="visually-hidden">Chargement...</span>
 </div>
 `;
 
-// Durée minimale d'affichage du loader pour éviter un flash instantané
-// (garantit aussi que la plupart des appels de données déclenchés en
-// fire-and-forget au sein de mount() ont eu le temps de résoudre).
-const MIN_LOADER_MS = 1000;
+// Durée minimale d'affichage du loader pour éviter un flash instantané.
+const MIN_LOADER_MS = 2000;
 // Garde-fou global : si mountView() reste bloqué (au-delà du timeout déjà
 // géré par setViewStyles côté CSS), on ne bloque jamais indéfiniment le
 // router — la vue précédente ou le loader restent affichés au pire.
 const MOUNT_SAFETY_TIMEOUT_MS = 8000;
 
+function getLoaderOverlay() {
+  let overlay = document.getElementById(LOADER_OVERLAY_ID);
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = LOADER_OVERLAY_ID;
+    overlay.style.position = "fixed";
+    overlay.style.bottom = "0";
+    overlay.style.display = "flex";
+    overlay.style.alignItems = "center";
+    overlay.style.justifyContent = "center";
+    overlay.style.background = "#ffffff";
+    overlay.style.zIndex = "400";
+    overlay.innerHTML = LOADER_OVERLAY_HTML;
+    document.body.appendChild(overlay);
+  }
+  return overlay;
+}
+
+// Calé sur le rect réel de #main-content (jamais un left/width figé) afin
+// de ne jamais recouvrir la sidebar, y compris sous le breakpoint mobile où
+// #main-content perd son margin-left.
+function showLoaderOverlay(container) {
+  const overlay = getLoaderOverlay();
+  const rect = container.getBoundingClientRect();
+  overlay.style.top = `${rect.top}px`;
+  overlay.style.left = `${rect.left}px`;
+  overlay.style.width = `${rect.width}px`;
+  overlay.style.display = "flex";
+}
+
+function hideLoaderOverlay() {
+  const overlay = document.getElementById(LOADER_OVERLAY_ID);
+  if (overlay) overlay.style.display = "none";
+}
+
 const routes = [];
 let currentUnmount = null;
+let navToken = 0;
 let isAuthenticated = () => true;
 let onUnauthorized = () => {
   window.location.href = "/login.html";
@@ -97,8 +133,9 @@ async function render(pathname) {
 
   onRouteChange(route.name, params);
 
+  const myToken = ++navToken;
   const container = document.getElementById("main-content");
-  container.innerHTML = LOADER_HTML;
+  showLoaderOverlay(container);
   const loaderStart = Date.now();
 
   const mountPromise = Promise.resolve(route.mountView(container, params));
@@ -110,6 +147,11 @@ async function render(pathname) {
     await new Promise((resolve) => setTimeout(resolve, MIN_LOADER_MS - elapsed));
   }
 
+  // Navigation dépassée par une navigation plus récente pendant l'attente :
+  // ne pas masquer son overlay ni écraser son currentUnmount avec le nôtre.
+  if (myToken !== navToken) return;
+
+  hideLoaderOverlay();
   if (result && typeof result.unmount === "function") {
     currentUnmount = result.unmount;
   }
