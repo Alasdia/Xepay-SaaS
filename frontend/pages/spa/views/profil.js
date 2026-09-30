@@ -154,8 +154,8 @@ const TEMPLATE = `
 const STRIPE_PUBLISHABLE_KEY =
   "pk_test_51TJYk921oAuf4OUmVuqkub7cs2OUkWGpYlS4IgpfZrF7p6lY4v1YxRirVv1QSZD8Qof4JU78mmLgexh5wINo0vlo00c7HTwz5x";
 
-export function mount(container) {
-  setViewStyles(["responsive.css", "profil.css"]);
+export async function mount(container) {
+  await setViewStyles(["responsive.css", "profil.css"]);
   container.innerHTML = TEMPLATE;
 
   const boundListeners = [];

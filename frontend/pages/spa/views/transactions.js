@@ -152,8 +152,8 @@ const TEMPLATE = `
 </div>
 `;
 
-export function mount(container) {
-  setViewStyles(["transactions.css"]);
+export async function mount(container) {
+  await setViewStyles(["transactions.css"]);
   container.innerHTML = TEMPLATE;
 
   let transactions = [];

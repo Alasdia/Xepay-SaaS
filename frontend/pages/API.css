@@ -20,7 +20,11 @@
   --font-b: "DM Sans", sans-serif;
   --white: #ffffff;
 }
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* Portée à #main-content (au lieu d'un reset universel *) : ce reset ne
+   doit affecter que le contenu propre à cette vue, pas les éléments
+   partagés vivant ailleurs dans le document (sidebar, modale upgrade,
+   toasts) — c'est cette fuite qui rendait #modalUpgrade différent sur /api. */
+#main-content, #main-content * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: #ffffff; color: #6b7280; font-family: "DM Sans", sans-serif; min-height: 100vh; overflow-x: hidden; }
 #main-content { height: auto !important; min-height: auto !important; display: block; margin-left: 260px; padding: 28px 40px; width: calc(100% - 260px); position: relative; z-index: 1; }
 .warning-icon{ font-size:10px; margin-right:5px; color:#facc15; opacity:.65; }
@@ -159,19 +163,14 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
 .cta-primary:hover{box-shadow:0 14px 44px rgba(0,229,255,.4);transform:translateY(-2px)}
 .cta-gold{background:rgba(240,180,41,.1);border:1px solid rgba(240,180,41,.28);color:var(--gold)}
 .cta-gold:hover{background:rgba(240,180,41,.18);transform:translateY(-2px)}
-#modalUpgrade .modal-dialog { max-width: 1300px; width: 95%; }
-#modalUpgrade .modal-content { background: radial-gradient(circle at top, rgba(0,229,255,.08), transparent 35%), linear-gradient(180deg, #020408 0%, #06090f 100%); color: white; border: 1px solid rgba(255,255,255,.08); border-radius: 24px; overflow: hidden; box-shadow: 0 0 60px rgba(0,0,0,.7), 0 0 30px rgba(0,229,255,.12); backdrop-filter: blur(20px); }
-#modalUpgrade .modal-body { padding: 40px; }
-#modalUpgrade .btn-close { filter: invert(1); }
-#modalUpgrade .modal-content { background: #020408; border: 1px solid rgba(0,229,255,.15); border-radius: 24px; color: white; }
-#modalUpgrade { z-index: 999999 !important; }
-#modalUpgrade .modal-dialog { max-width: 1300px !important; width: 95%; margin: 1rem auto; }
-#modalUpgrade .modal-content { position: relative; z-index: 999999; overflow: visible; }
+/* #modalUpgrade est géré exclusivement par modal-upgrade.css (partagé,
+   chargé une seule fois pour les 7 vues) — cette redéclaration complète,
+   quasi identique, faisait de la modale une implémentation par-vue plutôt
+   que réellement partagée. */
 .plan-disabled { filter: blur(3px) brightness(0.55); opacity: 0.6; pointer-events: none; position: relative; user-select: none; }
 .plan-disabled::after { content: "Plan actuel"; position: absolute; inset: 0; display: flex;align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: white; background: rgba(0,0,0,0.25); backdrop-filter: blur(2px); }
 .section-eyebrow { color: var(--cyan); font-size: 12px; letter-spacing: .25em; text-transform: uppercase; font-weight: 700; margin-bottom: 18px; }
 .locked-page #main-content {filter: blur(8px); pointer-events: none; user-select: none; opacity: 0.6; }
-#modalUpgrade .modal-content { background: #020408; border: 1px solid rgba(0,229,255,.15); border-radius: 24px; color: white;}
 .modal-backdrop { background: rgba(0,0,0,0.6) !important; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 .secret-modal { position: fixed; inset: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 999999; padding: 20px;}
 .secret-modal.hidden { display: none !important;}

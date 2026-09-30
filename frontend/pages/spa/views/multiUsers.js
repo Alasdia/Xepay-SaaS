@@ -87,8 +87,8 @@ const TEMPLATE = `
 </div>
 `;
 
-export function mount(container) {
-  setViewStyles(["multi-users.css"]);
+export async function mount(container) {
+  await setViewStyles(["multi-users.css"]);
   container.innerHTML = TEMPLATE;
 
   let users = [];

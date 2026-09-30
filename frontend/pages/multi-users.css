@@ -21,7 +21,11 @@
 --font-b: "DM Sans", sans-serif;
 --white: #ffffff;
 }
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* Portée à #main-content (au lieu d'un reset universel *) : ce reset ne
+   doit affecter que le contenu propre à cette vue, pas les éléments
+   partagés vivant ailleurs dans le document (sidebar, modale upgrade,
+   toasts). */
+#main-content, #main-content * { box-sizing: border-box; margin: 0; padding: 0; }
 body {font-family: var(--font-d); background: #ffffff; color: #111827; margin: 0; min-height: 100vh; overflow-x: hidden; transform: none !important; color: var(--text); min-height: 100vh; display: flex; font-size: 16px; }
 .header p,
 .user-email,

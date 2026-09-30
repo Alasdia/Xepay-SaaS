@@ -95,8 +95,8 @@ const TEMPLATE = `
 </div>
 `;
 
-export function mount(container) {
-  setViewStyles(["responsive.css", "liens.css"]);
+export async function mount(container) {
+  await setViewStyles(["responsive.css", "liens.css"]);
   container.innerHTML = TEMPLATE;
 
   let links = [];

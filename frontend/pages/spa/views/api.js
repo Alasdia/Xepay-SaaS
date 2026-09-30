@@ -251,8 +251,8 @@ function ensurePrism() {
   return prismLoadingPromise;
 }
 
-export function mount(container) {
-  setViewStyles(["API.css"]);
+export async function mount(container) {
+  await setViewStyles(["API.css"]);
   if (!document.getElementById("prism-theme-link")) {
     const link = document.createElement("link");
     link.id = "prism-theme-link";

@@ -130,8 +130,8 @@ const TEMPLATE = `
 </div>
 `;
 
-export function mount(container) {
-  setViewStyles(["responsive.css", "sécurité.css"]);
+export async function mount(container) {
+  await setViewStyles(["responsive.css", "sécurité.css"]);
   container.innerHTML = TEMPLATE;
 
   let twoFaModalInstance = null;

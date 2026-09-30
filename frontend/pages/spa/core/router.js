@@ -4,6 +4,18 @@
 // Le router se charge d'appeler unmount() de la vue précédente avant de
 // monter la suivante, et gère les routes protégées (redirection login).
 
+// Loader commun aux 7 vues, affiché immédiatement dans #main-content dès
+// qu'une navigation démarre (la sidebar n'est jamais touchée) et remplacé
+// par le HTML réel de la vue seulement une fois son CSS chargé (voir
+// core/styleLoader.js) — le contenu non stylé n'est ainsi jamais visible.
+const LOADER_HTML = `
+<div class="spa-route-loader" style="display:flex;align-items:center;justify-content:center;min-height:60vh;">
+  <div class="spinner-border" role="status" style="width:3rem;height:3rem;color:#facc15;">
+    <span class="visually-hidden">Chargement...</span>
+  </div>
+</div>
+`;
+
 const routes = [];
 let currentUnmount = null;
 let isAuthenticated = () => true;
@@ -77,6 +89,7 @@ async function render(pathname) {
   onRouteChange(route.name, params);
 
   const container = document.getElementById("main-content");
+  container.innerHTML = LOADER_HTML;
   const result = await route.mountView(container, params);
   if (result && typeof result.unmount === "function") {
     currentUnmount = result.unmount;

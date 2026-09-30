@@ -135,8 +135,8 @@ const TEMPLATE = `
 <div id="toast" class="custom-toast">✅ Retrait envoyé</div>
 `;
 
-export function mount(container) {
-  setViewStyles(["dashboard.css"]);
+export async function mount(container) {
+  await setViewStyles(["dashboard.css"]);
   container.innerHTML = TEMPLATE;
 
   let lockedCountdownTimer = null;
