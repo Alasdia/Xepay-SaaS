@@ -300,7 +300,7 @@ export async function mount(container) {
   }
 
   function showCancelModal() {
-    new bootstrap.Modal(document.getElementById("modalCancelSub")).show();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("modalCancelSub")).show();
   }
 
   async function confirmCancelSubscription() {
@@ -421,6 +421,16 @@ export async function mount(container) {
 
   return {
     unmount() {
+      const cancelModalEl = document.getElementById("modalCancelSub");
+      const cancelModalInstance = cancelModalEl && bootstrap.Modal.getInstance(cancelModalEl);
+      if (cancelModalInstance) {
+        cancelModalInstance.hide();
+        cancelModalInstance.dispose();
+        document.body.classList.remove("modal-open");
+        document.body.style.removeProperty("overflow");
+        document.body.style.removeProperty("padding-right");
+        document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
+      }
       boundListeners.forEach(({ target, type, fn }) => target.removeEventListener(type, fn));
       delete window.showCancelModal;
       delete window.confirmCancelSubscription;

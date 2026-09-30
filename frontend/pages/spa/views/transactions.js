@@ -813,6 +813,16 @@ export async function mount(container) {
 
   return {
     unmount() {
+      const withdrawModalEl = document.getElementById("withdrawModal");
+      const withdrawModalInstance = withdrawModalEl && bootstrap.Modal.getInstance(withdrawModalEl);
+      if (withdrawModalInstance) {
+        withdrawModalInstance.hide();
+        withdrawModalInstance.dispose();
+        document.body.classList.remove("modal-open");
+        document.body.style.removeProperty("overflow");
+        document.body.style.removeProperty("padding-right");
+        document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
+      }
       if (statusChart) statusChart.destroy();
       lockedCountdownIntervals.forEach(clearInterval);
       boundListeners.forEach(({ target, type, fn }) => target.removeEventListener(type, fn));
