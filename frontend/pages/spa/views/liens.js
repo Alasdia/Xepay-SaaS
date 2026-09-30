@@ -43,6 +43,34 @@ const TEMPLATE = `
     <button class="btn btn-warning fw-bold" data-bs-toggle="modal" data-bs-target="#modalCreationLien">+ Créer mon premier lien</button>
   </div>
 </div>
+<div class="modal fade" id="modalLienGenere" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0" style="background:#0d1b6e; color:white;">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold">✅ Lien créé avec succès !</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center">
+        <p class="text-muted mb-3">Partagez ce lien avec votre client</p>
+        <div class="p-3 rounded mb-3" style="background:rgba(255,255,255,0.1);">
+          <code id="lien-genere" class="text-warning" style="word-break:break-all; font-size:0.9rem;"></code>
+        </div>
+        <button class="btn btn-warning fw-bold w-100" onclick="copierLienGenere()">📋 Copier le lien</button>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+// #modalCreationLien est rendu à part, injecté dans document.body (pas dans
+// le TEMPLATE ci-dessus) : #main-content a position:relative + z-index:1
+// (sidebar.css), ce qui crée un contexte d'empilement qui enfermait le
+// z-index:1055 du modal en dessous du .modal-backdrop que Bootstrap ajoute
+// directement dans body (z-index:1050) — rendant le modal visible mais non
+// cliquable. En sortant le modal de #main-content, il rejoint le même
+// contexte d'empilement que son propre backdrop, où son z-index reprend
+// effet normalement.
+const CREATION_LIEN_MODAL_HTML = `
 <div class="modal fade" id="modalCreationLien" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 p-4">
@@ -76,28 +104,12 @@ const TEMPLATE = `
     </div>
   </div>
 </div>
-<div class="modal fade" id="modalLienGenere" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content border-0" style="background:#0d1b6e; color:white;">
-      <div class="modal-header border-0">
-        <h5 class="modal-title fw-bold">✅ Lien créé avec succès !</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body text-center">
-        <p class="text-muted mb-3">Partagez ce lien avec votre client</p>
-        <div class="p-3 rounded mb-3" style="background:rgba(255,255,255,0.1);">
-          <code id="lien-genere" class="text-warning" style="word-break:break-all; font-size:0.9rem;"></code>
-        </div>
-        <button class="btn btn-warning fw-bold w-100" onclick="copierLienGenere()">📋 Copier le lien</button>
-      </div>
-    </div>
-  </div>
-</div>
 `;
 
 export async function mount(container) {
   await setViewStyles(["responsive.css", "liens.css"]);
   container.innerHTML = TEMPLATE;
+  document.body.insertAdjacentHTML("beforeend", CREATION_LIEN_MODAL_HTML);
 
   let links = [];
   let offset = 0;
@@ -334,6 +346,17 @@ export async function mount(container) {
 
   return {
     unmount() {
+      const creationLienModalEl = document.getElementById("modalCreationLien");
+      const creationLienModalInstance = creationLienModalEl && bootstrap.Modal.getInstance(creationLienModalEl);
+      if (creationLienModalInstance) {
+        creationLienModalInstance.hide();
+        creationLienModalInstance.dispose();
+        document.body.classList.remove("modal-open");
+        document.body.style.removeProperty("overflow");
+        document.body.style.removeProperty("padding-right");
+        document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
+      }
+      creationLienModalEl?.remove();
       document.body.classList.remove("locked-page");
       scrollBox.removeEventListener("scroll", onScroll);
       delete window.genererLien;

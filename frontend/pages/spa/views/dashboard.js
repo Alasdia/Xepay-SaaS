@@ -3,7 +3,7 @@
 // dashboard.js) est traitée une seule fois au niveau du shell (spa/app.js),
 // avant le démarrage du router — elle ne concerne pas le rendu de cette vue.
 import { apiFetch } from "../core/apiClient.js";
-import { getWorkspaceId, setWorkspaceId, getPlan } from "../core/state.js";
+import { getWorkspaceId, setWorkspaceId, getPlan, setPlan } from "../core/state.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
 import { showUpgradeModal, upgrade } from "../shared/modalUpgrade.js";
@@ -84,6 +84,14 @@ const TEMPLATE = `
   <p class="text-muted mb-4">Passez au plan Pro pour accéder aux graphiques avancés, aux exports CSV/PDF et à plus de transactions.</p>
   <button class="btn btn-warning px-4 fw-bold" onclick="showUpgradeModal()">Voir les offres</button>
 </div>
+<div id="toast" class="custom-toast">✅ Retrait envoyé</div>
+`;
+
+// #createLinkModal est rendu à part, injecté dans document.body — même
+// raison que #withdrawModal ci-dessous : #main-content a position:relative
+// + z-index:1, ce qui enfermait le z-index:1055 du modal en dessous du
+// .modal-backdrop ajouté par Bootstrap directement dans body (z-index:1050).
+const CREATE_LINK_MODAL_HTML = `
 <div class="modal fade" id="createLinkModal" tabindex="-1">
   <div class="modal-dialog modal-xl">
     <div class="modal-content">
@@ -112,7 +120,6 @@ const TEMPLATE = `
     </div>
   </div>
 </div>
-<div id="toast" class="custom-toast">✅ Retrait envoyé</div>
 `;
 
 // #withdrawModal est rendu à part, injecté dans document.body (pas dans le
@@ -149,6 +156,7 @@ const WITHDRAW_MODAL_HTML = `
 export async function mount(container) {
   await setViewStyles(["dashboard.css"]);
   container.innerHTML = TEMPLATE;
+  document.body.insertAdjacentHTML("beforeend", CREATE_LINK_MODAL_HTML);
   document.body.insertAdjacentHTML("beforeend", WITHDRAW_MODAL_HTML);
 
   let lockedCountdownTimer = null;
@@ -191,6 +199,13 @@ export async function mount(container) {
     try {
       const res = await apiFetch("/me/plan");
       const data = await res.json();
+      // Resynchronise le cache partagé (localStorage "plan") avec la donnée
+      // fraîche de CETTE visite : sidebar.js ne l'écrit qu'une fois au
+      // démarrage de la session (loadUser), jamais rafraîchie ensuite — sans
+      // ça, #withdrawBtn pouvait lire un plan périmé ("free" mis en cache
+      // avant un upgrade, ou après un changement de workspace) et ouvrir
+      // #modalUpgrade au lieu de #withdrawModal.
+      setPlan(data.plan);
       const planLabel = document.getElementById("plan-label");
       if (planLabel) planLabel.innerText = data.plan.charAt(0).toUpperCase() + data.plan.slice(1);
       handleFreeLimit(data);
@@ -498,6 +513,17 @@ export async function mount(container) {
 
   return {
     unmount() {
+      const createLinkModalEl = document.getElementById("createLinkModal");
+      const createLinkModalInstance = createLinkModalEl && bootstrap.Modal.getInstance(createLinkModalEl);
+      if (createLinkModalInstance) {
+        createLinkModalInstance.hide();
+        createLinkModalInstance.dispose();
+        document.body.classList.remove("modal-open");
+        document.body.style.removeProperty("overflow");
+        document.body.style.removeProperty("padding-right");
+        document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
+      }
+      createLinkModalEl?.remove();
       const withdrawModalEl = document.getElementById("withdrawModal");
       const withdrawModalInstance = withdrawModalEl && bootstrap.Modal.getInstance(withdrawModalEl);
       if (withdrawModalInstance) {
