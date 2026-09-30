@@ -129,6 +129,17 @@ const TEMPLATE = `
     </div>
   </div>
 </div>
+`;
+
+// #modalCancelSub est rendu à part, injecté dans document.body (pas dans le
+// TEMPLATE ci-dessus) : #main-content a position:relative + z-index:1
+// (sidebar.css), ce qui crée un contexte d'empilement qui enfermait le
+// z-index:1055 du modal en dessous du .modal-backdrop que Bootstrap ajoute
+// directement dans body (z-index:1050) — rendant le modal visible mais non
+// cliquable. En sortant le modal de #main-content, il rejoint le même
+// contexte d'empilement que son propre backdrop, où son z-index reprend
+// effet normalement.
+const CANCEL_SUB_MODAL_HTML = `
 <div class="modal fade" id="modalCancelSub" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content border-0 shadow-lg" style="border-radius: 14px;">
@@ -157,6 +168,7 @@ const STRIPE_PUBLISHABLE_KEY =
 export async function mount(container) {
   await setViewStyles(["responsive.css", "profil.css"]);
   container.innerHTML = TEMPLATE;
+  document.body.insertAdjacentHTML("beforeend", CANCEL_SUB_MODAL_HTML);
 
   const boundListeners = [];
   function on(target, type, fn) {
@@ -431,6 +443,7 @@ export async function mount(container) {
         document.body.style.removeProperty("padding-right");
         document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
       }
+      cancelModalEl?.remove();
       boundListeners.forEach(({ target, type, fn }) => target.removeEventListener(type, fn));
       delete window.showCancelModal;
       delete window.confirmCancelSubscription;
