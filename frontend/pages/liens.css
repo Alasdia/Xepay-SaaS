@@ -10,7 +10,9 @@
   --font-b: "DM Sans", sans-serif;
 }
 body {font-family: var(--font-d); background: #ffffff !important; color: #111827; }
-#sidebar { width: 260px; min-height: 100vh; background: #ffffff !important; display: flex; flex-direction: column; border-right: 1px solid #e5e7eb !important; box-shadow: none; position: fixed; top: 0; left: 0; z-index: 100; padding: 20px;z-index: 10000; }
+/* #sidebar est géré exclusivement par sidebar.css (partagé entre les 7 vues) —
+   la redéclaration complète qui existait ici entrait en conflit et rendait
+   le style de la sidebar dépendant de la vue active. */
 #main-content { margin-left: 260px; padding: 28px; }
 .card-epay { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; color: #374151; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
 .lien-card { background: #ffffff; border: 1px solid #e5e7eb; display: flex; flex-direction: column; border-radius: 14px; padding: 16px; margin-bottom: 12px; transition: .25s; }

@@ -41,7 +41,12 @@ th{ color:#6b7280; }
 .badge-web3.pro { color: #facc15; background: #f5f3ff; border: 1px solid #c4b5fd; box-shadow: none; }
 .badge-web3.business { color: #df0e38; box-shadow: 0 0 12px rgba(248, 248, 248, 0.7), inset 0 0 8px rgba(255, 255, 255, 0.3);}
 @keyframes shimmer { 100% { transform: translateX(100%);}}  
-main { flex: 1; padding: 36px 44px; max-width: 100%; margin-left: 260px; padding: 36px 44px;}
+/* Ciblait auparavant <main> (enfant direct de body dans l'ancien MPA).
+   Dans la SPA, le contenu de cette vue est injecté directement dans
+   #main-content (le conteneur partagé unique) — cibler encore <main> ici
+   cumulait deux fois margin-left:260px (une fois via #main-content hérité
+   de sidebar.css, une fois via cette règle), d'où le décalage constaté. */
+#main-content { flex: 1; padding: 36px 44px; max-width: 100%; }
 .header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px; flex-wrap: wrap; gap: 16px;}
 .header-title { display: flex; align-items: center; gap: 14px; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;}
 .header-title .tag { font-size: 11px; padding: 4px 10px; background: var(--accent-pink); border-radius: 6px; letter-spacing: 1px; font-weight: 700;}
@@ -116,7 +121,10 @@ tr:hover td { background: #ffffff; }
 .field input:focus, .field select:focus { outline: none; border-color: #facc15; box-shadow: 0 0 0 4px rgba(250,240,21,.15); }
 .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
 .field input::placeholder { color: #9ca3af; }
-@media (max-width: 960px) { body { flex-direction: column; }.sidebar { width: 100%; position: static; min-height: auto; } main { padding: 24px; } th:nth-child(4), td:nth-child(4) { display: none; }}
+/* Le ".sidebar" ci-dessus ne correspondait à aucun élément réel (le
+   composant partagé est #sidebar, géré depuis sidebar.css) : cette clause
+   était déjà inactive avant la migration SPA. */
+@media (max-width: 960px) { body { flex-direction: column; } #main-content { padding: 24px; } th:nth-child(4), td:nth-child(4) { display: none; }}
 @media (max-width: 600px) { th:nth-child(3), td:nth-child(3) { display: none; }}
 .plans-section{position:relative;z-index:2;max-width:1300px;margin:0 auto;padding:0 48px 100px}
 .plans-header{text-align:center;margin-bottom:52px}

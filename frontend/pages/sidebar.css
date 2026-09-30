@@ -7,7 +7,20 @@
 #sidebar .nav-link i{ width:18px; font-size: 15px; transition: .22s; }
 #sidebar .nav-link:hover i{ color:#facc15; transform: scale(1.15); rotate: -8deg; }
 #sidebar .nav-item{ margin-bottom:2px; }
-#main-content { background: #ffffff; position: relative; z-index: 1; margin-left: 260px; padding: 28px 40px;  width: calc(100% - 220px); }
+/* Règle partagée par les 7 vues SPA (Dashboard, Transactions, Liens, API,
+   Multi-users, Profil, Sécurité) : chaque vue peut surcharger padding/width
+   selon ses besoins propres, mais le dégagement de base pour la sidebar
+   fixe (260px) doit rester unique et cohérent ici, pas redéclaré par vue. */
+#main-content { background: #ffffff; position: relative; z-index: 1; margin-left: 260px; padding: 28px 40px; width: calc(100% - 260px); }
+
+/* Comportement responsive partagé de la sidebar (260px fixe) et de son
+   dégagement — auparavant dupliqué uniquement dans transactions.css et donc
+   inactif sur les 6 autres vues. Centralisé ici pour un comportement
+   identique quelle que soit la vue active. */
+@media (max-width: 960px) {
+  #sidebar { width: 100%; position: relative; min-height: auto; }
+  #main-content { margin-left: 0; }
+}
 .sidebar-upgrade{ margin-top:auto; padding-top:22px; border-top:1px solid #f3f4f6; }
 .sidebar-upgrade .card{ border:1px solid #e5e7eb !important; border-radius:16px; }
 .sidebar-upgrade .card:hover{ border-color:#facc15 !important; transform: none !important; }

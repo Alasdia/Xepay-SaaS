@@ -17,16 +17,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500;600&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sidebar.css">
-<link rel="stylesheet" href="modal-upgrade.css">
+<link rel="stylesheet" href="/sidebar.css">
+<link rel="stylesheet" href="/modal-upgrade.css">
 </head>
 <body class="d-flex" style="margin: 0; padding: 0;">
-<!-- Le positionnement de #main-content (margin-left/padding) est fourni par
-     le CSS propre à chaque vue (dashboard.css, transactions.css, liens.css,
-     API.css, sécurité.css définissent tous #main-content{margin-left:260px}),
-     chargé dynamiquement par spa/core/styleLoader.js. Exception : profil.css
-     ne le définit pas (l'ancienne page s'appuyait sur un style inline) —
-     spa/views/profil.js applique l'équivalent en JS au montage. -->
+<!-- Le dégagement de base de #main-content (margin-left:260px + comportement
+     responsive de la sidebar) est défini une seule fois, partagé entre les
+     7 vues, dans sidebar.css (toujours chargé, jamais permuté). Chaque vue
+     peut surcharger padding/width via son propre CSS, chargé dynamiquement
+     par spa/core/styleLoader.js, sans avoir à redéclarer le dégagement
+     partagé lui-même. -->
 <div id="sidebar-container"></div>
 <div id="main-content"></div>
 

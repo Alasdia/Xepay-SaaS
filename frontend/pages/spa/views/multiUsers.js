@@ -19,7 +19,6 @@ const TEMPLATE = `
     <button class="btn btn-warning fw-bold" onclick="upgrade('business')">⚡ Passer à Business</button>
   </div>
 </div>
-<main>
   <div class="header">
     <div>
       <div class="header-title text-muted"><i class="fa-solid fa-users"></i> Multi-utilisateurs <span class="badge-web3 business">BUSINESS</span></div>
@@ -68,7 +67,6 @@ const TEMPLATE = `
       <tbody id="tbody"></tbody>
     </table>
   </div>
-</main>
 <div class="invite-modal-backdrop" id="modal">
   <div class="custom-modal">
     <h2 id="modal-title">Inviter un utilisateur</h2>
@@ -105,13 +103,12 @@ export function mount(container) {
     const res = await apiFetch("/me");
     const user = await res.json();
     const lock = document.getElementById("businessLock");
-    const main = container.querySelector("main");
     if (user.plan !== "business") {
-      main.classList.add("workspace-locked");
+      container.classList.add("workspace-locked");
       lock.classList.remove("d-none");
       return false;
     }
-    main.classList.remove("workspace-locked");
+    container.classList.remove("workspace-locked");
     lock.classList.add("d-none");
     return true;
   }
@@ -332,6 +329,11 @@ export function mount(container) {
     unmount() {
       timers.forEach(clearInterval);
       boundListeners.forEach(({ target, type, fn }) => target.removeEventListener(type, fn));
+      // #main-content est le conteneur partagé et persistant entre les vues :
+      // une classe posée dessus (plutôt que sur un enfant détruit avec
+      // innerHTML) doit être explicitement retirée pour ne pas "fuiter" vers
+      // la vue suivante.
+      container.classList.remove("workspace-locked");
       delete window.openModal;
       delete window.closeModal;
       delete window.cycleRole;

@@ -116,7 +116,10 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
 #etat-vide,
 #etat-vide p { color: #6b7280; }
 #chartTooltip { background: linear-gradient(135deg, #1a1238, #2a1a4d) !important; border: 1px solid rgba(255,255,255,0.12) !important; border-radius: 14px !important; }
-@media (max-width: 960px) { #sidebar { width: 100%; position: relative; min-height: auto; } #main-content { margin-left: 0; padding: 20px; } }
+/* Le comportement de #sidebar à cette largeur est désormais centralisé dans
+   sidebar.css (partagé entre les 7 vues) ; seul le padding spécifique à
+   cette vue est conservé ici. */
+@media (max-width: 960px) { #main-content { padding: 20px; } }
 .plans-section{position:relative;z-index:2;max-width:1300px;margin:0 auto;padding:0 48px 100px}
 .plans-header{text-align:center;margin-bottom:52px}
 .plans-header h2{font-family:var(--font-d);font-size:clamp(48px,5vw,76px);letter-spacing:.04em;line-height:.95;margin-bottom:14px}
