@@ -246,11 +246,16 @@ function finalizeLogin(token, email, workspaceId, accountId) {
   }, 1200);
 }
 document.addEventListener('keydown', e => { if (e.key === 'Enter') handleSubmit(); });
+const GOOGLE_BTN_IDLE_HTML = `
+  <div class="google-g">
+    <img src="https://developers.google.com/identity/images/g-logo.png" alt="G">
+  </div>
+  Continuer avec Google
+`;
 function loginWithGoogle() {
   const btn = document.getElementById('btnGoogle');
   btn.classList.add('loading');
-  btn.innerHTML = '<span class="spin" style="border-color:rgba(255,255,255,.15);border-top-color:rgba(255,255,255,.7)"></span>Redirection Google...';
-  showToast('info', 'GOOGLE AUTH', 'Redirection vers Google en cours...', 3000);
+  btn.innerHTML = '<span class="spin" style="border-color:rgba(255,255,255,.15);border-top-color:rgba(255,255,255,.7)"></span>Connexion avec Google...';
   const clientId = '366389455040-q0iie187c1ok621vbcl3vkuflib3fvgf.apps.googleusercontent.com';
   const redirectUri = 'https://api.alasdia.com/auth/google/callback';
   const url =
@@ -262,7 +267,63 @@ function loginWithGoogle() {
   `&prompt=select_account` +
   `&access_type=offline` +
   `&include_granted_scopes=true`;
-  setTimeout(() => { window.location.href = url; }, 800);
+
+  // Widget popup Google (au lieu d'une redirection pleine page) : même URL,
+  // même client_id/redirect_uri que l'ancien flux, le backend et le
+  // callback OAuth (/auth/google/callback) ne changent pas. Le callback
+  // redirige in fine vers dashboard.html?token=...&workspace_id=... (même
+  // origine que login.html) qui écrit la session dans localStorage —
+  // l'évènement "storage", déclenché dans CETTE fenêtre (jamais dans celle
+  // qui a fait l'écriture), permet de détecter la connexion réussie sans
+  // toucher ni au backend ni au callback.
+  const width = 500, height = 650;
+  const left = window.screenX + Math.max(0, (window.outerWidth - width) / 2);
+  const top = window.screenY + Math.max(0, (window.outerHeight - height) / 2);
+  const popup = window.open(
+    url,
+    'xepay-google-auth',
+    `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes`
+  );
+
+  if (!popup) {
+    showToast('error', 'POPUP BLOQUÉE', 'Autorisez les popups pour continuer avec Google.');
+    btn.classList.remove('loading');
+    btn.innerHTML = GOOGLE_BTN_IDLE_HTML;
+    return;
+  }
+
+  showToast('info', 'GOOGLE AUTH', 'Terminez la connexion dans la fenêtre Google.', 4000);
+
+  function cleanup() {
+    clearInterval(closedCheck);
+    window.removeEventListener('storage', onStorage);
+  }
+
+  function onStorage(e) {
+    if (e.key === 'token' && e.newValue) {
+      cleanup();
+      if (!popup.closed) popup.close();
+      btn.classList.add('success');
+      btn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:6px"><path d="M20 6L9 17l-5-5" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Connecté — Redirection...
+      `;
+      showToast('success', 'CONNEXION RÉUSSIE', 'Bienvenue sur votre dashboard Xepay.', 2000);
+      setTimeout(() => { window.location.href = 'dashboard.html'; }, 600);
+    }
+  }
+
+  const closedCheck = setInterval(() => {
+    if (popup.closed) {
+      cleanup();
+      if (!localStorage.getItem('token')) {
+        btn.classList.remove('loading');
+        btn.innerHTML = GOOGLE_BTN_IDLE_HTML;
+      }
+    }
+  }, 500);
+
+  window.addEventListener('storage', onStorage);
 }
 window.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(window.location.search);

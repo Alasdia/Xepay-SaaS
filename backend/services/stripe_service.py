@@ -60,8 +60,8 @@ def create_checkout_session(
         return session.url
     elif mode == "subscription":
         price_map = {
-            "pro": os.getenv("STRIPE_PRICE_PRO"),
-            "business": os.getenv("STRIPE_PRICE_BUSINESS")
+            "pro": "price_1ULaX80I86XW25IrFJBTIif0",
+            "business": "price_1ULaZ30I86XW25IrZPncow7U"
         }
         price_id = price_map.get(plan)
         if not price_id:
