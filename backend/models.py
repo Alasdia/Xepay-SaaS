@@ -104,6 +104,10 @@ class PayRequest(BaseModel):
 class PlanUpdate(BaseModel):
     plan: str
 
+class GoogleCodeExchange(BaseModel):
+    code: str
+    redirect_uri: str
+
 class UserLogin(BaseModel):
     email: str
     password: str

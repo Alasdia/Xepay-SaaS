@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.database import engine, get_db
-from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, PlanUpdate, Link, SecurityAlertsRequest 
+from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, PlanUpdate, Link, SecurityAlertsRequest, GoogleCodeExchange
 from backend.auth import get_current_user
 from backend.services.workspace_service import (
     get_workspace_owner_id
@@ -132,7 +132,12 @@ def signup(
                     }
                 )
             except stripe.error.StripeError as e:
-                print("⚠️ Issuing non activé (pays non éligible ou autre) :", repr(e))
+                print("❌ ERREUR ISSUING")
+                print("type:", type(e).__name__)
+                print("message:", str(e))
+                print("code:", getattr(e, "code", None))
+                print("param:", getattr(e, "param", None))
+                print("request_id:", getattr(e, "request_id", None))
             profile = Profile(user_id=new_user.id, stripe_account_id=account.id)
             db.add(profile)
             db.commit()
@@ -225,22 +230,32 @@ CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
 REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
 
+# Origines autorisées à passer leur propre redirect_uri lors de l'échange
+# POST (GIS initCodeClient en ux_mode:'popup' impose comme redirect_uri
+# l'origine de la page appelante — jamais l'URL /auth/google/callback —
+# donc le frontend doit nous dire laquelle). Aligné sur CORSMiddleware
+# (backend/main.py) : seules ces origines sont de toute façon autorisées à
+# appeler cet endpoint depuis un navigateur ; cette liste protège aussi les
+# appels directs hors navigateur (non soumis au CORS).
+ALLOWED_GOOGLE_EXCHANGE_ORIGINS = {"https://www.alasdia.com", "https://alasdia.com"}
+
 from fastapi.responses import RedirectResponse
 from fastapi import HTTPException
 import requests
 
-@router.get("/auth/google/callback")
-def google_callback(
-    code: str, 
-    db: Session = Depends(get_db)
-):
+def _exchange_google_code(code: str, db: Session, redirect_uri: str) -> dict:
+    """Logique partagée par le callback GET (redirect_uri = GOOGLE_REDIRECT_URI)
+    et l'endpoint POST /auth/google/exchange (redirect_uri = origine de la
+    page qui a appelé initCodeClient). Retourne un dict, jamais de réponse
+    HTTP : chaque appelant construit la réponse qui lui correspond
+    (redirection pour le GET, JSON pour le POST)."""
     token_url = "https://oauth2.googleapis.com/token"
 
     data = {
         "code": code,
         "client_id": CLIENT_ID,
         "client_secret": CLIENT_SECRET,
-        "redirect_uri": REDIRECT_URI,
+        "redirect_uri": redirect_uri,
         "grant_type": "authorization_code",
     }
 
@@ -315,8 +330,6 @@ def google_callback(
     db.commit()
     db.refresh(user)
 
-    token = create_access_token({"sub": user.email})
-
     membership = (
         db.query(WorkspaceUser)
         .filter(
@@ -336,15 +349,71 @@ def google_callback(
     workspace_id = membership.workspace_id
 
     if user.two_factor_enabled:
-        return RedirectResponse(
-            url=f"https://alasdia.com/login.html?requires_2fa=true&email={user.email}&workspace_id={workspace_id}"
-        )
-    
+        return {
+            "requires_2fa": True,
+            "email": user.email,
+            "workspace_id": workspace_id,
+            # Calculé pour le POST (qui en a besoin pour /auth/2fa/verify-login,
+            # cf. UserLogin /login) ; le GET existant l'ignore et garde son
+            # URL de redirection inchangée.
+            "pre_auth_token": create_2fa_pending_token(user.email),
+        }
+
     token = create_access_token({"sub": user.email})
 
+    return {
+        "requires_2fa": False,
+        "token": token,
+        "workspace_id": workspace_id,
+        "account_id": user.account_id,
+    }
+
+
+@router.get("/auth/google/callback")
+def google_callback(
+    code: str,
+    db: Session = Depends(get_db)
+):
+    result = _exchange_google_code(code, db, redirect_uri=REDIRECT_URI)
+
+    if result["requires_2fa"]:
+        return RedirectResponse(
+            url=f"https://alasdia.com/login.html?requires_2fa=true&email={result['email']}&workspace_id={result['workspace_id']}"
+        )
+
     return RedirectResponse(
-        url=f"https://alasdia.com/dashboard.html?token={token}&workspace_id={workspace_id}"
+        url=f"https://alasdia.com/dashboard.html?token={result['token']}&workspace_id={result['workspace_id']}"
     )
+
+
+@router.post("/auth/google/exchange")
+def google_exchange(
+    payload: GoogleCodeExchange,
+    db: Session = Depends(get_db)
+):
+    """Variante JSON du callback ci-dessus, pour le widget GIS
+    (initCodeClient, ux_mode:'popup') : le code arrive via un callback JS
+    frontend plutôt que par une redirection Google directe, donc la réponse
+    doit être du JSON exploitable en JS, pas une redirection HTTP."""
+    if payload.redirect_uri not in ALLOWED_GOOGLE_EXCHANGE_ORIGINS:
+        raise HTTPException(400, "Origine non autorisée")
+
+    result = _exchange_google_code(payload.code, db, redirect_uri=payload.redirect_uri)
+
+    if result["requires_2fa"]:
+        return {
+            "requires_2fa": True,
+            "email": result["email"],
+            "workspace_id": result["workspace_id"],
+            "pre_auth_token": result["pre_auth_token"],
+        }
+
+    return {
+        "access_token": result["token"],
+        "token_type": "bearer",
+        "workspace_id": result["workspace_id"],
+        "account_id": result["account_id"],
+    }
 
 @router.post("/onboarding")
 def create_onboarding_link(
