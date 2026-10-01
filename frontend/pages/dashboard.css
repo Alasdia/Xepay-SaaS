@@ -152,7 +152,10 @@ table{ color:#374151 !important; }
 .plan-card { opacity: 1 !important; }
 @media (max-width: 992px) { #modalUpgrade .modal-dialog { width: 100%; margin: 0; max-width: 100%; } #modalUpgrade .modal-body { padding: 20px; } .plans-section { padding: 0 15px 40px; } .plans-grid { grid-template-columns: 1fr; gap: 20px; } }
 @media (max-width: 576px) { .plan-name { font-size: 28px; } .plan-price .amount { font-size: 40px; } .plan-features li { font-size: 12px; } }
-@media (max-width: 576px) { #withdrawModal .modal-dialog {  display: flex !important;  align-items: center !important;  min-height: calc(100% - 1rem);  margin: 1rem auto;  }}
+/* margin:1rem applique 1rem en haut ET en bas (2rem cumulés) : min-height
+   doit donc soustraire 2rem, pas 1rem, sinon la boîte déborde de 1rem en
+   bas et écrase la marge basse à 0 (modal collé en bas de l'écran). */
+@media (max-width: 576px) { #withdrawModal .modal-dialog {  display: flex !important;  align-items: center !important;  min-height: calc(100% - 2rem);  margin: 1rem;  }}
 /* ============================================
    XEPAY — Mobile dashboard (à ajouter à dashboard.css ou responsive.css)
    ============================================ */

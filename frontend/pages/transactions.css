@@ -202,7 +202,10 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
     justify-content: center;
 }
 @media (max-width: 960px) { .lock-overlay { left: 0;}.plans-grid { grid-template-columns: 1fr;} .plans-section { padding: 0 10px 30px;}}
-@media (max-width: 576px) { #withdrawModal .modal-dialog {  display: flex !important;  align-items: center !important;  min-height: calc(100% - 1rem);  margin: 1rem auto;  }}
+/* margin:1rem applique 1rem en haut ET en bas (2rem cumulés) : min-height
+   doit donc soustraire 2rem, pas 1rem, sinon la boîte déborde de 1rem en
+   bas et écrase la marge basse à 0 (modal collé en bas de l'écran). */
+@media (max-width: 576px) { #withdrawModal .modal-dialog {  display: flex !important;  align-items: center !important;  min-height: calc(100% - 2rem);  margin: 1rem;  }}
 /* ============================================
    XEPAY — Mobile transactions (à ajouter à responsive.css)
    ============================================ */

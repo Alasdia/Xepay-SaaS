@@ -907,7 +907,7 @@ async function initStripeBalanceReport() {
   if (mount.hasChildNodes()) return;
   try {
     const stripeConnectInstance = window.StripeConnect.init({
-      publishableKey: "pk_test_51TJYk921oAuf4OUmVuqkub7cs2OUkWGpYlS4IgpfZrF7p6lY4v1YxRirVv1QSZD8Qof4JU78mmLgexh5wINo0vlo00c7HTwz5x",
+      publishableKey: "pk_test_51ULZVC0I86XW25IrioDmxFoRvLJhP3QC6wJ11Qil9UmVrVtiYxxnY9gyxoM7X6VPxJaKtUGF8K1j9q1dsnUU2uhB0057G12ETb",
       fetchClientSecret: async () => {
         const res = await fetch("https://api.alasdia.com/reports/connect-session", {
           method: "POST",

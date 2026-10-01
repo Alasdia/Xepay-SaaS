@@ -252,7 +252,7 @@ export async function mount(container) {
       if (!response.ok) throw new Error(data.detail || "Erreur suppression");
       showToast("Compte supprimé avec succès");
       localStorage.removeItem("token");
-      window.location.href = "/login.html";
+      window.location.href = "/login";
     } catch (error) {
       showToast(error.message, "error");
     }

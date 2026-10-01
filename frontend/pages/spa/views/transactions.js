@@ -7,7 +7,7 @@ import { showToast } from "../shared/toast.js";
 import { showUpgradeModal } from "../shared/modalUpgrade.js";
 
 const STRIPE_PUBLISHABLE_KEY =
-  "pk_test_51TJYk921oAuf4OUmVuqkub7cs2OUkWGpYlS4IgpfZrF7p6lY4v1YxRirVv1QSZD8Qof4JU78mmLgexh5wINo0vlo00c7HTwz5x";
+  "pk_test_51ULZVC0I86XW25IrioDmxFoRvLJhP3QC6wJ11Qil9UmVrVtiYxxnY9gyxoM7X6VPxJaKtUGF8K1j9q1dsnUU2uhB0057G12ETb";
 
 const TEMPLATE = `
 <div id="transactions-lock" class="lock-overlay" style="display: none;">
@@ -128,14 +128,6 @@ const TEMPLATE = `
   <div class="card-epay p-4 mb-4"><h5 class="fw-bold mb-3">Paiements Stripe</h5><div id="connect-payments"></div></div>
   <div class="card-epay p-4 mb-4"><h5 class="fw-bold mb-3">Virements Stripe</h5><div id="connect-payouts"></div></div>
 </div>
-<div class="modal fade" id="stripeReportModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content" style="background: #ffffff; color: #111827; border-radius: 16px; border: 1px solid #e5e7eb;">
-      <div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold" style="font-size: 1.25rem;">Rapport de solde Stripe</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button></div>
-      <div class="modal-body px-4 py-3"><div id="stripe-balance-report" style="width: 100%;"></div></div>
-    </div>
-  </div>
-</div>
 <div class="modal fade" id="detailModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content"><div class="modal-header border-0"><h5 class="modal-title fw-bold">Détails</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body px-4" id="detailModalBody"></div></div>
@@ -163,9 +155,25 @@ const WITHDRAW_MODAL_HTML = `
 </div>
 `;
 
+// #stripeReportModal est rendu à part, injecté dans document.body — même
+// raison que #withdrawModal ci-dessus : #main-content a position:relative +
+// z-index:1, ce qui enfermait le z-index:1055 du modal en dessous du
+// .modal-backdrop ajouté par Bootstrap directement dans body (z-index:1050).
+const STRIPE_REPORT_MODAL_HTML = `
+<div class="modal fade" id="stripeReportModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content" style="background: #ffffff; color: #111827; border-radius: 16px; border: 1px solid #e5e7eb;">
+      <div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold" style="font-size: 1.25rem;">Rapport de solde Stripe</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button></div>
+      <div class="modal-body px-4 py-3"><div id="stripe-balance-report" style="width: 100%;"></div></div>
+    </div>
+  </div>
+</div>
+`;
+
 export async function mount(container) {
   await setViewStyles(["transactions.css"]);
   container.innerHTML = TEMPLATE;
+  document.body.insertAdjacentHTML("beforeend", STRIPE_REPORT_MODAL_HTML);
   document.body.insertAdjacentHTML("beforeend", WITHDRAW_MODAL_HTML);
 
   let transactions = [];
@@ -825,6 +833,17 @@ export async function mount(container) {
 
   return {
     unmount() {
+      const stripeReportModalEl = document.getElementById("stripeReportModal");
+      const stripeReportModalInstance = stripeReportModalEl && bootstrap.Modal.getInstance(stripeReportModalEl);
+      if (stripeReportModalInstance) {
+        stripeReportModalInstance.hide();
+        stripeReportModalInstance.dispose();
+        document.body.classList.remove("modal-open");
+        document.body.style.removeProperty("overflow");
+        document.body.style.removeProperty("padding-right");
+        document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
+      }
+      stripeReportModalEl?.remove();
       const withdrawModalEl = document.getElementById("withdrawModal");
       const withdrawModalInstance = withdrawModalEl && bootstrap.Modal.getInstance(withdrawModalEl);
       if (withdrawModalInstance) {

@@ -44,7 +44,7 @@ async function init() {
   consumeOAuthBootstrap();
 
   if (!isAuthenticated()) {
-    window.location.href = "/login.html";
+    window.location.href = "/login";
     return;
   }
 
@@ -53,7 +53,7 @@ async function init() {
   configure({
     isAuthenticated,
     onUnauthorized: () => {
-      window.location.href = "/login.html";
+      window.location.href = "/login";
     },
     onRouteChange: (name, params) => {
       if (params && params.workspaceId && params.workspaceId !== WORKSPACE_PLACEHOLDER) {

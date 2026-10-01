@@ -156,7 +156,7 @@ async function signup(){
         Compte créé — Redirection...
       `;
       showToast('success','COMPTE CRÉÉ','Bienvenue sur Xepay ! Redirection vers la connexion...',3500);
-      setTimeout(()=>{window.location.href='login.html'},1400);
+      setTimeout(()=>{window.location.href='/login'},1400);
     }else{
       showToast('error','ERREUR INSCRIPTION',data.message||'Une erreur est survenue. Réessayez.');
       btn.innerHTML='Créer mon compte →';btn.disabled=false;

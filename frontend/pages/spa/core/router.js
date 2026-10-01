@@ -48,7 +48,7 @@ let currentUnmount = null;
 let navToken = 0;
 let isAuthenticated = () => true;
 let onUnauthorized = () => {
-  window.location.href = "/login.html";
+  window.location.href = "/login";
 };
 let onRouteChange = () => {};
 

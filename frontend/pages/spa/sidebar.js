@@ -103,7 +103,7 @@ function updatePlanUI(plan) {
 
 function logout() {
   clearSession();
-  window.location.href = "/login.html";
+  window.location.href = "/login";
 }
 
 function checkApiAccess() {

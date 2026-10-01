@@ -136,7 +136,7 @@ export async function mount(container) {
     isLoading = true;
     const token = getToken();
     if (!token) {
-      window.location.href = "/login.html";
+      window.location.href = "/login";
       return;
     }
     const res = await apiFetch(`/links?limit=${limit}&offset=${offset}`);
@@ -144,7 +144,7 @@ export async function mount(container) {
       const error = await res.text();
       console.error("❌ Erreur API :", error);
       if (error.includes("Token expiré")) {
-        window.location.href = "/login.html";
+        window.location.href = "/login";
       }
       isLoading = false;
       return;
