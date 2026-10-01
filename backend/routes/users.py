@@ -364,6 +364,7 @@ def _exchange_google_code(code: str, db: Session, redirect_uri: str) -> dict:
     return {
         "requires_2fa": False,
         "token": token,
+        "email": user.email,
         "workspace_id": workspace_id,
         "account_id": user.account_id,
     }
@@ -411,6 +412,7 @@ def google_exchange(
     return {
         "access_token": result["token"],
         "token_type": "bearer",
+        "email": result["email"],
         "workspace_id": result["workspace_id"],
         "account_id": result["account_id"],
     }

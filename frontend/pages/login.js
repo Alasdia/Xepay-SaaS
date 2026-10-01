@@ -252,78 +252,97 @@ const GOOGLE_BTN_IDLE_HTML = `
   </div>
   Continuer avec Google
 `;
+// Widget Google Identity Services (GIS) — google.accounts.oauth2.initCodeClient
+// en ux_mode:'popup'. Ici, GIS gère lui-même le popup Google ; le résultat
+// (authorization code) arrive directement dans un callback JS, jamais via
+// une redirection vers /auth/google/callback. Le code est donc envoyé en
+// JSON à /auth/google/exchange (nouvel endpoint backend, qui réutilise
+// exactement la même logique que le callback GET existant — lui-même
+// inchangé et toujours actif).
+let googleCodeClient = null;
+function getGoogleCodeClient() {
+  if (googleCodeClient) return googleCodeClient;
+  if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) return null;
+  googleCodeClient = google.accounts.oauth2.initCodeClient({
+    client_id: '366389455040-q0iie187c1ok621vbcl3vkuflib3fvgf.apps.googleusercontent.com',
+    scope: 'openid email profile',
+    ux_mode: 'popup',
+    callback: handleGoogleCodeResponse,
+    error_callback: handleGoogleCodeError,
+  });
+  return googleCodeClient;
+}
+
+function resetGoogleBtn() {
+  const btn = document.getElementById('btnGoogle');
+  btn.classList.remove('loading');
+  btn.innerHTML = GOOGLE_BTN_IDLE_HTML;
+}
+
 function loginWithGoogle() {
   const btn = document.getElementById('btnGoogle');
-  btn.classList.add('loading');
-  btn.innerHTML = '<span class="spin" style="border-color:rgba(255,255,255,.15);border-top-color:rgba(255,255,255,.7)"></span>Connexion avec Google...';
-  const clientId = '366389455040-q0iie187c1ok621vbcl3vkuflib3fvgf.apps.googleusercontent.com';
-  const redirectUri = 'https://api.alasdia.com/auth/google/callback';
-  const url =
-  `https://accounts.google.com/o/oauth2/v2/auth?` +
-  `client_id=${clientId}` +
-  `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-  `&response_type=code` +
-  `&scope=openid%20email%20profile` +
-  `&prompt=select_account` +
-  `&access_type=offline` +
-  `&include_granted_scopes=true`;
-
-  // Widget popup Google (au lieu d'une redirection pleine page) : même URL,
-  // même client_id/redirect_uri que l'ancien flux, le backend et le
-  // callback OAuth (/auth/google/callback) ne changent pas. Le callback
-  // redirige in fine vers dashboard.html?token=...&workspace_id=... (même
-  // origine que login.html) qui écrit la session dans localStorage —
-  // l'évènement "storage", déclenché dans CETTE fenêtre (jamais dans celle
-  // qui a fait l'écriture), permet de détecter la connexion réussie sans
-  // toucher ni au backend ni au callback.
-  const width = 500, height = 650;
-  const left = window.screenX + Math.max(0, (window.outerWidth - width) / 2);
-  const top = window.screenY + Math.max(0, (window.outerHeight - height) / 2);
-  const popup = window.open(
-    url,
-    'xepay-google-auth',
-    `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes`
-  );
-
-  if (!popup) {
-    showToast('error', 'POPUP BLOQUÉE', 'Autorisez les popups pour continuer avec Google.');
-    btn.classList.remove('loading');
-    btn.innerHTML = GOOGLE_BTN_IDLE_HTML;
+  const client = getGoogleCodeClient();
+  if (!client) {
+    showToast('error', 'GOOGLE INDISPONIBLE', 'Le service Google n\'a pas pu se charger. Réessayez.');
     return;
   }
+  btn.classList.add('loading');
+  btn.innerHTML = '<span class="spin" style="border-color:rgba(255,255,255,.15);border-top-color:rgba(255,255,255,.7)"></span>Connexion avec Google...';
+  client.requestCode();
+}
 
-  showToast('info', 'GOOGLE AUTH', 'Terminez la connexion dans la fenêtre Google.', 4000);
-
-  function cleanup() {
-    clearInterval(closedCheck);
-    window.removeEventListener('storage', onStorage);
+function handleGoogleCodeError(err) {
+  resetGoogleBtn();
+  // "popup_closed" / "popup_failed_to_open" : l'utilisateur a juste annulé,
+  // pas la peine d'afficher une erreur dans ce cas.
+  if (err && err.type && err.type.indexOf('popup') === -1) {
+    showToast('error', 'GOOGLE AUTH', 'La connexion avec Google a échoué.');
   }
+}
 
-  function onStorage(e) {
-    if (e.key === 'token' && e.newValue) {
-      cleanup();
-      if (!popup.closed) popup.close();
-      btn.classList.add('success');
-      btn.innerHTML = `
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:6px"><path d="M20 6L9 17l-5-5" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Connecté — Redirection...
-      `;
-      showToast('success', 'CONNEXION RÉUSSIE', 'Bienvenue sur votre dashboard Xepay.', 2000);
-      setTimeout(() => { window.location.href = 'dashboard.html'; }, 600);
-    }
+async function handleGoogleCodeResponse(response) {
+  if (response.error) {
+    resetGoogleBtn();
+    showToast('error', 'GOOGLE AUTH', 'La connexion avec Google a échoué.');
+    return;
   }
-
-  const closedCheck = setInterval(() => {
-    if (popup.closed) {
-      cleanup();
-      if (!localStorage.getItem('token')) {
-        btn.classList.remove('loading');
-        btn.innerHTML = GOOGLE_BTN_IDLE_HTML;
-      }
+  try {
+    const res = await fetch('https://api.alasdia.com/auth/google/exchange', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: response.code, redirect_uri: window.location.origin }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || 'Échec de la connexion Google');
     }
-  }, 500);
-
-  window.addEventListener('storage', onStorage);
+    if (data.requires_2fa) {
+      resetGoogleBtn();
+      awaitingTwoFa = true;
+      twoFaEmail = data.email;
+      twoFaWorkspaceId = data.workspace_id;
+      twoFaPreAuthToken = data.pre_auth_token;
+      document.getElementById('twofa-field').style.display = 'block';
+      document.getElementById('email').value = twoFaEmail;
+      document.getElementById('email').disabled = true;
+      document.getElementById('password').disabled = true;
+      document.querySelector('.btn-google').style.display = 'none';
+      document.getElementById('btnLogin').innerHTML = 'Vérifier →';
+      showToast('info', 'VÉRIFICATION REQUISE', 'Entrez le code de votre application d\'authentification.', 4000);
+      setTimeout(() => document.getElementById('twofa-code').focus(), 100);
+      return;
+    }
+    const btn = document.getElementById('btnGoogle');
+    btn.classList.add('success');
+    btn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:6px"><path d="M20 6L9 17l-5-5" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Connecté — Redirection...
+    `;
+    finalizeLogin(data.access_token, data.email, data.workspace_id, data.account_id);
+  } catch (err) {
+    resetGoogleBtn();
+    showToast('error', 'ERREUR GOOGLE', err.message || 'Impossible de terminer la connexion avec Google.');
+  }
 }
 window.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(window.location.search);
