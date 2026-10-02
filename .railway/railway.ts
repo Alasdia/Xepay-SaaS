@@ -16,6 +16,10 @@ export default defineRailway(() => {
     networking: { privateNetworkEndpoint: "xepay-saas" },
     env: { DATABASE_URL: preserve(), GOOGLE_CLIENT_ID: preserve(), GOOGLE_CLIENT_SECRET: preserve(), GOOGLE_REDIRECT_URI: preserve(), OPENAI_API_KEY: preserve(), REDIS_URL: preserve(), RESEND_API_KEY: preserve(), SECRET_KEY: preserve(), STRIPE_SECRET_KEY: preserve(), STRIPE_WEBHOOK_SECRET_CONNECT: preserve(), STRIPE_WEBHOOK_SECRET_SUBSCRIPTION: preserve(), TWO_FACTOR_ENCRYPTION_KEY: preserve(), WEBHOOK_SECRET_PAYMENT: preserve() },
   });
+  XepaySaaS.deploy = {
+    healthcheckPath: "/health",
+    healthcheckTimeout: 10,
+  };
 
   const ExpirePlansCron = service("expire-plans-cron", {
     source: github("Alasdia/Xepay-SaaS", { checkSuites: false }),

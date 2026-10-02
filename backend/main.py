@@ -3,13 +3,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
+import redis as redis_lib
 from backend.routes.lien import router as lien_router
 from backend.routes.users import router as users_router
 from backend.routes.payments import router as payments_router 
 from backend.routes.transfer import router as transfer_router
 from backend.database import init_db
 from backend.models import Link
-from backend.database import Base, engine
+from backend.database import Base, engine, SessionLocal
 from backend.routes import payout
 from backend.models import UserDB, Wallet, Payment, Withdrawal, WalletTransaction
 from backend.routes.webhook.abonnement import router as webhook_router
@@ -75,6 +78,41 @@ def home():
 @app.get("/about")
 def about():
      return {"project": "Mon SaaS", "status": "en construction"}
+
+@app.get("/health")
+def health():
+    db_ok = False
+    redis_ok = False
+
+    try:
+        db = SessionLocal()
+        try:
+            db.execute(text("SELECT 1"))
+            db_ok = True
+        finally:
+            db.close()
+    except Exception:
+        db_ok = False
+
+    try:
+        redis_client = redis_lib.Redis.from_url(
+            os.getenv("REDIS_URL"),
+            socket_connect_timeout=2,
+            socket_timeout=2,
+        )
+        redis_ok = bool(redis_client.ping())
+    except Exception:
+        redis_ok = False
+
+    body = {
+        "status": "ok" if (db_ok and redis_ok) else "error",
+        "database": "ok" if db_ok else "error",
+        "redis": "ok" if redis_ok else "error",
+    }
+
+    if db_ok and redis_ok:
+        return body
+    return JSONResponse(status_code=500, content=body)
 
 
     
