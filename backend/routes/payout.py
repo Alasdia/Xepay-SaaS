@@ -301,7 +301,7 @@ def process_withdraw(
     return {"status": wd.status}
 
 @router.post("/withdrawals/{withdrawal_id}/cancel")
-async def cancel_withdrawal(
+def cancel_withdrawal(
     withdrawal_id: str,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
