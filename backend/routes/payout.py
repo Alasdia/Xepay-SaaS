@@ -94,16 +94,25 @@ def get_wallet_history(
     workspace_id: str = Header(
         None,
         alias="X-Workspace-Id"
-    )
+    ),
+    limit: int = 100,
+    offset: int = 0
 ):
     owner_id = get_workspace_owner_id(user, workspace_id, db)
     txs = db.query(WalletTransaction)\
         .filter(WalletTransaction.user_id == owner_id)\
         .order_by(WalletTransaction.created_at.desc())\
+        .offset(offset)\
+        .limit(limit)\
         .all()
+    references = [tx.reference for tx in txs]
+    withdrawals_by_ref = {
+        wd.reference: wd
+        for wd in db.query(Withdrawal).filter(Withdrawal.reference.in_(references)).all()
+    } if references else {}
     transactions_data = []
     for tx in txs:
-        wd = db.query(Withdrawal).filter(Withdrawal.reference == tx.reference).first()
+        wd = withdrawals_by_ref.get(tx.reference)
         display_status = wd.status if wd else tx.status
         transactions_data.append({
             "id": wd.id if wd else tx.id,
