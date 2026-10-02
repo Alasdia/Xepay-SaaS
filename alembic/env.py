@@ -56,16 +56,11 @@ IGNORED_INDEXES = {
     # declares dans le modele (index=True/unique=True) mais jamais crees en
     # prod, puisque create_all() ne cree que les tables manquantes, jamais
     # les index manquants sur une table deja existante :
-    "ix_users_account_id",
     "ix_users_stripe_customer_id",
     "ix_users_stripe_subscription_id",
-    # withdrawals.stripe_payout_id : le modele attend un index UNIQUE nomme
-    # selon la convention SQLAlchemy ; la prod a un index NON unique sous un
-    # nom different. Les deux noms sont ignores ici pour ne pas proposer un
-    # drop+create - a traiter via une migration dediee (cf. revision
-    # 78e72802e47e pour le detail de l'ecart constate).
-    "idx_withdrawals_stripe_payout_id",
-    "ix_withdrawals_stripe_payout_id",
+    # ix_users_account_id et idx_withdrawals_stripe_payout_id : resolus par
+    # la migration de synchronisation du 2026-10-02 (voir revision suivante,
+    # correctifs #2 et #3) - retires de cette liste.
 }
 
 # Colonnes ou le modele et la prod divergent reellement (type ou
@@ -73,15 +68,16 @@ IGNORED_INDEXES = {
 # (cf. revision 78e72802e47e). Exclues ici de la comparaison pour ne pas
 # generer de modification inattendue ; a traiter via une migration dediee.
 IGNORED_COLUMNS = {
-    ("api_logs", "id"),            # modele=String, prod=INTEGER (SERIAL)
-    ("users", "account_id"),       # modele=NOT NULL, prod=NULLABLE
+    ("api_logs", "id"),            # modele=String, prod=INTEGER (SERIAL) - non traite (correctif #1 hors perimetre)
+    # ("users", "account_id") : resolu par la migration de synchronisation
+    # du 2026-10-02 (correctif #2) - retire de cette liste.
 }
 
 # FK ou le comportement reel (ON DELETE) differe de ce que le modele
-# laisse supposer - meme principe, meme revision de reference. La
-# constraint cote modele (ForeignKey() sans nom explicite) n'a pas de nom
-# au moment de la comparaison : on filtre donc par table, pas par nom.
-IGNORED_FK_TABLES = {"webhook_delivery_logs"}
+# laisse supposer. ("webhook_delivery_logs" resolu par la migration du
+# 2026-10-02, correctif #4 : le modele declare desormais ondelete="CASCADE"
+# pour refleter le comportement reel deja en place - retire de cette liste.)
+IGNORED_FK_TABLES = set()
 
 
 def include_object(object, name, type_, reflected, compare_to):

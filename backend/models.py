@@ -268,7 +268,7 @@ class WebhookDeliveryLog(Base):
 
     id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("whlg"))
     user_id = Column(String, ForeignKey("users.id"))
-    webhook_id = Column(String, ForeignKey("webhooks.id"))
+    webhook_id = Column(String, ForeignKey("webhooks.id", ondelete="CASCADE"))
     url = Column(String)
     event = Column(String)
     status_code = Column(Integer)
