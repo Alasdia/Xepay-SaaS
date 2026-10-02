@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Header, HTTPException
+from fastapi import APIRouter, Request, Header, HTTPException, BackgroundTasks
 import stripe
 from sqlalchemy import text
 from backend.database import SessionLocal
@@ -30,7 +30,7 @@ router = APIRouter()
 WEBHOOK_SECRET_PAYMENT = os.getenv("WEBHOOK_SECRET_PAYMENT") 
 
 @router.post("/webhook/payment")
-async def stripe_payment_webhook(request: Request, stripe_signature: str = Header(None, alias="stripe-signature")):
+async def stripe_payment_webhook(request: Request, background_tasks: BackgroundTasks, stripe_signature: str = Header(None, alias="stripe-signature")):
     payload = await request.body()
     if not stripe_signature:
         raise HTTPException(status_code=400, detail="Missing Stripe signature")
@@ -58,7 +58,7 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                     if user and user.email:
                         send_payment_failed_email(user.email)
                     if user:
-                        send_webhook_event(db, user.id, "payment.failed", {
+                        background_tasks.add_task(send_webhook_event, user.id, "payment.failed", {
                             "reference": reference,
                             "amount": tx.amount,
                             "status": "failed"
@@ -79,7 +79,7 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
                 if user and user.email:
                     send_payment_refunded_email(user.email, tx.amount)
                 if user:
-                    send_webhook_event(db, user.id, "refund.issued", {
+                    background_tasks.add_task(send_webhook_event, user.id, "refund.issued", {
                         "reference": reference,
                         "amount": tx.amount,
                         "status": "refunded"
@@ -243,7 +243,7 @@ async def stripe_payment_webhook(request: Request, stripe_signature: str = Heade
             )
             db.add(tx)
             db.commit()
-            send_webhook_event(db, user_id, "payment.success", {
+            background_tasks.add_task(send_webhook_event, user_id, "payment.success", {
                 "reference": reference_key,
                 "amount": amount_local,
                 "currency": "XOF",

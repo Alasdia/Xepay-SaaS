@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, BackgroundTasks
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 import uuid
@@ -224,6 +224,7 @@ def withdraw(
 @router.post("/withdraw/{id}/process")
 def process_withdraw(
     id: str,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     membership: WorkspaceUser = Depends(require_owner)
 ):
@@ -280,7 +281,7 @@ def process_withdraw(
             tx.description = "Retrait échoué"
     wd.processed_at = datetime.now(timezone.utc)
     db.commit()
-    send_webhook_event(db, wd.user_id, "withdrawal.done", {
+    background_tasks.add_task(send_webhook_event, wd.user_id, "withdrawal.done", {
         "withdrawal_id": wd.id,
         "amount": wd.amount,
         "currency": "XOF",
