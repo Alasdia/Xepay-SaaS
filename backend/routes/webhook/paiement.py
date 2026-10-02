@@ -104,7 +104,7 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
                 return {"status": "ignored"}
             intent = stripe.PaymentIntent.retrieve(pi_id) if pi_id else None
             if intent and not intent.latest_charge:
-                return {"status": "waiting"}
+                raise Exception("payment_intent_without_charge_yet")
             balance_tx = None
             available_at = None
             if intent and intent.latest_charge:
@@ -137,7 +137,7 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
                         break
                     time.sleep(1)
             if not balance_tx:
-                return {"status": "waiting"}
+                raise Exception("balance_transaction_not_available_yet")
             currency = session_dict.get("currency", "USD").upper()
             if currency == "XOF":
                 amount_local = amount_usd
@@ -155,7 +155,7 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
             email_client = customer_details.get("email") if customer_details else None
             user = db.query(UserDB).filter(UserDB.id == user_id).first()
             if not user or not user.wallet:
-                return {"status": "error", "reason": "user_or_wallet_not_found"}
+                raise Exception("user_or_wallet_not_found")
             wallet = user.wallet
             profile = db.query(Profile).filter(Profile.user_id == user.id).first()
             if not profile or not profile.stripe_account_id:
