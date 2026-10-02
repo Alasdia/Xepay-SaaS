@@ -28,7 +28,6 @@ def create_checkout_session(
         if not profile or not profile.stripe_account_id:
             raise Exception("Merchant Stripe account not found")
         stripe_account_id = profile.stripe_account_id
-        account = stripe.Account.retrieve(stripe_account_id)
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             mode=mode,
