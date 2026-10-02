@@ -168,11 +168,16 @@ def get_activity(
             WalletTransaction.type == "transfer"
         )
         if status: q = q.filter(WalletTransaction.status == status)
-        for t in q.all():
+        transfers = q.all()
+        related_ids = {t.related_user_id for t in transfers if t.related_user_id}
+        counterparties_by_id = {
+            u.id: u.email
+            for u in db.query(UserDB).filter(UserDB.id.in_(related_ids)).all()
+        } if related_ids else {}
+        for t in transfers:
             counterparty = None
             if t.related_user_id:
-                other = db.query(UserDB).filter(UserDB.id == t.related_user_id).first()
-                counterparty = other.email if other else None
+                counterparty = counterparties_by_id.get(t.related_user_id)
 
             items.append({
                 "type": "transfer",
