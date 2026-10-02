@@ -128,10 +128,15 @@ def get_dashboard_links(
         .filter(Payment.status == "paid")\
         .filter(Payment.created_at >= start_month)\
         .count()
+    link_ids = [link.id for link in links]
+    payments_by_link = {}
+    if link_ids:
+        for p in db.query(Payment).filter(Payment.link_id.in_(link_ids)).all():
+            payments_by_link.setdefault(p.link_id, p)
     result = []
     for link in links:
         print("SOURCE:", link.source)
-        payment = db.query(Payment).filter(Payment.link_id == link.id).first()
+        payment = payments_by_link.get(link.id)
         if payment:
             status = payment.status
         elif link.expires_at and link.expires_at < now:
@@ -168,10 +173,15 @@ def get_links(
         .limit(limit)
         .all()
     )
+    link_ids = [link.id for link in links]
+    payments_by_link = {}
+    if link_ids:
+        for p in db.query(Payment).filter(Payment.link_id.in_(link_ids)).all():
+            payments_by_link.setdefault(p.link_id, p)
     result = []
     now = datetime.now(timezone.utc)
     for link in links:
-        payment = (db.query(Payment).filter(Payment.link_id == link.id).first()) 
+        payment = payments_by_link.get(link.id)
         if payment:
             amount = payment.amount_local
             currency = payment.currency_local
