@@ -21,3 +21,4 @@ pyotp
 qrcode[pil]
 pydantic[email]
 redis
+alembic
