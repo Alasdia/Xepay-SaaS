@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from openai import OpenAI
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
 from backend.auth import get_current_user
@@ -12,7 +12,7 @@ load_dotenv()
 
 router = APIRouter()
 
-client = OpenAI(
+client = AsyncOpenAI(
     api_key=os.getenv("OPENAI_API_KEY")
 )
 
@@ -22,7 +22,7 @@ class ChatRequest(BaseModel):
 @router.post("/ai/chat")
 async def ai_chat(req: ChatRequest, current_user: UserDB = Depends(get_current_user)):
 
-    response = client.responses.create(
+    response = await client.responses.create(
         model="gpt-5.5",
         input=req.message
     )
