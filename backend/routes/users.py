@@ -1223,13 +1223,17 @@ def get_my_workspaces(
         WorkspaceUser.user_id == current_user.id
     ).all()
 
+    workspace_ids = [m.workspace_id for m in memberships]
+    owners_by_id = {
+        u.id: u
+        for u in db.query(UserDB).filter(UserDB.id.in_(workspace_ids)).all()
+    } if workspace_ids else {}
+
     workspaces = []
 
     for membership in memberships:
 
-        owner = db.query(UserDB).filter(
-            UserDB.id == membership.workspace_id
-        ).first()
+        owner = owners_by_id.get(membership.workspace_id)
 
         workspace_name = (
             f"{owner.email.split('@')[0]} Workspace"
