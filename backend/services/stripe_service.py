@@ -29,7 +29,6 @@ def create_checkout_session(
             raise Exception("Merchant Stripe account not found")
         stripe_account_id = profile.stripe_account_id
         session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
             mode=mode,
             customer_email=None,
             payment_intent_data={
@@ -66,7 +65,6 @@ def create_checkout_session(
         if not price_id:
             raise Exception("Plan invalide")
         session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
             mode="subscription",
             customer_email=email,
             metadata={
