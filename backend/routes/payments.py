@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from backend.models import Payment, PaymentUpdate, Withdrawal
 from backend.database import engine, get_db
 from datetime import datetime, timezone
@@ -123,6 +123,7 @@ def get_activity(
         for p in q.all():
             items.append({
                 "type": "payment",
+                "payment_id": p.id,
                 "label": p.client_email,
                 "amount": p.amount_local or p.amount,
                 "currency": p.currency_local or p.currency,
@@ -151,6 +152,7 @@ def get_activity(
         for w in q.all():
             items.append({
                 "type": "withdraw",
+                "withdrawal_id": w.id,
                 "label": f"Retrait #{w.reference}",
                 "amount": w.amount,
                 "currency": "XOF",
@@ -181,6 +183,7 @@ def get_activity(
 
             items.append({
                 "type": "transfer",
+                "transfer_id": t.id,
                 "label": (f"Vers {counterparty}" if t.direction == "out" else f"De {counterparty}") if counterparty else "Transfert",
                 "amount": t.amount,
                 "currency": "XOF",
@@ -210,3 +213,46 @@ def get_activity(
         it["date"] = it["date"].isoformat() if it["date"] else None
 
     return paged
+
+@router.get("/payments/{payment_id}")
+def get_payment_detail(
+    payment_id: str,
+    db: Session = Depends(get_db),
+    user=Depends(require_pro_or_business),
+    workspace_id: str = Header(None, alias="X-Workspace-Id")
+):
+    owner_id = get_workspace_owner_id(user, workspace_id, db)
+
+    p = db.query(Payment).filter(
+        Payment.id == payment_id,
+        Payment.user_id == owner_id
+    ).first()
+
+    if not p:
+        raise HTTPException(status_code=404, detail="Paiement introuvable")
+
+    return {
+        "type": "payment",
+        "payment_id": p.id,
+        "label": p.client_email,
+        "amount": p.amount_local or p.amount,
+        "currency": p.currency_local or p.currency,
+        "status": p.status,
+        "date": p.created_at.isoformat() if p.created_at else None,
+        "details": {
+            "amount_origin": p.amount,
+            "currency_origin": p.currency,
+            "rate_used": p.rate_used,
+            "stripe_session_id": p.stripe_session_id,
+            "stripe_account_id": p.stripe_account_id,
+            "stripe_payment_intent_id": p.stripe_payment_intent_id,
+            "link_id": p.link_id,
+            "fee_amount": p.fee_amount,
+            "transfer_amount": p.transfer_amount,
+            "payment_method_id": p.payment_method_id,
+            "card_brand": p.card_brand,
+            "card_last4": p.card_last4,
+            "card_exp_month": p.card_exp_month,
+            "card_exp_year": p.card_exp_year
+        }
+    }

@@ -5,6 +5,8 @@ import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
 import { showUpgradeModal } from "../shared/modalUpgrade.js";
+import { navigate } from "../core/router.js";
+import { getWorkspaceId } from "../core/state.js";
 
 const STRIPE_PUBLISHABLE_KEY =
   "pk_test_51ULZVC0I86XW25IrioDmxFoRvLJhP3QC6wJ11Qil9UmVrVtiYxxnY9gyxoM7X6VPxJaKtUGF8K1j9q1dsnUU2uhB0057G12ETb";
@@ -284,6 +286,16 @@ export async function mount(container) {
   function voirDetailActivite(index) {
     const t = transactions[index];
     if (!t) return;
+    const workspaceId = getWorkspaceId() || "me";
+    if (t.type === "payment" && t.payment_id) {
+      navigate(`/dash/workspace/${encodeURIComponent(workspaceId)}/transactions/paiements/py/${encodeURIComponent(t.payment_id)}`);
+      return;
+    }
+    if (t.type === "withdraw" && t.withdrawal_id) {
+      navigate(`/dash/workspace/${encodeURIComponent(workspaceId)}/transactions/retraits/wd/${encodeURIComponent(t.withdrawal_id)}`);
+      return;
+    }
+    // Transfert : hors périmètre, comportement existant inchangé (panneau inline).
     const d = t.details || {};
     let rows = [];
     const displayName = t.type === "payment" ? t.label : t.label || "Transfert";

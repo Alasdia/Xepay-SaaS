@@ -13,6 +13,8 @@ import { mount as mountApi } from "./views/api.js";
 import { mount as mountMultiUsers } from "./views/multiUsers.js";
 import { mount as mountProfil } from "./views/profil.js";
 import { mount as mountSecurite } from "./views/securite.js";
+import { mountPayment as mountPaymentDetail, mountWithdrawal as mountWithdrawalDetail } from "./views/transactionDetail.js";
+import { mount as mountLienDetail } from "./views/lienDetail.js";
 
 const WORKSPACE_PLACEHOLDER = "me";
 
@@ -65,7 +67,10 @@ async function init() {
 
   registerRoute("/dash/workspace/:workspaceId/", mountDashboard, { name: "dashboard" });
   registerRoute("/dash/workspace/:workspaceId/transactions", mountTransactions, { name: "transactions" });
+  registerRoute("/dash/workspace/:workspaceId/transactions/paiements/py/:paymentId", mountPaymentDetail, { name: "transaction-paiement-detail" });
+  registerRoute("/dash/workspace/:workspaceId/transactions/retraits/wd/:withdrawalId", mountWithdrawalDetail, { name: "transaction-retrait-detail" });
   registerRoute("/dash/workspace/:workspaceId/liens", mountLiens, { name: "liens" });
+  registerRoute("/dash/workspace/:workspaceId/liens/lk/:linkId", mountLienDetail, { name: "lien-detail" });
   registerRoute("/dash/workspace/:workspaceId/api", mountApi, { name: "api" });
   registerRoute("/dash/workspace/:workspaceId/multi-users", mountMultiUsers, { name: "multi-users" });
   registerRoute("/dash/workspace/:workspaceId/profil", mountProfil, { name: "profil" });

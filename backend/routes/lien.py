@@ -296,3 +296,46 @@ def archive_link(
     lien.archived = True
     db.commit()
     return {"success": True}
+
+@router.get("/links/{link_id}", response_model=LinkDashboardResponse)
+def get_link_detail(
+    link_id: str,
+    db: Session = Depends(get_db),
+    user: UserDB = Depends(get_current_user),
+    workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    )
+):
+    owner_id = get_workspace_owner_id(user, workspace_id, db)
+    link = db.query(Link).filter(Link.id == link_id, Link.user_id == owner_id).first()
+    if not link:
+        raise HTTPException(status_code=404, detail="Lien introuvable")
+
+    payment = db.query(Payment).filter(Payment.link_id == link.id).first()
+    now = datetime.now(timezone.utc)
+    if payment:
+        amount = payment.amount_local
+        currency = payment.currency_local
+        status = "paid"
+    elif link.expires_at < now:
+        amount = link.amount
+        currency = link.currency
+        status = "expired"
+    else:
+        amount = link.amount
+        currency = link.currency
+        status = "pending"
+    is_active = link.expires_at > now
+
+    return LinkDashboardResponse(
+        id=link.id,
+        name=link.name,
+        amount=amount,
+        currency=currency,
+        status=status,
+        active=is_active,
+        archived=link.archived,
+        url=link.url,
+        expires_at=link.expires_at
+    )

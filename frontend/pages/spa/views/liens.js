@@ -1,8 +1,9 @@
 // Vue "Mes liens de paiement" — port fidèle de liens.html + liens.js.
 import { apiFetch } from "../core/apiClient.js";
-import { getToken } from "../core/state.js";
+import { getToken, getWorkspaceId } from "../core/state.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { updateUpgradeModal } from "../shared/modalUpgrade.js";
+import { navigate } from "../core/router.js";
 
 const TEMPLATE = `
 <div id="links-lock" class="d-none">
@@ -217,16 +218,21 @@ export async function mount(container) {
           <div class="actions">
             ${
               lien.status === "pending"
-                ? `<button class="btn-copy-actif" onclick="copier('${lien.url}')">Copier</button>`
+                ? `<button class="btn-copy-actif" onclick="event.stopPropagation(); copier('${lien.url}')">Copier</button>`
                 : ""
             }
             ${
               lien.status === "paid"
-                ? `<button class="btn-delete-neutral" onclick="archiverLien('${lien.id}')">Archiver</button>`
-                : `<button class="${lien.status === "expired" ? "btn-delete-actif" : "btn-delete-neutral"}" onclick="supprimer('${lien.id}')">Supprimer</button>`
+                ? `<button class="btn-delete-neutral" onclick="event.stopPropagation(); archiverLien('${lien.id}')">Archiver</button>`
+                : `<button class="${lien.status === "expired" ? "btn-delete-actif" : "btn-delete-neutral"}" onclick="event.stopPropagation(); supprimer('${lien.id}')">Supprimer</button>`
             }
           </div>
         `;
+        div.style.cursor = "pointer";
+        div.addEventListener("click", () => {
+          const workspaceId = getWorkspaceId() || "me";
+          navigate(`/dash/workspace/${encodeURIComponent(workspaceId)}/liens/lk/${encodeURIComponent(lien.id)}`);
+        });
         listeLiens.appendChild(div);
       });
     isLoading = false;

@@ -60,10 +60,20 @@ export async function initSidebar() {
   window.checkMultiUsersAccess = checkMultiUsersAccess;
 }
 
+// Routes de détail -> route de section dont elles doivent garder le
+// highlight actif dans la sidebar (ex: le détail d'un paiement reste sous
+// "Transactions", le détail d'un lien reste sous "Liens").
+const DETAIL_ROUTE_PARENT = {
+  "transaction-paiement-detail": "transactions",
+  "transaction-retrait-detail": "transactions",
+  "lien-detail": "liens",
+};
+
 export function setActiveRoute(routeName) {
+  const effectiveRouteName = DETAIL_ROUTE_PARENT[routeName] || routeName;
   document.querySelectorAll("#sidebar a[data-page]").forEach((a) => {
     const mapped = a.dataset.page === "dashboard" ? "dashboard" : a.dataset.page === "profile" ? "profil" : a.dataset.page === "securité" ? "securite" : a.dataset.page;
-    a.classList.toggle("active-link", mapped === routeName);
+    a.classList.toggle("active-link", mapped === effectiveRouteName);
   });
   // Les liens du menu doivent toujours pointer vers le workspace courant,
   // même après un changement de workspace en cours de session.

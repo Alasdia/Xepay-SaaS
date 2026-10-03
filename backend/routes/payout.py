@@ -5,7 +5,7 @@ import uuid
 from backend.database import get_db
 from backend.models import Wallet, Withdrawal, WithdrawRequest, WalletTransaction, WebhookDeliveryLog, Webhook
 from backend.services.webhook_service import send_webhook_event
-from backend.middleware.authorization import require_owner
+from backend.middleware.authorization import require_owner, require_pro_or_business
 from backend.models import WorkspaceUser
 from backend.auth import get_current_user
 from backend.services.workspace_service import (
@@ -299,6 +299,38 @@ def process_withdraw(
         "stripe_payout_id": wd.stripe_payout_id
     })
     return {"status": wd.status}
+
+@router.get("/withdrawals/{withdrawal_id}")
+def get_withdrawal_detail(
+    withdrawal_id: str,
+    db: Session = Depends(get_db),
+    user=Depends(require_pro_or_business),
+    workspace_id: str = Header(None, alias="X-Workspace-Id")
+):
+    owner_id = get_workspace_owner_id(user, workspace_id, db)
+
+    w = db.query(Withdrawal).filter(
+        Withdrawal.id == withdrawal_id,
+        Withdrawal.user_id == owner_id
+    ).first()
+
+    if not w:
+        raise HTTPException(status_code=404, detail="Retrait introuvable")
+
+    return {
+        "type": "withdraw",
+        "withdrawal_id": w.id,
+        "label": f"Retrait #{w.reference}",
+        "amount": w.amount,
+        "currency": "XOF",
+        "status": w.status,
+        "date": w.created_at.isoformat() if w.created_at else None,
+        "details": {
+            "reference": w.reference,
+            "stripe_payout_id": w.stripe_payout_id,
+            "processed_at": w.processed_at.isoformat() if w.processed_at else None
+        }
+    }
 
 @router.post("/withdrawals/{withdrawal_id}/cancel")
 def cancel_withdrawal(
