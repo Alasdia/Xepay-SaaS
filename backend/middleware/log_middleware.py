@@ -22,6 +22,7 @@ class LogMiddleware(BaseHTTPMiddleware):
             "/docs",
             "/openapi.json",
             "/webhook",
+            "/health",
             "/pay",
             "/ai",
             "/invites/accept",
