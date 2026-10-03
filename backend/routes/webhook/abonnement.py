@@ -117,7 +117,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                 db.commit()
                 print("⚠️ ABONNEMENT RÉSILIÉ -> RETOUR AU PLAN FREE")
                 if user and user.email:
-                    send_subscription_canceled_email(user.email, plan, status)
+                    send_subscription_canceled_email(user.email)
         elif event_type == "invoice.payment_failed":
             invoice = event["data"]["object"].to_dict()
             customer_id = invoice.get("customer")

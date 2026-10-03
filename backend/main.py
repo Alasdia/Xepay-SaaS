@@ -33,6 +33,15 @@ from backend.routes import reports
 from backend.routes import issuing
 app = FastAPI()
 
+# LogMiddleware est ajoutée avant CORSMiddleware : Starlette empile les
+# middlewares dans l'ordre inverse de add_middleware() (le dernier ajouté
+# devient le plus externe), donc CORSMiddleware doit être ajoutée EN DERNIER
+# pour envelopper LogMiddleware. Sinon, un 401 renvoyé directement par
+# LogMiddleware (hors public_prefixes) ne passe jamais par CORSMiddleware :
+# le navigateur masque le 401 derrière une erreur CORS et le SPA ne peut
+# jamais lire le status HTTP pour rediriger vers /login.
+app.add_middleware(LogMiddleware)
+
 allowed_origins = os.getenv(
     "CORS_ALLOWED_ORIGINS",
     "https://www.alasdia.com,https://alasdia.com"
@@ -56,7 +65,6 @@ app.include_router(paiement_webhook_router)
 app.include_router(export_router)
 app.include_router(api_keys_router)
 app.include_router(webhooks_api_router)
-app.add_middleware(LogMiddleware)
 app.include_router(logs_router)
 app.include_router(wallet_router)
 app.include_router(stripe_router)
