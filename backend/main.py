@@ -33,9 +33,14 @@ from backend.routes import reports
 from backend.routes import issuing
 app = FastAPI()
 
+allowed_origins = os.getenv(
+    "CORS_ALLOWED_ORIGINS",
+    "https://www.alasdia.com,https://alasdia.com"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://www.alasdia.com", "https://alasdia.com"], 
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
