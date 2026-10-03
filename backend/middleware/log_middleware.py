@@ -20,6 +20,7 @@ class LogMiddleware(BaseHTTPMiddleware):
             "/signup",
             "/auth",
             "/docs",
+            "/redoc",
             "/openapi.json",
             "/webhook",
             "/health",
