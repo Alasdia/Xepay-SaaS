@@ -291,6 +291,8 @@ def create_merchant_subscription(
                 "application_fee_percent": 1.0,
                 "metadata": metadata,
             },
+            success_url="https://alasdia.com/signup",
+            cancel_url="https://alasdia.com/signup",
             stripe_account=profile.stripe_account_id,
         )
         return {
