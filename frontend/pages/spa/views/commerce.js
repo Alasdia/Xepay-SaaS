@@ -2445,6 +2445,7 @@ async function renderSubscriptions(container) {
                     "Impossible de récupérer les abonnements"
                 );
             }
+            const customers = customersData.data || [];
             const subscriptions = data.data || [];
             console.log("SUBSCRIPTION LIST:", subscriptions);
             if (!subscriptions.length) {
@@ -2458,71 +2459,47 @@ async function renderSubscriptions(container) {
                 return;
             }
             list.innerHTML = `
-
                 <div class="table-wrap">
-
                     <div
                         class="d-flex justify-content-between align-items-center mb-3"
                     >
-
                         <div>
-
                             <div class="table-title">
                                 Abonnements
                             </div>
-
                             <div class="page-subtitle">
                                 ${subscriptions.length}
                                 abonnement(s)
                             </div>
-
                         </div>
-
                     </div>
-
-
                     <div id="customers-scroll-box">
-
                         <table class="table">
-
                             <thead>
-
                                 <tr>
-
                                     <th>Client</th>
-
                                     <th>Identifiant</th>
-
                                     <th>Montant</th>
-
                                     <th>Fréquence</th>
-
                                     <th>Statut</th>
-
-                                    <th>Collection</th>
-
+                                    <th>Mode de paiement</th>
                                     <th>Début</th>
-
                                     <th>Prochaine échéance</th>
-
                                     <th>Créé le</th>
-
                                 </tr>
-
                             </thead>
-
-
                             <tbody>
-
                                 ${subscriptions.map(subscription => {
-
                                     const item =
                                         subscription.items?.data?.[0];
-
                                     const price =
                                         item?.price;
-
-
+                                    const customer =
+                                        customers.find(
+                                            customer => customer.id === subscription.customer
+                                        );
+                                    const customerName =
+                                        customer?.name || "—";
                                     const amount =
                                         price?.unit_amount != null
                                             ? (
@@ -2535,32 +2512,21 @@ async function renderSubscriptions(container) {
                                                 }
                                             )
                                             : "—";
-
-
                                     const currency =
                                         price?.currency
                                             ? price.currency.toUpperCase()
                                             : "";
-
-
                                     const interval =
                                         price?.recurring?.interval;
 
-
                                     const intervalCount =
                                         price?.recurring?.interval_count || 1;
-
-
                                     let recurringText =
                                         "—";
-
-
                                     if (interval) {
-
                                         if (
                                             intervalCount === 1
                                         ) {
-
                                             recurringText =
                                                 interval === "month"
                                                     ? "Mensuel"
@@ -2569,94 +2535,65 @@ async function renderSubscriptions(container) {
                                                         : interval === "week"
                                                             ? "Hebdomadaire"
                                                             : interval;
-
                                         } else {
-
                                             recurringText =
                                                 `Tous les ${intervalCount} ${interval}`;
 
                                         }
-
                                     }
-
-
                                     let statusClass =
                                         "status-warning";
-
                                     let statusText =
                                         subscription.status || "—";
-
-
                                     if (
                                         subscription.status ===
                                         "active"
                                     ) {
-
                                         statusClass =
                                             "status-success";
-
                                         statusText =
                                             "Actif";
-
                                     } else if (
                                         subscription.status ===
                                         "canceled"
                                     ) {
-
                                         statusClass =
                                             "status-danger";
-
                                         statusText =
                                             "Annulé";
-
                                     } else if (
                                         subscription.status ===
                                         "past_due"
                                     ) {
-
                                         statusClass =
                                             "status-danger";
 
                                         statusText =
                                             "Impayé";
-
                                     } else if (
                                         subscription.status ===
                                         "trialing"
                                     ) {
-
                                         statusClass =
                                             "status-success";
 
                                         statusText =
                                             "Essai";
-
                                     }
-
-
                                     return `
-
                                         <tr>
-
                                             <td>
-                                                ${
-                                                    subscription.customer ||
-                                                    "—"
-                                                }
+                                                ${customerName}
                                             </td>
-
                                             <td>
                                                 <code class="customer-id">
                                                     ${subscription.id}
                                                 </code>
                                             </td>
-
                                             <td>
-
                                                 <span class="amount-cell">
                                                     ${amount}
                                                 </span>
-
                                                 ${
                                                     currency
                                                         ? `
@@ -2666,32 +2603,28 @@ async function renderSubscriptions(container) {
                                                         `
                                                         : ""
                                                 }
-
                                             </td>
 
                                             <td>
                                                 ${recurringText}
                                             </td>
-
                                             <td>
-
                                                 <span
                                                     class="status-badge ${statusClass}"
                                                 >
                                                     ${statusText}
                                                 </span>
-
                                             </td>
-
                                             <td>
                                                 ${
-                                                    subscription.collection_method ||
-                                                    "—"
+                                                    subscription.collection_method === "charge_automatically"
+                                                        ? "Prélèvement automatique"
+                                                        : subscription.collection_method === "send_invoice"
+                                                            ? "Facturation sur facture"
+                                                            : subscription.collection_method || "—"
                                                 }
                                             </td>
-
                                             <td>
-
                                                 ${
                                                     subscription.start_date
                                                         ? new Date(
@@ -2701,11 +2634,8 @@ async function renderSubscriptions(container) {
                                                         )
                                                         : "—"
                                                 }
-
                                             </td>
-
                                             <td>
-
                                                 ${
                                                     subscription.items?.data?.[0]?.current_period_end
                                                         ? new Date(
@@ -2715,11 +2645,8 @@ async function renderSubscriptions(container) {
                                                         )
                                                         : "—"
                                                 }
-
                                             </td>
-
                                             <td>
-
                                                 ${
                                                     subscription.created
                                                         ? new Date(
@@ -2729,34 +2656,20 @@ async function renderSubscriptions(container) {
                                                         )
                                                         : "—"
                                                 }
-
                                             </td>
-
                                         </tr>
-
                                     `;
-
                                 }).join("")}
-
                             </tbody>
-
                         </table>
-
                     </div>
-
                 </div>
-
             `;
-
-
         } catch (error) {
-
             console.error(
                 "Erreur récupération abonnements Stripe :",
                 error
             );
-
-
             list.innerHTML = `
                 <div class="commerce-card">
                     <p>
@@ -3161,41 +3074,27 @@ async function renderInvoices(container) {
     async function loadFormData() {
 
         try {
-
             const [
                 customersResponse,
                 productsResponse
             ] = await Promise.all([
-
                 apiFetch(
                     "/stripe/connect/customers"
                 ),
-
                 apiFetch(
                     "/stripe/connect/products"
                 )
-
             ]);
-
-
             const customersData =
                 await customersResponse.json();
-
-
             const productsData =
                 await productsResponse.json();
-
-
             if (!customersResponse.ok) {
-
                 throw new Error(
                     customersData.detail ||
                     "Impossible de récupérer les clients"
                 );
-
             }
-
-
             if (!productsResponse.ok) {
 
                 throw new Error(
