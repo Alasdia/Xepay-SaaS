@@ -2709,7 +2709,7 @@ async function renderSubscriptions(container) {
                                                 ${
                                                     subscription.items?.data?.[0]?.current_period_end
                                                         ? new Date(
-                                                            subscription.current_period_end * 1000
+                                                            subscription.items.data[0].current_period_end * 1000
                                                         ).toLocaleDateString(
                                                             "fr-FR"
                                                         )
