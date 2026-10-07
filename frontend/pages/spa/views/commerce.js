@@ -2707,7 +2707,7 @@ async function renderSubscriptions(container) {
                                             <td>
 
                                                 ${
-                                                    subscription.current_period_end
+                                                    subscription.items?.data?.[0]?.current_period_end
                                                         ? new Date(
                                                             subscription.current_period_end * 1000
                                                         ).toLocaleDateString(
