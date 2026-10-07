@@ -1979,19 +1979,6 @@ async function renderSubscriptions(container) {
     let setupIntentClientSecret = null;
     let paymentMethodId = null;
 
-
-    if (
-        typeof window.Stripe === "function" &&
-        window.STRIPE_PUBLISHABLE_KEY
-    ) {
-
-        stripe = window.Stripe(
-            window.STRIPE_PUBLISHABLE_KEY
-        );
-
-    }
-
-
     /* =====================================================
        OUVERTURE / FERMETURE MODAL
     ===================================================== */
