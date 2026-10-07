@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Xepay — Politique de confidentialité</title>
+<meta name="description" content="Politique de confidentialité de la plateforme Xepay, exploitée par ALASDIA TECHNOLOGIES LLC : données collectées, finalités, partage, sécurité et droits des utilisateurs.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500;600&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="responsive.css">
+<link rel="stylesheet" href="legal.css">
+</head>
+<body class="home-page">
+
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+<div class="noise"></div>
+<canvas id="bg-canvas"></canvas>
+
+<!-- ─── NAVBAR ─── -->
+<nav>
+  <div class="logo">Xe<span>pay</span></div>
+
+  <button class="nav-hamburger">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+
+  <div class="nav-links">
+    <a href="/accueil">Accueil</a>
+    <a href="/fonctionnalite">Fonctionnalités</a>
+    <a href="/tarif">Tarifs</a>
+    <a href="/login" class="btn-nav-outline">Connexion</a>
+    <a href="/signup" class="btn-nav-primary">Créer un compte</a>
+  </div>
+</nav>
+
+<!-- ─── EN-TÊTE ─── -->
+<header class="legal-header">
+  <div class="legal-eyebrow">Document contractuel</div>
+  <h1>Politique de confidentialité</h1>
+  <div class="legal-updated">Dernière mise à jour : 1er octobre 2026 — Version 1.0</div>
+</header>
+
+<!-- ─── CORPS ─── -->
+<div class="legal-body">
+  <nav class="legal-toc" aria-label="Sommaire">
+    <div class="legal-toc-title">Sommaire</div>
+    <ol>
+      <li><a href="#introduction">Introduction</a></li>
+      <li><a href="#responsable">Responsable du traitement</a></li>
+      <li><a href="#donnees">Données collectées</a></li>
+      <li><a href="#google">Connexion avec Google</a></li>
+      <li><a href="#finalites">Finalités du traitement</a></li>
+      <li><a href="#base-legale">Bases légales</a></li>
+      <li><a href="#partage">Partage des données</a></li>
+      <li><a href="#transferts">Transferts internationaux</a></li>
+      <li><a href="#conservation">Durée de conservation</a></li>
+      <li><a href="#securite">Sécurité des données</a></li>
+      <li><a href="#cookies">Cookies</a></li>
+      <li><a href="#droits">Vos droits</a></li>
+      <li><a href="#mineurs">Mineurs</a></li>
+      <li><a href="#modifications">Modifications</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ol>
+  </nav>
+
+  <main class="legal-content">
+
+    <section id="introduction">
+      <h2><span class="num">1</span>Introduction</h2>
+      <p>La présente Politique de confidentialité décrit la manière dont <strong>ALASDIA TECHNOLOGIES LLC</strong>, exploitant de la plateforme Xepay (« <strong>Xepay</strong> », « <strong>nous</strong> »), collecte, utilise, partage et protège les données personnelles des utilisateurs du Service — qu'il s'agisse des Marchands disposant d'un Compte Xepay ou des Clients finaux effectuant un paiement via un lien de paiement Xepay.</p>
+      <p>En utilisant le Service, vous acceptez les pratiques décrites dans la présente Politique. Si vous n'êtes pas d'accord avec celles-ci, nous vous invitons à ne pas utiliser le Service.</p>
+    </section>
+
+    <section id="responsable">
+      <h2><span class="num">2</span>Responsable du traitement</h2>
+      <div class="legal-contact">
+        <p><strong>ALASDIA TECHNOLOGIES LLC</strong></p>
+        <p>Exploitant de la plateforme Xepay</p>
+        <p>Email dédié à la protection des données : <a class="inline-link" href="mailto:privacy@alasdia.com">privacy@alasdia.com</a></p>
+      </div>
+    </section>
+
+    <section id="donnees">
+      <h2><span class="num">3</span>Données collectées</h2>
+      <h3>a) Données fournies par le Marchand</h3>
+      <ul>
+        <li>Données d'identification : nom, prénom, adresse email, mot de passe (stocké sous forme hachée), numéro de téléphone le cas échéant.</li>
+        <li>Données d'entreprise : raison sociale, pays d'activité, secteur d'activité, informations déclarées lors de l'ouverture du compte Stripe Connect.</li>
+        <li>Données de vérification d'identité (KYC) : pièces d'identité et justificatifs transmis à Stripe dans le cadre de la conformité réglementaire — ces documents transitent par Xepay uniquement pour relai technique vers Stripe et ne sont pas conservés durablement sur nos serveurs au-delà du strict nécessaire technique.</li>
+        <li>Données bancaires nécessaires aux versements, gérées et stockées exclusivement par Stripe.</li>
+      </ul>
+      <h3>b) Données générées par l'utilisation du Service</h3>
+      <ul>
+        <li>Historique des transactions, liens de paiement créés, statistiques d'usage et de performance.</li>
+        <li>Journaux techniques (logs) : adresse IP, type d'appareil et de navigateur, horodatage des connexions, pages consultées.</li>
+        <li>Données relatives aux appels API et webhooks configurés par le Marchand.</li>
+      </ul>
+      <h3>c) Données relatives aux Clients finaux</h3>
+      <ul>
+        <li>Nom, adresse email et informations de paiement strictement nécessaires à la réalisation d'une transaction via un lien de paiement, collectées et traitées directement par Stripe. Xepay n'a jamais accès aux numéros de carte bancaire complets.</li>
+      </ul>
+    </section>
+
+    <section id="google">
+      <h2><span class="num">4</span>Connexion avec Google</h2>
+      <p>Xepay propose, en complément de la connexion par email et mot de passe, une option d'authentification « Connexion avec Google », fondée sur Google Identity Services (GIS) et le protocole OAuth 2.0 / OpenID Connect fourni par Google.</p>
+
+      <h3>a) Données Google demandées et obtenues</h3>
+      <p>Lorsque vous choisissez de vous connecter avec votre compte Google, Xepay demande à Google l'accès aux étendues (<em>scopes</em>) suivantes, et uniquement celles-ci :</p>
+      <table class="legal-table">
+        <thead><tr><th>Étendue (scope)</th><th>Donnée obtenue</th><th>Utilisation par Xepay</th></tr></thead>
+        <tbody>
+          <tr><td><code>openid</code></td><td>Identifiant unique Google de votre compte</td><td>Vérifier votre identité et relier la connexion à votre Compte Xepay</td></tr>
+          <tr><td><code>email</code></td><td>Votre adresse email Google et son statut de vérification</td><td>Identifier ou créer votre Compte Xepay, vous envoyer les communications liées au Service</td></tr>
+          <tr><td><code>profile</code></td><td>Informations de profil de base (nom) transmises par Google lors de l'authentification</td><td>Pré-remplir votre profil Xepay ; ces informations ne sont pas conservées au-delà de ce qui est nécessaire à la création du Compte</td></tr>
+        </tbody>
+      </table>
+      <p>Xepay n'obtient et ne demande <strong>aucune autre donnée</strong> issue de votre compte Google (contacts, agenda, fichiers, emails, position, etc.). Seule l'adresse email est effectivement conservée et utilisée pour identifier votre Compte Xepay de façon durable.</p>
+
+      <h3>b) Finalité exclusive et absence d'usage publicitaire</h3>
+      <div class="legal-highlight">
+        <p>Les données obtenues via votre compte Google sont utilisées <strong>exclusivement</strong> pour vous authentifier et créer ou relier votre Compte Xepay. Elles ne sont <strong>jamais</strong> utilisées à des fins publicitaires, de profilage marketing, de revente ou de transfert à des tiers autres que les sous-traitants strictement nécessaires au fonctionnement du Service (voir la section « Partage des données »).</p>
+        <p>L'utilisation et le transfert, par Xepay, des informations reçues des API Google respectent la <a class="inline-link" href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, y compris les exigences de <strong>Limited Use</strong> (« Xepay's use and transfer to any other app of information received from Google APIs will adhere to the Google API Services User Data Policy, including the Limited Use requirements »).</p>
+      </div>
+
+      <h3>c) Conservation et suppression des données Google</h3>
+      <p>Les données obtenues via Google sont conservées selon les mêmes règles que les autres données de votre Compte (voir la section « Durée de conservation »). Vous pouvez à tout moment :</p>
+      <ul>
+        <li>révoquer l'accès de Xepay à votre compte Google depuis la page <a class="inline-link" href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a> ;</li>
+        <li>demander la suppression des données associées à votre Compte Xepay en nous contactant à <a class="inline-link" href="mailto:privacy@alasdia.com">privacy@alasdia.com</a>, ou directement depuis les paramètres de votre Compte.</li>
+      </ul>
+      <p>La révocation de l'accès Google n'entraîne pas automatiquement la suppression de votre Compte Xepay ; elle désactive uniquement la possibilité de vous reconnecter via Google (une connexion par email et mot de passe reste possible si celle-ci a été configurée).</p>
+    </section>
+
+    <section id="finalites">
+      <h2><span class="num">5</span>Finalités du traitement</h2>
+      <p>Les données collectées sont utilisées pour :</p>
+      <ul>
+        <li>créer et administrer votre Compte et votre Workspace ;</li>
+        <li>permettre le traitement des paiements et la mise à disposition des fonds via Stripe ;</li>
+        <li>assurer la sécurité du Service, prévenir la fraude et détecter les usages abusifs ;</li>
+        <li>vous fournir une assistance client et répondre à vos demandes ;</li>
+        <li>vous informer des évolutions du Service, des incidents de sécurité ou des modifications contractuelles ;</li>
+        <li>établir des statistiques d'usage agrégées et améliorer le Service ;</li>
+        <li>satisfaire aux obligations légales et réglementaires auxquelles Xepay ou Stripe sont soumis (lutte contre le blanchiment, obligations fiscales, etc.).</li>
+      </ul>
+    </section>
+
+    <section id="base-legale">
+      <h2><span class="num">6</span>Bases légales</h2>
+      <p>Selon votre juridiction de résidence, le traitement de vos données repose notamment sur :</p>
+      <ul>
+        <li><strong>L'exécution du contrat</strong> vous liant à Xepay (fourniture du Service, traitement des paiements) ;</li>
+        <li><strong>Le respect d'obligations légales</strong> (conformité KYC/AML, obligations fiscales) ;</li>
+        <li><strong>L'intérêt légitime</strong> de Xepay à assurer la sécurité, la prévention de la fraude et l'amélioration du Service ;</li>
+        <li><strong>Votre consentement</strong>, lorsque celui-ci est requis, notamment pour certaines communications marketing ou cookies non essentiels.</li>
+      </ul>
+    </section>
+
+    <section id="partage">
+      <h2><span class="num">7</span>Partage des données</h2>
+      <p>Xepay ne vend jamais vos données personnelles. Elles peuvent être partagées, dans la stricte mesure nécessaire, avec :</p>
+      <table class="legal-table">
+        <thead><tr><th>Destinataire</th><th>Raison du partage</th></tr></thead>
+        <tbody>
+          <tr><td>Stripe, Inc. (sous-traitant de paiement)</td><td>Traitement des paiements, vérification d'identité, versement des fonds</td></tr>
+          <tr><td>Hébergeurs et prestataires d'infrastructure</td><td>Hébergement de l'application et des bases de données</td></tr>
+          <tr><td>Prestataires d'envoi d'emails transactionnels</td><td>Notifications de compte, alertes de sécurité</td></tr>
+          <tr><td>Autorités compétentes</td><td>Lorsque la loi l'exige ou en cas de demande judiciaire valable</td></tr>
+        </tbody>
+      </table>
+      <p>Chacun de ces prestataires est tenu contractuellement de protéger vos données et de ne les utiliser que pour les finalités autorisées par Xepay.</p>
+    </section>
+
+    <section id="transferts">
+      <h2><span class="num">8</span>Transferts internationaux de données</h2>
+      <p>Certains de nos prestataires (notamment Stripe) traitent des données en dehors de votre pays de résidence, y compris aux États-Unis. Lorsque de tels transferts ont lieu, nous nous assurons que des garanties appropriées sont mises en place (clauses contractuelles types, certifications reconnues ou mécanismes équivalents) conformément aux réglementations applicables en matière de protection des données.</p>
+    </section>
+
+    <section id="conservation">
+      <h2><span class="num">9</span>Durée de conservation</h2>
+      <p>Vos données sont conservées pendant la durée de votre Compte, puis archivées pour une durée additionnelle nécessaire au respect de nos obligations légales (notamment comptables et fiscales), généralement comprise entre cinq (5) et dix (10) ans selon la nature de la donnée et la juridiction applicable. Au-delà, vos données sont supprimées ou anonymisées de façon irréversible.</p>
+    </section>
+
+    <section id="securite">
+      <h2><span class="num">10</span>Sécurité des données</h2>
+      <p>Xepay met en œuvre des mesures techniques et organisationnelles raisonnables pour protéger vos données contre l'accès non autorisé, la perte, l'altération ou la divulgation, notamment : chiffrement des mots de passe, communications chiffrées (HTTPS/TLS), contrôle d'accès par rôle au sein des Workspaces, authentification à deux facteurs disponible sur les Comptes, et journalisation des accès sensibles.</p>
+      <p>Aucun système n'étant totalement infaillible, nous vous invitons à protéger vos propres identifiants et à nous signaler sans délai toute activité suspecte sur votre Compte.</p>
+    </section>
+
+    <section id="cookies">
+      <h2><span class="num">11</span>Cookies et technologies similaires</h2>
+      <p>Le site et l'application Xepay utilisent des cookies et technologies similaires pour :</p>
+      <ul>
+        <li><strong>Cookies strictement nécessaires</strong> : maintien de votre session de connexion, sécurité du Service — ces cookies ne peuvent pas être désactivés sans empêcher le fonctionnement du Service.</li>
+        <li><strong>Cookies de mesure d'audience</strong> : compréhension anonymisée de l'usage du site afin d'améliorer son ergonomie.</li>
+      </ul>
+      <p>Vous pouvez configurer votre navigateur pour refuser les cookies non essentiels ; cela peut toutefois limiter certaines fonctionnalités du site.</p>
+    </section>
+
+    <section id="droits">
+      <h2><span class="num">12</span>Vos droits</h2>
+      <p>Selon votre juridiction de résidence, vous disposez des droits suivants concernant vos données personnelles :</p>
+      <ul>
+        <li><strong>Droit d'accès</strong> : obtenir une copie des données que nous détenons à votre sujet ;</li>
+        <li><strong>Droit de rectification</strong> : corriger des données inexactes ou incomplètes ;</li>
+        <li><strong>Droit à l'effacement</strong> : demander la suppression de vos données, sous réserve des obligations légales de conservation ;</li>
+        <li><strong>Droit à la limitation du traitement</strong> dans certains cas prévus par la loi ;</li>
+        <li><strong>Droit à la portabilité</strong> des données que vous nous avez fournies ;</li>
+        <li><strong>Droit d'opposition</strong> à un traitement fondé sur l'intérêt légitime, notamment à des fins de prospection ;</li>
+        <li><strong>Droit d'introduire une réclamation</strong> auprès de l'autorité de protection des données compétente dans votre juridiction.</li>
+      </ul>
+      <p>Pour exercer ces droits, contactez-nous à <a class="inline-link" href="mailto:privacy@alasdia.com">privacy@alasdia.com</a>. Nous répondrons à votre demande dans les meilleurs délais et conformément aux délais légaux applicables.</p>
+    </section>
+
+    <section id="mineurs">
+      <h2><span class="num">13</span>Mineurs</h2>
+      <p>Le Service est destiné à des professionnels et particuliers majeurs. Xepay ne collecte pas sciemment de données concernant des mineurs. Si vous pensez qu'un mineur nous a transmis des données personnelles, contactez-nous afin que nous procédions à leur suppression.</p>
+    </section>
+
+    <section id="modifications">
+      <h2><span class="num">14</span>Modifications de la présente politique</h2>
+      <p>Nous pouvons mettre à jour la présente Politique de confidentialité pour refléter des évolutions légales, techniques ou organisationnelles. Toute modification substantielle vous sera notifiée par email ou via le tableau de bord avant son entrée en vigueur. La date de dernière mise à jour figure en haut de cette page.</p>
+    </section>
+
+    <section id="contact">
+      <h2><span class="num">15</span>Contact</h2>
+      <div class="legal-contact">
+        <p><strong>ALASDIA TECHNOLOGIES LLC</strong></p>
+        <p>Exploitant de la plateforme Xepay</p>
+        <p>Protection des données : <a class="inline-link" href="mailto:privacy@alasdia.com">privacy@alasdia.com</a></p>
+        <p>Support général : <a class="inline-link" href="mailto:support@alasdia.com">support@alasdia.com</a></p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ─── FOOTER ─── -->
+<footer>
+  <div class="logo">XE<span>PAY</span></div>
+  <div class="footer-links">
+    <a href="/fonctionnalite">Fonctionnalités</a>
+    <a href="/tarif">Tarifs</a>
+    <a href="/politique-confidentialite">Politique de confidentialité</a>
+    <a href="/conditions-utilisation">Conditions d'utilisation</a>
+  </div>
+  <div class="footer-copy">© 2026 ALASDIA TECHNOLOGIES LLC — XEPAY</div>
+</footer>
+
+<script src="legal.js" defer></script>
+</body>
+</html>

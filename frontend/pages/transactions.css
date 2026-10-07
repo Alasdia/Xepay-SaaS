@@ -1,0 +1,436 @@
+table td div { color: #111827;}
+:root {
+--bg-deep: #fff;
+--bg-panel: #141a4d;
+--bg-card: #1e246a;
+--bg-card-2: #262c85;
+--accent-cyan: #22d3ee;
+--accent-yellow: #facc15;
+--accent-pink: #ec4899;
+--accent-green: #4ade80;
+--accent-red: #f87171;
+--text: #ffffff;
+--text-dim: #b8bce0;
+--text-muted: #6b7280;
+--border: rgba(255,255,255,0.08);
+--cyan: #00e5ff;
+--violet: #a855f7;
+--gold: #f0b429;
+--muted: rgba(255,255,255,.55);
+--white: #ffffff;
+--font-d: "DM Sans", sans-serif;
+--font-m: "DM Sans", sans-serif;
+--font-b: "DM Sans", sans-serif;
+}
+body { font-family: var(--font-d); background: #ffffff !important; color: var(--text); color: #111827 !important; margin: 0; min-height: 100vh; overflow-x: hidden; }
+.toast-notif { position: fixed; top: 24px; right: 24px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; }
+.toast-notif-item { min-width: 280px; max-width: 380px; background: #ffffff; border: 1px solid #e5e7eb; border-left: 4px solid #22c55e; border-radius: 12px; padding: 14px 18px; box-shadow: 0 10px 30px rgba(0,0,0,.12); font-size: 14px; color: #111827; display: flex; align-items: flex-start; gap: 10px; opacity: 0; transform: translateX(20px); animation: toastIn 0.3s ease forwards; }
+.toast-notif-item.error { border-left-color: #ef4444; }
+.toast-notif-item.warning { border-left-color: #facc15; }
+.toast-notif-item .icon { font-size: 16px; margin-top: 1px; }
+@keyframes toastIn { to { opacity: 1; transform: translateX(0); } }
+@keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
+#main-content { position: relative; z-index: 1; margin-left: 260px; padding: 28px 40px; flex-grow: 1; }
+.page-title { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 6px; }
+.page-subtitle { font-size: 12px; color: #6b7280; }
+.card-epay { background: #f8f9fb !important; border: 1px solid #e5e7eb !important;  border-radius: 8px; color: #111827 !important; backdrop-filter: blur(10px); box-shadow: none; padding: 8px 9px; transition: .25s; }
+.card-epay:hover{ border-color:#facc15 !important; box-shadow: 0 10px 25px rgba(250,204,21,.15); }
+#kpi-row { --bs-gutter-x: 0.5rem; margin-bottom: 9px; }
+.kpi-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; color: #9ca3af !important; font-weight: 600; margin-bottom: 3px; }
+.kpi-sub { font-size: 9px; color: #6b7280; margin-top: 2px; }
+.btn-cyan{ background:#facc15 !important; border:2px solid #facc15 !important; color:#111827 !important; font-weight:800; }
+.btn-cyan:hover{ background:#eab308 !important; border-color:#eab308 !important; }
+.btn-warning,
+.btn-refresh{ background:#facc15 !important; border:1px solid #facc15 !important; color:#111827 !important; font-weight:700; }
+.btn-warning:hover,
+.btn-refresh:hover{ background:#eab308 !important; border-color:#eab308 !important; color:#111827 !important; transform:translateY(-2px); }
+.btn-export,
+.retrait-btn{ background:transparent !important; border:1px solid #d1d5db !important; color:#374151 !important; font-weight:600; font-size:13px; height:32px; padding:0 12px; display:inline-flex; align-items:center; gap:6px; border-radius:8px; transition:.2s; }
+.btn-export:hover,
+.retrait-btn:hover{ background:#f9fafb !important; border-color:#9ca3af !important; color:#111827 !important; transform:none; }
+.lock-overlay{ position: fixed; top: 0; left: 0; right: 0; bottom: 0; display:flex; align-items:center; justify-content:center; z-index:50; }
+.lock-card{ width:340px; background:#ffffff; border:1px solid #e5e7eb; border-radius:14px; padding:28px 24px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.12); }
+.lock-card h3 { color: #545353; font-weight: 700; }
+.lock-card p { color: #545353; font-size: 12px; line-height: 1.6; }
+.lock-icon{ width:70px; height:70px; margin:auto; border-radius:50%; background:#fef9c3; display:flex; align-items:center; justify-content:center; font-size:16px; color:#eab308; margin-bottom:16px; }
+.mini-progress { height: 3px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; margin-top: 4px; }
+.mini-progress-bar { height: 100%; background: linear-gradient(90deg, #06b6d4, #a78bfa); border-radius: 999px; transition: width 0.4s ease; }
+/* Barre d'actions du haut (titre + boutons export/Stripe, existante dans le
+   template) : sticky pour rester visible pendant le scroll vertical, le
+   contenu (KPI/filtres/tableau, tous situés plus bas dans #transactions-
+   normal-view) défile dessous. Ciblée sans ID/classe dédiée via sa
+   combinaison de classes Bootstrap, unique dans ce template. */
+#transactions-normal-view > .d-flex.justify-content-between.align-items-center.mb-4.flex-wrap.gap-3 {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #ffffff;
+  padding: 10px 0;
+}
+#export-actions { align-items: center; }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.search-wrap { position: relative; flex: 1; min-width: 240px;}
+.search-wrap i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.4); pointer-events: none; font-size: 12px;}
+.search-input { width: 100%; background: #ffffff; border: 1px solid rgba(255,255,255,0.1); color: #111827; border-radius: 8px; border: 1px solid #e5e7eb; height: 32px; padding: 6px 10px 6px 30px; font-size: 13px;}
+.search-input::placeholder { color: #9ca3af; }
+.search-input:focus { background: rgba(255,255,255,0.1); border-color: #6366f1; color: white; box-shadow: none; outline: none;}
+/* Filtres avancés Paiements (Montant/Devise/Moyen de paiement) : même gabarit
+   que .search-input mais sans le padding réservé à l'icône de recherche. */
+.filter-input, .filter-select { background: #ffffff; border: 1px solid #e5e7eb; color: #111827; border-radius: 8px; height: 32px; padding: 6px 10px; font-size: 13px; }
+/* "Plus de filtres" (Paiements) : menu déroulant sous le bouton, ne pousse
+   plus le reste de la barre vers le bas. */
+.filter-dropdown { position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; flex-direction: column; gap: 8px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; box-shadow: 0 10px 25px rgba(0,0,0,.08); min-width: 240px; }
+.filter-dropdown .filter-input, .filter-dropdown .filter-select { width: 100%; }
+.filter-input::placeholder { color: #9ca3af; }
+.filter-input:focus, .filter-select:focus { border-color: #6366f1; outline: none; }
+.chip { padding: 3px 10px; border-radius: 999px; background: #ffffff; border: 1px dashed #d1d5db; color: #6b7280; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; white-space: nowrap;}
+.chip:hover { background: #f9fafb; border-color: #9ca3af; color: #111827;}
+.chip.active { background: rgba(17,24,39,0.08); border: 1px dashed #9ca3af; color: #111827; font-weight: 700;}
+.date-group { display: flex; gap: 6px; align-items: center;}
+.date-pill { position: relative; display: flex; align-items: center; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; height: 32px; padding: 0 8px; gap: 4px;}
+.date-pill:focus-within { border-color: #6366f1; background: rgba(255,255,255,0.1);}
+.date-pill small { font-size: 10px; color: #8ea0c3; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;}
+.date-pill input[type="date"] { background: transparent; border: none; color: #111827; font-size: 12px; padding: 0; outline: none; width: 90px;}
+.date-pill input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.5; cursor: pointer; }
+#filter-statut { display: none; }
+.table-wrap { background: #ffffff !important; border: 1px solid #e5e7eb !important; border-radius: 12px; overflow: hidden; box-shadow: none !important; padding: 12px 14px; font-size: 13px; }
+/* Table des transactions : "zone ouverte" sans encadrement visible — scopé
+   via :has() au seul wrapper qui contient #transactions-scroll-box, pour ne
+   pas affecter #detail-view (même classe .table-wrap, panneau distinct non
+   concerné par cette demande). */
+.table-wrap:has(#transactions-scroll-box) { border: none !important; background: transparent !important; padding: 8px 0; }
+.table-wrap .d-flex.justify-content-between.align-items-center.mb-3 { margin-bottom: 8px; }
+.table-title { font-size: 13px; font-weight: 700; }
+.table { color: #111827 !important; margin-bottom: 0; min-width: max-content; }
+.table thead th { color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; font-weight: 700; background: transparent !important; padding: 6px 8px; line-height: 1.2; white-space: nowrap; }
+.table tbody tr { border-bottom: 1px solid #f1f3f5; transition: 0.15s; }
+.table tbody tr:hover { background: #f8f9fb !important; }
+.table tbody td { padding: 5px 8px; vertical-align: middle; border-color: #f1f3f5; background: transparent !important; font-size: 13px; line-height: 1.3; white-space: nowrap; }
+.table td .d-flex.align-items-center.gap-3 { gap: 6px; }
+.amount-cell { font-weight: 700; color: #111827; font-size: 13px; }
+.amount-currency { color: #6b7280; font-size: 11px; font-weight: 500; margin-left: 3px; }
+/* Flou porté par le wrapper de contenu (#transactions-normal-view), pas
+   par #main-content : #transactions-lock est un frère placé AVANT ce
+   wrapper dans le DOM, donc il reste net et cliquable au-dessus du flou. */
+.locked-page #transactions-normal-view { filter: blur(8px); pointer-events: none; user-select: none; opacity: 0.6; }
+.avatar { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 11px; color: #0b1138; flex-shrink: 0; }
+.status-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: capitalize; letter-spacing: 0.3px; }
+.status-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }
+.badge-success { background: rgba(74, 222, 128, 0.12) !important; color: #4ade80 !important; border: 1px solid rgba(74, 222, 128, 0.3); box-shadow: none; animation: none; }
+.badge-success::before { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+.badge-warning { background: rgba(250, 204, 21, 0.12) !important; color: #facc15 !important; border: 1px solid rgba(250, 204, 21, 0.3); box-shadow: none; animation: none; }
+.badge-warning::before { background: #facc15; }
+.badge-danger { background: rgba(248, 113, 113, 0.12) !important; color: #f87171 !important; border: 1px solid rgba(248, 113, 113, 0.3); box-shadow: none; }
+.badge-danger::before { background: #f87171; }
+#nb-transactions.count-badge { background: rgba(6,182,212,0.15) !important; color: #22d3ee !important; border: 1px solid rgba(6,182,212,0.3); font-weight: 600; padding: 3px 8px; border-radius: 999px; font-size: 11px; }
+#transactions-scroll-box { padding-right: 8px; scrollbar-gutter: stable; overflow-x: auto; -webkit-overflow-scrolling: touch;}
+#transactions-scroll-box::-webkit-scrollbar { width: 6px; }
+#transactions-scroll-box::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px;}
+.wallet-hover-wrapper { position: relative; width: 100%; }
+.wallet-popup { position: absolute; top: 105%; left: 0; width: 100%; min-width: 340px; background: linear-gradient(135deg, #1a1238, #2a1a4d); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 18px; color: white; box-shadow: 0 15px 40px rgba(0,0,0,0.5); display: none; z-index: 999;}
+.wallet-hover-wrapper:hover .wallet-popup { display: block; }
+.wallet-item { padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.06);}
+.wallet-item:last-child { border-bottom: none; }
+.wallet-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 5px;}
+.wallet-label { font-size: 12px; color: rgba(255,255,255,0.5); font-weight: 600;}
+.wallet-value { font-size: 12px; color: white; text-align: right; flex: 1;}
+#withdrawModal .modal-content{ background:#ffffff !important; color:#111827 !important; border:1px solid #e5e7eb !important; border-radius:20px; }
+#withdrawModal .form-control,
+#withdrawModal .form-select{ background:#ffffff; border:1px solid #d1d5db; color:#111827; height:50px; }
+#withdrawModal .form-control:focus,
+#withdrawModal .form-select:focus{ border-color:#eab308; box-shadow:0 0 0 4px rgba(250,204,21,.2); color:#111827; }
+#etat-vide,
+#etat-vide p { color: #6b7280; }
+#chartTooltip { background: linear-gradient(135deg, #1a1238, #2a1a4d) !important; border: 1px solid rgba(255,255,255,0.12) !important; border-radius: 14px !important; }
+/* Le comportement de #sidebar à cette largeur est désormais centralisé dans
+   sidebar.css (partagé entre les 7 vues) ; seul le padding spécifique à
+   cette vue est conservé ici. */
+@media (max-width: 960px) {
+  #main-content { padding: 20px; }
+  /* Sous 960px, pas de place pour réserver 22% à un futur panneau : la
+     colonne Transactions reprend toute la largeur disponible. !important
+     nécessaire pour primer sur .dashboard-layout.subview-mode (specificité
+     plus élevée) ci-dessous, qui doit rester desktop-only. */
+  .dashboard-layout { display: block !important; }
+  .main-dashboard-content { flex-basis: auto !important; max-width: 100% !important; }
+}
+.plans-section{position:relative;z-index:2;max-width:1300px;margin:0 auto;padding:0 48px 100px}
+.plans-header{text-align:center;margin-bottom:52px}
+.plans-header h2{font-family:var(--font-d);font-size:clamp(48px,5vw,76px);letter-spacing:.04em;line-height:.95;margin-bottom:14px}
+.plans-header h2 span{background:linear-gradient(90deg,var(--cyan),var(--violet));background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.plans-header p{font-size:15px;color:var(--muted);line-height:1.7;max-width:480px;margin:0 auto}
+.plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
+.plan-card{border-radius:22px;padding:36px 32px;background:rgba(6,12,22,.88);border:1px solid var(--border);position:relative;overflow:hidden;transition:transform .3s,box-shadow .3s,border-color .3s;opacity:0;transform:translateY(24px)}
+.plan-card.visible{opacity:1;transform:translateY(0);transition:opacity .65s ease,transform .65s ease,box-shadow .3s,border-color .3s}
+.plan-card:hover{transform:translateY(-6px);box-shadow:0 32px 80px rgba(0,0,0,.5)}
+.plan-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;opacity:0;transition:opacity .3s}
+.plan-card:hover::before{opacity:1}
+.plan-starter{border-color:rgba(255,255,255,.09)}
+.plan-starter::before{background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent)}
+.plan-starter:hover{border-color:rgba(255,255,255,.16)}
+.plan-pro{border-color:rgba(0,229,255,.28);background:linear-gradient(160deg,rgba(0,229,255,.06) 0%,rgba(168,85,247,.05) 100%);transform:translateY(-8px) !important}
+.plan-pro.visible{transform:translateY(-8px) !important}
+.plan-pro:hover{transform:translateY(-14px) !important;box-shadow:0 40px 100px rgba(0,0,0,.6),0 0 60px rgba(0,229,255,.1) !important}
+.plan-pro::before{background:linear-gradient(90deg,transparent,rgba(0,229,255,.5),rgba(168,85,247,.4),transparent);opacity:1}
+.plan-pro-badge{position:absolute;top:16px;right:16px;padding:4px 12px;border-radius:999px;background:linear-gradient(135deg,var(--cyan),var(--violet));color:#000;font-family:var(--font-m);font-size:9px;font-weight:700;letter-spacing:.1em}
+.plan-business{border-color:rgba(240,180,41,.2)}
+.plan-business::before{background:linear-gradient(90deg,transparent,rgba(240,180,41,.3),transparent)}
+.plan-business:hover{border-color:rgba(240,180,41,.32)}
+.plan-tag{display:inline-block;padding:4px 10px;border-radius:999px;font-family:var(--font-m);font-size:9px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:16px}
+.tag-default{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border)}
+.tag-pro    {background:rgba(0,229,255,.1);color:var(--cyan);border:1px solid rgba(0,229,255,.25)}
+.tag-biz    {background:rgba(240,180,41,.1);color:var(--gold);border:1px solid rgba(240,180,41,.25)}
+.plan-name{font-family:var(--font-d);font-size:38px;letter-spacing:.06em;margin-bottom:4px;line-height:1}
+.plan-price{margin:18px 0;display:flex;align-items:baseline;gap:4px}
+.plan-price .amount{font-family:var(--font-d);font-size:60px;letter-spacing:.02em;line-height:1}
+.plan-price .currency{font-family:var(--font-m);font-size:20px;color:var(--muted);margin-bottom:4px}
+.plan-price .period{font-family:var(--font-m);font-size:12px;color:var(--muted);align-self:flex-end;padding-bottom:8px;letter-spacing:.06em}
+.plan-price-note{font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:.08em;margin-bottom:20px}
+.plan-divider{height:1px;background:var(--border);margin:20px 0}
+.plan-features{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
+.plan-features li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:rgba(255,255,255,.72);line-height:1.5}
+.pf-check{width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;margin-top:1px}
+.pf-check-on {background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.25);color:var(--cyan)}
+.pf-check-gold{background:rgba(240,180,41,.1);border:1px solid rgba(240,180,41,.25);color:var(--gold)}
+.pf-check-off{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--border)}
+.pf-limit{font-family:var(--font-m);font-size:10px;color:var(--muted);margin-left:28px;margin-top:2px}
+.plan-cta{display:block;width:100%;padding:14px;border-radius:12px;text-align:center;font-weight:700;font-size:14px;letter-spacing:.05em;text-decoration:none;transition:all .3s;cursor:pointer;border:none;font-family:var(--font-b)}
+.cta-default{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--white)}
+.cta-default:hover{background:rgba(255,255,255,.09);transform:translateY(-2px)}
+.cta-primary{background:linear-gradient(135deg,var(--cyan),var(--violet));color:#000;box-shadow:0 8px 32px rgba(0,229,255,.25)}
+.cta-primary:hover{box-shadow:0 14px 44px rgba(0,229,255,.4);transform:translateY(-2px)}
+.cta-gold{background:rgba(240,180,41,.1);border:1px solid rgba(240,180,41,.28);color:var(--gold)}
+.cta-gold:hover{background:rgba(240,180,41,.18);transform:translateY(-2px)}
+.plan-disabled { filter: blur(3px) brightness(0.55); opacity: 0.6; pointer-events: none; position: relative; user-select: none; }
+.plan-disabled::after { content: "Plan actuel"; position: absolute; inset: 0; display: flex;align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: white; background: rgba(0,0,0,0.25); backdrop-filter: blur(2px); }
+.section-eyebrow { color: var(--cyan); font-size: 12px; letter-spacing: .25em; text-transform: uppercase; font-weight: 700; margin-bottom: 18px; }
+/* Colonne gauche (KPI + filtres + tableau) à 73% de #main-content ; les 27%
+   restants sont volontairement laissés vides dans ce conteneur flex, en
+   réserve pour un futur panneau de détails à droite (pas encore implémenté
+   — aucun élément DOM n'est ajouté ici, l'espace se libère simplement parce
+   que .main-dashboard-content n'occupe pas toute la largeur disponible). */
+.dashboard-layout { display: flex; align-items: flex-start; gap: 24px; width: 100%; }
+.main-dashboard-content { flex: 0 1 73%; max-width: 73%; min-width: 0; }
+/* Pages dédiées Paiements/Retraits/Transferts (routes propres, pas de
+   panneau de détails réservé) : contenu quasi pleine largeur, ~5% de marge
+   de chaque côté plutôt que la colonne 73%/27% de la vue "Toute activité". */
+.dashboard-layout.subview-mode { justify-content: center; }
+.dashboard-layout.subview-mode .main-dashboard-content { flex: 0 1 98%; max-width: 98%; }
+/* KPI Paiements uniquement : texte agrandi à 15px, dimensions des cartes
+   inchangées (padding/radius de .card-epay non touchés). #main-content
+   .kpi-value est !important ailleurs : priorité par spécificité (ID + 2
+   classes) + !important. */
+.subview-payments .kpi-label { font-size: 13px !important; }
+.subview-payments .kpi-sub { font-size: 13px !important; }
+#main-content .dashboard-layout.subview-payments .kpi-value { font-size: 15px !important; }
+#stripeReportModal .modal-body { max-height: 75vh; overflow-y: auto;}
+#main-content .kpi-value {font-family: "DM Sans", sans-serif !important; font-size: 12px !important; font-weight: 700 !important; line-height: 1.2 !important; letter-spacing: normal;}
+.filter-row-1 { display: flex; align-items: center; gap: 10px; width: 100%; flex-wrap: nowrap;
+}
+
+.filter-row-1 .search-wrap {
+    flex: 1 1 auto;
+    min-width: 240px;
+}
+
+.filter-row-1 .date-group {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-row-1 .btn-refresh {
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+@media (max-width: 960px) { .lock-overlay { left: 0;}.plans-grid { grid-template-columns: 1fr;} .plans-section { padding: 0 10px 30px;}}
+/* margin:1rem applique 1rem en haut ET en bas (2rem cumulés) : min-height
+   doit donc soustraire 2rem, pas 1rem, sinon la boîte déborde de 1rem en
+   bas et écrase la marge basse à 0 (modal collé en bas de l'écran). */
+@media (max-width: 576px) { #withdrawModal .modal-dialog {  display: flex !important;  align-items: center !important;  min-height: calc(100% - 2rem);  margin: 1rem;  }}
+/* ============================================
+   XEPAY — Mobile transactions (à ajouter à responsive.css)
+   ============================================ */
+@media (max-width: 768px) {
+
+  #main-content {
+    padding: 16px;
+  }
+
+  /* ---- 1. Boutons export : ligne unique, scroll horizontal ---- */
+  #export-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  #export-actions::-webkit-scrollbar { display: none; }
+  #export-actions .btn-export {
+    flex: 0 0 auto;
+    font-size: 12px;
+    padding: 8px 12px;
+    white-space: nowrap;
+  }
+  #export-actions .retrait-btn {
+    flex: 0 0 auto;
+    font-size: 12px;
+    padding: 8px 12px;
+    white-space: nowrap;
+  }
+
+  /* ---- 2. Les 6 KPI : ligne unique, même taille, scroll horizontal ---- */
+  #kpi-row {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 10px;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+    margin-left: 0;
+    margin-right: 0;
+    scrollbar-width: none;
+  }
+  #kpi-row::-webkit-scrollbar { display: none; }
+  #kpi-row > [class*="col-"] {
+    flex: 0 0 150px;
+    max-width: 150px;
+    width: 150px;
+    padding-left: 0;
+    padding-right: 0;
+    display: flex; /* pour que la carte puisse s'étirer à la même hauteur */
+  }
+  #kpi-row > [class*="col-"] > .card-epay,
+  #kpi-row > [class*="col-"] > .wallet-hover-wrapper {
+    width: 100%;
+  }
+  #kpi-row .card-epay {
+    padding: 8px 8px;
+    min-height: auto;
+    height: 100%; /* toutes les cartes prennent la hauteur de la plus grande */
+    overflow: hidden; /* empêche tout élément interne de déborder de la carte */
+    box-sizing: border-box;
+  }
+  #kpi-row .mini-progress {
+    display: none; /* barre de progression masquée sous "Paiements réussis" */
+  }
+  #kpi-row .kpi-label {
+    font-size: 9px;
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.6px;
+  }
+  #kpi-row .kpi-value,
+  #kpi-row h4 {
+    font-size: 12px !important;
+  }
+  /* masque les sous-titres sur les 6 KPI */
+  #kpi-row .kpi-sub {
+    display: none;
+  }
+  #kpi-row #chartTooltip {
+    display: none !important; /* évite un popup géant sur mobile */
+  }
+
+  /* ---- 3. Filtres ---- */
+  /* masque les chips de statut (Tous / Réussi / En attente / Échoué) */
+  .toolbar .chip:not(.type-chip) {
+    display: none;
+  }
+
+  /* recherche + dates + refresh sur une seule ligne, scroll horizontal */
+  .filter-row-1 {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .filter-row-1::-webkit-scrollbar { display: none; }
+  .filter-row-1 .search-wrap {
+    flex: 0 0 200px;
+    min-width: 200px;
+  }
+  .filter-row-1 .date-group {
+    flex: 0 0 auto;
+  }
+  .filter-row-1 .date-pill input[type="date"] {
+    width: 90px;
+  }
+  .filter-row-1 .btn-refresh {
+    flex: 0 0 auto;
+  }
+
+  /* chips d'activité (Toute activité / Paiements / Retraits / Transferts) sur une ligne */
+  .toolbar .date-group.ms-2 {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    gap: 6px;
+    margin-left: 0;
+    scrollbar-width: none;
+  }
+  .toolbar .date-group.ms-2::-webkit-scrollbar { display: none; }
+  .toolbar .type-chip {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+
+  /* ---- 4. Tableau : version mobile propre ---- */
+  .table-wrap {
+    padding: 12px 10px;
+    border-radius: 12px;
+  }
+  .table-wrap .table-title {
+    font-size: 15px;
+  }
+  #transactions-scroll-box {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-height: 60vh !important; /* + de lignes visibles dès l'ouverture sur mobile */
+  }
+  .table {
+    /* min-width: max-content (règle générale, hors media query) suffit déjà
+       à forcer le scroll horizontal sans écraser les colonnes, y compris ici. */
+    font-size: 12px;
+  }
+  .table thead th {
+    padding: 8px 8px;
+    font-size: 9px;
+  }
+  .table tbody td {
+    padding: 8px 8px;
+  }
+  .table td .d-flex.align-items-center.gap-3 {
+    gap: 6px !important;
+  }
+  .avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+  }
+  .status-pill {
+    font-size: 9px;
+    padding: 2px 7px;
+  }
+  .amount-cell {
+    font-size: 0.8rem;
+  }
+}

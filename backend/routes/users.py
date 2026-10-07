@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.database import engine, get_db
-from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, PlanUpdate, Link, SecurityAlertsRequest 
+from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, PlanUpdate, Link, SecurityAlertsRequest, GoogleCodeExchange
 from backend.auth import get_current_user
 from backend.services.workspace_service import (
     get_workspace_owner_id
 )
-from backend.security import verify_password, create_access_token
-from backend.middleware.authorization import require_admin, require_owner, require_member, require_manager
+from backend.security import verify_password, create_access_token, create_2fa_pending_token
+from backend.middleware.authorization import require_admin, require_owner, require_member, require_manager, normalize_role, require_business
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import text
 from datetime import datetime, timezone
@@ -24,6 +24,7 @@ import os, shutil
 from fastapi.responses import FileResponse
 from fastapi import FastAPI, Request
 from backend.services.email_service import send_invitation_email, send_login_alert_email
+from backend.services.rate_limit import allow_attempt, reset as reset_rate_limit
 from backend.security import hash_password, verify_password, decrypt_secret
 from math import ceil
 import requests
@@ -36,66 +37,49 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 router = APIRouter()
 
+# Rôles qu'un admin peut attribuer via PUT /users/{user_id}/role ou POST /invites.
+# "owner" est volontairement exclu : le transfert de propriété est un flux distinct,
+# non couvert ici, et ne doit pas pouvoir être obtenu par une simple attribution de rôle.
+ASSIGNABLE_ROLES = {"admin", "manager", "membre", "lecteur"}
+
+
+def _validate_assignable_role(role) -> str:
+    normalized = normalize_role(role) if isinstance(role, str) else ""
+    if normalized not in ASSIGNABLE_ROLES:
+        raise HTTPException(400, "Rôle invalide")
+    return normalized
+
 
 @router.post("/signup")
 def signup(
     user: User, 
     db: Session = Depends(get_db)
-    ):
-
+):
     try:
         existing = db.query(UserDB).filter(UserDB.email == user.email).first()
-
         if existing:
             raise HTTPException(status_code=400, detail="User already exists")
-
         new_user = UserDB(
             email=user.email,
             password=hash_password(user.password)
         )
         db.add(new_user)
         db.flush()
-        
         if user.invite_token:
-
             token_hash = hashlib.sha256(
                 user.invite_token.encode()
             ).hexdigest()
-
-            invite = db.query(WorkspaceInvite).filter(
-                WorkspaceInvite.token_hash == token_hash,
-                WorkspaceInvite.used == False
-            ).first()
-
+            invite = db.query(WorkspaceInvite).filter(WorkspaceInvite.token_hash == token_hash, WorkspaceInvite.used == False).first()
             if invite:
-                membership = WorkspaceUser(
-                    user_id=new_user.id,
-                    workspace_id=invite.workspace_id,
-                    role=invite.role
-                )
+                membership = WorkspaceUser(user_id=new_user.id, workspace_id=invite.workspace_id, role=invite.role)
                 db.add(membership)
                 invite.used = True
-            
         else:
-            print("OWNER WORKSPACE FLOW")
-            membership = WorkspaceUser(
-                user_id=new_user.id,
-                workspace_id=new_user.id,
-                role="owner"
-            )
+            membership = WorkspaceUser(user_id=new_user.id, workspace_id=new_user.id, role="owner")
             db.add(membership)
-            print("WORKSPACE OBJECT ADDED")
-
         try:
-            print("🚀 SIGNUP START")
-            print("👉 Creating Stripe account for:", new_user.email)
-
-            # Initialisation du client v2 Stripe
             client = stripe.StripeClient(os.getenv("STRIPE_SECRET_KEY"))
-        
             user_country = getattr(user, "country", "US").upper() if hasattr(user, "country") and user.country else "US"
-
-            # 2. Définition de la configuration v2 selon les exigences des comptes v2 Stripe
             account_configuration = {
                 "merchant": {
                     "capabilities": {
@@ -114,8 +98,6 @@ def signup(
                     }
                 }
             }
-            print("🚀 AVANT APPEL STRIPE V2")
-            # 3. Création du compte Connect v2 Stripe avec la structure valide
             account = client.v2.core.accounts.create(
                 params={
                     "contact_email": new_user.email,
@@ -132,7 +114,6 @@ def signup(
                     }
                 }
             )
-            # Passage du calendrier de virement en manuel via la v1 (nécessaire pour la gestion des virements)
             stripe.Account.modify(
                 account.id,
                 settings={
@@ -143,38 +124,41 @@ def signup(
                     }
                 }
             )
-            print("✅ COMPTE CONNECT EXPRESS CRÉÉ :", account.id)
-
-            profile = Profile(
-                user_id=new_user.id,
-                stripe_account_id=account.id
-            )
+            try:
+                stripe.Account.modify(
+                    account.id,
+                    capabilities={
+                        "card_issuing": {"requested": True}
+                    }
+                )
+            except stripe.error.StripeError as e:
+                print("❌ ERREUR ISSUING")
+                print("type:", type(e).__name__)
+                print("message:", str(e))
+                print("code:", getattr(e, "code", None))
+                print("param:", getattr(e, "param", None))
+                print("request_id:", getattr(e, "request_id", None))
+            profile = Profile(user_id=new_user.id, stripe_account_id=account.id)
             db.add(profile)
             db.commit()
             db.refresh(profile)
-
         except Exception as e:
             print("❌ ERREUR CRITIQUE:", repr(e))
             import traceback
             traceback.print_exc()
             db.rollback()
             raise HTTPException(status_code=500, detail=str(e))
-
-        wallet = Wallet(
-            user_id=new_user.id,
-            balance=0,
-            created_at=datetime.now(timezone.utc)
-        )
-
+        wallet = Wallet(user_id=new_user.id, balance=0, created_at=datetime.now(timezone.utc))
         db.add(wallet)
         db.commit()
         return {"success": True}
-    
     except Exception as e:
         db.rollback()
+        print("❌ ERREUR SIGNUP :", repr(e))
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
     
-
 @router.post("/login")
 def login(
     request: Request,
@@ -183,53 +167,31 @@ def login(
 ):
     email = form_data.username
     password = form_data.password
-
     user = db.query(UserDB).filter(UserDB.email == email).first()
-
     if user and user.is_deleted:
         raise HTTPException(status_code=403, detail="Compte désactivé")
-
     if not user or not verify_password(password, user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    workspace_user = db.query(WorkspaceUser).filter(
-        WorkspaceUser.user_id == user.id,
-        WorkspaceUser.role == "owner"
-    ).first()
-
+    workspace_user = db.query(WorkspaceUser).filter(WorkspaceUser.user_id == user.id, WorkspaceUser.role == "owner").first()
     if not workspace_user:
-        workspace_user = db.query(WorkspaceUser).filter(
-            WorkspaceUser.user_id == user.id
-        ).first()
-
+        workspace_user = db.query(WorkspaceUser).filter(WorkspaceUser.user_id == user.id).first()
     user.last_login = datetime.now(timezone.utc)
     db.commit()
-
     if user.two_factor_enabled:
+        pre_auth_token = create_2fa_pending_token(user.email)
         return {
             "requires_2fa": True,
             "email": user.email,
-            "workspace_id": workspace_user.workspace_id
+            "workspace_id": workspace_user.workspace_id,
+            "pre_auth_token": pre_auth_token
         }
-
     ip = request.client.host
-    device = request.headers.get(
-        "user-agent",
-        "Appareil inconnu"
-    )
+    device = request.headers.get("user-agent", "Appareil inconnu")
     user.last_login = datetime.now(timezone.utc)
     db.commit()
-    print("LAST LOGIN SAVED:", user.last_login)
-
     token = create_access_token({"sub": user.email})
-
     if user.alert_login:
-        send_login_alert_email(
-            email=user.email,
-            device=device,
-            ip=ip
-        )
-
+        send_login_alert_email(email=user.email, device=device, ip=ip)
     return {
         "access_token": token,
         "token_type": "bearer",
@@ -242,7 +204,6 @@ def login(
 def get_security_alerts(
     current_user: UserDB = Depends(get_current_user)
 ):
-
     return {
         "alert_login": current_user.alert_login,
         "alert_payment": current_user.alert_payment,
@@ -255,13 +216,10 @@ def update_security_alerts(
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-
     current_user.alert_login = data.alert_login
     current_user.alert_payment = data.alert_payment
     current_user.alert_suspect = data.alert_suspect
-
     db.commit()
-
     return {
         "message": "Préférences de sécurité mises à jour"
     }
@@ -272,22 +230,32 @@ CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
 REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
 
+# Origines autorisées à passer leur propre redirect_uri lors de l'échange
+# POST (GIS initCodeClient en ux_mode:'popup' impose comme redirect_uri
+# l'origine de la page appelante — jamais l'URL /auth/google/callback —
+# donc le frontend doit nous dire laquelle). Aligné sur CORSMiddleware
+# (backend/main.py) : seules ces origines sont de toute façon autorisées à
+# appeler cet endpoint depuis un navigateur ; cette liste protège aussi les
+# appels directs hors navigateur (non soumis au CORS).
+ALLOWED_GOOGLE_EXCHANGE_ORIGINS = {"https://www.alasdia.com", "https://alasdia.com"}
+
 from fastapi.responses import RedirectResponse
 from fastapi import HTTPException
 import requests
 
-@router.get("/auth/google/callback")
-def google_callback(
-    code: str, 
-    db: Session = Depends(get_db)
-):
+def _exchange_google_code(code: str, db: Session, redirect_uri: str) -> dict:
+    """Logique partagée par le callback GET (redirect_uri = GOOGLE_REDIRECT_URI)
+    et l'endpoint POST /auth/google/exchange (redirect_uri = origine de la
+    page qui a appelé initCodeClient). Retourne un dict, jamais de réponse
+    HTTP : chaque appelant construit la réponse qui lui correspond
+    (redirection pour le GET, JSON pour le POST)."""
     token_url = "https://oauth2.googleapis.com/token"
 
     data = {
         "code": code,
         "client_id": CLIENT_ID,
         "client_secret": CLIENT_SECRET,
-        "redirect_uri": REDIRECT_URI,
+        "redirect_uri": redirect_uri,
         "grant_type": "authorization_code",
     }
 
@@ -362,8 +330,6 @@ def google_callback(
     db.commit()
     db.refresh(user)
 
-    token = create_access_token({"sub": user.email})
-
     membership = (
         db.query(WorkspaceUser)
         .filter(
@@ -383,15 +349,73 @@ def google_callback(
     workspace_id = membership.workspace_id
 
     if user.two_factor_enabled:
-        return RedirectResponse(
-            url=f"https://alasdia.com/login.html?requires_2fa=true&email={user.email}&workspace_id={workspace_id}"
-        )
-    
+        return {
+            "requires_2fa": True,
+            "email": user.email,
+            "workspace_id": workspace_id,
+            # Calculé pour le POST (qui en a besoin pour /auth/2fa/verify-login,
+            # cf. UserLogin /login) ; le GET existant l'ignore et garde son
+            # URL de redirection inchangée.
+            "pre_auth_token": create_2fa_pending_token(user.email),
+        }
+
     token = create_access_token({"sub": user.email})
 
+    return {
+        "requires_2fa": False,
+        "token": token,
+        "email": user.email,
+        "workspace_id": workspace_id,
+        "account_id": user.account_id,
+    }
+
+
+@router.get("/auth/google/callback")
+def google_callback(
+    code: str,
+    db: Session = Depends(get_db)
+):
+    result = _exchange_google_code(code, db, redirect_uri=REDIRECT_URI)
+
+    if result["requires_2fa"]:
+        return RedirectResponse(
+            url=f"https://alasdia.com/login.html?requires_2fa=true&email={result['email']}&workspace_id={result['workspace_id']}"
+        )
+
     return RedirectResponse(
-        url=f"https://alasdia.com/dashboard.html?token={token}&workspace_id={workspace_id}"
+        url=f"https://alasdia.com/dashboard.html?token={result['token']}&workspace_id={result['workspace_id']}"
     )
+
+
+@router.post("/auth/google/exchange")
+def google_exchange(
+    payload: GoogleCodeExchange,
+    db: Session = Depends(get_db)
+):
+    """Variante JSON du callback ci-dessus, pour le widget GIS
+    (initCodeClient, ux_mode:'popup') : le code arrive via un callback JS
+    frontend plutôt que par une redirection Google directe, donc la réponse
+    doit être du JSON exploitable en JS, pas une redirection HTTP."""
+    if payload.redirect_uri not in ALLOWED_GOOGLE_EXCHANGE_ORIGINS:
+        raise HTTPException(400, "Origine non autorisée")
+
+    result = _exchange_google_code(payload.code, db, redirect_uri=payload.redirect_uri)
+
+    if result["requires_2fa"]:
+        return {
+            "requires_2fa": True,
+            "email": result["email"],
+            "workspace_id": result["workspace_id"],
+            "pre_auth_token": result["pre_auth_token"],
+        }
+
+    return {
+        "access_token": result["token"],
+        "token_type": "bearer",
+        "email": result["email"],
+        "workspace_id": result["workspace_id"],
+        "account_id": result["account_id"],
+    }
 
 @router.post("/onboarding")
 def create_onboarding_link(
@@ -544,26 +568,42 @@ def change_password(
 @router.post("/reset-password")
 def reset_password(
     data: ResetPasswordRequest,
+    request: Request,
     db: Session = Depends(get_db)
 ):
+    ip = request.client.host if request.client else "unknown"
+    normalized_email = data.email.strip().lower()
+    email_ip_key = f"reset-password:{normalized_email}:{ip}"
+    ip_key = f"reset-password:ip:{ip}"
+    email_key = f"reset-password:email:{normalized_email}"
+
+    if not allow_attempt(email_ip_key) or not allow_attempt(ip_key) or not allow_attempt(email_key):
+        raise HTTPException(status_code=429, detail="Trop de tentatives. Réessayez plus tard.")
+
+    generic_error = HTTPException(status_code=400, detail="Impossible de vérifier les informations de réinitialisation.")
+
     user = db.query(UserDB).filter(UserDB.email == data.email).first()
     if not user:
-        raise HTTPException(status_code=404, detail="Compte introuvable")
+        raise generic_error
 
     if not user.two_factor_secret:
-        raise HTTPException(status_code=400, detail="L'authentification 2FA n'est pas configurée pour ce compte")
+        raise generic_error
 
     secret = decrypt_secret(user.two_factor_secret)
     totp = pyotp.TOTP(secret)
 
     if not totp.verify(data.code):
-        raise HTTPException(status_code=400, detail="Code Google Authenticator invalide ou expiré")
+        raise generic_error
 
     if data.new_password != data.confirm_password:
         raise HTTPException(status_code=400, detail="Les mots de passe ne correspondent pas")
 
     user.password = hash_password(data.new_password)
     db.commit()
+
+    reset_rate_limit(email_ip_key)
+    reset_rate_limit(ip_key)
+    reset_rate_limit(email_key)
 
     return {"message": "Mot de passe mis à jour avec succès"}
 
@@ -613,6 +653,14 @@ def get_me(
         "wallet": {
             "balance": wallet.balance,
             "created_at": wallet.created_at
+        },
+        "profile": {
+            "stripe_account_id": (
+                db.query(Profile)
+                .filter(Profile.user_id == owner_id)
+                .first()
+                .stripe_account_id
+            )
         },
         "session": {
             "device": user_agent,
@@ -819,52 +867,6 @@ def create_portal_session(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/change-plan")
-def change_plan(
-    data: PlanUpdate,
-    membership: WorkspaceUser = Depends(require_owner),
-    db: Session = Depends(get_db),
-
-):
-    owner_id = membership.workspace_id
-
-    user = db.query(UserDB).filter(UserDB.id == owner_id).first()
-    print("===== CHANGE PLAN =====")
-    print("USER:", user.email)
-    print("OLD PLAN:", user.plan)
-    print("NEW PLAN:", data.plan)
-
-    if not user:
-        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
-
-    allowed_plans = ["free", "starter", "pro", "business"]
-
-    if data.plan not in allowed_plans:
-        raise HTTPException(status_code=400, detail="Plan invalide")
-
-    user.plan = data.plan
-
-    if data.plan in ["pro", "business"]:
-        now = datetime.now(timezone.utc)
-
-        user.plan_started_at = now
-        user.plan_expires_at = now + timedelta(days=30)
-
-        print("START:", user.plan_started_at)
-        print("END:", user.plan_expires_at)
-    else:
-        user.plan_expires_at = None
-
-    db.commit()
-
-    print("COMMIT DONE")
-
-    return {
-        "message": "Plan mis à jour",
-        "plan": user.plan
-    }
-
-
 @router.get("/dashboard")
 def dashboard():
     return FileResponse("html/dashboard.html")
@@ -873,7 +875,8 @@ def dashboard():
 @router.get("/users")
 def get_users(
     membership: WorkspaceUser = Depends(require_member),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: UserDB = Depends(require_business)
 ):
     workspace_id = membership.workspace_id
 
@@ -906,7 +909,8 @@ def get_users(
 def create_user(
     data: dict,
     membership: WorkspaceUser = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: UserDB = Depends(require_business)
 ):
     workspace_id = membership.workspace_id
 
@@ -918,7 +922,7 @@ def create_user(
         membership = WorkspaceUser(
             user_id=existing.id,
             workspace_id=workspace_id,
-            role=data.get("role", "member")
+            role=_validate_assignable_role(data.get("role", "membre"))
         )
         db.add(membership)
         db.commit()
@@ -939,7 +943,7 @@ def create_user(
     membership = WorkspaceUser(
         user_id=user.id,
         workspace_id=workspace_id,
-        role=data.get("role", "member")
+        role=_validate_assignable_role(data.get("role", "membre"))
     )
     db.add(membership)
     db.commit()
@@ -955,11 +959,12 @@ def create_invite(
     data: dict,
     membership: WorkspaceUser = Depends(require_admin),
     db: Session = Depends(get_db),
-    current_user: UserDB = Depends(get_current_user)
+    current_user: UserDB = Depends(get_current_user),
+    _: UserDB = Depends(require_business)
 ):
     workspace_id = membership.workspace_id
     email = data.get("email")
-    role = data.get("role", "member")
+    role = _validate_assignable_role(data.get("role", "membre"))
 
     if not email:
         raise HTTPException(400, "Email requis")
@@ -1014,7 +1019,8 @@ def create_invite(
 @router.get("/invites")
 def get_invites(
     membership: WorkspaceUser = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: UserDB = Depends(require_business)
 ):
     workspace_id = membership.workspace_id
 
@@ -1104,40 +1110,13 @@ def accept_invite(
         url=f"https://alasdia.com/signup.html?token={token}"
     )
 
-@router.post("/auth/register")
-def register(data: dict, db: Session = Depends(get_db)):
-
-    user = UserDB(
-        email=data.get("email"),
-        name=data.get("name"),
-        role="Admin"
-    )
-
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-
-    # 🔥 ici seulement
-    user.owner_id = user.id
-
-    membership = WorkspaceUser(
-        id=str(uuid4()),  
-        user_id=user.id,
-        workspace_id=user.id,
-        role="OWNER"
-    )
-
-    db.add(membership)
-    db.commit()
-
-    return {"message": "Compte créé"}
-
 @router.put("/users/{user_id}/role")
 def update_role(
     user_id: str,
     data: dict,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_admin)
+    membership: WorkspaceUser = Depends(require_admin),
+    _: UserDB = Depends(require_business)
 ):
 
     user = db.query(UserDB).filter(UserDB.id == user_id).first()
@@ -1159,7 +1138,7 @@ def update_role(
     if user.id == workspace_id:
         raise HTTPException(400, "Impossible de modifier le propriétaire")
 
-    target_membership.role = data.get("role")
+    target_membership.role = _validate_assignable_role(data.get("role"))
     db.commit()
 
     return {"message": "Rôle mis à jour"}
@@ -1168,7 +1147,8 @@ def update_role(
 def toggle_user(
     user_id: str,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_admin)
+    membership: WorkspaceUser = Depends(require_admin),
+    _: UserDB = Depends(require_business)
 ):
     user = db.query(UserDB).filter(UserDB.id == user_id).first()
 
@@ -1199,7 +1179,8 @@ def delete_user(
     user_id: str,
     db: Session = Depends(get_db),
     membership: WorkspaceUser = Depends(require_admin),
-    current_user: UserDB = Depends(get_current_user)
+    current_user: UserDB = Depends(get_current_user),
+    _: UserDB = Depends(require_business)
 ):
     user = db.query(UserDB).filter(UserDB.id == user_id).first()
 
@@ -1242,13 +1223,17 @@ def get_my_workspaces(
         WorkspaceUser.user_id == current_user.id
     ).all()
 
+    workspace_ids = [m.workspace_id for m in memberships]
+    owners_by_id = {
+        u.id: u
+        for u in db.query(UserDB).filter(UserDB.id.in_(workspace_ids)).all()
+    } if workspace_ids else {}
+
     workspaces = []
 
     for membership in memberships:
 
-        owner = db.query(UserDB).filter(
-            UserDB.id == membership.workspace_id
-        ).first()
+        owner = owners_by_id.get(membership.workspace_id)
 
         workspace_name = (
             f"{owner.email.split('@')[0]} Workspace"

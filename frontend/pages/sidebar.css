@@ -1,13 +1,96 @@
-#sidebar{ background:#ffffff !important; border-right:1px solid #e5e7eb; box-shadow:0 2px 20px rgba(0,0,0,.04); }
+/* Bandeau réservé en haut de la page entière (sidebar + #main-content),
+   5% de la hauteur de viewport, coins arrondis uniquement en bas — voir
+   #top-banner dans dashboard.html, le seul point de montage du shell SPA. */
+/* Coins bas "sortants" (convexes, le jaune bombe vers l'extérieur) plutôt
+   qu'un border-radius classique (qui découpe le coin vers l'intérieur) :
+   deux petits carrés sous le bandeau, masqués en quart de cercle via
+   radial-gradient, pour obtenir une courbe qui prolonge le bandeau vers le
+   bas/extérieur au lieu de le rogner. */
+#top-banner { position: fixed; top: 0; left: 0; width: 100%; height: 5vh; background: #facc15; z-index: 200; }
+#top-banner::before,
+#top-banner::after { content: ""; position: absolute; top: 100%; width: 12px; height: 12px; z-index: 200; }
+#top-banner::before { left: 0; background: radial-gradient(circle at 100% 100%, transparent 12px, #facc15 12px); }
+#top-banner::after { right: 0; background: radial-gradient(circle at 0 100%, transparent 12px, #facc15 12px); }
+#sidebar{ background:#ffffff !important; border-right:1px solid #e5e7eb; box-shadow:0 2px 20px rgba(0,0,0,.04); z-index: 100; }
 #sidebar h4{ color:#111827 !important; }
 #sidebar small{ color:#6b7280 !important; }
-#sidebar .nav-link{ color:#6b7280 !important; border-radius:12px; padding:6px 10px; transition:.22s; display:flex; align-items:center; gap:8px; }
+#sidebar .nav-link{ color:#6b7280 !important; border-radius:12px; padding:6px 10px; font-size:14px; transition:.22s; display:flex; align-items:center; gap:8px; }
 #sidebar .nav-link:hover{ background: transparent !important; color:#facc15 !important; transform: translateX(8px); }
 #sidebar .nav-link.active-link{ background: transparent !important; color:#facc15 !important; font-weight:600; }
-#sidebar .nav-link i{ width:18px; font-size: 15px; transition: .22s; }
+#sidebar .nav-link i{ width:18px; font-size: 14px; flex-shrink:0; transition: .22s; }
 #sidebar .nav-link:hover i{ color:#facc15; transform: scale(1.15); rotate: -8deg; }
-#sidebar .nav-item{ margin-bottom:2px; }
-#main-content { background: #ffffff; position: relative; z-index: 1; margin-left: 260px; padding: 28px 40px;  width: calc(100% - 220px); }
+/* Libellé tronquable (ellipsis) plutôt qu'un retour à la ligne quand un
+   badge fixe (Pro/Business) partage la même ligne — ex: "Multi-utilisateurs"
+   et "Moyens de paiement" qui, avec leur badge, dépassaient la largeur
+   disponible et retombaient sur 2 lignes. */
+#sidebar .nav-label{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#sidebar .nav-link .badge,
+#sidebar .badge-soon{ flex-shrink:0; white-space:nowrap; }
+#sidebar .nav-item{ margin-bottom:0; }
+/* Liste de nav : gap réduit entre les liens (Bootstrap .gap-1 = 4px, réduit
+   ici à 2px ; !important nécessaire car les utilitaires Bootstrap de ce
+   projet compilent avec !important). */
+#sidebar ul.nav.flex-column{ gap:2px !important; }
+/* Ligne Transactions + bouton de déroulement du sous-menu. */
+#sidebar .nav-link-row{ display:flex; align-items:center; gap:2px; }
+#sidebar .nav-toggle{ background:none; border:none; width:20px; height:24px; flex-shrink:0; margin-right:16px; display:flex; align-items:center; justify-content:center; color:#9ca3af; border-radius:8px; cursor:pointer; transition:.2s; }
+#sidebar .nav-toggle:hover{ background:#f3f4f6; color:#111827; }
+#sidebar .nav-toggle i{ font-size:15px; }
+/* ── Ligne Commerce + chevron ── */
+#sidebar .nav-section-title {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+}
+#sidebar .commerce-title{ transform: none !important;}
+/* Le titre Commerce ne doit pas absorber toute la largeur */
+#sidebar .nav-section-title .commerce-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+}
+
+/* Sous-menu (Paiements/Retraits/Transferts) : repliée par défaut, affichée
+   uniquement via .open (ajoutée par sidebar.js au clic sur .nav-toggle). */
+#sidebar .nav-submenu{ list-style:none; margin:0; padding:0; overflow:hidden; max-height:0; transition: max-height .25s ease; }
+#sidebar .nav-submenu.open{ max-height:160px; }
+/* Sous-liens : même style que .nav-link, juste indenté et sans icône dédiée. */
+#sidebar .nav-link.nav-sublink{ padding-left:34px; font-size:14px; }
+/* Espace neutre entre groupes non étiquetés (ex: avant le bloc Clients/
+   Produits/.../Risque), sans texte. */
+#sidebar .nav-section-gap{ height:14px; }
+/* Libellés de groupe ("Gestion", "Compte") : même langage visuel que les
+   kpi-label utilisés ailleurs dans l'app (petit, majuscules, discret). */
+#sidebar .nav-section-label{ font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af; font-weight:700; padding:14px 10px 4px; }
+/* Règle partagée par les 7 vues SPA (Dashboard, Transactions, Liens, API,
+   Multi-users, Profil, Sécurité) : chaque vue peut surcharger padding/width
+   selon ses besoins propres, mais le dégagement de base pour la sidebar
+   fixe (260px) doit rester unique et cohérent ici, pas redéclaré par vue. */
+#main-content { background: #ffffff; position: relative; z-index: 1; margin-left: 18%; margin-top: 5vh; padding: 28px 40px; width: calc(100% - 18%); overflow-x: hidden; }
+/* Seule zone scrollable de la sidebar (liste de liens) : l'en-tête (logo +
+   badge plan) au-dessus et le bloc Upgrade/Déconnexion en dessous restent
+   fixes, hors de ce flux — flex:1 lui laisse exactement l'espace restant. */
+/* scrollbar-gutter réserve l'espace de la scrollbar en permanence : sur
+   macOS (scrollbar auto-masquée, visible seulement pendant le défilement
+   actif), elle apparaissait sinon par-dessus le chevron du sous-menu
+   Transactions, collé au bord droit de cette zone. */
+#sidebar-nav-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; padding-right: 0; box-sizing: border-box; scrollbar-width: none;}
+#sidebar-nav-scroll::-webkit-scrollbar { width: 6px; }
+#sidebar-nav-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 3px; width: 0; height: 0;  display: none;}
+
+/* Comportement responsive partagé de la sidebar (260px fixe) et de son
+   dégagement — auparavant dupliqué uniquement dans transactions.css et donc
+   inactif sur les 6 autres vues. Centralisé ici pour un comportement
+   identique quelle que soit la vue active. */
+@media (max-width: 960px) {
+  /* !important nécessaire pour primer sur le style inline (height/overflow-y
+     posés directement sur #sidebar pour le scroll interne en desktop fixe) :
+     entre 769px et 960px la sidebar redevient relative et suit le flux
+     naturel de la page, elle n'a plus besoin de scroll interne propre. */
+  #sidebar { width: 100%; position: relative; min-height: auto; height: auto !important; overflow-y: visible !important; }
+  #main-content { margin-left: 0; }
+}
 .sidebar-upgrade{ margin-top:auto; padding-top:22px; border-top:1px solid #f3f4f6; }
 .sidebar-upgrade .card{ border:1px solid #e5e7eb !important; border-radius:16px; }
 .sidebar-upgrade .card:hover{ border-color:#facc15 !important; transform: none !important; }
@@ -23,3 +106,75 @@
 .badge.business { color: #df0e38;}
 .badge::before { content: ""; position: absolute; top: 0; left: -60%; width: 40%; height: 100%; background: linear-gradient( 120deg, transparent, rgba(255,255,255,0.6), transparent); transform: skewX(-20deg); animation: shine 3s infinite; }
 @keyframes shine { 0% { left: -60%; } 100% { left: 120%; } }
+/* ── Bouton hamburger (dashboard) ── */
+.dash-hamburger {
+  display: none;
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 1060;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 42px;
+  height: 42px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(13,27,110,.97);
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,.4);
+}
+.dash-hamburger span {
+  display: block;
+  width: 100%;
+  height: 1.5px;
+  background: rgba(255,255,255,.85);
+  border-radius: 2px;
+  transition: all .3s cubic-bezier(.23,1,.32,1);
+  transform-origin: center;
+}
+.dash-hamburger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+.dash-hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.dash-hamburger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+/* ── Overlay sombre derrière la sidebar ouverte ── */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.65);
+  backdrop-filter: blur(4px);
+  z-index: 1040;
+}
+.sidebar-overlay.active { display: block; }
+
+/* ── Comportement mobile : sidebar en tiroir + hamburger visible ── */
+@media screen and (max-width: 768px) {
+  #sidebar,
+  .sidebar {
+    position: fixed !important;
+    top: 5vh !important;
+    left: -280px !important;
+    width: 260px !important;
+    height: 95vh !important;
+    z-index: 1050 !important;
+    overflow-y: auto !important;
+    transition: left .3s cubic-bezier(.23,1,.32,1) !important;
+  }
+  #sidebar.open,
+  .sidebar.open {
+    left: 0 !important;
+    box-shadow: 8px 0 40px rgba(0,0,0,.6) !important;
+  }
+
+  .dash-hamburger { display: flex !important; top: calc(5vh + 14px) !important; }
+
+  #main-content,
+  main {
+    margin-left: 0 !important;
+    margin-top: 5vh !important;
+    width: 100% !important;
+    padding: 72px 16px 32px !important;
+  }
+}

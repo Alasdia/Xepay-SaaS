@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Xepay — Conditions d'utilisation</title>
+<meta name="description" content="Conditions générales d'utilisation de la plateforme Xepay, exploitée par ALASDIA TECHNOLOGIES LLC.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500;600&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="responsive.css">
+<link rel="stylesheet" href="legal.css">
+</head>
+<body class="home-page">
+
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+<div class="noise"></div>
+<canvas id="bg-canvas"></canvas>
+
+<!-- ─── NAVBAR ─── -->
+<nav>
+  <div class="logo">Xe<span>pay</span></div>
+
+  <button class="nav-hamburger">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+
+  <div class="nav-links">
+    <a href="/accueil">Accueil</a>
+    <a href="/fonctionnalite">Fonctionnalités</a>
+    <a href="/tarif">Tarifs</a>
+    <a href="/login" class="btn-nav-outline">Connexion</a>
+    <a href="/signup" class="btn-nav-primary">Créer un compte</a>
+  </div>
+</nav>
+
+<!-- ─── EN-TÊTE ─── -->
+<header class="legal-header">
+  <div class="legal-eyebrow">Document contractuel</div>
+  <h1>Conditions d'utilisation</h1>
+  <div class="legal-updated">Dernière mise à jour : 1er octobre 2026 — Version 1.0</div>
+</header>
+
+<!-- ─── CORPS ─── -->
+<div class="legal-body">
+  <nav class="legal-toc" aria-label="Sommaire">
+    <div class="legal-toc-title">Sommaire</div>
+    <ol>
+      <li><a href="#objet">Objet et acceptation</a></li>
+      <li><a href="#definitions">Définitions</a></li>
+      <li><a href="#service">Présentation du service</a></li>
+      <li><a href="#compte">Création de compte</a></li>
+      <li><a href="#kyc">Vérification d'identité</a></li>
+      <li><a href="#obligations">Obligations du marchand</a></li>
+      <li><a href="#tarifs">Tarification et frais</a></li>
+      <li><a href="#paiements">Paiements et versements</a></li>
+      <li><a href="#stripe">Rôle de Stripe</a></li>
+      <li><a href="#litiges">Remboursements et litiges</a></li>
+      <li><a href="#interdits">Usages interdits</a></li>
+      <li><a href="#propriete">Propriété intellectuelle</a></li>
+      <li><a href="#disponibilite">Disponibilité du service</a></li>
+      <li><a href="#responsabilite">Limitation de responsabilité</a></li>
+      <li><a href="#indemnisation">Indemnisation</a></li>
+      <li><a href="#resiliation">Suspension et résiliation</a></li>
+      <li><a href="#modifications">Modification des conditions</a></li>
+      <li><a href="#droit">Droit applicable</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ol>
+  </nav>
+
+  <main class="legal-content">
+
+    <section id="objet">
+      <h2><span class="num">1</span>Objet et acceptation</h2>
+      <p>Les présentes conditions d'utilisation (les « <strong>Conditions</strong> ») régissent l'accès et l'utilisation de la plateforme Xepay (le « <strong>Service</strong> »), un service logiciel (SaaS) permettant aux marchands de recevoir, gérer et piloter des paiements en ligne, exploité par <strong>ALASDIA TECHNOLOGIES LLC</strong> (ci-après « <strong>Xepay</strong> », « <strong>nous</strong> »).</p>
+      <p>En créant un compte, en accédant au Service ou en l'utilisant de quelque manière que ce soit, vous (le « <strong>Marchand</strong> », « <strong>vous</strong> ») reconnaissez avoir lu, compris et accepté sans réserve les présentes Conditions ainsi que notre <a class="inline-link" href="/politique-confidentialite">Politique de confidentialité</a>. Si vous n'acceptez pas ces Conditions, vous ne devez pas utiliser le Service.</p>
+      <p>Si vous utilisez le Service au nom d'une personne morale, vous déclarez disposer des pouvoirs nécessaires pour engager cette dernière aux présentes Conditions.</p>
+    </section>
+
+    <section id="definitions">
+      <h2><span class="num">2</span>Définitions</h2>
+      <ul>
+        <li><strong>Compte</strong> : l'espace personnel créé par le Marchand pour accéder au Service.</li>
+        <li><strong>Workspace</strong> : l'espace de travail associé à un Compte, pouvant regrouper plusieurs utilisateurs selon le plan souscrit.</li>
+        <li><strong>Lien de paiement</strong> : une URL générée via le Service permettant à un client final d'effectuer un paiement.</li>
+        <li><strong>Client final</strong> : la personne physique ou morale qui effectue un paiement auprès d'un Marchand via le Service.</li>
+        <li><strong>Prestataire de paiement</strong> : Stripe, Inc. et ses filiales (« <strong>Stripe</strong> »), prestataire tiers assurant le traitement effectif des fonds, décrit à la section 9.</li>
+        <li><strong>Plan</strong> : la formule d'abonnement souscrite par le Marchand (Free, Pro ou Business), décrite sur la page <a class="inline-link" href="/tarif">Tarifs</a>.</li>
+      </ul>
+    </section>
+
+    <section id="service">
+      <h2><span class="num">3</span>Présentation du service</h2>
+      <p>Xepay est une couche logicielle de gestion de paiements. Elle permet notamment de générer des liens de paiement, de suivre l'activité transactionnelle en temps réel, de gérer plusieurs utilisateurs et rôles au sein d'un Workspace, d'accéder à des exports comptables (CSV/PDF) et à une API de webhooks.</p>
+      <div class="legal-highlight">
+        <p><strong>Xepay n'est ni un établissement de paiement, ni une banque.</strong> Xepay ne détient, ne conserve et ne gère directement aucun fonds appartenant aux Marchands ou à leurs Clients finaux. Le traitement effectif des paiements, la détention des fonds et la conformité réglementaire associée sont assurés exclusivement par Stripe, dans le cadre d'un compte Stripe Connect individuel propre à chaque Marchand.</p>
+      </div>
+    </section>
+
+    <section id="compte">
+      <h2><span class="num">4</span>Création de compte et éligibilité</h2>
+      <p>Pour utiliser le Service, vous devez créer un Compte en fournissant des informations exactes, complètes et à jour. Vous êtes seul responsable de la confidentialité de vos identifiants de connexion et de toute activité réalisée depuis votre Compte.</p>
+      <p>Vous devez être majeur et avoir la pleine capacité juridique pour conclure un contrat dans votre juridiction de résidence. L'utilisation du Service pour le compte d'une entreprise implique que vous disposiez du pouvoir de l'engager.</p>
+      <p>Xepay se réserve le droit de refuser la création d'un Compte, ou de suspendre un Compte existant, notamment en cas d'informations inexactes, de non-conformité aux vérifications d'identité requises par Stripe, ou de soupçon raisonnable d'activité frauduleuse.</p>
+    </section>
+
+    <section id="kyc">
+      <h2><span class="num">5</span>Vérification d'identité et conformité</h2>
+      <p>L'ouverture d'un compte Stripe Connect associé à votre Compte Xepay nécessite la fourniture de documents d'identification et d'informations relatives à votre activité (« <strong>KYC</strong> — Know Your Customer »), conformément aux obligations légales de lutte contre le blanchiment de capitaux et le financement du terrorisme applicables à Stripe en tant que prestataire de services de paiement.</p>
+      <p>Tant que cette vérification n'est pas complétée, certaines fonctionnalités du Service (notamment la réception effective de paiements et les retraits) peuvent être limitées ou indisponibles. Xepay ne peut être tenue responsable des délais ou refus de vérification décidés par Stripe.</p>
+    </section>
+
+    <section id="obligations">
+      <h2><span class="num">6</span>Obligations du marchand</h2>
+      <p>En utilisant le Service, vous vous engagez à :</p>
+      <ul>
+        <li>fournir des informations exactes sur votre identité, votre activité commerciale et les biens ou services que vous proposez ;</li>
+        <li>respecter l'ensemble des lois et réglementations applicables à votre activité, y compris en matière fiscale, commerciale et de protection des consommateurs ;</li>
+        <li>informer clairement vos Clients finaux des biens ou services vendus, de leur prix et des conditions de vente avant tout paiement ;</li>
+        <li>ne pas utiliser le Service pour des activités interdites listées à la section 11 ;</li>
+        <li>coopérer avec Xepay et Stripe en cas de demande d'information liée à la conformité ou à la prévention de la fraude.</li>
+      </ul>
+    </section>
+
+    <section id="tarifs">
+      <h2><span class="num">7</span>Tarification et frais</h2>
+      <p>L'utilisation du Service est soumise à une commission de traitement appliquée sur chaque paiement réussi, dont le taux en vigueur est publié sur la page <a class="inline-link" href="/tarif">Tarifs</a>. Cette commission couvre l'intégralité des frais de traitement (infrastructure Stripe Connect et service Xepay) ; aucun frais caché ne s'applique en sus, sauf mention contraire expresse.</p>
+      <p>Certaines fonctionnalités avancées (automatisations, multi-utilisateurs, exports, support prioritaire) sont réservées aux Plans payants. Le passage à un Plan supérieur ou inférieur prend effet selon les modalités décrites lors de la souscription. Les frais déjà prélevés sur des paiements traités ne sont pas remboursables du seul fait d'un changement de Plan.</p>
+      <p>Xepay se réserve le droit de modifier sa grille tarifaire, moyennant un préavis raisonnable communiqué par email ou via le tableau de bord avant son entrée en vigueur.</p>
+    </section>
+
+    <section id="paiements">
+      <h2><span class="num">8</span>Paiements, versements et disponibilité des fonds</h2>
+      <p>Les fonds encaissés pour le compte d'un Marchand transitent via le compte Stripe Connect de ce dernier et deviennent disponibles pour un retrait selon les délais standards de Stripe, variables selon le pays, la devise et le profil de risque du Compte. Xepay affiche ces informations à titre indicatif dans le tableau de bord mais n'a pas la maîtrise des délais effectifs de mise à disposition.</p>
+      <p>Les demandes de retrait initiées depuis le Service sont exécutées par Stripe vers le compte bancaire désigné par le Marchand. Xepay ne peut garantir un délai d'exécution déterminé, celui-ci dépendant des réseaux bancaires et de Stripe.</p>
+    </section>
+
+    <section id="stripe">
+      <h2><span class="num">9</span>Rôle de Stripe</h2>
+      <p>Stripe agit en tant que prestataire de services de paiement tiers et, le cas échéant, teneur de compte pour les fonds transitant par la plateforme. En créant un Compte Xepay et en complétant la vérification d'identité associée, vous acceptez également les conditions d'utilisation de Stripe Connect, disponibles sur le site de Stripe. Xepay ne saurait être tenue responsable des décisions prises par Stripe concernant la vérification, la rétention ou le gel de fonds, lorsque celles-ci résultent de l'application des politiques propres à Stripe ou d'obligations réglementaires qui lui incombent.</p>
+    </section>
+
+    <section id="litiges">
+      <h2><span class="num">10</span>Remboursements, litiges et rétrofacturations</h2>
+      <p>Le Marchand est seul responsable de sa politique de remboursement vis-à-vis de ses Clients finaux, laquelle doit être communiquée avant tout paiement. Les remboursements initiés par le Marchand sont traités via l'infrastructure de Stripe et peuvent entraîner des frais non récupérables.</p>
+      <p>En cas de contestation de paiement (rétrofacturation / chargeback) initiée par un Client final auprès de son émetteur de carte, le Marchand s'engage à fournir sans délai tout justificatif demandé par Stripe ou Xepay et accepte que les montants contestés, ainsi que les frais associés, puissent être débités de son solde ou de ses versements futurs.</p>
+    </section>
+
+    <section id="interdits">
+      <h2><span class="num">11</span>Usages interdits</h2>
+      <p>Il est strictement interdit d'utiliser le Service pour :</p>
+      <ul>
+        <li>la vente de biens ou services illégaux dans la juridiction du Marchand ou du Client final ;</li>
+        <li>le blanchiment de capitaux, le financement d'activités illicites ou toute fraude financière ;</li>
+        <li>la vente de produits relevant des catégories interdites ou restreintes par Stripe (armes, substances réglementées, produits contrefaits, jeux d'argent non autorisés, contenus pour adultes non conformes, etc.) ;</li>
+        <li>toute tentative de contournement des contrôles de sécurité, d'ingénierie inverse ou d'accès non autorisé aux systèmes de Xepay ;</li>
+        <li>l'usurpation d'identité ou la création de comptes au moyen d'informations fausses ou volées ;</li>
+        <li>toute utilisation portant atteinte à la disponibilité ou à l'intégrité du Service (saturation délibérée, introduction de code malveillant, etc.).</li>
+      </ul>
+      <p>Toute violation constatée peut entraîner la suspension ou la résiliation immédiate du Compte, sans préjudice d'éventuelles poursuites judiciaires.</p>
+    </section>
+
+    <section id="propriete">
+      <h2><span class="num">12</span>Propriété intellectuelle</h2>
+      <p>Le Service, son interface, son code source, ses marques, logos et contenus sont la propriété exclusive de ALASDIA TECHNOLOGIES LLC ou de ses concédants de licence et sont protégés par les lois applicables en matière de propriété intellectuelle. Les présentes Conditions ne confèrent au Marchand qu'un droit d'usage personnel, non exclusif, non transférable et révocable du Service, pour la durée de son Compte.</p>
+      <p>Le Marchand conserve l'intégralité des droits sur les données et contenus qu'il importe dans le Service (listes de clients, libellés de produits, documents de marque, etc.).</p>
+    </section>
+
+    <section id="disponibilite">
+      <h2><span class="num">13</span>Disponibilité du service</h2>
+      <p>Xepay met en œuvre des moyens raisonnables pour assurer la disponibilité, la performance et la sécurité du Service, sans toutefois garantir un fonctionnement ininterrompu ou exempt d'erreurs. Des opérations de maintenance planifiées ou des interruptions imprévues peuvent survenir. Xepay s'efforce d'informer les Marchands des maintenances majeures à l'avance lorsque cela est possible.</p>
+    </section>
+
+    <section id="responsabilite">
+      <h2><span class="num">14</span>Limitation de responsabilité</h2>
+      <p>Dans toute la mesure permise par la loi applicable, Xepay ne pourra être tenue responsable des dommages indirects, accessoires, spéciaux ou consécutifs (y compris la perte de profits, de données ou de clientèle) résultant de l'utilisation ou de l'impossibilité d'utiliser le Service.</p>
+      <p>La responsabilité totale de Xepay envers un Marchand, pour quelque cause que ce soit liée aux présentes Conditions, est limitée au montant des frais de Service effectivement perçus par Xepay auprès de ce Marchand au cours des trois (3) mois précédant le fait générateur du dommage.</p>
+      <p>Cette limitation ne s'applique pas en cas de faute lourde ou intentionnelle, ni dans les cas où la loi applicable interdit une telle limitation.</p>
+    </section>
+
+    <section id="indemnisation">
+      <h2><span class="num">15</span>Indemnisation</h2>
+      <p>Le Marchand s'engage à indemniser et à garantir Xepay, ses dirigeants, employés et partenaires contre toute réclamation, perte, responsabilité ou dépense (y compris les honoraires d'avocats raisonnables) résultant de sa violation des présentes Conditions, de son activité commerciale ou d'un litige avec un Client final.</p>
+    </section>
+
+    <section id="resiliation">
+      <h2><span class="num">16</span>Suspension et résiliation</h2>
+      <p>Le Marchand peut mettre fin à son Compte à tout moment depuis les paramètres du tableau de bord. Xepay peut suspendre ou résilier un Compte, avec ou sans préavis, en cas de violation des présentes Conditions, de risque de fraude avéré, de demande d'une autorité compétente ou de cessation du Service.</p>
+      <p>La résiliation du Compte n'affecte pas les obligations déjà nées (notamment le règlement de commissions dues) ni les fonds en cours de traitement par Stripe, qui continuent de relever des conditions propres à Stripe Connect jusqu'à leur dénouement complet.</p>
+    </section>
+
+    <section id="modifications">
+      <h2><span class="num">17</span>Modification des conditions</h2>
+      <p>Xepay peut modifier les présentes Conditions à tout moment. Toute modification substantielle sera notifiée par email ou via le tableau de bord au moins quinze (15) jours avant son entrée en vigueur. La poursuite de l'utilisation du Service après cette date vaut acceptation des Conditions modifiées.</p>
+    </section>
+
+    <section id="droit">
+      <h2><span class="num">18</span>Droit applicable et juridiction</h2>
+      <p>Les présentes Conditions sont régies par les lois de l'État du Delaware, États-Unis, sans égard aux principes de conflits de lois. Tout litige relatif à leur interprétation ou à leur exécution qui n'aurait pu être résolu à l'amiable sera soumis à la compétence exclusive des juridictions compétentes de l'État du Delaware, sous réserve des dispositions impératives de protection applicables aux consommateurs dans la juridiction de résidence du Marchand.</p>
+    </section>
+
+    <section id="contact">
+      <h2><span class="num">19</span>Contact</h2>
+      <div class="legal-contact">
+        <p><strong>ALASDIA TECHNOLOGIES LLC</strong></p>
+        <p>Exploitant de la plateforme Xepay</p>
+        <p>Email : <a class="inline-link" href="mailto:legal@alasdia.com">legal@alasdia.com</a></p>
+        <p>Support : <a class="inline-link" href="mailto:support@alasdia.com">support@alasdia.com</a></p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ─── FOOTER ─── -->
+<footer>
+  <div class="logo">XE<span>PAY</span></div>
+  <div class="footer-links">
+    <a href="/fonctionnalite">Fonctionnalités</a>
+    <a href="/tarif">Tarifs</a>
+    <a href="/politique-confidentialite">Politique de confidentialité</a>
+    <a href="/conditions-utilisation">Conditions d'utilisation</a>
+  </div>
+  <div class="footer-copy">© 2026 ALASDIA TECHNOLOGIES LLC — XEPAY</div>
+</footer>
+
+<script src="legal.js" defer></script>
+</body>
+</html>

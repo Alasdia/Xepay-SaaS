@@ -11,7 +11,8 @@ DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 engine = create_engine(
     DATABASE_URL,
     pool_size=10,
-    max_overflow=20
+    max_overflow=20,
+    pool_pre_ping=True
 )
 
 print("✅ ENGINE CONFIG LOADED")

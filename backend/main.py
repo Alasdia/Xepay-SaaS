@@ -3,13 +3,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
+import redis as redis_lib
 from backend.routes.lien import router as lien_router
 from backend.routes.users import router as users_router
 from backend.routes.payments import router as payments_router 
 from backend.routes.transfer import router as transfer_router
 from backend.database import init_db
 from backend.models import Link
-from backend.database import Base, engine
+from backend.database import Base, engine, SessionLocal
 from backend.routes import payout
 from backend.models import UserDB, Wallet, Payment, Withdrawal, WalletTransaction
 from backend.routes.webhook.abonnement import router as webhook_router
@@ -26,13 +29,27 @@ from backend.routes.webhook.stripe import router as stripe_router
 from backend.routes.app import router as ai_router
 from backend.auth import router as auth_router
 from backend.routes.account_id import router as account_router
-
-
+from backend.routes import reports
+from backend.routes import issuing
 app = FastAPI()
+
+# LogMiddleware est ajoutée avant CORSMiddleware : Starlette empile les
+# middlewares dans l'ordre inverse de add_middleware() (le dernier ajouté
+# devient le plus externe), donc CORSMiddleware doit être ajoutée EN DERNIER
+# pour envelopper LogMiddleware. Sinon, un 401 renvoyé directement par
+# LogMiddleware (hors public_prefixes) ne passe jamais par CORSMiddleware :
+# le navigateur masque le 401 derrière une erreur CORS et le SPA ne peut
+# jamais lire le status HTTP pour rediriger vers /login.
+app.add_middleware(LogMiddleware)
+
+allowed_origins = os.getenv(
+    "CORS_ALLOWED_ORIGINS",
+    "https://www.alasdia.com,https://alasdia.com"
+).split(",")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://www.alasdia.com", "https://alasdia.com"], 
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,15 +65,14 @@ app.include_router(paiement_webhook_router)
 app.include_router(export_router)
 app.include_router(api_keys_router)
 app.include_router(webhooks_api_router)
-app.add_middleware(LogMiddleware)
 app.include_router(logs_router)
 app.include_router(wallet_router)
 app.include_router(stripe_router)
 app.include_router(ai_router)
 app.include_router(auth_router)
 app.include_router(account_router)
-
-
+app.include_router(reports.router)
+app.include_router(issuing.router)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app.mount(
     "/static",
@@ -75,6 +91,41 @@ def home():
 @app.get("/about")
 def about():
      return {"project": "Mon SaaS", "status": "en construction"}
+
+@app.get("/health")
+def health():
+    db_ok = False
+    redis_ok = False
+
+    try:
+        db = SessionLocal()
+        try:
+            db.execute(text("SELECT 1"))
+            db_ok = True
+        finally:
+            db.close()
+    except Exception:
+        db_ok = False
+
+    try:
+        redis_client = redis_lib.Redis.from_url(
+            os.getenv("REDIS_URL"),
+            socket_connect_timeout=2,
+            socket_timeout=2,
+        )
+        redis_ok = bool(redis_client.ping())
+    except Exception:
+        redis_ok = False
+
+    body = {
+        "status": "ok" if (db_ok and redis_ok) else "error",
+        "database": "ok" if db_ok else "error",
+        "redis": "ok" if redis_ok else "error",
+    }
+
+    if db_ok and redis_ok:
+        return body
+    return JSONResponse(status_code=500, content=body)
 
 
     

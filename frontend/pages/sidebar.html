@@ -1,68 +1,135 @@
 <!-- SIDEBAR -->
 <div id="sidebar" class="d-flex flex-column p-3"
-    style="width: 260px; min-height: 100vh; position: fixed;">
+    style="width: 18%; height: 95vh; top: 5vh; position: fixed; overflow: hidden;">
 
-    <!-- Logo -->
+    <!-- En-tête fixe (logo + badge plan) : ne défile jamais, seule la liste
+         de liens ci-dessous (dans #sidebar-nav-scroll) a son propre scroll
+         vertical, qui passe donc visuellement sous ce bloc. -->
     <div class="mb-4 mt-2">
-        <h4 class="fw-bold text-muted">⚡ Xepay</h4>
+        <div style="height:36px; overflow:hidden; display:flex; align-items:center; margin-bottom:8px;">
+            <img src="/assets/xepay-logo.png" alt="Xepay" style="height:36px; display:block; transform:scale(1.4) translateX(6%); transform-origin:center;">
+        </div>
         <small class="text-muted">Tableau de bord marchand</small>
     </div>
 
-    <!-- Badge plan -->
     <div class="mb-4">
       <span id="badge-plan" class="plan-badge">
       </span>
     </div>
 
-    <!-- Navigation -->
+    <!-- Navigation (seule zone scrollable de la sidebar) -->
+    <div id="sidebar-nav-scroll">
     <ul class="nav nav-pills flex-column gap-1">
         <li class="nav-item">
             <a href="dashboard.html"
-                class="nav-link text-muted active-link">
+                class="nav-link text-muted" data-page="dashboard">
                   <i class="fa-solid fa-house"></i> Accueil
             </a>
         </li>
+
         <li class="nav-item">
-            <a href="transactions.html"
-                class="nav-link text-muted">
-                  <i class="fa-solid fa-credit-card"></i> Transactions
-            </a>
+            <div class="nav-link-row">
+                <a href="transactions.html"
+                    class="nav-link text-muted flex-grow-1" data-page="transactions">
+                      <i class="fa-solid fa-credit-card"></i> Transactions
+                </a>
+                <button type="button" class="nav-toggle" data-submenu-toggle="submenu-transactions"
+                    aria-expanded="false" aria-controls="submenu-transactions" aria-label="Afficher les sous-pages Transactions">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+            <!-- Même route /transactions que le parent (le filtre par type
+                 est un état interne à la vue, pas un paramètre d'URL) : ces
+                 3 sous-liens ne pré-sélectionnent pas le filtre à l'arrivée.
+                 Repliées par défaut, affichées uniquement au clic sur
+                 l'icône de déroulement ci-dessus. -->
+            <ul class="nav-submenu" id="submenu-transactions">
+                <li class="nav-item">
+                    <a href="transactions.html" class="nav-link text-muted nav-sublink" data-page="paiements">
+                        Paiements
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="transactions.html" class="nav-link text-muted nav-sublink" data-page="retraits">
+                        Retraits
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="transactions.html" class="nav-link text-muted nav-sublink" data-page="transferts">
+                        Transferts
+                    </a>
+                </li>
+            </ul>
         </li>
+
         <li class="nav-item">
-            <a href="liens.html" class="nav-link text-muted">
+            <a href="liens.html" class="nav-link text-muted" data-page="liens">
                 <i class="fa-solid fa-link"></i> Mes liens de paiement
             </a>
         </li>
 
+        <li class="nav-section-gap" aria-hidden="true"></li>
+
+        <!-- Interfaces Xepay à venir pour les données du compte Stripe Connecté
+             du marchand (Clients/Produits/Abonnements/Factures/Moyens de
+             paiement/Risque) : aucune vue/route n'existe encore derrière,
+             affichées ici non cliquables pour montrer la structure cible
+             sans créer de route fictive. -->
+        <div class="nav-section">
+          <div class="nav-section-title">
+            <span class="commerce-title nav-link text-muted">Commerce</span>
+              <button
+                type="button"
+                class="nav-toggle"
+                data-submenu-toggle="submenu-commerce"
+                aria-expanded="false"
+                aria-label="Afficher le menu Commerce"
+              >
+                <i class="fas fa-chevron-right"></i>
+              </button>
+          </div>
+          <div id="submenu-commerce" class="nav-submenu">
+            <a href="#" data-page="clients" class=" nav-link text-muted nav-sublink"><i class="fas fa-users"></i>Clients</a>
+            <a href="#" data-page="produits" class=" nav-link text-muted nav-sublink"><i class="fas fa-box"></i>Produits</a>
+            <a href="#" data-page="abonnements" class=" nav-link text-muted nav-sublink"><i class="fas fa-repeat"></i>Abonnements</a>
+            <a href="#" data-page="factures" class=" nav-link text-muted nav-sublink"><i class="fas fa-file-invoice"></i>Factures</a>
+            <a href="#" data-page="moyens-paiements" class=" nav-link text-mutednav-sublink"><i class="fas fa-credit-card"></i>Moyens de paiement</a>
+            <a href="#" data-page="risque" class=" nav-link text-muted nav-sublink"><i class="fas fa-shield-halved"></i>Risque</a>
+          </div>
+        </div>
+
+        <li class="nav-section-label">Gestion</li>
         <!-- Fonctionnalité verrouillée (Free) -->
         <li class="nav-item">
-            <a href="API.html" class="nav-link text-muted d-flex justify-content-between"
+            <a href="API.html" class="nav-link text-muted" data-page="api"
                 onclick="checkApiAccess(event)">
-                    <i class="fa-solid fa-code"></i> API Access
+                    <i class="fa-solid fa-code"></i><span class="nav-label">API Access</span>
                 <span class="badge bg-warning text-dark">Pro</span>
             </a>
         </li>
         <li class="nav-item">
-            <a href="multi-users.html" class="nav-link text-muted d-flex justify-content-between"
+            <a href="multi-users.html" class="nav-link text-muted" data-page="multi-users"
                   onclick="checkMultiUsersAccess(event)">
-                    <i class="fa-solid fa-users"></i> Multi-utilisateurs
+                    <i class="fa-solid fa-users"></i><span class="nav-label">Multi-utilisateurs</span>
                 <span class="badge bg-danger">Business</span>
             </a>
         </li>
 
-        <li class="nav-item mt-2">
-            <a href="profil.html" class="nav-link text-muted">
+        <li class="nav-section-label">Compte</li>
+        <li class="nav-item">
+            <a href="profil.html" class="nav-link text-muted" data-page="profile">
                 <i class="fa-solid fa-user"></i> Profil / KYC
             </a>
         </li>
         <li class="nav-item">
-            <a href="sécurité.html" class="nav-link text-muted">
+            <a href="sécurité.html" class="nav-link text-muted" data-page="securité">
                 <i class="fa-solid fa-shield-halved"></i> Sécurité
             </a>
         </li>
     </ul>
+    </div>
 
-    <!-- Upgrade CTA -->
+    <!-- Upgrade CTA (fixe, en bas, hors de la zone scrollable) -->
     <div class="mt-auto sidebar-upgrade">
         <div class="card border-0 p-3"
                 style="background: rgba(255,255,255,0.1); border-radius: 12px;">
@@ -76,7 +143,7 @@
         </div>
 
         <!-- Logout -->
-        <a href="login.html" onclick="logout()" class="nav-link text-muted mt-3 text-center fw-bold">
+        <a href="/login" onclick="logout()" class="nav-link text-muted mt-3 text-center fw-bold">
             <i class="fa-solid fa-right-from-bracket"></i> Déconnexion
         </a>
     </div>

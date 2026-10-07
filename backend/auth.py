@@ -9,11 +9,12 @@ from backend.models import UserDB, TwoFAVerifyRequest, WorkspaceUser, LoginTwoFA
 from datetime import datetime, timezone
 from backend.security import (
     decode_token, jwt, JWTError, SECRET_KEY, ALGORITHM, create_access_token,
-    encrypt_secret, decrypt_secret
+    encrypt_secret, decrypt_secret, decode_2fa_pending_token
 )
 from fastapi.security import OAuth2PasswordBearer
 from jose import JOSEError, ExpiredSignatureError
 from backend.services.email_service import send_login_alert_email
+from backend.services.rate_limit import allow_attempt, reset as reset_rate_limit
 router = APIRouter()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -110,6 +111,19 @@ def verify_login_2fa(
     request: Request,
     db: Session = Depends(get_db)
 ):
+    ip = request.client.host if request.client else "unknown"
+    normalized_email = data.email.strip().lower()
+    email_ip_key = f"2fa-login:{normalized_email}:{ip}"
+    ip_key = f"2fa-login:ip:{ip}"
+    email_key = f"2fa-login:email:{normalized_email}"
+
+    if not allow_attempt(email_ip_key) or not allow_attempt(ip_key) or not allow_attempt(email_key):
+        raise HTTPException(status_code=429, detail="Trop de tentatives. Réessayez plus tard.")
+
+    pending = decode_2fa_pending_token(data.pre_auth_token)
+    if not pending or pending.get("sub") != data.email:
+        raise HTTPException(status_code=401, detail="Session de connexion invalide ou expirée, veuillez vous reconnecter")
+
     user = db.query(UserDB).filter(UserDB.email == data.email).first()
 
     if not user or not user.two_factor_secret:
@@ -120,6 +134,10 @@ def verify_login_2fa(
 
     if not totp.verify(data.code, valid_window=1):
         raise HTTPException(status_code=400, detail="Code incorrect")
+
+    reset_rate_limit(email_ip_key)
+    reset_rate_limit(ip_key)
+    reset_rate_limit(email_key)
 
     workspace_user = db.query(WorkspaceUser).filter(
         WorkspaceUser.user_id == user.id,
@@ -134,7 +152,6 @@ def verify_login_2fa(
     token = create_access_token({"sub": user.email})
 
     if user.alert_login:
-        ip = request.client.host
         device = request.headers.get("user-agent", "Appareil inconnu")
         send_login_alert_email(
             email=user.email,

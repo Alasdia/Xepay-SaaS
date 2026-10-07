@@ -1,0 +1,15 @@
+#modalUpgrade .modal-dialog { max-width: 1300px; width: 95%; }
+#modalUpgrade .modal-content { background: radial-gradient(circle at top, rgba(0,229,255,.08), transparent 35%), linear-gradient(180deg, #020408 0%, #06090f 100%); color: white; border: 1px solid rgba(255,255,255,.08); border-radius: 24px; overflow: hidden; box-shadow: 0 0 60px rgba(0,0,0,.7), 0 0 30px rgba(0,229,255,.12); backdrop-filter: blur(20px); }
+#modalUpgrade .modal-body { padding: 40px; }
+#modalUpgrade .btn-close { filter: invert(1); }
+#modalUpgrade .modal-content { background: #020408; border: 1px solid rgba(0,229,255,.15); border-radius: 24px; color: white; }
+#modalUpgrade { z-index: 999999 !important; }
+#modalUpgrade .modal-dialog { max-width: 1300px; width: 95%; margin: 1rem auto; }
+#modalUpgrade .modal-content { max-height: 90vh; overflow-y: auto; overflow-x: hidden; }
+
+/* Backdrop partagé Bootstrap (une seule instance ajoutée à document.body
+   quel que soit la vue) : centralisé ici pour que le flou du contenu
+   derrière la modale soit identique sur les 7 vues, sans dépendre d'une
+   règle dupliquée dans le CSS de chaque vue. Le modal lui-même (au-dessus
+   du backdrop, z-index 999999) n'est jamais concerné par ce flou. */
+.modal-backdrop { background: rgba(0,0,0,0.6) !important; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }

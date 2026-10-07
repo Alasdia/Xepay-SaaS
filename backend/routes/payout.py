@@ -1,17 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, BackgroundTasks
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 import uuid
 from backend.database import get_db
 from backend.models import Wallet, Withdrawal, WithdrawRequest, WalletTransaction, WebhookDeliveryLog, Webhook
-from backend.middleware.authorization import require_owner
+from backend.services.webhook_service import send_webhook_event
+from backend.middleware.authorization import require_owner, require_pro_or_business
 from backend.models import WorkspaceUser
 from backend.auth import get_current_user
 from backend.services.workspace_service import (
     get_workspace_owner_id
 )
 from sqlalchemy import func
-from backend.models import Payment, Link, UserDB, Profile
+from backend.models import Payment, Link, UserDB, Profile, generate_prefixed_id
 from fastapi import Request
 import json
 import time
@@ -25,7 +26,6 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
-print(stripe.api_key)
 
 
 router = APIRouter()
@@ -94,28 +94,33 @@ def get_wallet_history(
     workspace_id: str = Header(
         None,
         alias="X-Workspace-Id"
-    )
+    ),
+    limit: int = 100,
+    offset: int = 0
 ):
-    owner_id = get_workspace_owner_id(
-        user,
-        workspace_id,
-        db
-    )
-    
+    owner_id = get_workspace_owner_id(user, workspace_id, db)
     txs = db.query(WalletTransaction)\
         .filter(WalletTransaction.user_id == owner_id)\
         .order_by(WalletTransaction.created_at.desc())\
+        .offset(offset)\
+        .limit(limit)\
         .all()
-
+    references = [tx.reference for tx in txs]
+    withdrawals_by_ref = {
+        wd.reference: wd
+        for wd in db.query(Withdrawal).filter(Withdrawal.reference.in_(references)).all()
+    } if references else {}
     transactions_data = []
     for tx in txs:
-        wd = db.query(Withdrawal).filter(Withdrawal.reference == tx.reference).first()
+        wd = withdrawals_by_ref.get(tx.reference)
+        display_status = wd.status if wd else tx.status
         transactions_data.append({
             "id": wd.id if wd else tx.id,
             "withdrawal_id": wd.id if wd else None,
             "amount": tx.amount,
             "direction": tx.direction,
             "type": tx.type,
+            "status": display_status,
             "description": tx.description,
             "reference": tx.reference,
             "created_at": tx.created_at.isoformat(),
@@ -190,7 +195,7 @@ def withdraw(
 
     print(f"[WITHDRAW AFTER] owner={owner_id} available={wallet.available} pending={wallet.pending}")
 
-    ref = f"wd_{uuid.uuid4()}"
+    ref = generate_prefixed_id("wd")
 
     print(f"[NEW WITHDRAW] owner={owner_id} amount={req.amount} ref={ref}")
 
@@ -227,228 +232,142 @@ def withdraw(
     
 @router.post("/withdraw/{id}/process")
 def process_withdraw(
-    id: int, 
-    db: Session = Depends(get_db)
+    id: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_owner)
 ):
-    print("🔥 PROCESS WITHDRAW EXECUTÉ 🔥")
-
     wd = db.query(Withdrawal)\
-        .filter(Withdrawal.id == id)\
+        .filter(Withdrawal.id == id, Withdrawal.user_id == membership.workspace_id)\
         .with_for_update()\
         .first()
-
     if not wd:
         raise HTTPException(404, "Withdrawal not found")
-
     if wd.status in ["processing", "success"]:
         return {"error": "already processed"}
-
     wallet = db.query(Wallet)\
         .filter(Wallet.id == wd.wallet_id)\
         .with_for_update()\
         .first()
-
     if not wallet:
         raise HTTPException(404, "Wallet not found")
-
-    # 🔥 récupérer user (merchant)
     user = db.query(UserDB).filter(UserDB.id == wd.user_id).first()
-
     profile = db.query(Profile).filter(Profile.user_id == user.id).first()
-
     if not profile or not profile.stripe_account_id:
         raise HTTPException(400, "Stripe account not connected")
-    
-    # 🔐 vérifier Stripe account
     account = stripe.Account.retrieve(profile.stripe_account_id)
-    print("=== CAPABILITIES ===")
-    print(account.capabilities)
-
-    print("=== PAYOUTS ENABLED ===")
-    print(account.payouts_enabled)
-
-    print("=== REQUIREMENTS ===")
-    print(account.requirements)
-
     if not account["payouts_enabled"]:
         raise HTTPException(400, "Payouts not enabled")
-
     USD_RATE = 577.325
-
     usd_amount = wd.amount / USD_RATE
     amount_cents = int(usd_amount * 100)
-
     if amount_cents <= 0:
         raise HTTPException(400, "Amount too small")
-
-    # 💰 vérifier balance Stripe
     balance = stripe.Balance.retrieve(
         stripe_account=profile.stripe_account_id
     )
-    print("=== STRIPE DEBUG ===")
-    print("PENDING:", balance["pending"])
-    print("AVAILABLE:", balance["available"])
-    print("INSTANT:", balance["instant_available"])
-
     instant_available = sum(b["amount"] for b in balance["instant_available"])
-
-    print("INSTANT AVAILABLE:", instant_available)
-
     if instant_available < amount_cents:
         raise HTTPException(400, "Insufficient Stripe balance")
-
     wd.status = "processing"
     db.flush()
-    print("AVANT PAYOUT")
-
     try:
-        payout = stripe.Payout.create(
-            amount=amount_cents,
-            currency="usd",
-            stripe_account=profile.stripe_account_id,
-            method="instant"
-        )
-        print("PAYOUT STATUS:", payout["status"])
-
-        print("APRES PAYOUT")
-
+        payout = stripe.Payout.create(amount=amount_cents, currency="usd", stripe_account=profile.stripe_account_id, method="instant")
         wd.status = payout["status"]
         wd.stripe_payout_id = payout["id"]
-
+        wd.payout_method = payout.get("method")
+        if payout.get("arrival_date"):
+            wd.payout_arrival_date = datetime.fromtimestamp(payout["arrival_date"], tz=timezone.utc)
         wallet.pending -= wd.amount
-
-        tx = db.query(WalletTransaction).filter(
-            WalletTransaction.reference == wd.reference
-        ).first()
-
+        tx = db.query(WalletTransaction).filter(WalletTransaction.reference == wd.reference).first()
         if tx:
             tx.status = payout["status"]
-
+            tx.description = f"Retrait {payout['status']}"
     except Exception as e:
-        print("Stripe error:", str(e))
-
         wd.status = "failed"
+        wd.payout_failure_message = getattr(e, "user_message", None) or str(e)
         wallet.pending -= wd.amount
-        wallet.available += wd.amount 
-
-        tx = db.query(WalletTransaction).filter(
-            WalletTransaction.reference == wd.reference
-        ).first()
-
+        wallet.available += wd.amount
+        tx = db.query(WalletTransaction).filter(WalletTransaction.reference == wd.reference).first()
         if tx:
             tx.status = "failed"
-
+            tx.description = "Retrait échoué"
     wd.processed_at = datetime.now(timezone.utc)
     db.commit()
-
-    event_type = "withdrawal.done"
-    webhooks = db.query(Webhook).filter(
-        Webhook.user_id == wd.user_id,
-        Webhook.is_active == True
-    ).all()
-
-    for webhook in webhooks:
-        if event_type not in webhook.events.split(","):
-            continue
-
-        try:
-            payload = {
-                "id": f"evt_{uuid.uuid4().hex}",
-                "timestamp": int(time.time()),
-                "event": event_type,
-                "data": {
-                    "withdrawal_id": wd.id,
-                    "amount": wd.amount,
-                    "currency": "XOF",
-                    "status": wd.status,
-                    "reference": wd.reference,
-                    "stripe_payout_id": wd.stripe_payout_id
-                }
-            }
-
-            payload_bytes = json.dumps(payload).encode()
-            signature = hmac.new(
-                webhook.secret.encode(),
-                payload_bytes,
-                hashlib.sha256
-            ).hexdigest()
-
-            success = False
-            final_status_code = None
-            response = None
-
-            for attempt in range(3):
-                try:
-                    response = requests.post(
-                        webhook.url,
-                        json=payload,
-                        headers={
-                            "X-Signature": signature,
-                            "X-Epay-Event": event_type,
-                            "X-Epay-Timestamp": str(payload["timestamp"])
-                        },
-                        timeout=5
-                    )
-                    final_status_code = response.status_code
-                    if response.status_code == 200:
-                        success = True
-                        break
-                except Exception:
-                    final_status_code = 0
-                time.sleep(2)
-
-            log = WebhookDeliveryLog(
-                user_id=wd.user_id,
-                webhook_id=webhook.id,
-                url=webhook.url,
-                event=event_type,
-                status_code=final_status_code,
-                success=success
-            )
-            db.add(log)
-            
-            webhook.last_triggered = datetime.now(timezone.utc)
-            webhook.status = "active" if success else "error"
-            webhook.last_status_code = final_status_code
-            db.commit()
-
-        except Exception as e:
-            print("❌ Erreur webhook withdrawal:", e)
-            webhook.status = "error"
-            webhook.last_triggered = datetime.now(timezone.utc)
-            db.commit()
-
+    background_tasks.add_task(send_webhook_event, wd.user_id, "withdrawal.done", {
+        "withdrawal_id": wd.id,
+        "amount": wd.amount,
+        "currency": "XOF",
+        "status": wd.status,
+        "reference": wd.reference,
+        "stripe_payout_id": wd.stripe_payout_id
+    })
     return {"status": wd.status}
 
-@router.post("/withdrawals/{withdrawal_id}/cancel")
-async def cancel_withdrawal(
-    withdrawal_id: int,
+@router.get("/withdrawals/{withdrawal_id}")
+def get_withdrawal_detail(
+    withdrawal_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    user=Depends(require_pro_or_business),
+    workspace_id: str = Header(None, alias="X-Workspace-Id")
 ):
-    wd = (
-        db.query(Withdrawal)
-        .filter(
-            Withdrawal.id == withdrawal_id,
-            Withdrawal.user_id == current_user.id
-        )
-        .first()
-    )
+    owner_id = get_workspace_owner_id(user, workspace_id, db)
+
+    w = db.query(Withdrawal).filter(
+        Withdrawal.id == withdrawal_id,
+        Withdrawal.user_id == owner_id
+    ).first()
+
+    if not w:
+        raise HTTPException(status_code=404, detail="Retrait introuvable")
+
+    return {
+        "type": "withdraw",
+        "withdrawal_id": w.id,
+        "label": f"Retrait #{w.reference}",
+        "amount": w.amount,
+        "currency": "XOF",
+        "status": w.status,
+        "date": w.created_at.isoformat() if w.created_at else None,
+        "details": {
+            "reference": w.reference,
+            "stripe_payout_id": w.stripe_payout_id,
+            "payout_method": w.payout_method,
+            "payout_arrival_date": w.payout_arrival_date.isoformat() if w.payout_arrival_date else None,
+            "payout_failure_message": w.payout_failure_message,
+            "processed_at": w.processed_at.isoformat() if w.processed_at else None
+        }
+    }
+
+@router.post("/withdrawals/{withdrawal_id}/cancel")
+def cancel_withdrawal(
+    withdrawal_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+    workspace_id: str = Header(None, alias="X-Workspace-Id")
+):
+    owner_id = get_workspace_owner_id(current_user, workspace_id, db)
+    wd = (db.query(Withdrawal).filter(Withdrawal.id == withdrawal_id, Withdrawal.user_id == owner_id).first())
     if not wd:
-        raise HTTPException(
-            status_code=404,
-            detail="Retrait introuvable."
-        )
+        raise HTTPException(status_code=404, detail="Retrait introuvable.")
     if wd.status != "pending":
-        raise HTTPException(
-            status_code=400,
-            detail=f"Impossible d'annuler ce retrait car son statut est déjà '{wd.status}'."
-        )
+        raise HTTPException(status_code=400, detail=f"Impossible d'annuler ce retrait car son statut est déjà '{wd.status}'.")
     if not wd.stripe_payout_id:
-        raise HTTPException(
-            status_code=400,
-            detail="Ce retrait ne possède pas de payout Stripe."
-        )
+        wd.status = "canceled"
+        wd.processed_at = datetime.now(timezone.utc)
+        wallet = (db.query(Wallet).filter(Wallet.id == wd.wallet_id).first())
+        if not wallet:
+            raise HTTPException(status_code=500, detail="Wallet introuvable.")
+        wallet.pending -= wd.amount
+        wallet.available += wd.amount
+        if wallet.pending < 0:
+            wallet.pending = 0
+        tx = (db.query(WalletTransaction).filter(WalletTransaction.reference == wd.reference).first())
+        if tx:
+            tx.status = "canceled"
+            tx.description = "Retrait annulé"
+        db.commit()
+        return {"success": True, "message": "Retrait annulé et fonds recrédités."}
     try:
         payout = stripe.Payout.retrieve(
             wd.stripe_payout_id
@@ -472,45 +391,23 @@ async def cancel_withdrawal(
             .first()
         )
         if not wallet:
-            raise HTTPException(
-                status_code=500,
-                detail="Wallet introuvable."
-            )
+            raise HTTPException(status_code=500, detail="Wallet introuvable.")
         wallet.pending -= wd.amount
         wallet.available += wd.amount
-
         if wallet.pending < 0:
             wallet.pending = 0
-
-        tx = (
-            db.query(WalletTransaction)
-            .filter(
-                WalletTransaction.reference == wd.reference
-            )
-            .first()
-        )
+        tx = (db.query(WalletTransaction).filter(WalletTransaction.reference == wd.reference).first())
         if tx:
             tx.status = "canceled"
+            tx.description = "Retrait annulé"
         db.commit()
-
-        return {
-            "success": True,
-            "message": "Retrait annulé avec succès et fonds recrédités."
-        }
-
+        return {"success": True, "message": "Retrait annulé avec succès et fonds recrédités."}
     except stripe.error.StripeError as e:
         db.rollback()
-
-        raise HTTPException(
-            status_code=400,
-            detail=f"Erreur Stripe : {e.user_message or str(e)}"
-        )
+        raise HTTPException(status_code=400, detail=f"Erreur Stripe : {e.user_message or str(e)}")
     except HTTPException:
         db.rollback()
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Erreur interne : {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Erreur interne : {str(e)}")

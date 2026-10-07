@@ -1,0 +1,885 @@
+/* =========================================================
+   COMMERCE
+========================================================= */
+
+.commerce-view {
+    width: 100%;
+}
+
+#commerce-content {
+    width: 100%;
+}
+
+
+/* =========================================================
+   PAGE HEADER
+========================================================= */
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 18px;
+}
+
+.page-header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+    color: #111827;
+}
+
+.page-header p {
+    font-size: 12px;
+    color: #6b7280;
+    margin: 0;
+}
+
+
+/* =========================================================
+   CARDS
+========================================================= */
+
+.commerce-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 18px;
+    box-shadow: none;
+}
+
+.commerce-card h3 {
+    margin: 0 0 16px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.commerce-card p {
+    margin: 0;
+    font-size: 13px;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+
+/* =========================================================
+   FORMS
+========================================================= */
+
+.form-group {
+    margin-bottom: 14px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #111827;
+    font-size: 13px;
+    padding: 9px 11px;
+    outline: none;
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    border-color: #9ca3af;
+    box-shadow: 0 0 0 3px rgba(156, 163, 175, 0.12);
+}
+
+.form-group textarea {
+    min-height: 90px;
+    resize: vertical;
+}
+
+.form-group input[type="checkbox"] {
+    width: auto;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+.form-group label:has(input[type="checkbox"]) {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+
+.commerce-card button[type="submit"] {
+    border: none;
+    border-radius: 8px;
+    padding: 9px 14px;
+    background: #111827;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+        background 0.15s ease,
+        transform 0.15s ease;
+}
+
+.commerce-card button[type="submit"]:hover {
+    background: #1f2937;
+}
+
+.commerce-card button[type="submit"]:active {
+    transform: translateY(1px);
+}
+
+
+/* =========================================================
+   TABLE
+   MÊME STYLE QUE TRANSACTIONS
+========================================================= */
+
+.table-wrap {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0;
+    overflow: visible;
+    box-shadow: none !important;
+    padding: 8px 0;
+    font-size: 13px;
+}
+
+.table-wrap .d-flex.justify-content-between.align-items-center.mb-3 {
+    margin-bottom: 8px;
+}
+
+.table-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.page-subtitle {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+
+/* =========================================================
+   HORIZONTAL SCROLL
+========================================================= */
+
+#customers-scroll-box {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+    padding-bottom: 4px;
+}
+
+
+/* =========================================================
+   TABLE STRUCTURE
+========================================================= */
+
+#customers-scroll-box .table {
+    color: #111827 !important;
+    margin-bottom: 0;
+    min-width: max-content;
+    width: max-content;
+    border-collapse: collapse;
+}
+
+#customers-scroll-box .table thead th {
+    color: #6b7280;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #e5e7eb;
+    font-weight: 700;
+    background: transparent !important;
+    padding: 6px 8px;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+#customers-scroll-box .table tbody tr {
+    border-bottom: 1px solid #f1f3f5;
+    transition: 0.15s;
+}
+
+#customers-scroll-box .table tbody tr:hover {
+    background: #f8f9fb !important;
+}
+
+#customers-scroll-box .table tbody td {
+    padding: 5px 8px;
+    vertical-align: middle;
+    border-color: #f1f3f5;
+    background: transparent !important;
+    font-size: 13px;
+    line-height: 1.3;
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   CLIENT
+========================================================= */
+
+.customer-name {
+    color: #111827;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.customer-id {
+    color: #6b7280;
+    font-size: 11px;
+    font-family: monospace;
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   AMOUNTS
+========================================================= */
+
+.amount-cell {
+    font-weight: 700;
+    color: #111827;
+    font-size: 13px;
+}
+
+.amount-currency {
+    color: #6b7280;
+    font-size: 11px;
+    font-weight: 500;
+    margin-left: 3px;
+}
+
+
+/* =========================================================
+   AVATAR
+========================================================= */
+
+.avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    font-size: 11px;
+    color: #0b1138;
+    flex-shrink: 0;
+}
+
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: capitalize;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+.status-badge::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.status-success {
+    background: rgba(74, 222, 128, 0.12) !important;
+    color: #4ade80 !important;
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    box-shadow: none;
+}
+
+.status-success::before {
+    background: #4ade80;
+    box-shadow: 0 0 6px #4ade80;
+}
+
+.status-danger {
+    background: rgba(248, 113, 113, 0.12) !important;
+    color: #f87171 !important;
+    border: 1px solid rgba(248, 113, 113, 0.3);
+    box-shadow: none;
+}
+
+.status-danger::before {
+    background: #f87171;
+}
+
+
+/* =========================================================
+   DETAILS
+========================================================= */
+
+.customer-details-btn {
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    color: #374151;
+    border-radius: 7px;
+    padding: 5px 9px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease;
+}
+
+.customer-details-btn:hover {
+    background: #f8f9fb;
+    border-color: #d1d5db;
+    color: #111827;
+}
+
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+
+#customers-scroll-box::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+#customers-scroll-box::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 3px;
+}
+
+#customers-scroll-box::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 768px) {
+
+    .page-header {
+        margin-bottom: 14px;
+    }
+
+    .page-header h1 {
+        font-size: 20px;
+    }
+
+    .page-header p {
+        font-size: 11px;
+    }
+
+    .commerce-card {
+        padding: 14px;
+        border-radius: 12px;
+    }
+
+    .commerce-card h3 {
+        font-size: 14px;
+    }
+
+    .table-wrap {
+        padding: 8px 0;
+    }
+
+    .table-wrap .table-title {
+        font-size: 15px;
+    }
+
+    #customers-scroll-box {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        max-height: 60vh !important;
+    }
+
+    #customers-scroll-box .table {
+        min-width: max-content;
+        width: max-content;
+    }
+
+    #customers-scroll-box .table thead th {
+        padding: 8px;
+        font-size: 9px;
+    }
+
+    #customers-scroll-box .table tbody td {
+        padding: 8px;
+        font-size: 12px;
+    }
+
+    .customer-id {
+        font-size: 9px;
+    }
+
+    .status-badge {
+        font-size: 9px;
+        padding: 2px 7px;
+    }
+
+    .amount-cell {
+        font-size: 12px;
+    }
+}
+/* =========================================================
+   TABLE CLIENTS — SCROLL HORIZONTAL
+========================================================= */
+
+.table-wrap {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0;
+    box-shadow: none !important;
+    padding: 8px 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: visible;
+}
+
+
+/* Conteneur qui porte réellement le scroll */
+#customers-scroll-box {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+
+    padding-bottom: 6px;
+}
+
+
+/* Tableau = largeur naturelle de toutes les colonnes */
+#customers-scroll-box .table {
+    width: max-content !important;
+    min-width: 100%;
+    max-width: none;
+
+    margin: 0;
+    color: #111827 !important;
+    border-collapse: collapse;
+}
+
+
+/* En-têtes */
+#customers-scroll-box .table thead th {
+    color: #6b7280;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+
+    background: transparent !important;
+
+    padding: 6px 8px;
+    line-height: 1.2;
+
+    white-space: nowrap;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+
+/* Lignes */
+#customers-scroll-box .table tbody tr {
+    border-bottom: 1px solid #f1f3f5;
+    transition: background 0.15s ease;
+}
+
+#customers-scroll-box .table tbody tr:hover {
+    background: #f8f9fb !important;
+}
+
+
+/* Cellules */
+#customers-scroll-box .table tbody td {
+    padding: 5px 8px;
+
+    vertical-align: middle;
+
+    background: transparent !important;
+    border-color: #f1f3f5;
+
+    font-size: 13px;
+    line-height: 1.3;
+
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   SCROLLBAR HORIZONTAL
+========================================================= */
+
+#customers-scroll-box::-webkit-scrollbar {
+    height: 6px;
+}
+
+#customers-scroll-box::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#customers-scroll-box::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.18);
+    border-radius: 3px;
+}
+
+#customers-scroll-box::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.28);
+}
+
+
+/* Firefox */
+#customers-scroll-box {
+    scrollbar-width: thin;
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 768px) {
+
+    #customers-scroll-box {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #customers-scroll-box .table {
+        width: max-content !important;
+        min-width: max-content;
+    }
+
+    #customers-scroll-box .table thead th {
+        padding: 8px;
+        font-size: 9px;
+    }
+
+    #customers-scroll-box .table tbody td {
+        padding: 8px;
+        font-size: 12px;
+    }
+}
+/* =========================================================
+   BOUTON CRÉER CLIENT
+========================================================= */
+
+.create-client-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 9px 14px;
+    background: #111827;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s ease, transform .15s ease;
+}
+
+.create-client-btn:hover {
+    background: #1f2937;
+}
+
+.create-client-btn:active {
+    transform: translateY(1px);
+}
+
+
+/* =========================================================
+   MODALS CLIENTS
+========================================================= */
+
+.customer-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+
+    display: none;
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(17, 24, 39, 0.35);
+    backdrop-filter: blur(2px);
+
+    padding: 20px;
+}
+
+.customer-modal-overlay.open {
+    display: flex;
+}
+
+.customer-modal {
+    width: min(500px, 100%);
+    max-height: 90vh;
+    overflow-y: auto;
+
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+
+    padding: 20px;
+
+    box-shadow: 0 20px 50px rgba(0, 0, 0, .15);
+}
+
+.customer-details-modal {
+    width: min(650px, 100%);
+}
+
+.customer-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+
+    margin-bottom: 22px;
+}
+
+.customer-modal-header h3 {
+    margin: 0 0 5px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.customer-modal-header p {
+    margin: 0;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.customer-modal-close {
+    width: 30px;
+    height: 30px;
+
+    border: none;
+    border-radius: 7px;
+
+    background: #f3f4f6;
+    color: #374151;
+
+    font-size: 20px;
+    line-height: 1;
+
+    cursor: pointer;
+}
+
+.customer-modal-close:hover {
+    background: #e5e7eb;
+}
+
+
+/* =========================================================
+   MODAL ACTIONS
+========================================================= */
+
+.customer-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+
+    margin-top: 20px;
+}
+
+.modal-cancel-btn,
+.modal-submit-btn {
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.modal-cancel-btn {
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    color: #374151;
+}
+
+.modal-submit-btn {
+    border: none;
+    background: #111827;
+    color: #ffffff;
+}
+
+
+/* =========================================================
+   CUSTOMER DETAILS
+========================================================= */
+
+.customer-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding-bottom: 18px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.customer-profile-avatar {
+    width: 42px;
+    height: 42px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 50%;
+    background: #f3f4f6;
+    color: #111827;
+
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.customer-profile h4 {
+    margin: 0 0 4px;
+    font-size: 14px;
+    color: #111827;
+}
+
+.customer-profile code {
+    font-size: 11px;
+    color: #6b7280;
+}
+
+
+/* =========================================================
+   INFOS
+========================================================= */
+
+.customer-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px;
+
+    margin-top: 18px;
+
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.customer-detail-item {
+    padding: 12px;
+    background: #ffffff;
+    border-bottom: 1px solid #f1f3f5;
+}
+
+.customer-detail-item span,
+.customer-stats span {
+    display: block;
+    margin-bottom: 5px;
+
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.customer-detail-item strong {
+    font-size: 13px;
+    color: #111827;
+    font-weight: 600;
+}
+
+
+/* =========================================================
+   STATS
+========================================================= */
+
+.customer-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+
+    margin-top: 18px;
+}
+
+.customer-stats > div {
+    padding: 12px;
+
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #ffffff;
+}
+
+.customer-stats strong {
+    font-size: 14px;
+    color: #111827;
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 768px) {
+
+    .page-header {
+        align-items: center;
+    }
+
+    .create-client-btn {
+        padding: 8px 11px;
+        font-size: 11px;
+    }
+
+    .customer-modal {
+        padding: 16px;
+        border-radius: 12px;
+    }
+
+    .customer-details-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .customer-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

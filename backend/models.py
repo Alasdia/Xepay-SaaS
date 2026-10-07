@@ -13,11 +13,10 @@ import string
 import uuid
 from sqlalchemy import Index
 
-def generate_account_id():
-    chars = string.ascii_letters + string.digits
-    return "acct_" + "".join(
-        secrets.choice(chars) for _ in range(16)
-    )
+def generate_prefixed_id(prefix: str, length: int = 24) -> str:
+    chars = string.ascii_lowercase + string.digits
+    random_part = "".join(secrets.choice(chars) for _ in range(length))
+    return f"{prefix}_{random_part}"
 
 class User(BaseModel):
     email: EmailStr
@@ -46,6 +45,7 @@ class ProfileRequest(BaseModel):
 class LoginTwoFAVerify(BaseModel):
     email: str
     code: str
+    pre_auth_token: str
 
 class PaymentCreate(BaseModel):
     email: str
@@ -104,6 +104,10 @@ class PayRequest(BaseModel):
 class PlanUpdate(BaseModel):
     plan: str
 
+class GoogleCodeExchange(BaseModel):
+    code: str
+    redirect_uri: str
+
 class UserLogin(BaseModel):
     email: str
     password: str
@@ -120,10 +124,37 @@ class TransferRequest(BaseModel):
 class WithdrawRequest(BaseModel):
     amount: float  
 
+class ConnectCustomerCreateRequest(BaseModel):
+    name: str
+    email: EmailStr
+    phone: str | None = None
+
+class ConnectProductCreateRequest(BaseModel):
+    name: str
+    description: str | None = None
+    unit_amount: int = Field(..., gt=0)
+    currency: str = "xof"
+    recurring: bool = False
+    interval: str | None = None
+
+class ConnectInvoiceCreateRequest(BaseModel):
+    customer_id: str
+    price_id: str
+    quantity: int = Field(default=1, ge=1)
+    collection_method: str = "send_invoice"
+    days_until_due: int | None = Field(default=7, ge=0)
+
+class ConnectSubscriptionCreateRequest(BaseModel):
+    customer_id: str
+    price_id: str
+    quantity: int = Field(default=1, ge=1)
+    collection_method: str = "charge_automatically"
+    payment_method_id: str | None = None
+
 class Wallet(Base):
     __tablename__ = "wallets"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("wa"))
     user_id = Column(String, ForeignKey("users.id"), unique=True, nullable=False)
     balance = Column(Float, default=0)
     pending = Column(Float, default=0)         
@@ -135,27 +166,30 @@ class Wallet(Base):
 class Withdrawal(Base):
     __tablename__ = "withdrawals"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("wd"))
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
-    wallet_id = Column(Integer, ForeignKey("wallets.id"), nullable=False)
+    wallet_id = Column(String, ForeignKey("wallets.id"), nullable=False)
     amount = Column(Float, nullable=False)
     operator = Column(String)  
     phone = Column(String)
     reference = Column(String, unique=True, index=True)
     stripe_payout_id =Column(String, unique=True, index=True, nullable=True)
-    status = Column(String, default="pending") 
+    status = Column(String, default="pending")
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc)
     )
     processed_at = Column(DateTime(timezone=True), nullable=True)
+    payout_method = Column(String, nullable=True)
+    payout_arrival_date = Column(DateTime(timezone=True), nullable=True)
+    payout_failure_message = Column(String, nullable=True)
 
 class WalletTransaction(Base):
     __tablename__ = "wallet_transactions"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("txn"))
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
-    wallet_id = Column(Integer, ForeignKey("wallets.id"), nullable=False)
+    wallet_id = Column(String, ForeignKey("wallets.id"), nullable=False)
     type = Column(String, nullable=False)
     direction = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
@@ -181,7 +215,7 @@ class WalletTransaction(Base):
 class Profile(Base):
     __tablename__ = "profiles"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("pf"))
     user_id = Column(String, ForeignKey("users.id"), unique=True)
     full_name = Column(String)
     phone = Column(String)
@@ -191,16 +225,14 @@ class Profile(Base):
 class UserDB(Base):
     __tablename__ = "users"
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    account_id = Column(String, unique=True, index=True, nullable=False, default=generate_account_id)
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("us"))
+    account_id = Column(String, unique=True, index=True, nullable=False, default=lambda: generate_prefixed_id("acct"))
     email = Column(String, index=True, unique=True)
     password = Column(String)
     two_factor_enabled = Column(Boolean, default=False)
     two_factor_secret = Column(String, nullable=True) 
     status = Column(String, default="active")
     last_login = Column(DateTime, nullable=True)
-    owner_id = Column(String, ForeignKey("users.id"), nullable=True)
-    token = Column(String)
     is_deleted = Column(Boolean, default=False)
     plan = Column(String, default="free")
     plan_started_at = Column(DateTime(timezone=True), nullable=True)
@@ -221,7 +253,7 @@ class UserDB(Base):
 class WorkspaceUser(Base):
     __tablename__ = "workspace_users"
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("wkus"))
     user_id = Column(String, ForeignKey("users.id"))
     workspace_id = Column(String, ForeignKey("users.id"))
     role = Column(String, default="member")
@@ -229,7 +261,7 @@ class WorkspaceUser(Base):
 class WorkspaceInvite(Base):
     __tablename__ = "workspace_invites"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("wkin"))
     email = Column(String, nullable=False)
     workspace_id = Column(String, ForeignKey("users.id"), nullable=False)
     role = Column(String, default="member")
@@ -248,7 +280,7 @@ class WorkspaceInvite(Base):
 class Webhook(Base):
     __tablename__ = "webhooks"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("wh"))
     user_id = Column(String, ForeignKey("users.id"))
     url = Column(String, nullable=False)
     events = Column(String, nullable=False)
@@ -256,15 +288,17 @@ class Webhook(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     last_triggered = Column(DateTime(timezone=True), nullable=True)
     secret = Column(String, nullable=False)
+    status = Column(String, default="active")
+    last_status_code = Column(Integer, nullable=True)
 
     user = relationship("UserDB", back_populates="webhooks")
 
 class WebhookDeliveryLog(Base):
     __tablename__ = "webhook_delivery_logs"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("whlg"))
     user_id = Column(String, ForeignKey("users.id"))
-    webhook_id = Column(Integer, ForeignKey("webhooks.id"))
+    webhook_id = Column(String, ForeignKey("webhooks.id", ondelete="CASCADE"))
     url = Column(String)
     event = Column(String)
     status_code = Column(Integer)
@@ -273,7 +307,7 @@ class WebhookDeliveryLog(Base):
 
 class ApiLog(Base):
     __tablename__ = "api_logs"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("lg"))
     user_id = Column(String, ForeignKey("users.id"), nullable=True)
     method = Column(String)
     path = Column(String)
@@ -283,7 +317,7 @@ class ApiLog(Base):
 class Payment(Base):
     __tablename__ = "payments"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("py"))
     user_id = Column(String, ForeignKey("users.id"))
     client_email = Column(String)
     amount = Column(Float)
@@ -304,9 +338,15 @@ class Payment(Base):
     stripe_payment_intent_id = Column(String, nullable=True, index=True)
     fee_id = Column(String, nullable=True)
     fee_amount = Column(Float, nullable=True)
+    stripe_fee_amount = Column(Float, nullable=True)
     transfer_id = Column(String, nullable=True)
     transfer_amount = Column(Float, nullable=True)
+    transfer_destination = Column(String, nullable=True)
+    transfer_reversed = Column(Boolean, nullable=True)
+    transfer_amount_reversed = Column(Float, nullable=True)
+    transfer_created_at = Column(DateTime(timezone=True), nullable=True)
     payment_method_id = Column(String, nullable=True)
+    payment_method_type = Column(String, nullable=True)
     card_brand = Column(String, nullable=True)
     card_last4 = Column(String, nullable=True)
     card_exp_month = Column(Integer, nullable=True)
@@ -316,7 +356,7 @@ class Payment(Base):
 class Link(Base):
     __tablename__ = "links"
 
-    id = Column(String, primary_key=True)
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("lk"))
     token = Column(String, unique=True)
     user_id = Column(String, ForeignKey("users.id"), index=True)
     email = Column(String)

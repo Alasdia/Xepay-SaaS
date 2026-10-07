@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    { "source": "/dash/(.*)", "destination": "/dashboard.html" },
+    { "source": "/accueil(/)?", "destination": "/accueil.html" },
+    { "source": "/fonctionnalite(/)?", "destination": "/fonctionnalite.html" },
+    { "source": "/tarif(/)?", "destination": "/tarif.html" },
+    { "source": "/login(/)?", "destination": "/login.html" },
+    { "source": "/signup(/)?", "destination": "/signup.html" },
+    { "source": "/politique-confidentialite(/)?", "destination": "/politique-confidentialite.html" },
+    { "source": "/conditions-utilisation(/)?", "destination": "/conditions-utilisation.html" }
+  ]
+}
