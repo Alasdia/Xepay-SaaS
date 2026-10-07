@@ -2745,10 +2745,11 @@ async function renderSubscriptions(container) {
             submitButton.disabled = true;
 
             submitButton.textContent =
-                "Création de l'abonnement...";
+                "Création du lien...";
 
 
             try {
+
                 const response =
                     await apiFetch(
                         "/stripe/connect/subscriptions",
@@ -2764,45 +2765,87 @@ async function renderSubscriptions(container) {
                             }
                         }
                     );
+
+
                 const data =
                     await response.json();
+
+
                 console.log(
                     "SUBSCRIPTION CREATE STATUS:",
                     response.status
                 );
+
+
                 console.log(
                     "SUBSCRIPTION CREATE RESPONSE:",
                     data
                 );
+
+
                 if (!response.ok) {
+
                     throw new Error(
                         data.detail ||
-                        "Impossible de créer l'abonnement"
+                        "Impossible de créer le lien d'abonnement"
                     );
+
                 }
+
+
                 const checkoutUrl =
                     data.url;
+
+
                 if (!checkoutUrl) {
+
                     throw new Error(
                         "URL Stripe Checkout introuvable"
                     );
+
                 }
-                showToast("Abonnement créé. Le lien Stripe est prêt.", "success");
+
+
                 form.reset();
-                createModal.classList.remove("open");
-                const list = container.querySelector("#subscriptions-list");
+
+                createModal.classList.remove(
+                    "open"
+                );
+
+
+                /*
+                 * Recharge la liste AVANT d'ajouter
+                 * le lien afin que loadSubscriptions()
+                 * ne l'efface pas.
+                 */
+                await loadSubscriptions();
+
+
+                const list =
+                    container.querySelector(
+                        "#subscriptions-list"
+                    );
+
+
                 list.insertAdjacentHTML(
                     "afterbegin",
                     `
-                        <div class="commerce-card subscription-checkout-link">
+                        <div
+                            class="commerce-card subscription-checkout-link"
+                        >
+
                             <div>
+
                                 <strong>
                                     Lien de paiement du client
                                 </strong>
+
                                 <p>
                                     Envoyez ce lien à votre client
-                                    pour qu'il renseigne son moyen de paiement.
+                                    pour qu'il renseigne son moyen
+                                    de paiement.
                                 </p>
+
                                 <input
                                     type="text"
                                     value="${checkoutUrl}"
@@ -2810,7 +2853,9 @@ async function renderSubscriptions(container) {
                                     class="form-control"
                                     id="subscription-checkout-url"
                                 >
+
                             </div>
+
                             <button
                                 type="button"
                                 class="modal-submit-btn"
@@ -2818,9 +2863,12 @@ async function renderSubscriptions(container) {
                             >
                                 Copier le lien
                             </button>
+
                         </div>
                     `
                 );
+
+
                 container
                     .querySelector(
                         "#copy-subscription-checkout-url"
@@ -2828,31 +2876,66 @@ async function renderSubscriptions(container) {
                     .addEventListener(
                         "click",
                         async () => {
-                            await navigator.clipboard.writeText(
-                                checkoutUrl
-                            );
-                            showToast(
-                                "Lien Stripe copié.",
-                                "success"
-                            );
+
+                            try {
+
+                                await navigator.clipboard.writeText(
+                                    checkoutUrl
+                                );
+
+                                showToast(
+                                    "Lien Stripe copié.",
+                                    "success"
+                                );
+
+                            } catch (error) {
+
+                                console.error(
+                                    "Erreur copie lien Stripe :",
+                                    error
+                                );
+
+                                showToast(
+                                    "Impossible de copier le lien.",
+                                    "error"
+                                );
+
+                            }
+
                         }
                     );
-                await loadSubscriptions();
+
+
+                showToast(
+                    "Le lien Stripe est prêt à être envoyé au client.",
+                    "success"
+                );
+
+
             } catch (error) {
+
                 console.error(
                     "Erreur création abonnement :",
                     error
                 );
+
+
                 showToast(
                     error.message ||
-                    "Erreur lors de la création de l'abonnement",
+                    "Erreur lors de la création du lien d'abonnement",
                     "error"
                 );
+
+
             } finally {
+
                 submitButton.disabled = false;
+
                 submitButton.textContent =
                     "Créer l'abonnement";
+
             }
+
         }
     );
 
