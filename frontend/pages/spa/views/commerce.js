@@ -2781,7 +2781,7 @@ async function renderSubscriptions(container) {
                     );
                 }
                 const checkoutUrl =
-                    data.checkout?.url;
+                    data.url;
                 if (!checkoutUrl) {
                     throw new Error(
                         "URL Stripe Checkout introuvable"
