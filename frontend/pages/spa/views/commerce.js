@@ -2936,53 +2936,30 @@ async function renderSubscriptions(container) {
 
                 submitButton.textContent =
                     "Création de l'abonnement...";
-
-
                 const response =
                     await apiFetch(
                         "/stripe/connect/subscriptions",
                         {
                             method: "POST",
-
                             body: {
-
                                 customer_id,
-
                                 price_id,
-
                                 quantity,
-
-                                collection_method:
-                                    "charge_automatically",
-
+                                collection_method: "charge_automatically",
                                 payment_method_id
-
                             }
-
                         }
                     );
-
-
-                const data =
-                    await response.json();
-
-
+                const data = await response.json();
+                console.log("SUBSCRIPTION CREATE STATUS:", response.status);
+                console.log("SUBSCRIPTION CREATE RESPONSE:", data);
                 if (!response.ok) {
-
                     throw new Error(
                         data.detail ||
                         "Impossible de créer l'abonnement"
                     );
-
                 }
-
-
-                showToast(
-                    "Abonnement créé avec succès",
-                    "success"
-                );
-
-
+                showToast("Abonnement créé avec succès", "success");
                 form.reset();
 
                 paymentMethodId = null;
