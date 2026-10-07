@@ -1679,13 +1679,13 @@ async function renderProducts(container) {
 
 
             const unit_amount =
-                Number(
-                    container
-                        .querySelector("#product-amount")
-                        .value
-                );
-
-
+                Math.round(
+                    Number(
+                        container
+                            .querySelector("#product-amount")
+                            .value
+                        ) * 100
+                    );
             const currency =
                 container
                     .querySelector("#product-currency")
