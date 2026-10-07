@@ -128,6 +128,26 @@ def create_connect_invoice(
     )
     return invoice
 
+
+def create_connect_customer(
+    merchant_account: str,
+    name: str,
+    email: str,
+    phone: str | None = None,
+    metadata: dict | None = None,
+):
+    params = {
+        "name": name,
+        "email": email,
+        "metadata": metadata or {},
+    }
+    if phone:
+        params["phone"] = phone
+    return stripe.Customer.create(
+        **params,
+        stripe_account=merchant_account,
+    )
+
 def create_connect_product(
     merchant_account: str,
     name: str,
