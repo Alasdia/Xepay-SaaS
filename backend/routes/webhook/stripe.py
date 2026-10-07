@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 import stripe
 
 from backend.database import get_db
-from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest
+from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest, SetupIntentCreateRequest
 from backend.middleware.authorization import require_manager
 from backend.services.stripe_service import (create_connect_invoice, create_connect_subscription, create_connect_product, create_connect_customer)
 from backend.services.email_service import send_account_updated_email, send_payout_success_email, send_payout_failed_email
@@ -255,7 +255,7 @@ def list_merchant_invoices(
 
 @router.post("/stripe/connect/setup-intent")
 def create_setup_intent(
-    customer_id: str,
+    data: SetupIntentCreateRequest,
     db: Session = Depends(get_db),
     membership: WorkspaceUser = Depends(require_manager),
 ):
@@ -269,7 +269,7 @@ def create_setup_intent(
         )
     try:
         setup_intent = stripe.SetupIntent.create(
-            customer=customer_id,
+            customer=data.customer_id,
             usage="off_session",
             payment_method_types=["card"],
             stripe_account=profile.stripe_account_id,
