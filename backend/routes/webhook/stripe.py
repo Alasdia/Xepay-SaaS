@@ -276,6 +276,7 @@ def create_setup_intent(
         return {
             "client_secret": setup_intent.client_secret,
             "id": setup_intent.id,
+            "stripe_account_id": profile.stripe_account_id
         }
     except stripe.error.StripeError as e:
         raise HTTPException(
