@@ -2946,7 +2946,7 @@ async function renderSubscriptions(container) {
                                 price_id,
                                 quantity,
                                 collection_method: "charge_automatically",
-                                payment_method_id
+                                payment_method_id: paymentMethodId
                             }
                         }
                     );
