@@ -1893,18 +1893,6 @@ async function renderSubscriptions(container) {
 
                     </div>
 
-                    <div class="form-group">
-
-                        <label>Moyen de paiement</label>
-
-                        <div
-                            id="subscription-payment-element"
-                        >
-                            Sélectionnez d'abord un client.
-                        </div>
-
-                    </div>
-
                     <div class="customer-modal-actions">
 
                         <button
@@ -1961,35 +1949,6 @@ async function renderSubscriptions(container) {
         container.querySelector(
             "#create-subscription-modal"
         );
-
-    const paymentElementContainer =
-        container.querySelector(
-            "#subscription-payment-element"
-        );
-
-
-    /* =====================================================
-       STRIPE
-    ===================================================== */
-
-    let stripe = null;
-    let elements = null;
-    let paymentElement = null;
-
-    let setupIntentClientSecret = null;
-    let paymentMethodId = null;
-
-
-    if (
-        typeof window.Stripe === "function" &&
-        window.STRIPE_PUBLISHABLE_KEY
-    ) {
-
-        stripe = window.Stripe(
-            window.STRIPE_PUBLISHABLE_KEY
-        );
-
-    }
 
 
     /* =====================================================
@@ -2286,137 +2245,6 @@ async function renderSubscriptions(container) {
 
 
     /* =====================================================
-       PRÉPARER LE MOYEN DE PAIEMENT
-    ===================================================== */
-
-    async function preparePaymentMethod(customerId) {
-
-        paymentMethodId = null;
-        setupIntentClientSecret = null;
-
-
-        if (!customerId) {
-
-            paymentElementContainer.innerHTML =
-                "Sélectionnez d'abord un client.";
-
-            return;
-
-        }
-
-
-        if (!stripe) {
-
-            paymentElementContainer.innerHTML = `
-                <div class="form-help">
-                    Stripe.js n'est pas disponible.
-                </div>
-            `;
-
-            throw new Error(
-                "Stripe.js n'est pas initialisé."
-            );
-
-        }
-
-
-        paymentElementContainer.innerHTML =
-            "Préparation du moyen de paiement...";
-
-
-        try {
-
-            const response =
-                await apiFetch(
-                    "/stripe/connect/setup-intent",
-                    {
-                        method: "POST",
-
-                        body: {
-                            customer_id: customerId
-                        }
-                    }
-                );
-
-
-            const data = await response.json();
-            console.log("SETUP INTENT ACCOUNT:", data.stripe_account_id);
-            console.log("SETUP INTENT:", data.id);
-            if (!response.ok) {
-
-                throw new Error(
-                    data.detail ||
-                    "Impossible de préparer le moyen de paiement"
-                );
-
-            }
-
-
-            setupIntentClientSecret = data.client_secret;
-            if (!setupIntentClientSecret) {
-                throw new Error(
-                    "Le SetupIntent ne contient pas de client_secret."
-                );
-            }
-            stripe = window.Stripe(
-                window.STRIPE_PUBLISHABLE_KEY,
-                {
-                    stripeAccount: data.stripe_account_id
-                }
-            );
-            if (paymentElement) {
-                paymentElement.unmount();
-                paymentElement = null;
-            }
-            elements = stripe.elements({
-                    clientSecret: setupIntentClientSecret
-            });
-            paymentElement = elements.create("payment");
-            paymentElement.mount("#subscription-payment-element");
-        } catch (error) {
-            console.error(
-                "Erreur préparation moyen de paiement :",
-                error
-            );
-            paymentElementContainer.innerHTML = `
-                <div class="form-help">
-                    Impossible de charger le moyen de paiement.
-                </div>
-            `;
-            throw error;
-        }
-    }
-
-
-    /* =====================================================
-       CHANGEMENT DE CLIENT
-    ===================================================== */
-
-    customerSelect.addEventListener(
-        "change",
-        async () => {
-
-            try {
-
-                await preparePaymentMethod(
-                    customerSelect.value
-                );
-
-            } catch (error) {
-
-                showToast(
-                    error.message ||
-                    "Impossible de préparer le moyen de paiement",
-                    "error"
-                );
-
-            }
-
-        }
-    );
-
-
-    /* =====================================================
        CHARGER LES ABONNEMENTS
     ===================================================== */
 
@@ -2426,89 +2254,168 @@ async function renderSubscriptions(container) {
             container.querySelector(
                 "#subscriptions-list"
             );
+
+
         list.innerHTML = `
             <div class="commerce-card">
                 <p>Chargement des abonnements...</p>
             </div>
         `;
+
+
         try {
+
             const response =
                 await apiFetch(
                     "/stripe/connect/subscriptions"
                 );
-            const data = await response.json();
+
+
+            const data =
+                await response.json();
+
+
             if (!response.ok) {
+
                 throw new Error(
                     data.detail ||
                     "Impossible de récupérer les abonnements"
                 );
+
             }
+
+
             const customersResponse =
-                await apiFetch("/stripe/connect/customers");
+                await apiFetch(
+                    "/stripe/connect/customers"
+                );
+
+
             const customersData =
                 await customersResponse.json();
+
+
             if (!customersResponse.ok) {
+
                 throw new Error(
                     customersData.detail ||
                     "Impossible de récupérer les clients"
                 );
+
             }
+
+
             const customers =
                 customersData.data || [];
-            const subscriptions = data.data || [];
-            console.log("SUBSCRIPTION LIST:", subscriptions);
+
+            const subscriptions =
+                data.data || [];
+
+
+            console.log(
+                "SUBSCRIPTION LIST:",
+                subscriptions
+            );
+
+
             if (!subscriptions.length) {
+
                 list.innerHTML = `
                     <div class="commerce-card">
+
                         <p>
                             Aucun abonnement pour le moment.
                         </p>
+
                     </div>
                 `;
+
                 return;
+
             }
+
+
             list.innerHTML = `
+
                 <div class="table-wrap">
+
                     <div
                         class="d-flex justify-content-between align-items-center mb-3"
                     >
+
                         <div>
+
                             <div class="table-title">
                                 Abonnements
                             </div>
+
                             <div class="page-subtitle">
+
                                 ${subscriptions.length}
                                 abonnement(s)
+
                             </div>
+
                         </div>
+
                     </div>
+
+
                     <div id="customers-scroll-box">
+
                         <table class="table">
+
                             <thead>
+
                                 <tr>
+
                                     <th>Client</th>
+
                                     <th>Identifiant</th>
+
                                     <th>Montant</th>
+
                                     <th>Fréquence</th>
+
                                     <th>Statut</th>
+
                                     <th>Mode de paiement</th>
+
                                     <th>Début</th>
+
                                     <th>Prochaine échéance</th>
+
                                     <th>Créé le</th>
+
                                 </tr>
+
                             </thead>
+
+
                             <tbody>
+
                                 ${subscriptions.map(subscription => {
+
                                     const item =
                                         subscription.items?.data?.[0];
+
+
                                     const price =
                                         item?.price;
+
+
                                     const customer =
                                         customers.find(
-                                            customer => customer.id === subscription.customer
+                                            customer =>
+                                                customer.id ===
+                                                subscription.customer
                                         );
+
+
                                     const customerName =
                                         customer?.name || "—";
+
+
                                     const amount =
                                         price?.unit_amount != null
                                             ? (
@@ -2521,21 +2428,32 @@ async function renderSubscriptions(container) {
                                                 }
                                             )
                                             : "—";
+
+
                                     const currency =
                                         price?.currency
                                             ? price.currency.toUpperCase()
                                             : "";
+
+
                                     const interval =
                                         price?.recurring?.interval;
 
+
                                     const intervalCount =
                                         price?.recurring?.interval_count || 1;
+
+
                                     let recurringText =
                                         "—";
+
+
                                     if (interval) {
+
                                         if (
                                             intervalCount === 1
                                         ) {
+
                                             recurringText =
                                                 interval === "month"
                                                     ? "Mensuel"
@@ -2544,65 +2462,96 @@ async function renderSubscriptions(container) {
                                                         : interval === "week"
                                                             ? "Hebdomadaire"
                                                             : interval;
+
                                         } else {
+
                                             recurringText =
                                                 `Tous les ${intervalCount} ${interval}`;
 
                                         }
+
                                     }
+
+
                                     let statusClass =
                                         "status-warning";
+
+
                                     let statusText =
                                         subscription.status || "—";
+
+
                                     if (
                                         subscription.status ===
                                         "active"
                                     ) {
+
                                         statusClass =
                                             "status-success";
+
                                         statusText =
                                             "Actif";
+
                                     } else if (
                                         subscription.status ===
                                         "canceled"
                                     ) {
+
                                         statusClass =
                                             "status-danger";
+
                                         statusText =
                                             "Annulé";
+
                                     } else if (
                                         subscription.status ===
                                         "past_due"
                                     ) {
+
                                         statusClass =
                                             "status-danger";
 
                                         statusText =
                                             "Impayé";
+
                                     } else if (
                                         subscription.status ===
                                         "trialing"
                                     ) {
+
                                         statusClass =
                                             "status-success";
 
                                         statusText =
                                             "Essai";
+
                                     }
+
+
                                     return `
+
                                         <tr>
+
                                             <td>
                                                 ${customerName}
                                             </td>
+
+
                                             <td>
+
                                                 <code class="customer-id">
                                                     ${subscription.id}
                                                 </code>
+
                                             </td>
+
+
                                             <td>
+
                                                 <span class="amount-cell">
                                                     ${amount}
                                                 </span>
+
                                                 ${
                                                     currency
                                                         ? `
@@ -2612,28 +2561,48 @@ async function renderSubscriptions(container) {
                                                         `
                                                         : ""
                                                 }
+
                                             </td>
+
 
                                             <td>
                                                 ${recurringText}
                                             </td>
+
+
                                             <td>
+
                                                 <span
                                                     class="status-badge ${statusClass}"
                                                 >
                                                     ${statusText}
                                                 </span>
+
                                             </td>
+
+
                                             <td>
+
                                                 ${
-                                                    subscription.collection_method === "charge_automatically"
+                                                    subscription.collection_method ===
+                                                    "charge_automatically"
+
                                                         ? "Prélèvement automatique"
-                                                        : subscription.collection_method === "send_invoice"
+
+                                                        : subscription.collection_method ===
+                                                          "send_invoice"
+
                                                             ? "Facturation sur facture"
-                                                            : subscription.collection_method || "—"
+
+                                                            : subscription.collection_method ||
+                                                              "—"
                                                 }
+
                                             </td>
+
+
                                             <td>
+
                                                 ${
                                                     subscription.start_date
                                                         ? new Date(
@@ -2643,51 +2612,83 @@ async function renderSubscriptions(container) {
                                                         )
                                                         : "—"
                                                 }
+
                                             </td>
+
+
                                             <td>
+
                                                 ${
                                                     subscription.items?.data?.[0]?.current_period_end
+
                                                         ? new Date(
                                                             subscription.items.data[0].current_period_end * 1000
                                                         ).toLocaleDateString(
                                                             "fr-FR"
                                                         )
+
                                                         : "—"
                                                 }
+
                                             </td>
+
+
                                             <td>
+
                                                 ${
                                                     subscription.created
+
                                                         ? new Date(
                                                             subscription.created * 1000
                                                         ).toLocaleString(
                                                             "fr-FR"
                                                         )
+
                                                         : "—"
                                                 }
+
                                             </td>
+
                                         </tr>
+
                                     `;
+
                                 }).join("")}
+
                             </tbody>
+
                         </table>
+
                     </div>
+
                 </div>
+
             `;
+
+
         } catch (error) {
+
             console.error(
                 "Erreur récupération abonnements Stripe :",
                 error
             );
+
+
             list.innerHTML = `
+
                 <div class="commerce-card">
+
                     <p>
+
                         ${
                             error.message ||
                             "Erreur lors du chargement des abonnements"
                         }
+
                     </p>
+
                 </div>
+
             `;
 
         }
@@ -2735,21 +2736,6 @@ async function renderSubscriptions(container) {
             }
 
 
-            if (
-                !paymentElement ||
-                !setupIntentClientSecret
-            ) {
-
-                showToast(
-                    "Ajoutez un moyen de paiement avant de créer l'abonnement.",
-                    "error"
-                );
-
-                return;
-
-            }
-
-
             const submitButton =
                 container.querySelector(
                     "#create-subscription-btn"
@@ -2759,163 +2745,67 @@ async function renderSubscriptions(container) {
             submitButton.disabled = true;
 
             submitButton.textContent =
-                "Enregistrement du paiement...";
+                "Création de l'abonnement...";
 
 
             try {
-
-                /* =========================================
-                   CONFIRMER LE SETUP INTENT
-                ========================================= */
-
-                const {
-                    error: submitError
-                } = await elements.submit();
-
-
-                if (submitError) {
-
-                    throw submitError;
-
-                }
-
-
-                const {
-                    setupIntent,
-                    error: confirmError
-                } = await stripe.confirmSetup({
-
-                    elements,
-
-                    confirmParams: {
-
-                        return_url:
-                            window.location.href
-
-                    },
-
-                    redirect: "if_required"
-
-                });
-
-
-                if (confirmError) {
-
-                    throw confirmError;
-
-                }
-
-
-                if (
-                    !setupIntent ||
-                    !setupIntent.payment_method
-                ) {
-
-                    throw new Error(
-                        "Le moyen de paiement n'a pas pu être enregistré."
-                    );
-
-                }
-
-
-                paymentMethodId =
-                    typeof setupIntent.payment_method === "string"
-                        ? setupIntent.payment_method
-                        : setupIntent.payment_method.id;
-
-
-                if (!paymentMethodId) {
-
-                    throw new Error(
-                        "Impossible de récupérer le moyen de paiement."
-                    );
-
-                }
-
-
-                /* =========================================
-                   CRÉER L'ABONNEMENT
-                ========================================= */
-
-                submitButton.textContent =
-                    "Création de l'abonnement...";
                 const response =
                     await apiFetch(
                         "/stripe/connect/subscriptions",
                         {
                             method: "POST",
+
                             body: {
                                 customer_id,
                                 price_id,
                                 quantity,
-                                collection_method: "charge_automatically",
-                                payment_method_id: paymentMethodId
+                                collection_method:
+                                    "charge_automatically"
                             }
                         }
                     );
-                const data = await response.json();
-                console.log("SUBSCRIPTION CREATE STATUS:", response.status);
-                console.log("SUBSCRIPTION CREATE RESPONSE:", data);
+                const data =
+                    await response.json();
+                console.log(
+                    "SUBSCRIPTION CREATE STATUS:",
+                    response.status
+                );
+                console.log(
+                    "SUBSCRIPTION CREATE RESPONSE:",
+                    data
+                );
                 if (!response.ok) {
                     throw new Error(
                         data.detail ||
                         "Impossible de créer l'abonnement"
                     );
                 }
-                showToast("Abonnement créé avec succès", "success");
-                form.reset();
-
-                paymentMethodId = null;
-
-                setupIntentClientSecret = null;
-
-
-                if (paymentElement) {
-
-                    paymentElement.unmount();
-
-                    paymentElement = null;
-
+                const checkoutUrl =
+                    data.checkout?.url;
+                if (!checkoutUrl) {
+                    throw new Error(
+                        "URL Stripe Checkout introuvable"
+                    );
                 }
-                elements = null;
-                paymentElementContainer.innerHTML =
-                    "Sélectionnez d'abord un client.";
-
-
-                createModal.classList.remove(
-                    "open"
-                );
-
-
-                await loadSubscriptions();
-
-
+                window.location.href = checkoutUrl;
             } catch (error) {
-
                 console.error(
                     "Erreur création abonnement :",
                     error
                 );
-
-
                 showToast(
                     error.message ||
                     "Erreur lors de la création de l'abonnement",
                     "error"
                 );
-
-
             } finally {
-
                 submitButton.disabled = false;
-
                 submitButton.textContent =
                     "Créer l'abonnement";
-
             }
-
         }
     );
+
 
     /* =====================================================
        INITIALISATION

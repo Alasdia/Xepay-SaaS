@@ -5,7 +5,7 @@ import stripe
 from backend.database import get_db
 from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest, SetupIntentCreateRequest
 from backend.middleware.authorization import require_manager
-from backend.services.stripe_service import (create_connect_invoice, create_connect_subscription, create_connect_product, create_connect_customer)
+from backend.services.stripe_service import (create_connect_invoice, create_connect_subscription, create_subscription_setup_session, create_connect_product, create_connect_customer)
 from backend.services.email_service import send_account_updated_email, send_payout_success_email, send_payout_failed_email
 import stripe  
 import os
@@ -253,41 +253,6 @@ def list_merchant_invoices(
             detail=e.user_message or str(e)
         )
 
-@router.post("/stripe/connect/setup-intent")
-def create_setup_intent(
-    data: SetupIntentCreateRequest,
-    db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
-):
-    profile = db.query(Profile).filter(
-        Profile.user_id == membership.workspace_id
-    ).first()
-    if not profile or not profile.stripe_account_id:
-        raise HTTPException(
-            status_code=404,
-            detail="Compte Stripe introuvable"
-        )
-    try:
-        setup_intent = stripe.SetupIntent.create(
-            customer=data.customer_id,
-            usage="off_session",
-            stripe_account=profile.stripe_account_id,
-        )
-        stripe.SetupIntent.retrieve(
-            setup_intent.id,
-            stripe_account=profile.stripe_account_id,
-        )
-        return {
-            "client_secret": setup_intent.client_secret,
-            "id": setup_intent.id,
-            "stripe_account_id": profile.stripe_account_id
-        }
-    except stripe.error.StripeError as e:
-        raise HTTPException(
-            status_code=400,
-            detail=e.user_message or str(e)
-        )
-
 @router.post("/stripe/connect/subscriptions")
 def create_merchant_subscription(
     data: ConnectSubscriptionCreateRequest,
@@ -303,6 +268,7 @@ def create_merchant_subscription(
             status_code=404,
             detail="Compte Stripe introuvable"
         )
+
     try:
         subscription = create_connect_subscription(
             merchant_account=profile.stripe_account_id,
@@ -310,7 +276,6 @@ def create_merchant_subscription(
             price_id=data.price_id,
             quantity=data.quantity,
             collection_method=data.collection_method,
-            payment_method_id=data.payment_method_id,
             application_fee_percent=1.0,
             metadata={
                 "user_id": membership.user_id,
@@ -318,12 +283,26 @@ def create_merchant_subscription(
                 "xepay_type": "merchant_subscription",
             },
         )
+        session = create_subscription_setup_session(
+            merchant_account=profile.stripe_account_id,
+            customer_id=data.customer_id,
+            subscription_id=subscription.id,
+            price_id=data.price_id,
+            workspace_id=membership.workspace_id,
+            user_id=membership.user_id,
+        )
         return {
-            "id": subscription.id,
-            "object": subscription.object,
-            "status": subscription.status,
-            "customer": subscription.customer,
-            "collection_method": subscription.collection_method,
+            "subscription": {
+                "id": subscription.id,
+                "object": subscription.object,
+                "status": subscription.status,
+                "customer": subscription.customer,
+                "collection_method": subscription.collection_method,
+            },
+            "checkout": {
+                "id": session.id,
+                "url": session.url,
+            },
         }
 
     except stripe.error.StripeError as e:

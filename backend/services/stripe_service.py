@@ -166,6 +166,33 @@ def create_connect_subscription(
     )
     return subscription
 
+def create_subscription_setup_session(
+    merchant_account: str,
+    customer_id: str,
+    subscription_id: str,
+    price_id: str,
+    workspace_id: str,
+    user_id: str,
+):
+    metadata = {
+        "subscription_id": str(subscription_id),
+        "customer_id": str(customer_id),
+        "price_id": str(price_id),
+        "workspace_id": str(workspace_id),
+        "user_id": str(user_id),
+        "xepay_type": "merchant_subscription_payment_method",
+    }
+    session = stripe.checkout.Session.create(
+        mode="setup",
+        customer=customer_id,
+        metadata=metadata,
+        setup_intent_data={
+            "metadata": metadata,
+        },
+        stripe_account=merchant_account,
+    )
+    return session
+
 def create_connect_customer(
     merchant_account: str,
     name: str,
