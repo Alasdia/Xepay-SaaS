@@ -2312,7 +2312,6 @@ async function renderSubscriptions(container) {
 
 
         try {
-
             const response =
                 await apiFetch(
                     "/stripe/connect/setup-intent",
@@ -2324,56 +2323,35 @@ async function renderSubscriptions(container) {
                         }
                     }
                 );
-
-
             const data =
                 await response.json();
-
-
             if (!response.ok) {
-
                 throw new Error(
                     data.detail ||
                     "Impossible de préparer le moyen de paiement"
                 );
-
             }
-
-
-            setupIntentClientSecret =
-                data.client_secret;
-
-
+            stripe = window.Stripe(
+                window.STRIPE_PUBLISHABLE_KEY,
+                {
+                    stripeAccount: data.stripe_account_id
+                }
+            );
+            setupIntentClientSecret = data.client_secret;
             if (!setupIntentClientSecret) {
-
                 throw new Error(
                     "Le SetupIntent ne contient pas de client_secret."
                 );
-
             }
-
-
-            /*
-             * Détruire l'ancien Payment Element
-             * avant d'en créer un nouveau.
-             */
-
             if (paymentElement) {
-
                 paymentElement.unmount();
-
                 paymentElement = null;
-
             }
-
-
             elements =
                 stripe.elements({
                     clientSecret:
                         setupIntentClientSecret
                 });
-
-
             paymentElement =
                 elements.create(
                     "payment"
