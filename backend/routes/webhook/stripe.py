@@ -5,7 +5,7 @@ import stripe
 from backend.database import get_db
 from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest, SetupIntentCreateRequest
 from backend.middleware.authorization import require_manager
-from backend.services.stripe_service import (create_connect_invoice, create_connect_subscription, create_subscription_setup_session, create_connect_product, create_connect_customer)
+from backend.services.stripe_service import (create_connect_invoice, create_connect_product, create_connect_customer)
 from backend.services.email_service import send_account_updated_email, send_payout_success_email, send_payout_failed_email
 import stripe  
 import os
@@ -268,43 +268,35 @@ def create_merchant_subscription(
             status_code=404,
             detail="Compte Stripe introuvable"
         )
-
     try:
-        subscription = create_connect_subscription(
-            merchant_account=profile.stripe_account_id,
-            customer_id=data.customer_id,
-            price_id=data.price_id,
-            quantity=data.quantity,
-            collection_method=data.collection_method,
-            application_fee_percent=1.0,
-            metadata={
-                "user_id": membership.user_id,
-                "workspace_id": membership.workspace_id,
-                "xepay_type": "merchant_subscription",
+        metadata = {
+            "user_id": str(membership.user_id),
+            "workspace_id": str(membership.workspace_id),
+            "customer_id": str(data.customer_id),
+            "price_id": str(data.price_id),
+            "quantity": str(data.quantity),
+            "xepay_type": "merchant_subscription",
+        }
+        session = stripe.checkout.Session.create(
+            mode="subscription",
+            customer=data.customer_id,
+            line_items=[
+                {
+                    "price": data.price_id,
+                    "quantity": data.quantity,
+                }
+            ],
+            metadata=metadata,
+            subscription_data={
+                "application_fee_percent": 1.0,
+                "metadata": metadata,
             },
-        )
-        session = create_subscription_setup_session(
-            merchant_account=profile.stripe_account_id,
-            customer_id=data.customer_id,
-            subscription_id=subscription.id,
-            price_id=data.price_id,
-            workspace_id=membership.workspace_id,
-            user_id=membership.user_id,
+            stripe_account=profile.stripe_account_id,
         )
         return {
-            "subscription": {
-                "id": subscription.id,
-                "object": subscription.object,
-                "status": subscription.status,
-                "customer": subscription.customer,
-                "collection_method": subscription.collection_method,
-            },
-            "checkout": {
-                "id": session.id,
-                "url": session.url,
-            },
+            "id": session.id,
+            "url": session.url,
         }
-
     except stripe.error.StripeError as e:
         raise HTTPException(
             status_code=400,
