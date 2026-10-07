@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 import stripe
 
 from backend.database import get_db
-from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest, SetupIntentCreateRequest
+from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest
 from backend.middleware.authorization import require_manager
 from backend.services.stripe_service import (create_connect_invoice, create_connect_product, create_connect_customer)
 from backend.services.email_service import send_account_updated_email, send_payout_success_email, send_payout_failed_email

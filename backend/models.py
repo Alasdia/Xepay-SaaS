@@ -151,8 +151,6 @@ class ConnectSubscriptionCreateRequest(BaseModel):
     collection_method: str = "charge_automatically"
     payment_method_id: str | None = None
 
-class SetupIntentCreateRequest(BaseModel):
-    customer_id: str
 
 class Wallet(Base):
     __tablename__ = "wallets"
