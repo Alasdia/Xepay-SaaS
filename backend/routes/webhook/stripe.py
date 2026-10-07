@@ -271,7 +271,6 @@ def create_setup_intent(
         setup_intent = stripe.SetupIntent.create(
             customer=data.customer_id,
             usage="off_session",
-            payment_method_types=["card"],
             stripe_account=profile.stripe_account_id,
         )
         return {
