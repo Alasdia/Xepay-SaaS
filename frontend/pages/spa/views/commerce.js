@@ -2358,6 +2358,12 @@ async function renderSubscriptions(container) {
                     "Le SetupIntent ne contient pas de client_secret."
                 );
             }
+            stripe = window.Stripe(
+                window.STRIPE_PUBLISHABLE_KEY,
+                {
+                    stripeAccount: data.stripe_account_id
+                }
+            );
             if (paymentElement) {
                 paymentElement.unmount();
                 paymentElement = null;
