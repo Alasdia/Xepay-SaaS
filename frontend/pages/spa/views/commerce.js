@@ -2352,70 +2352,33 @@ async function renderSubscriptions(container) {
             }
 
 
-            setupIntentClientSecret =
-                data.client_secret;
-
-
+            setupIntentClientSecret = data.client_secret;
             if (!setupIntentClientSecret) {
-
                 throw new Error(
                     "Le SetupIntent ne contient pas de client_secret."
                 );
-
             }
-
-
-            /*
-             * Détruire l'ancien Payment Element
-             * avant d'en créer un nouveau.
-             */
-
             if (paymentElement) {
-
                 paymentElement.unmount();
-
                 paymentElement = null;
-
             }
-
-
-            elements =
-                stripe.elements({
-                    clientSecret:
-                        setupIntentClientSecret
-                });
-
-
-            paymentElement =
-                elements.create(
-                    "payment"
-                );
-
-
-            paymentElement.mount(
-                "#subscription-payment-element"
-            );
-
-
+            elements = stripe.elements({
+                    clientSecret: setupIntentClientSecret
+            });
+            paymentElement = elements.create("payment");
+            paymentElement.mount("#subscription-payment-element");
         } catch (error) {
-
             console.error(
                 "Erreur préparation moyen de paiement :",
                 error
             );
-
-
             paymentElementContainer.innerHTML = `
                 <div class="form-help">
                     Impossible de charger le moyen de paiement.
                 </div>
             `;
-
-
             throw error;
-
         }
-
     }
 
 

@@ -273,6 +273,10 @@ def create_setup_intent(
             usage="off_session",
             stripe_account=profile.stripe_account_id,
         )
+        stripe.SetupIntent.retrieve(
+            setup_intent.id,
+            stripe_account=profile.stripe_account_id,
+        )
         return {
             "client_secret": setup_intent.client_secret,
             "id": setup_intent.id,
