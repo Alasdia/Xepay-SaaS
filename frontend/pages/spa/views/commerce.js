@@ -2426,8 +2426,6 @@ async function renderSubscriptions(container) {
             container.querySelector(
                 "#subscriptions-list"
             );
-
-
         list.innerHTML = `
             <div class="commerce-card">
                 <p>Chargement des abonnements...</p>
@@ -2445,7 +2443,18 @@ async function renderSubscriptions(container) {
                     "Impossible de récupérer les abonnements"
                 );
             }
-            const customers = customersData.data || [];
+            const customersResponse =
+                await apiFetch("/stripe/connect/customers");
+            const customersData =
+                await customersResponse.json();
+            if (!customersResponse.ok) {
+                throw new Error(
+                    customersData.detail ||
+                    "Impossible de récupérer les clients"
+                );
+            }
+            const customers =
+                customersData.data || [];
             const subscriptions = data.data || [];
             console.log("SUBSCRIPTION LIST:", subscriptions);
             if (!subscriptions.length) {
@@ -3096,22 +3105,15 @@ async function renderInvoices(container) {
                 );
             }
             if (!productsResponse.ok) {
-
                 throw new Error(
                     productsData.detail ||
                     "Impossible de récupérer les produits"
                 );
-
             }
-
-
             const customers =
                 customersData.data || [];
-
-
             const products =
                 productsData.data || [];
-
 
             /* =============================================
                CLIENTS
