@@ -2339,10 +2339,9 @@ async function renderSubscriptions(container) {
                 );
 
 
-            const data =
-                await response.json();
-
-
+            const data = await response.json();
+            console.log("SETUP INTENT ACCOUNT:", data.stripe_account_id);
+            console.log("SETUP INTENT:", data.id);
             if (!response.ok) {
 
                 throw new Error(
