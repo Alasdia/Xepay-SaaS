@@ -2787,7 +2787,57 @@ async function renderSubscriptions(container) {
                         "URL Stripe Checkout introuvable"
                     );
                 }
-                window.location.href = checkoutUrl;
+                showToast("Abonnement créé. Le lien Stripe est prêt.", "success");
+                form.reset();
+                createModal.classList.remove("open");
+                const list = container.querySelector("#subscriptions-list");
+                list.insertAdjacentHTML(
+                    "afterbegin",
+                    `
+                        <div class="commerce-card subscription-checkout-link">
+                            <div>
+                                <strong>
+                                    Lien de paiement du client
+                                </strong>
+                                <p>
+                                    Envoyez ce lien à votre client
+                                    pour qu'il renseigne son moyen de paiement.
+                                </p>
+                                <input
+                                    type="text"
+                                    value="${checkoutUrl}"
+                                    readonly
+                                    class="form-control"
+                                    id="subscription-checkout-url"
+                                >
+                            </div>
+                            <button
+                                type="button"
+                                class="modal-submit-btn"
+                                id="copy-subscription-checkout-url"
+                            >
+                                Copier le lien
+                            </button>
+                        </div>
+                    `
+                );
+                container
+                    .querySelector(
+                        "#copy-subscription-checkout-url"
+                    )
+                    .addEventListener(
+                        "click",
+                        async () => {
+                            await navigator.clipboard.writeText(
+                                checkoutUrl
+                            );
+                            showToast(
+                                "Lien Stripe copié.",
+                                "success"
+                            );
+                        }
+                    );
+                await loadSubscriptions();
             } catch (error) {
                 console.error(
                     "Erreur création abonnement :",
