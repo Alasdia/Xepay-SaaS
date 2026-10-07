@@ -2433,36 +2433,21 @@ async function renderSubscriptions(container) {
                 <p>Chargement des abonnements...</p>
             </div>
         `;
-
-
         try {
-
             const response =
                 await apiFetch(
                     "/stripe/connect/subscriptions"
                 );
-
-
-            const data =
-                await response.json();
-
-
+            const data = await response.json();
             if (!response.ok) {
-
                 throw new Error(
                     data.detail ||
                     "Impossible de récupérer les abonnements"
                 );
-
             }
-
-
-            const subscriptions =
-                data.data || [];
-
-
+            const subscriptions = data.data || [];
+            console.log("SUBSCRIPTION LIST:", subscriptions);
             if (!subscriptions.length) {
-
                 list.innerHTML = `
                     <div class="commerce-card">
                         <p>
@@ -2470,12 +2455,8 @@ async function renderSubscriptions(container) {
                         </p>
                     </div>
                 `;
-
                 return;
-
             }
-
-
             list.innerHTML = `
 
                 <div class="table-wrap">
