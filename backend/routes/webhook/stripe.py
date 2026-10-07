@@ -299,7 +299,6 @@ def create_merchant_subscription(
             status_code=404,
             detail="Compte Stripe introuvable"
         )
-
     try:
         subscription = create_connect_subscription(
             merchant_account=profile.stripe_account_id,
@@ -315,7 +314,6 @@ def create_merchant_subscription(
                 "xepay_type": "merchant_subscription",
             },
         )
-
         return {
             "id": subscription.id,
             "object": subscription.object,

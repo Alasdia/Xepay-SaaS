@@ -3029,11 +3029,7 @@ async function renderSubscriptions(container) {
                     paymentElement = null;
 
                 }
-
-
                 elements = null;
-
-
                 paymentElementContainer.innerHTML =
                     "Sélectionnez d'abord un client.";
 
@@ -3072,7 +3068,6 @@ async function renderSubscriptions(container) {
 
         }
     );
-
 
     /* =====================================================
        INITIALISATION
