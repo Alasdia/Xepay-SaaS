@@ -643,7 +643,7 @@
     inset: 0;
     z-index: 9999;
 
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
 
@@ -651,10 +651,30 @@
     backdrop-filter: blur(2px);
 
     padding: 20px;
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+
+    transition:
+        opacity 0.15s ease,
+        visibility 0.15s ease;
 }
 
 .customer-modal-overlay.open {
-    display: flex;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+html,
+body {
+    margin: 0;
+    padding: 0;
+}
+.commerce-view,
+#commerce-content {
+    position: relative;
+    width: 100%;
 }
 
 .customer-modal {
