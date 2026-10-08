@@ -40,11 +40,6 @@
     font-weight: 500;
     white-space: nowrap;
 }
-.payment-method-icon-img {
-    width: 22px;
-    height: 22px;
-    object-fit: contain;
-}
 
 .payment-method-status.active {
     color: #16a34a;

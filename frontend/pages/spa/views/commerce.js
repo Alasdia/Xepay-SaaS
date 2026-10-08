@@ -4157,7 +4157,7 @@ async function renderPaymentMethods(container) {
             ================================================ */
 
             .payment-methods-card {
-                background: #ffffff;
+                background: #a0a4aaff;
 
                 border: 1px solid #e5e7eb;
                 border-radius: 10px;
@@ -4184,6 +4184,9 @@ async function renderPaymentMethods(container) {
             .payment-methods-table {
                 width: 100%;
                 border-collapse: collapse;
+            }
+            .payment-methods-table tbody td {
+                background: #a0a4aaff !important;
             }
 
             .payment-methods-table th {
@@ -4227,20 +4230,22 @@ async function renderPaymentMethods(container) {
             .payment-method-icon {
                 width: 32px;
                 height: 32px;
-
                 flex: 0 0 32px;
 
                 display: flex;
                 align-items: center;
                 justify-content: center;
 
-                border: 1px solid #e5e7eb;
-                border-radius: 7px;
+                border: none;
+                border-radius: 0;
+                background: transparent;
+            }
 
-                background: #ffffff;
-
-                color: #9ca3af;
-                font-size: 12px;
+            .payment-method-icon-img {
+                width: 30px;
+                height: 30px;
+                object-fit: contain;
+                display: block;
             }
 
             .payment-method-name-text {
