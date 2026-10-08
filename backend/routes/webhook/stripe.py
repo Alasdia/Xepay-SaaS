@@ -630,7 +630,6 @@ def create_merchant_product(
             detail=e.user_message or str(e)
         )
 
-
 @router.get("/stripe/connect/payment-methods")
 def list_merchant_payment_methods(
     db: Session = Depends(get_db),
@@ -645,23 +644,23 @@ def list_merchant_payment_methods(
             detail="Compte Stripe introuvable"
         )
     try:
-        account = stripe.Account.retrieve(
-            profile.stripe_account_id
+        configurations = stripe.PaymentMethodConfiguration.list(
+            limit=100,
+            stripe_account=profile.stripe_account_id,
         )
         return {
-            "object": "capabilities",
-            "data": (
-                account.capabilities.to_dict()
-                if account.capabilities
-                else {}
-            ),
+            "object": configurations.object,
+            "data": [
+                configuration.to_dict()
+                for configuration in configurations.auto_paging_iter()
+            ],
         }
     except stripe.error.StripeError as e:
         raise HTTPException(
             status_code=400,
             detail=e.user_message or str(e)
         )
-    
+
 @router.get("/stripe/connect/risk")
 def list_merchant_risk(
     db: Session = Depends(get_db),
