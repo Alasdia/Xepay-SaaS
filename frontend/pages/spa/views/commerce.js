@@ -4364,21 +4364,30 @@ async function renderPaymentMethods(container) {
         }
 
         const configuration = configurations.find(config => config.application) || configurations[0];
-
+        console.log("CONFIGURATION STRIPE COMPLÈTE :", configuration);
+        console.log("CLÉS DE MOYENS DE PAIEMENT :", Object.entries(configuration)
+            .filter(([id, value]) =>
+                value &&
+                typeof value === "object" &&
+                (
+                    "available" in value ||
+                    "display_preference" in value
+                )
+            )
+            .map(([id]) => id)
+        );
         /* =========================================================
            EXTRACTION DYNAMIQUE DES MOYENS STRIPE
         ========================================================= */
 
         const methods = Object.entries(configuration)
             .filter(([id, value]) => {
-
                 if (
                     !value ||
                     typeof value !== "object"
                 ) {
                     return false;
                 }
-
                 return (
                     Object.prototype.hasOwnProperty.call(
                         value,
