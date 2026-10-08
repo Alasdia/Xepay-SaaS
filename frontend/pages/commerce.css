@@ -20,7 +20,7 @@
 
 .payment-method-type {
     display: grid;
-    grid-template-columns: 170px 80px;
+    grid-template-columns: 200px 80px;
     align-items: center;
     column-gap: 8px;
 }
