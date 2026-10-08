@@ -4006,9 +4006,9 @@ async function renderPaymentMethods(container) {
         zip: "Zip"
     };
     const PAYMENT_METHOD_ICONS = {
-        apple_pay: "/pages/assets/apple-pay.svg",
-        link: "/pages/assets/link.svg",
-        card: "/pages/assets/visa.svg"
+        apple_pay: "/assets/apple-pay.svg",
+        link: "/assets/link.svg",
+        card: "/assets/visa.svg"
     };
 
     const PAYMENT_METHOD_TYPES = {
