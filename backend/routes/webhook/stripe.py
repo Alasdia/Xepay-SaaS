@@ -666,7 +666,7 @@ def list_merchant_payment_methods(
         )
     try:
         account = stripe.Account.retrieve(profile.stripe_account_id)
-        capabilities = account.capabilities or {}
+        capabilities = account.capabilities.to_dict() if account.capabilities else {}
         result = [
             {
                 "id": key,
