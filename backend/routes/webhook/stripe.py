@@ -651,7 +651,7 @@ def list_merchant_payment_methods(
         return {
             "object": "capabilities",
             "data": (
-                account.capabilities.to_dict_recursive()
+                account.capabilities.to_dict()
                 if account.capabilities
                 else {}
             ),
@@ -681,7 +681,7 @@ def list_merchant_risk(
             stripe_account=profile.stripe_account_id,
         )
         result = [
-            dispute.to_dict_recursive()
+            dispute.to_dict()
             for dispute in disputes.auto_paging_iter()
         ]
         return {
