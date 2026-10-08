@@ -71,14 +71,12 @@ async function renderClients(container) {
 
         <!-- MODAL CRÉATION CLIENT -->
         <div class="customer-modal-overlay" id="create-client-modal">
-            <div class="customer-modal">
-
+            <div class="customer-modal customer-create-modal">
                 <div class="customer-modal-header">
                     <div>
                         <h3>Créer un client</h3>
-                        <p>Ajoutez un nouveau client à votre activité.</p>
+                        <p>Ajoutez les informations de votre client.</p>
                     </div>
-
                     <button
                         type="button"
                         class="customer-modal-close"
@@ -87,34 +85,279 @@ async function renderClients(container) {
                         ×
                     </button>
                 </div>
-
                 <form id="create-client-form">
 
-                    <div class="form-group">
-                        <label>Nom</label>
-                        <input
-                            type="text"
-                            id="client-name"
-                            required
-                        >
+                <!-- =================================================
+                 INFORMATIONS DU CLIENT
+                ================================================== -->
+
+                <div class="customer-form-section">
+                    <div class="customer-form-section-title">
+                        Informations du client
+                    </div>
+                    <div class="customer-form-grid customer-form-grid-2">
+                        <div class="form-group">
+                            <label for="client-first-name">
+                                Prénom
+                            </label>
+                            <input
+                                type="text"
+                                id="client-first-name"
+                                autocomplete="given-name"
+                            >
+                        </div>
+                        <div class="form-group">
+                            <label for="client-last-name">
+                                Nom
+                            </label>
+                            <input
+                                type="text"
+                                id="client-last-name"
+                                autocomplete="family-name"
+                                required
+                            >
+                        </div>
+                        </div>
+                        <div class="customer-form-grid customer-form-grid-2">
+                            <div class="form-group">
+                                <label for="client-email">
+                                    Email
+                                </label>
+                                <input
+                                    type="email"
+                                    id="client-email"
+                                    autocomplete="email"
+                                    required
+                                >
+                            </div>
+                            <div class="form-group">
+                                <label for="client-phone">
+                                    Téléphone
+                                </label>
+                                <input
+                                    type="tel"
+                                    id="client-phone"
+                                    autocomplete="tel"
+                                >
+                            </div>
+                        </div>
+                    </div>
+                    <!-- =================================================
+                      ADRESSE DE FACTURATION
+                    ================================================== -->
+                    <div class="customer-form-section">
+                        <div class="customer-form-section-title">
+                            Adresse de facturation
+                        </div>
+                        <div class="form-group">
+                            <label for="billing-country">
+                                Pays
+                            </label>
+                            <select id="billing-country">
+                                <option value="">Sélectionner un pays</option>
+                                <option value="SN">Sénégal</option>
+                                <option value="CI">Côte d’Ivoire</option>
+                                <option value="ML">Mali</option>
+                                <option value="BF">Burkina Faso</option>
+                                <option value="BJ">Bénin</option>
+                                <option value="TG">Togo</option>
+                                <option value="FR">France</option>
+                                <option value="US">États-Unis</option>
+                                <option value="GB">Royaume-Uni</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="billing-line1">
+                                Adresse
+                            </label>
+                            <input
+                                type="text"
+                                id="billing-line1"
+                                autocomplete="address-line1"
+                            >
+                        </div>
+                        <div class="form-group">
+                            <label for="billing-line2">
+                                Appartement, unité, bâtiment, complément
+                            </label>
+                            <input
+                                type="text"
+                                id="billing-line2"
+                                autocomplete="address-line2"
+                            >
+                        </div>
+                        <div class="customer-form-grid customer-form-grid-2">
+                            <div class="form-group">
+                               <label for="billing-postal-code">
+                                    Code postal
+                                </label>
+                                <input
+                                    type="text"
+                                    id="billing-postal-code"
+                                    autocomplete="postal-code"
+                                >
+                            </div>
+                            <div class="form-group">
+                                <label for="billing-city">
+                                    Ville
+                                </label>
+                                <input
+                                    type="text"
+                                    id="billing-city"
+                                    autocomplete="address-level2"
+                                >
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="billing-state">
+                                État / Région
+                            </label>
+                            <input
+                                type="text"
+                                id="billing-state"
+                                autocomplete="address-level1"
+                            >
+                        </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input
-                            type="email"
-                            id="client-email"
-                            required
-                        >
+                    <!-- =================================================
+                      ADRESSE DE LIVRAISON
+                    ================================================== -->
+
+                    <div class="customer-form-section">
+                        <div class="customer-form-section-title">
+                            Adresse de livraison
+                        </div>
+                        <label class="customer-checkbox-row">
+                            <input
+                                type="checkbox"
+                                id="shipping-same-as-billing"
+                            >
+                            <span>
+                                Identique à l’adresse de facturation
+                            </span>
+                        </label>
+                        <div id="shipping-fields">
+                            <div class="form-group">
+                                <label for="shipping-name">
+                                    Nom du destinataire
+                                </label>
+                                <input
+                                    type="text"
+                                    id="shipping-name"
+                                    autocomplete="shipping name"
+                                >
+                            </div>
+                            <div class="form-group">
+                                <label for="shipping-country">
+                                    Pays
+                                </label>
+                                <select id="shipping-country">
+                                    <option value="">
+                                        Sélectionner un pays
+                                    </option>
+                                    <option value="SN">Sénégal</option>
+                                    <option value="CI">Côte d’Ivoire</option>
+                                    <option value="ML">Mali</option>
+                                    <option value="BF">Burkina Faso</option>
+                                    <option value="BJ">Bénin</option>
+                                    <option value="TG">Togo</option>
+                                    <option value="FR">France</option>
+                                    <option value="US">États-Unis</option>
+                                    <option value="GB">Royaume-Uni</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="shipping-line1">
+                                    Adresse
+                                </label>
+                                <input
+                                    type="text"
+                                    id="shipping-line1"
+                                    autocomplete="shipping address-line1"
+                                >
+                            </div>
+                            <div class="form-group">
+                                <label for="shipping-line2">
+                                    Appartement, unité, bâtiment, complément
+                                </label>
+                                <input
+                                    type="text"
+                                    id="shipping-line2"
+                                    autocomplete="shipping address-line2"
+                                >
+                            </div>
+                            <div class="customer-form-grid customer-form-grid-2">
+                                <div class="form-group">
+                                    <label for="shipping-postal-code">
+                                        Code postal
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="shipping-postal-code"
+                                        autocomplete="shipping postal-code"
+                                    >
+                                </div>
+                                <div class="form-group">
+                                    <label for="shipping-city">
+                                        Ville
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="shipping-city"
+                                        autocomplete="shipping address-level2"
+                                    >
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="shipping-state">
+                                    État / Région
+                                </label>
+                                <input
+                                    type="text"
+                                    id="shipping-state"
+                                    autocomplete="shipping address-level1"
+                                >
+                            </div>
+                            <div class="form-group">
+                                <label for="shipping-phone">
+                                    Téléphone
+                                </label>
+                                <input
+                                    type="tel"
+                                    id="shipping-phone"
+                                    autocomplete="shipping tel"
+                                >
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>Téléphone</label>
-                        <input
-                            type="tel"
-                            id="client-phone"
-                        >
+                    <!-- =================================================
+                      PRÉFÉRENCES
+                    ================================================== -->
+
+                    <div class="customer-form-section">
+                        <div class="customer-form-section-title">
+                            Préférences
+                        </div>
+                        <div class="form-group">
+                            <label for="client-language">
+                                Langue
+                            </label>
+                            <select id="client-language">
+                                <option value="fr-FR">
+                                    Français
+                                </option>
+                                <option value="en">
+                                    English
+                                </option>
+                            </select>
+                        </div>
                     </div>
+
+                    <!-- =================================================
+                      ACTIONS
+                    ================================================== -->
 
                     <div class="customer-modal-actions">
                         <button
@@ -124,7 +367,6 @@ async function renderClients(container) {
                         >
                             Annuler
                         </button>
-
                         <button
                             type="submit"
                             class="modal-submit-btn"
@@ -132,7 +374,6 @@ async function renderClients(container) {
                             Créer le client
                         </button>
                     </div>
-
                 </form>
             </div>
         </div>
