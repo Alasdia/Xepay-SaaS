@@ -4525,35 +4525,22 @@ async function renderPaymentMethods(container) {
                     <div class="table-title">
                         Moyens de paiement
                     </div>
-                    <div class="page-subtitle">
-                        Configuration Stripe
-                    </div>
-
                     <div id="customers-scroll-box">
-
                         <table class="table">
-
                             <thead>
-
                                 <tr>
                                     <th>
                                         Moyen de paiement
                                     </th>
-
                                     <th>
                                         Type
                                     </th>
-
                                     <th>
                                         Popularité
                                     </th>
                                 </tr>
-
                             </thead>
-
-
                             <tbody>
-
                                 ${
                                     filteredMethods.length
 
@@ -4621,46 +4608,34 @@ async function renderPaymentMethods(container) {
 
 
                                                         <!-- TYPE + STATUT -->
-
                                                         <td>
-
-                                                            <div
-                                                                class="payment-method-type"
-                                                            >
-
-                                                                <span>
+                                                            <div class="payment-method-type">
+                                                                <span class="payment-method-type-name">
                                                                     ${method.type}
                                                                 </span>
-
-                                                                <span
-                                                                    class="status-badge ${statusClass}"
-                                                                >
+                                                                <span class="payment-method-status ${
+                                                                    method.blocked
+                                                                        ? "blocked"
+                                                                        : method.enabled
+                                                                            ? "active"
+                                                                            : "inactive"
+                                                                }">
                                                                     ${statusLabel}
                                                                 </span>
-
                                                             </div>
-
                                                         </td>
-
-
                                                         <!-- POPULARITÉ -->
-
                                                         <td>
-
                                                             <span
                                                                 class="payment-method-popularity"
                                                             >
                                                                 ${popularity}
                                                             </span>
-
                                                         </td>
-
                                                     </tr>
-
                                                 `;
                                             }
                                         ).join("")
-
                                         : `
                                             <tr>
 

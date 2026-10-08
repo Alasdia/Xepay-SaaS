@@ -18,7 +18,33 @@
     width: 100%;
 }
 
+.payment-method-type {
+    display: grid;
+    grid-template-columns: 170px 80px;
+    align-items: center;
+    column-gap: 8px;
+}
 
+.payment-method-type-name {
+    color: #4b5563;
+    white-space: nowrap;
+}
+
+.payment-method-status {
+    font-size: 12px;
+    line-height: 18px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.payment-method-status.active {
+    color: #16a34a;
+}
+
+.payment-method-status.inactive,
+.payment-method-status.blocked {
+    color: #dc2626;
+}
 /* =========================================================
    PAGE HEADER
 ========================================================= */
