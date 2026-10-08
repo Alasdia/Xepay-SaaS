@@ -630,26 +630,6 @@ def create_merchant_product(
             detail=e.user_message or str(e)
         )
 
-# Libellés lisibles pour les capacités Stripe Connect liées à l'encaissement
-# (clé "*_payments" du dict Account.capabilities) — seules celles-ci
-# concernent un moyen de paiement ; les autres capacités (transfers,
-# card_issuing, tax_reporting...) ne sont pas des moyens de paiement.
-CONNECT_PAYMENT_METHOD_LABELS = {
-    "card_payments": "Carte bancaire",
-    "sepa_debit_payments": "Prélèvement SEPA",
-    "bacs_debit_payments": "Prélèvement BACS",
-    "us_bank_account_ach_payments": "Virement ACH (États-Unis)",
-    "affirm_payments": "Affirm",
-    "afterpay_clearpay_payments": "Afterpay / Clearpay",
-    "klarna_payments": "Klarna",
-    "link_payments": "Link",
-    "paypal_payments": "PayPal",
-    "ideal_payments": "iDEAL",
-    "bancontact_payments": "Bancontact",
-    "giropay_payments": "Giropay",
-    "p24_payments": "Przelewy24",
-    "eps_payments": "EPS",
-}
 
 @router.get("/stripe/connect/payment-methods")
 def list_merchant_payment_methods(
@@ -665,28 +645,23 @@ def list_merchant_payment_methods(
             detail="Compte Stripe introuvable"
         )
     try:
-        account = stripe.Account.retrieve(profile.stripe_account_id)
-        capabilities = account.capabilities.to_dict() if account.capabilities else {}
-        result = [
-            {
-                "id": key,
-                "label": CONNECT_PAYMENT_METHOD_LABELS.get(key, key),
-                "status": value,
-                "active": value == "active",
-            }
-            for key, value in capabilities.items()
-            if key in CONNECT_PAYMENT_METHOD_LABELS
-        ]
+        account = stripe.Account.retrieve(
+            profile.stripe_account_id
+        )
         return {
-            "object": "list",
-            "data": result,
+            "object": "capabilities",
+            "data": (
+                account.capabilities.to_dict_recursive()
+                if account.capabilities
+                else {}
+            ),
         }
     except stripe.error.StripeError as e:
         raise HTTPException(
             status_code=400,
             detail=e.user_message or str(e)
         )
-
+    
 @router.get("/stripe/connect/risk")
 def list_merchant_risk(
     db: Session = Depends(get_db),
@@ -700,29 +675,15 @@ def list_merchant_risk(
             status_code=404,
             detail="Compte Stripe introuvable"
         )
-    stripe_account = profile.stripe_account_id
     try:
         disputes = stripe.Dispute.list(
             limit=100,
-            stripe_account=stripe_account,
+            stripe_account=profile.stripe_account_id,
         )
-        result = []
-        for dispute in disputes.auto_paging_iter():
-            evidence_details = dispute.evidence_details
-            result.append({
-                "id": dispute.id,
-                "charge": dispute.charge,
-                "amount": dispute.amount,
-                "currency": dispute.currency,
-                "reason": dispute.reason,
-                "status": dispute.status,
-                "created": dispute.created,
-                "evidence_due_by": (
-                    evidence_details.due_by
-                    if evidence_details else None
-                ),
-                "is_charge_refundable": dispute.is_charge_refundable,
-            })
+        result = [
+            dispute.to_dict_recursive()
+            for dispute in disputes.auto_paging_iter()
+        ]
         return {
             "object": "list",
             "data": result,
