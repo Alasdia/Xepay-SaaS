@@ -3977,370 +3977,539 @@ async function renderPaymentMethods(container) {
             </div>
         </div>
 
-        <div id="payment-methods-summary"></div>
-
-        <div id="payment-methods-list"></div>
+        <div id="payment-methods-content"></div>
     `;
 
-    async function loadPaymentMethods() {
+    const content = container.querySelector("#payment-methods-content");
 
-        const summary = container.querySelector("#payment-methods-summary");
-        const list = container.querySelector("#payment-methods-list");
+    content.innerHTML = `
+        <div class="commerce-card">
 
-        list.innerHTML = `
-            <div class="commerce-card">
-                <p>Chargement des moyens de paiement...</p>
+            <div id="payment-methods-summary"></div>
+
+            <div id="payment-methods-table"></div>
+
+        </div>
+    `;
+
+    const summary = content.querySelector("#payment-methods-summary");
+    const tableContainer = content.querySelector("#payment-methods-table");
+
+    /* =========================================================
+       LIBELLÉS UX
+    ========================================================= */
+
+    const PAYMENT_METHOD_LABELS = {
+        acss_debit: "ACSS Debit",
+        affirm: "Affirm",
+        afterpay_clearpay: "Afterpay / Clearpay",
+        alipay: "Alipay",
+        alma: "Alma",
+        amazon_pay: "Amazon Pay",
+        au_becs_debit: "BECS Direct Debit",
+        bacs_debit: "Bacs Direct Debit",
+        bancontact: "Bancontact",
+        billie: "Billie",
+        blik: "BLIK",
+        boleto: "Boleto",
+        card: "Cartes bancaires",
+        cartes_bancaires: "Cartes Bancaires",
+        cashapp: "Cash App",
+        eps: "EPS",
+        fpx: "FPX",
+        giropay: "Giropay",
+        grabpay: "GrabPay",
+        ideal: "iDEAL",
+        klarna: "Klarna",
+        link: "Link",
+        mobilepay: "MobilePay",
+        multibanco: "Multibanco",
+        oxxo: "OXXO",
+        p24: "Przelewy24",
+        paypal: "PayPal",
+        paynow: "PayNow",
+        promptpay: "PromptPay",
+        revolut_pay: "Revolut Pay",
+        samsung_pay: "Samsung Pay",
+        sepa_debit: "Prélèvement SEPA",
+        sofort: "Sofort",
+        swish: "Swish",
+        twint: "TWINT",
+        us_bank_account: "US Bank Account",
+        wechat_pay: "WeChat Pay",
+        zip: "Zip"
+    };
+
+    const PAYMENT_METHOD_TYPES = {
+        card: "Cartes bancaires",
+        cartes_bancaires: "Cartes bancaires",
+        sepa_debit: "Prélèvement bancaire",
+        bacs_debit: "Prélèvement bancaire",
+        acss_debit: "Prélèvement bancaire",
+        us_bank_account: "Compte bancaire",
+        paypal: "Portefeuille électronique",
+        alipay: "Portefeuille électronique",
+        cashapp: "Portefeuille électronique",
+        link: "Portefeuille électronique",
+        klarna: "Paiement différé",
+        affirm: "Paiement différé",
+        afterpay_clearpay: "Paiement différé",
+        bancontact: "Paiement bancaire",
+        ideal: "Paiement bancaire",
+        p24: "Paiement bancaire",
+        eps: "Paiement bancaire"
+    };
+
+    function formatPaymentMethodName(id) {
+
+        if (PAYMENT_METHOD_LABELS[id]) {
+            return PAYMENT_METHOD_LABELS[id];
+        }
+
+        return id
+            .replace(/_/g, " ")
+            .replace(/\b\w/g, char => char.toUpperCase());
+    }
+
+    function getPaymentMethodType(id) {
+
+        return PAYMENT_METHOD_TYPES[id] || "Moyen de paiement";
+    }
+
+    /* =========================================================
+       CHARGEMENT
+    ========================================================= */
+
+    try {
+
+        tableContainer.innerHTML = `
+            <div class="py-4 text-center">
+                Chargement des moyens de paiement...
             </div>
         `;
 
-        try {
+        const response = await apiFetch(
+            "/stripe/connect/payment-methods"
+        );
 
-            const response = await apiFetch(
-                "/stripe/connect/payment-methods"
+        const data = await response.json();
+
+        console.log(
+            "DONNÉES STRIPE — CONFIGURATION MOYENS DE PAIEMENT :",
+            data
+        );
+
+        if (!response.ok) {
+            throw new Error(
+                data.detail ||
+                "Impossible de récupérer les moyens de paiement"
             );
+        }
 
-            const data = await response.json();
+        const configurations = Array.isArray(data.data)
+            ? data.data
+            : [];
 
-            console.log(
-                "DONNÉES STRIPE — CONFIGURATION MOYENS DE PAIEMENT :",
-                data
-            );
+        if (!configurations.length) {
 
-            if (!response.ok) {
-                throw new Error(
-                    data.detail ||
-                    "Impossible de récupérer la configuration des moyens de paiement"
-                );
-            }
+            summary.innerHTML = "";
 
-            /*
-             * Stripe retourne une liste de PaymentMethodConfiguration.
-             */
-            const configurations = Array.isArray(data.data)
-                ? data.data
-                : [];
-
-            if (!configurations.length) {
-
-                summary.innerHTML = "";
-
-                list.innerHTML = `
-                    <div class="commerce-card">
-                        <p>
-                            Aucune configuration de moyens de paiement
-                            n'a été trouvée.
-                        </p>
-                    </div>
-                `;
-
-                return;
-            }
-
-            /*
-             * On prend la configuration retournée par Stripe.
-             *
-             * On ne reconstruit PAS la liste des moyens de paiement
-             * et on ne modifie PAS les données Stripe.
-             */
-            const configuration = configurations[0];
-
-            /*
-             * =====================================================
-             * MOYENS DE PAIEMENT
-             *
-             * Un moyen de paiement Stripe possède généralement
-             * une structure contenant "available" et/ou
-             * "display_preference".
-             *
-             * Cela permet de détecter dynamiquement les moyens
-             * présents dans la réponse Stripe sans hardcoder
-             * la liste.
-             * =====================================================
-             */
-
-            const methods = Object.entries(configuration)
-                .filter(([key, value]) => {
-
-                    if (!value || typeof value !== "object") {
-                        return false;
-                    }
-
-                    return (
-                        Object.prototype.hasOwnProperty.call(
-                            value,
-                            "available"
-                        ) ||
-                        Object.prototype.hasOwnProperty.call(
-                            value,
-                            "display_preference"
-                        )
-                    );
-                })
-                .map(([id, stripeData]) => ({
-                    id,
-                    ...stripeData
-                }));
-
-            /*
-             * =====================================================
-             * UX — LIBELLÉS
-             *
-             * Ceci ne modifie absolument pas les données Stripe.
-             * =====================================================
-             */
-
-            const PAYMENT_METHOD_LABELS = {
-                acss_debit: "ACSS Debit",
-                affirm: "Affirm",
-                afterpay_clearpay: "Afterpay / Clearpay",
-                alipay: "Alipay",
-                alma: "Alma",
-                amazon_pay: "Amazon Pay",
-                au_becs_debit: "BECS Direct Debit",
-                bacs_debit: "Bacs Direct Debit",
-                bancontact: "Bancontact",
-                billie: "Billie",
-                blik: "BLIK",
-                boleto: "Boleto",
-                card: "Cartes bancaires",
-                cartes_bancaires: "Cartes Bancaires",
-                cashapp: "Cash App",
-                crypto: "Cryptomonnaie",
-                customer_balance: "Solde client",
-                eps: "EPS",
-                fpx: "FPX",
-                giropay: "Giropay",
-                grabpay: "GrabPay",
-                ideal: "iDEAL",
-                kakao_pay: "Kakao Pay",
-                klarna: "Klarna",
-                konbini: "Konbini",
-                kr_card: "Cartes coréennes",
-                link: "Link",
-                mobilepay: "MobilePay",
-                multibanco: "Multibanco",
-                oxxo: "OXXO",
-                p24: "Przelewy24",
-                payco: "PAYCO",
-                paynow: "PayNow",
-                paypal: "PayPal",
-                promptpay: "PromptPay",
-                revolut_pay: "Revolut Pay",
-                samsung_pay: "Samsung Pay",
-                satispay: "Satispay",
-                sepa_debit: "Prélèvement SEPA",
-                sofort: "Sofort",
-                swish: "Swish",
-                twint: "TWINT",
-                us_bank_account: "US Bank Account",
-                wechat_pay: "WeChat Pay",
-                zip: "Zip"
-            };
-
-            const STATUS_LABELS = {
-                available: "Disponible",
-                unavailable: "Indisponible"
-            };
-
-            const PREFERENCE_LABELS = {
-                on: "Activé",
-                off: "Désactivé",
-                none: "Non configuré"
-            };
-
-            /*
-             * Fallback UX pour les nouveaux moyens Stripe
-             * qui ne seraient pas encore dans PAYMENT_METHOD_LABELS.
-             */
-            function formatPaymentMethodName(id) {
-
-                if (PAYMENT_METHOD_LABELS[id]) {
-                    return PAYMENT_METHOD_LABELS[id];
-                }
-
-                return id
-                    .replace(/_/g, " ")
-                    .replace(/\b\w/g, char => char.toUpperCase());
-            }
-
-            /*
-             * =====================================================
-             * CALCULS UX
-             *
-             * Les données originales restent intactes.
-             * =====================================================
-             */
-
-            const activeMethods = methods.filter(
-                method => method.available === true
-            );
-
-            const inactiveMethods = methods.filter(
-                method => method.available === false
-            );
-
-            const totalMethods = methods.length;
-
-            /*
-             * =====================================================
-             * RÉSUMÉ
-             * =====================================================
-             */
-
-            summary.innerHTML = `
-                <div class="row g-3 mb-4">
-
-                    <div class="col-md-4">
-                        <div class="commerce-card">
-                            <div class="page-subtitle">
-                                Total
-                            </div>
-
-                            <div class="fs-4 fw-semibold">
-                                ${totalMethods}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-4">
-                        <div class="commerce-card">
-                            <div class="page-subtitle">
-                                Disponibles
-                            </div>
-
-                            <div class="fs-4 fw-semibold">
-                                ${activeMethods.length}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-4">
-                        <div class="commerce-card">
-                            <div class="page-subtitle">
-                                Indisponibles
-                            </div>
-
-                            <div class="fs-4 fw-semibold">
-                                ${inactiveMethods.length}
-                            </div>
-                        </div>
-                    </div>
-
+            tableContainer.innerHTML = `
+                <div class="py-4 text-center">
+                    Aucun moyen de paiement trouvé.
                 </div>
             `;
 
-            /*
-             * =====================================================
-             * TABLEAU
-             * =====================================================
-             */
+            return;
+        }
 
-            list.innerHTML = `
+        /*
+         * Configuration Stripe utilisée.
+         */
+        const configuration = configurations[0];
+
+        /*
+         * =====================================================
+         * EXTRACTION DES MOYENS
+         * =====================================================
+         */
+
+        const methods = Object.entries(configuration)
+            .filter(([id, value]) => {
+
+                if (!value || typeof value !== "object") {
+                    return false;
+                }
+
+                return (
+                    Object.prototype.hasOwnProperty.call(
+                        value,
+                        "available"
+                    ) ||
+                    Object.prototype.hasOwnProperty.call(
+                        value,
+                        "display_preference"
+                    )
+                );
+            })
+            .map(([id, stripeData]) => {
+
+                const preference =
+                    stripeData.display_preference?.preference ||
+                    stripeData.display_preference?.value ||
+                    null;
+
+                /*
+                 * Activé = préférence "on"
+                 * Désactivé = préférence "off"
+                 */
+                const enabled = preference === "on";
+
+                /*
+                 * Le statut "blocked" est conservé uniquement
+                 * s'il est réellement fourni par Stripe.
+                 */
+                const blocked =
+                    stripeData.blocked === true;
+
+                return {
+                    id,
+                    name: formatPaymentMethodName(id),
+                    type: getPaymentMethodType(id),
+                    available: stripeData.available === true,
+                    enabled,
+                    blocked,
+                    stripe: stripeData
+                };
+            });
+
+        /* =====================================================
+           KPI
+        ===================================================== */
+
+        const totalCount = methods.length;
+
+        const activeCount = methods.filter(
+            method => method.enabled && !method.blocked
+        ).length;
+
+        const blockedCount = methods.filter(
+            method => method.blocked
+        ).length;
+
+        const inactiveCount = methods.filter(
+            method =>
+                !method.enabled &&
+                !method.blocked
+        ).length;
+
+        summary.innerHTML = `
+            <div
+                class="payment-method-filters"
+                style="
+                    display:grid;
+                    grid-template-columns:repeat(4, 1fr);
+                    gap:12px;
+                    margin-bottom:24px;
+                "
+            >
+
+                <button
+                    type="button"
+                    class="payment-method-kpi active"
+                    data-filter="all"
+                >
+                    <span>Tout</span>
+                    <strong>${totalCount}</strong>
+                </button>
+
+                <button
+                    type="button"
+                    class="payment-method-kpi"
+                    data-filter="active"
+                >
+                    <span>Activé</span>
+                    <strong>${activeCount}</strong>
+                </button>
+
+                <button
+                    type="button"
+                    class="payment-method-kpi"
+                    data-filter="inactive"
+                >
+                    <span>Désactivé</span>
+                    <strong>${inactiveCount}</strong>
+                </button>
+
+                <button
+                    type="button"
+                    class="payment-method-kpi"
+                    data-filter="blocked"
+                >
+                    <span>Bloqué</span>
+                    <strong>${blockedCount}</strong>
+                </button>
+
+            </div>
+        `;
+
+        /*
+         * =====================================================
+         * STYLE KPI COMPACTS
+         * =====================================================
+         */
+
+        if (!document.querySelector("#payment-methods-ux-style")) {
+
+            const style = document.createElement("style");
+
+            style.id = "payment-methods-ux-style";
+
+            style.textContent = `
+                .payment-method-kpi {
+                    border: 1px solid #e5e7eb;
+                    background: #fff;
+                    border-radius: 8px;
+                    padding: 10px 14px;
+                    min-height: 64px;
+                    text-align: left;
+                    cursor: pointer;
+                    transition:
+                        border-color .15s ease,
+                        background .15s ease,
+                        box-shadow .15s ease;
+                }
+
+                .payment-method-kpi:hover {
+                    border-color: #cbd5e1;
+                    background: #fafafa;
+                }
+
+                .payment-method-kpi.active {
+                    border-color: #94a3b8;
+                    background: #f8fafc;
+                    box-shadow: 0 0 0 1px #94a3b8;
+                }
+
+                .payment-method-kpi span {
+                    display: block;
+                    font-size: 12px;
+                    color: #6b7280;
+                    margin-bottom: 3px;
+                }
+
+                .payment-method-kpi strong {
+                    display: block;
+                    font-size: 20px;
+                    line-height: 1.1;
+                    font-weight: 600;
+                    color: #111827;
+                }
+
+                .payment-method-name {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                }
+
+                .payment-method-icon {
+                    width: 32px;
+                    height: 32px;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 7px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: #fff;
+                    flex-shrink: 0;
+                    color: #9ca3af;
+                    font-size: 13px;
+                }
+
+                .payment-method-name-text {
+                    font-weight: 500;
+                    color: #111827;
+                }
+
+                .payment-method-type {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+
+                .payment-method-popularity {
+                    color: #6b7280;
+                    font-size: 13px;
+                }
+
+                .payment-method-kpi:focus-visible {
+                    outline: 2px solid #111827;
+                    outline-offset: 2px;
+                }
+
+                @media (max-width: 768px) {
+                    .payment-method-filters {
+                        grid-template-columns: repeat(2, 1fr) !important;
+                    }
+                }
+            `;
+
+            document.head.appendChild(style);
+        }
+
+        /* =====================================================
+           TABLEAU
+        ===================================================== */
+
+        function renderTable(filter = "all") {
+
+            let filteredMethods = methods;
+
+            if (filter === "active") {
+
+                filteredMethods = methods.filter(
+                    method =>
+                        method.enabled &&
+                        !method.blocked
+                );
+
+            } else if (filter === "inactive") {
+
+                filteredMethods = methods.filter(
+                    method =>
+                        !method.enabled &&
+                        !method.blocked
+                );
+
+            } else if (filter === "blocked") {
+
+                filteredMethods = methods.filter(
+                    method => method.blocked
+                );
+            }
+
+            tableContainer.innerHTML = `
                 <div class="table-wrap">
 
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-
+                    <div
+                        class="d-flex justify-content-between align-items-center mb-3"
+                    >
                         <div>
                             <div class="table-title">
                                 Moyens de paiement
                             </div>
 
                             <div class="page-subtitle">
-                                Configuration Stripe
-                                ${
-                                    configuration.name
-                                        ? ` — ${configuration.name}`
-                                        : ""
-                                }
+                                ${filteredMethods.length}
+                                moyen(s) affiché(s)
                             </div>
                         </div>
-
                     </div>
 
-                    <div id="payment-methods-scroll-box">
+                    <div style="overflow-x:auto;">
 
                         <table class="table">
 
                             <thead>
                                 <tr>
                                     <th>Moyen de paiement</th>
-                                    <th>Disponibilité</th>
-                                    <th>Affichage</th>
-                                    <th>Identifiant Stripe</th>
+                                    <th>Type</th>
+                                    <th>Popularité</th>
                                 </tr>
                             </thead>
 
                             <tbody>
 
-                                ${methods.map(method => {
+                                ${
+                                    filteredMethods.length
+                                        ? filteredMethods.map(method => {
 
-                                    const label =
-                                        formatPaymentMethodName(
-                                            method.id
-                                        );
+                                            const statusLabel =
+                                                method.blocked
+                                                    ? "Bloqué"
+                                                    : method.enabled
+                                                        ? "Activé"
+                                                        : "Désactivé";
 
-                                    const available =
-                                        method.available === true;
-
-                                    const preference =
-                                        method.display_preference?.preference
-                                        || null;
-
-                                    const preferenceLabel =
-                                        PREFERENCE_LABELS[preference]
-                                        || preference
-                                        || "—";
-
-                                    const availabilityLabel =
-                                        available
-                                            ? STATUS_LABELS.available
-                                            : STATUS_LABELS.unavailable;
-
-                                    return `
-                                        <tr>
-
-                                            <td>
-                                                <strong>
-                                                    ${label}
-                                                </strong>
-                                            </td>
-
-                                            <td>
-
-                                                <span class="status-badge ${
-                                                    available
+                                            const statusClass =
+                                                method.blocked
+                                                    ? "status-danger"
+                                                    : method.enabled
                                                         ? "status-success"
-                                                        : "status-danger"
-                                                }">
-                                                    ${availabilityLabel}
-                                                </span>
+                                                        : "status-danger";
 
-                                            </td>
+                                            /*
+                                             * La popularité dépendra des
+                                             * informations réellement
+                                             * fournies par Stripe.
+                                             */
+                                            const popularity =
+                                                method.stripe.popular_in_region ||
+                                                method.stripe.region ||
+                                                "—";
 
-                                            <td>
+                                            return `
+                                                <tr>
 
-                                                <span class="status-badge ${
-                                                    preference === "on"
-                                                        ? "status-success"
-                                                        : preference === "off"
-                                                            ? "status-danger"
-                                                            : ""
-                                                }">
-                                                    ${preferenceLabel}
-                                                </span>
+                                                    <!--
+                                                        ICÔNE :
+                                                        emplacement réservé
+                                                        pour la future icône Stripe.
+                                                    -->
+                                                    <td>
+                                                        <div class="payment-method-name">
 
-                                            </td>
+                                                            <div class="payment-method-icon">
+                                                                <!-- ICON -->
+                                                            </div>
 
-                                            <td>
-                                                <code class="customer-id">
-                                                    ${method.id}
-                                                </code>
-                                            </td>
+                                                            <span class="payment-method-name-text">
+                                                                ${method.name}
+                                                            </span>
 
-                                        </tr>
-                                    `;
+                                                        </div>
+                                                    </td>
 
-                                }).join("")}
+                                                    <td>
+
+                                                        <div class="payment-method-type">
+
+                                                            <span>
+                                                                ${method.type}
+                                                            </span>
+
+                                                            <span
+                                                                class="status-badge ${statusClass}"
+                                                            >
+                                                                ${statusLabel}
+                                                            </span>
+
+                                                        </div>
+
+                                                    </td>
+
+                                                    <td>
+                                                        <span class="payment-method-popularity">
+                                                            ${popularity}
+                                                        </span>
+                                                    </td>
+
+                                                </tr>
+                                            `;
+
+                                        }).join("")
+                                        : `
+                                            <tr>
+                                                <td
+                                                    colspan="3"
+                                                    class="text-center py-4"
+                                                >
+                                                    Aucun moyen de paiement
+                                                    dans cette catégorie.
+                                                </td>
+                                            </tr>
+                                        `
+                                }
 
                             </tbody>
 
@@ -4350,38 +4519,69 @@ async function renderPaymentMethods(container) {
 
                 </div>
             `;
+        }
 
-        } catch (error) {
+        /*
+         * Affichage initial
+         */
+        renderTable("all");
 
-            console.error(
-                "ERREUR MOYENS DE PAIEMENT :",
-                error
+        /*
+         * =====================================================
+         * FILTRES KPI
+         * =====================================================
+         */
+
+        summary
+            .querySelectorAll(".payment-method-kpi")
+            .forEach(button => {
+
+                button.addEventListener("click", () => {
+
+                    summary
+                        .querySelectorAll(".payment-method-kpi")
+                        .forEach(item => {
+                            item.classList.remove("active");
+                        });
+
+                    button.classList.add("active");
+
+                    const filter =
+                        button.dataset.filter;
+
+                    renderTable(filter);
+                });
+
+            });
+
+    } catch (error) {
+
+        console.error(
+            "ERREUR MOYENS DE PAIEMENT :",
+            error
+        );
+
+        summary.innerHTML = "";
+
+        tableContainer.innerHTML = `
+            <div class="commerce-card">
+                <p>
+                    ${
+                        error.message ||
+                        "Erreur lors du chargement des moyens de paiement"
+                    }
+                </p>
+            </div>
+        `;
+
+        if (typeof showToast === "function") {
+            showToast(
+                error.message ||
+                "Erreur lors du chargement des moyens de paiement",
+                "error"
             );
-
-            summary.innerHTML = "";
-
-            list.innerHTML = `
-                <div class="commerce-card">
-                    <p>
-                        ${
-                            error.message ||
-                            "Erreur lors du chargement des moyens de paiement"
-                        }
-                    </p>
-                </div>
-            `;
-
-            if (typeof showToast === "function") {
-                showToast(
-                    error.message ||
-                    "Erreur lors du chargement des moyens de paiement",
-                    "error"
-                );
-            }
         }
     }
-
-    await loadPaymentMethods();
 }
 /* =========================================================
    RISQUE
