@@ -3995,6 +3995,7 @@ async function renderPaymentMethods(container) {
             );
 
             const data = await response.json();
+            console.log("DATA RENVOYEES STRIPE: ", data)
 
             if (!response.ok) {
                 throw new Error(
@@ -4105,6 +4106,7 @@ async function renderRisk(container) {
             );
 
             const data = await response.json();
+            console.log("DONNEES STRIPE: ", data)
 
             if (!response.ok) {
                 throw new Error(
