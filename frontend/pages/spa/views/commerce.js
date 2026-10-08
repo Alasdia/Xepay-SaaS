@@ -4009,7 +4009,7 @@ async function renderPaymentMethods(container) {
         billie: "Billie",
         blik: "BLIK",
         boleto: "Boleto",
-        card: "Cartes bancaires",
+        card: "Cartes",
         cartes_bancaires: "Cartes Bancaires",
         cashapp: "Cash App",
         eps: "EPS",
@@ -4363,7 +4363,7 @@ async function renderPaymentMethods(container) {
             return;
         }
 
-        const configuration = configurations[0];
+        console.log("TOUTES LES CONFIGURATIONS STRIPE :", configurations);
 
         /* =========================================================
            EXTRACTION DYNAMIQUE DES MOYENS STRIPE
@@ -4393,16 +4393,11 @@ async function renderPaymentMethods(container) {
             .map(([id, stripeData]) => {
 
                 const preference =
-                    stripeData.display_preference?.preference
-                    || stripeData.display_preference?.value
-                    || null;
-
+                    stripeData.display_preference?.value || null;
                 const enabled =
                     preference === "on";
-
                 const blocked =
                     stripeData.blocked === true;
-
                 return {
                     id,
 
