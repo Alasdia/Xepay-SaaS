@@ -3971,7 +3971,9 @@ async function renderPaymentMethods(container) {
         <div class="page-header">
             <div>
                 <h1>Moyens de paiement</h1>
-                <p>Moyens de paiement actifs sur votre compte Stripe connecté.</p>
+                <p>
+                    Moyens de paiement actifs sur votre compte Stripe connecté.
+                </p>
             </div>
         </div>
 
@@ -3995,7 +3997,11 @@ async function renderPaymentMethods(container) {
             );
 
             const data = await response.json();
-            console.log("DATA RENVOYEES STRIPE: ", data)
+
+            console.log(
+                "DONNÉES STRIPE — MOYENS DE PAIEMENT :",
+                data
+            );
 
             if (!response.ok) {
                 throw new Error(
@@ -4004,30 +4010,62 @@ async function renderPaymentMethods(container) {
                 );
             }
 
-            const methods = data.data || [];
+            /*
+             * Backend :
+             *
+             * {
+             *     object: "capabilities",
+             *     data: {
+             *         card_payments: "active",
+             *         link_payments: "active",
+             *         ...
+             *     }
+             * }
+             */
+
+            const capabilities = data.data || {};
+
+            const methods = Object.entries(capabilities)
+                .filter(([id]) => id.endsWith("_payments"))
+                .map(([id, status]) => ({
+                    id,
+                    status
+                }));
 
             if (!methods.length) {
+
                 list.innerHTML = `
                     <div class="commerce-card">
-                        <p>Aucun moyen de paiement configuré pour le moment.</p>
+                        <p>
+                            Aucun moyen de paiement configuré pour le moment.
+                        </p>
                     </div>
                 `;
+
                 return;
             }
 
             list.innerHTML = `
                 <div class="table-wrap">
+
                     <div class="d-flex justify-content-between align-items-center mb-3">
+
                         <div>
-                            <div class="table-title">Moyens de paiement</div>
+                            <div class="table-title">
+                                Moyens de paiement
+                            </div>
+
                             <div class="page-subtitle">
                                 ${methods.length} moyen(s) de paiement
                             </div>
                         </div>
+
                     </div>
 
                     <div id="customers-scroll-box">
+
                         <table class="table">
+
                             <thead>
                                 <tr>
                                     <th>Moyen de paiement</th>
@@ -4035,21 +4073,44 @@ async function renderPaymentMethods(container) {
                                     <th>Statut</th>
                                 </tr>
                             </thead>
+
                             <tbody>
+
                                 ${methods.map(method => `
                                     <tr>
-                                        <td>${method.label || method.id}</td>
-                                        <td><code class="customer-id">${method.id}</code></td>
+
                                         <td>
-                                            <span class="status-badge ${method.active ? "status-success" : "status-danger"}">
-                                                ${method.active ? "Actif" : (method.status || "Inactif")}
+                                            ${method.id}
+                                        </td>
+
+                                        <td>
+                                            <code class="customer-id">
+                                                ${method.id}
+                                            </code>
+                                        </td>
+
+                                        <td>
+                                            <span class="status-badge ${
+                                                method.status === "active"
+                                                    ? "status-success"
+                                                    : "status-danger"
+                                            }">
+                                                ${
+                                                    method.status ||
+                                                    "—"
+                                                }
                                             </span>
                                         </td>
+
                                     </tr>
                                 `).join("")}
+
                             </tbody>
+
                         </table>
+
                     </div>
+
                 </div>
             `;
 
@@ -4059,7 +4120,12 @@ async function renderPaymentMethods(container) {
 
             list.innerHTML = `
                 <div class="commerce-card">
-                    <p>${error.message || "Erreur lors du chargement des moyens de paiement"}</p>
+                    <p>
+                        ${
+                            error.message ||
+                            "Erreur lors du chargement des moyens de paiement"
+                        }
+                    </p>
                 </div>
             `;
 
@@ -4073,6 +4139,8 @@ async function renderPaymentMethods(container) {
 
     await loadPaymentMethods();
 }
+
+
 /* =========================================================
    RISQUE
 ========================================================= */
@@ -4082,7 +4150,10 @@ async function renderRisk(container) {
         <div class="page-header">
             <div>
                 <h1>Risque</h1>
-                <p>Litiges et alertes de risque envoyés par Stripe pour votre compte connecté.</p>
+                <p>
+                    Litiges et alertes de risque envoyés par Stripe
+                    pour votre compte connecté.
+                </p>
             </div>
         </div>
 
@@ -4106,7 +4177,11 @@ async function renderRisk(container) {
             );
 
             const data = await response.json();
-            console.log("DONNEES STRIPE: ", data)
+
+            console.log(
+                "DONNÉES STRIPE — RISQUE :",
+                data
+            );
 
             if (!response.ok) {
                 throw new Error(
@@ -4118,11 +4193,15 @@ async function renderRisk(container) {
             const disputes = data.data || [];
 
             if (!disputes.length) {
+
                 list.innerHTML = `
                     <div class="commerce-card">
-                        <p>Aucun litige ni alerte de risque pour le moment.</p>
+                        <p>
+                            Aucun litige ni alerte de risque pour le moment.
+                        </p>
                     </div>
                 `;
+
                 return;
             }
 
@@ -4134,24 +4213,36 @@ async function renderRisk(container) {
                 needs_response: "Réponse requise",
                 warning_needs_response: "Réponse requise",
                 under_review: "En cours d'examen",
-                warning_under_review: "En cours d'examen",
+                warning_under_review: "En cours d'examen"
             };
 
-            const SUCCESS_STATUSES = ["won", "warning_closed", "charge_refunded"];
+            const SUCCESS_STATUSES = [
+                "won",
+                "warning_closed",
+                "charge_refunded"
+            ];
 
             list.innerHTML = `
                 <div class="table-wrap">
+
                     <div class="d-flex justify-content-between align-items-center mb-3">
+
                         <div>
-                            <div class="table-title">Litiges</div>
+                            <div class="table-title">
+                                Litiges
+                            </div>
+
                             <div class="page-subtitle">
                                 ${disputes.length} litige(s)
                             </div>
                         </div>
+
                     </div>
 
                     <div id="customers-scroll-box">
+
                         <table class="table">
+
                             <thead>
                                 <tr>
                                     <th>Litige</th>
@@ -4163,59 +4254,121 @@ async function renderRisk(container) {
                                     <th>Réponse avant le</th>
                                 </tr>
                             </thead>
+
                             <tbody>
+
                                 ${disputes.map(dispute => {
 
-                                    const amount = dispute.amount != null
-                                        ? (dispute.amount / 100).toLocaleString(
-                                            "fr-FR",
-                                            {
-                                                minimumFractionDigits: 2,
-                                                maximumFractionDigits: 2
-                                            }
+                                    const amount =
+                                        dispute.amount != null
+                                            ? (
+                                                dispute.amount / 100
+                                            ).toLocaleString(
+                                                "fr-FR",
+                                                {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2
+                                                }
+                                            )
+                                            : "—";
+
+                                    const currency =
+                                        (
+                                            dispute.currency || ""
+                                        ).toUpperCase();
+
+                                    const statusClass =
+                                        SUCCESS_STATUSES.includes(
+                                            dispute.status
                                         )
-                                        : "—";
+                                            ? "status-success"
+                                            : "status-danger";
 
-                                    const currency = (dispute.currency || "").toUpperCase();
-
-                                    const statusClass = SUCCESS_STATUSES.includes(dispute.status)
-                                        ? "status-success"
-                                        : "status-danger";
+                                    const evidenceDueBy =
+                                        dispute.evidence_details?.due_by;
 
                                     return `
                                         <tr>
-                                            <td><code class="customer-id">${dispute.id}</code></td>
-                                            <td><code class="customer-id">${dispute.charge || "—"}</code></td>
+
                                             <td>
-                                                <span class="amount-cell">${amount}</span>
-                                                <span class="amount-currency">${currency}</span>
+                                                <code class="customer-id">
+                                                    ${dispute.id || "—"}
+                                                </code>
                                             </td>
-                                            <td>${dispute.reason || "—"}</td>
+
                                             <td>
-                                                <span class="status-badge ${statusClass}">
-                                                    ${STATUS_LABELS[dispute.status] || dispute.status || "—"}
+                                                <code class="customer-id">
+                                                    ${
+                                                        dispute.charge || "—"
+                                                    }
+                                                </code>
+                                            </td>
+
+                                            <td>
+                                                <span class="amount-cell">
+                                                    ${amount}
+                                                </span>
+
+                                                <span class="amount-currency">
+                                                    ${currency}
                                                 </span>
                                             </td>
+
+                                            <td>
+                                                ${dispute.reason || "—"}
+                                            </td>
+
+                                            <td>
+                                                <span class="status-badge ${
+                                                    statusClass
+                                                }">
+                                                    ${
+                                                        STATUS_LABELS[
+                                                            dispute.status
+                                                        ]
+                                                        ||
+                                                        dispute.status
+                                                        ||
+                                                        "—"
+                                                    }
+                                                </span>
+                                            </td>
+
                                             <td>
                                                 ${
                                                     dispute.created
-                                                        ? new Date(dispute.created * 1000).toLocaleString("fr-FR")
+                                                        ? new Date(
+                                                            dispute.created * 1000
+                                                        ).toLocaleString(
+                                                            "fr-FR"
+                                                        )
                                                         : "—"
                                                 }
                                             </td>
+
                                             <td>
                                                 ${
-                                                    dispute.evidence_due_by
-                                                        ? new Date(dispute.evidence_due_by * 1000).toLocaleString("fr-FR")
+                                                    evidenceDueBy
+                                                        ? new Date(
+                                                            evidenceDueBy * 1000
+                                                        ).toLocaleString(
+                                                            "fr-FR"
+                                                        )
                                                         : "—"
                                                 }
                                             </td>
+
                                         </tr>
                                     `;
+
                                 }).join("")}
+
                             </tbody>
+
                         </table>
+
                     </div>
+
                 </div>
             `;
 
@@ -4225,7 +4378,12 @@ async function renderRisk(container) {
 
             list.innerHTML = `
                 <div class="commerce-card">
-                    <p>${error.message || "Erreur lors du chargement des données de risque"}</p>
+                    <p>
+                        ${
+                            error.message ||
+                            "Erreur lors du chargement des données de risque"
+                        }
+                    </p>
                 </div>
             `;
 
