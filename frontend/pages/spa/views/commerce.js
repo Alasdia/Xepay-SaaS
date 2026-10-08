@@ -4061,6 +4061,29 @@ async function renderPaymentMethods(container) {
         p24: "Paiement bancaire",
         eps: "Paiement bancaire"
     };
+    const PAYMENT_METHOD_POPULARITY = {
+        card: "Toutes les régions",
+        cartes_bancaires: "France",
+        cartes_coreennes: "Corée du Sud",
+        alipay: "Chine",
+        amazon_pay: "Toutes les régions",
+        apple_pay: "Toutes les régions",
+        cashapp: "États-Unis",
+        klarna: "Toutes les régions",
+        bancontact: "Belgique",
+        blik: "Pologne",
+        boleto: "Brésil",
+        eps: "Autriche",
+        fpx: "Malaisie",
+        ideal: "Pays-Bas",
+        p24: "Pologne",
+        paypal: "Toutes les régions",
+        sepa_debit: "Toutes les régions",
+        sofort: "Europe",
+        twint: "Suisse",
+        us_bank_account: "États-Unis",
+        wechat_pay: "Chine"
+    };
 
     function formatPaymentMethodName(id) {
 
@@ -4071,9 +4094,12 @@ async function renderPaymentMethods(container) {
     }
 
     function getPaymentMethodType(id) {
-
         return PAYMENT_METHOD_TYPES[id]
             || "Moyen de paiement";
+    }
+    function getPaymentMethodPopularity(id) {
+        return PAYMENT_METHOD_POPULARITY[id]
+             || "";
     }
 
     /* =========================================================
@@ -4561,20 +4587,8 @@ async function renderPaymentMethods(container) {
                                                             ? "status-success"
                                                             : "status-danger";
 
-                                                /*
-                                                 * On ne fabrique aucune
-                                                 * donnée de popularité.
-                                                 *
-                                                 * Si Stripe fournit réellement
-                                                 * une information exploitable,
-                                                 * on l'affiche.
-                                                 */
-                                                const popularity =
-                                                    method.stripe.popular_in_region
-                                                    || method.stripe.popularity
-                                                    || method.stripe.region
-                                                    || "";
-
+                                                
+                                                const popularity = getPaymentMethodPopularity(method.id);
                                                 return `
 
                                                     <tr>
