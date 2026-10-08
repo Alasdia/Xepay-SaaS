@@ -70,11 +70,10 @@
 
         <li class="nav-section-gap" aria-hidden="true"></li>
 
-        <!-- Interfaces Xepay à venir pour les données du compte Stripe Connecté
-             du marchand (Clients/Produits/Abonnements/Factures/Moyens de
-             paiement/Risque) : aucune vue/route n'existe encore derrière,
-             affichées ici non cliquables pour montrer la structure cible
-             sans créer de route fictive. -->
+        <!-- Interfaces Xepay pour les données du compte Stripe Connecté du
+             marchand (Clients/Produits/Abonnements/Factures/Moyens de
+             paiement/Risque) — voir spa/views/commerce.js et les routes
+             /stripe/connect/* (backend/routes/webhook/stripe.py). -->
         <div class="nav-section">
           <div class="nav-section-title">
             <span class="commerce-title nav-link text-muted">Commerce</span>
@@ -93,7 +92,7 @@
             <a href="#" data-page="produits" class=" nav-link text-muted nav-sublink"><i class="fas fa-box"></i>Produits</a>
             <a href="#" data-page="abonnements" class=" nav-link text-muted nav-sublink"><i class="fas fa-repeat"></i>Abonnements</a>
             <a href="#" data-page="factures" class=" nav-link text-muted nav-sublink"><i class="fas fa-file-invoice"></i>Factures</a>
-            <a href="#" data-page="moyens-paiements" class=" nav-link text-mutednav-sublink"><i class="fas fa-credit-card"></i>Moyens de paiement</a>
+            <a href="#" data-page="moyens-paiement" class=" nav-link text-muted nav-sublink"><i class="fas fa-credit-card"></i>Moyens de paiement</a>
             <a href="#" data-page="risque" class=" nav-link text-muted nav-sublink"><i class="fas fa-shield-halved"></i>Risque</a>
           </div>
         </div>

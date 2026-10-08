@@ -1280,13 +1280,10 @@ async function renderProducts(container) {
             list.innerHTML = `
 
                 <div class="table-wrap">
-
                     <div
                         class="d-flex justify-content-between align-items-center mb-3"
                     >
-
                         <div>
-
                             <div class="table-title">
                                 Produits
                             </div>
@@ -1294,55 +1291,30 @@ async function renderProducts(container) {
                             <div class="page-subtitle">
                                 ${products.length} produit(s)
                             </div>
-
                         </div>
-
                     </div>
-
-
                     <div id="customers-scroll-box">
-
                         <table class="table">
-
                             <thead>
-
                                 <tr>
-
                                     <th>Produit</th>
-
                                     <th>Identifiant</th>
-
                                     <th>Description</th>
-
                                     <th>Prix</th>
-
                                     <th>Type</th>
-
                                     <th>Récurrence</th>
-
-                                    <th>Statut</th>
-
                                     <th>Créé le</th>
-
                                     <th>Modifié le</th>
-
+                                    <th>Statut</th>
                                     <th></th>
-
                                 </tr>
-
                             </thead>
-
-
                             <tbody>
-
                                 ${products.map(product => {
-
                                     const prices =
                                         product.prices || [];
-
                                     const price =
                                         prices[0] || null;
-
                                     const amount =
                                         price?.unit_amount != null
                                             ? (
@@ -1355,26 +1327,19 @@ async function renderProducts(container) {
                                                 }
                                             )
                                             : "—";
-
                                     const currency =
                                         price?.currency
                                             ? price.currency.toUpperCase()
                                             : "";
-
                                     let recurringText = "—";
-
                                     if (
                                         price?.recurring
                                     ) {
-
                                         const interval =
                                             price.recurring.interval;
-
                                         const count =
                                             price.recurring.interval_count || 1;
-
                                         if (count === 1) {
-
                                             recurringText =
                                                 interval === "month"
                                                     ? "Mensuel"
@@ -1383,29 +1348,18 @@ async function renderProducts(container) {
                                                         : interval === "week"
                                                             ? "Hebdomadaire"
                                                             : interval;
-
                                         } else {
-
                                             recurringText =
                                                 `Tous les ${count} ${interval}`;
-
                                         }
-
                                     }
-
-
                                     return `
-
                                         <tr>
-
                                             <td>
-
                                                 <div
                                                     class="d-flex align-items-center gap-3"
                                                 >
-
                                                     <div class="avatar">
-
                                                         ${
                                                             product.name
                                                                 ? product.name
@@ -1419,51 +1373,32 @@ async function renderProducts(container) {
                                                                     .toUpperCase()
                                                                 : "—"
                                                         }
-
                                                     </div>
-
-
                                                     <div>
-
                                                         <div>
                                                             ${
                                                                 product.name ||
                                                                 "Produit sans nom"
                                                             }
                                                         </div>
-
                                                     </div>
-
                                                 </div>
-
                                             </td>
-
-
                                             <td>
-
                                                 <code class="customer-id">
                                                     ${product.id || "—"}
                                                 </code>
-
                                             </td>
-
-
                                             <td>
-
                                                 ${
                                                     product.description ||
                                                     "—"
                                                 }
-
                                             </td>
-
-
                                             <td>
-
                                                 <span class="amount-cell">
                                                     ${amount}
                                                 </span>
-
                                                 ${
                                                     currency
                                                         ? `
@@ -1473,43 +1408,14 @@ async function renderProducts(container) {
                                                         `
                                                         : ""
                                                 }
-
                                             </td>
-
-
                                             <td>
                                                 ${price?.type || "—"}
                                             </td>
-
-
                                             <td>
                                                 ${recurringText}
                                             </td>
-
-
                                             <td>
-
-                                                <span
-                                                    class="${
-                                                        product.active
-                                                            ? "status-badge status-success"
-                                                            : "status-badge status-danger"
-                                                    }"
-                                                >
-
-                                                    ${
-                                                        product.active
-                                                            ? "Actif"
-                                                            : "Inactif"
-                                                    }
-
-                                                </span>
-
-                                            </td>
-
-
-                                            <td>
-
                                                 ${
                                                     product.created
                                                         ? new Date(
@@ -1519,12 +1425,8 @@ async function renderProducts(container) {
                                                         )
                                                         : "—"
                                                 }
-
                                             </td>
-
-
                                             <td>
-
                                                 ${
                                                     product.updated
                                                         ? new Date(
@@ -1534,12 +1436,23 @@ async function renderProducts(container) {
                                                         )
                                                         : "—"
                                                 }
-
                                             </td>
-
-
                                             <td>
-
+                                                <span
+                                                    class="${
+                                                        product.active
+                                                            ? "status-badge status-success"
+                                                            : "status-badge status-danger"
+                                                    }"
+                                                >
+                                                    ${
+                                                        product.active
+                                                            ? "Actif"
+                                                            : "Inactif"
+                                                    }
+                                                </span>
+                                            </td>
+                                            <td>
                                                 <button
                                                     type="button"
                                                     class="customer-details-btn product-details-btn"
@@ -1547,25 +1460,15 @@ async function renderProducts(container) {
                                                 >
                                                     Détails
                                                 </button>
-
                                             </td>
-
                                         </tr>
-
                                     `;
-
                                 }).join("")}
-
                             </tbody>
-
                         </table>
-
                     </div>
-
                 </div>
-
             `;
-
 
             /* =================================================
                BOUTONS DÉTAILS

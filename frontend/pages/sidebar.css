@@ -54,7 +54,10 @@
 /* Sous-menu (Paiements/Retraits/Transferts) : repliée par défaut, affichée
    uniquement via .open (ajoutée par sidebar.js au clic sur .nav-toggle). */
 #sidebar .nav-submenu{ list-style:none; margin:0; padding:0; overflow:hidden; max-height:0; transition: max-height .25s ease; }
-#sidebar .nav-submenu.open{ max-height:160px; }
+/* 160px convenait aux 4 premiers sous-liens Commerce (Clients/Produits/
+   Abonnements/Factures) ; Moyens de paiement + Risque ajoutés depuis
+   dépassaient ce budget et étaient rognés par l'overflow:hidden ci-dessus. */
+#sidebar .nav-submenu.open{ max-height:240px; }
 /* Sous-liens : même style que .nav-link, juste indenté et sans icône dédiée. */
 #sidebar .nav-link.nav-sublink{ padding-left:34px; font-size:14px; }
 /* Espace neutre entre groupes non étiquetés (ex: avant le bloc Clients/
