@@ -4376,6 +4376,23 @@ async function renderPaymentMethods(container) {
             )
             .map(([id]) => id)
         );
+        console.table(
+            Object.entries(configuration)
+                .filter(([id, value]) =>
+                    value &&
+                    typeof value === "object" &&
+                    (
+                        "available" in value ||
+                        "display_preference" in value
+                    )
+                )
+                .map(([id, value]) => ({
+                    id,
+                    available: value.available,
+                    preference: value.display_preference?.preference,
+                    value: value.display_preference?.value
+                }))
+        );
         /* =========================================================
            EXTRACTION DYNAMIQUE DES MOYENS STRIPE
         ========================================================= */
