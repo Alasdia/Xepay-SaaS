@@ -2408,37 +2408,23 @@ async function renderSubscriptions(container) {
 
 
         try {
-
             const response =
                 await apiFetch(
                     "/stripe/connect/subscriptions"
                 );
-
-
-            const data =
-                await response.json();
-
-
+            const data = await response.json();
             if (!response.ok) {
-
                 throw new Error(
-                    data.detail ||
-                    "Impossible de récupérer les abonnements"
+                    response.status === 401
+                        ? "Votre session a expiré. Veuillez vous reconnecter."
+                        : data.detail || "Impossible de récupérer les abonnements"
                 );
-
             }
-
-
             const customersResponse =
                 await apiFetch(
                     "/stripe/connect/customers"
                 );
-
-
-            const customersData =
-                await customersResponse.json();
-
-
+            const customersData = await customersResponse.json();
             if (!customersResponse.ok) {
 
                 throw new Error(
@@ -2447,8 +2433,6 @@ async function renderSubscriptions(container) {
                 );
 
             }
-
-
             const customers =
                 customersData.data || [];
 
@@ -3487,28 +3471,17 @@ async function renderInvoices(container) {
                 await apiFetch(
                     "/stripe/connect/invoices"
                 );
-
-
-            const data =
-                await response.json();
-
-
+            const data = await response.json();
             if (!response.ok) {
-
                 throw new Error(
-                    data.detail ||
-                    "Impossible de récupérer les factures"
+                    response.status === 401
+                        ? "Votre session a expiré. Veuillez vous reconnecter."
+                        : data.detail || "Impossible de récupérer les factures"
                 );
-
             }
-
-
             const invoices =
                 data.data || [];
-
-
             if (!invoices.length) {
-
                 list.innerHTML = `
                     <div class="commerce-card">
                         <p>
@@ -3516,12 +3489,8 @@ async function renderInvoices(container) {
                         </p>
                     </div>
                 `;
-
                 return;
-
             }
-
-
             /* =================================================
                TABLEAU
             ================================================= */
@@ -4035,6 +4004,11 @@ async function renderPaymentMethods(container) {
         us_bank_account: "US Bank Account",
         wechat_pay: "WeChat Pay",
         zip: "Zip"
+    };
+    const PAYMENT_METHOD_ICONS = {
+        apple_pay: "/pages/assets/apple-pay.svg",
+        link: "/pages/assets/link.svg",
+        card: "/pages/assets/visa.svg"
     };
 
     const PAYMENT_METHOD_TYPES = {
@@ -4619,24 +4593,29 @@ async function renderPaymentMethods(container) {
                                                         <td>
 
                                                             <div class="payment-method-name">
-
                                                                 <!--
                                                                     Emplacement
                                                                     réservé pour
                                                                     l'icône.
                                                                 -->
-
-                                                                <div
-                                                                    class="payment-method-icon"
-                                                                    aria-hidden="true"
-                                                                ></div>
-
+                                                                <div class="payment-method-icon" aria-hidden="true">
+                                                                    ${
+                                                                        PAYMENT_METHOD_ICONS[method.id]
+                                                                            ? `
+                                                                                <img
+                                                                                    src="${PAYMENT_METHOD_ICONS[method.id]}"
+                                                                                    alt=""
+                                                                                    class="payment-method-icon-img"
+                                                                                >
+                                                                            `
+                                                                            : ""
+                                                                    }
+                                                                </div>
                                                                 <span
                                                                     class="payment-method-name-text"
                                                                 >
                                                                     ${method.name}
                                                                 </span>
-
                                                             </div>
 
                                                         </td>
