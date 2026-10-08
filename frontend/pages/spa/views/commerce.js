@@ -4520,20 +4520,18 @@ async function renderPaymentMethods(container) {
             }
 
             tableContainer.innerHTML = `
-                <div class="payment-methods-card">
+                <div class="table-wrap">
 
-                    <div class="payment-methods-card-header">
-
-                        <div class="payment-methods-card-title">
-                            Moyens de paiement
-                        </div>
-
+                    <div class="table-title">
+                        Moyens de paiement
+                    </div>
+                    <div class="page-subtitle">
+                        Configuration Stripe
                     </div>
 
+                    <div id="customers-scroll-box">
 
-                    <div class="payment-methods-table-wrapper">
-
-                        <table class="payment-methods-table">
+                        <table class="table">
 
                             <thead>
 
