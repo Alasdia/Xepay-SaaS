@@ -4010,19 +4010,6 @@ async function renderPaymentMethods(container) {
                 );
             }
 
-            /*
-             * Backend :
-             *
-             * {
-             *     object: "capabilities",
-             *     data: {
-             *         card_payments: "active",
-             *         link_payments: "active",
-             *         ...
-             *     }
-             * }
-             */
-
             const capabilities = data.data || {};
 
             const methods = Object.entries(capabilities)
@@ -4044,6 +4031,36 @@ async function renderPaymentMethods(container) {
 
                 return;
             }
+
+            /* =================================================
+               UX — LIBELLÉS D'AFFICHAGE UNIQUEMENT
+            ================================================= */
+
+            const PAYMENT_METHOD_LABELS = {
+                card_payments: "Carte bancaire",
+                sepa_debit_payments: "Prélèvement SEPA",
+                bacs_debit_payments: "Prélèvement BACS",
+                us_bank_account_ach_payments: "Virement ACH",
+                affirm_payments: "Affirm",
+                afterpay_clearpay_payments: "Afterpay / Clearpay",
+                klarna_payments: "Klarna",
+                link_payments: "Link",
+                paypal_payments: "PayPal",
+                ideal_payments: "iDEAL",
+                bancontact_payments: "Bancontact",
+                giropay_payments: "Giropay",
+                p24_payments: "Przelewy24",
+                eps_payments: "EPS"
+            };
+
+            const STATUS_LABELS = {
+                active: "Actif",
+                inactive: "Inactif",
+                pending: "En attente",
+                pending_verification: "Vérification en cours",
+                restricted: "Restreint",
+                unrequested: "Non demandé"
+            };
 
             list.innerHTML = `
                 <div class="table-wrap">
@@ -4069,41 +4086,54 @@ async function renderPaymentMethods(container) {
                             <thead>
                                 <tr>
                                     <th>Moyen de paiement</th>
-                                    <th>Identifiant</th>
+                                    <th>Identifiant Stripe</th>
                                     <th>Statut</th>
                                 </tr>
                             </thead>
 
                             <tbody>
 
-                                ${methods.map(method => `
-                                    <tr>
+                                ${methods.map(method => {
 
-                                        <td>
-                                            ${method.id}
-                                        </td>
+                                    const label =
+                                        PAYMENT_METHOD_LABELS[method.id]
+                                        || method.id;
 
-                                        <td>
-                                            <code class="customer-id">
-                                                ${method.id}
-                                            </code>
-                                        </td>
+                                    const statusLabel =
+                                        STATUS_LABELS[method.status]
+                                        || method.status
+                                        || "—";
 
-                                        <td>
-                                            <span class="status-badge ${
-                                                method.status === "active"
-                                                    ? "status-success"
-                                                    : "status-danger"
-                                            }">
-                                                ${
-                                                    method.status ||
-                                                    "—"
-                                                }
-                                            </span>
-                                        </td>
+                                    const isActive =
+                                        method.status === "active";
 
-                                    </tr>
-                                `).join("")}
+                                    return `
+                                        <tr>
+
+                                            <td>
+                                                ${label}
+                                            </td>
+
+                                            <td>
+                                                <code class="customer-id">
+                                                    ${method.id}
+                                                </code>
+                                            </td>
+
+                                            <td>
+                                                <span class="status-badge ${
+                                                    isActive
+                                                        ? "status-success"
+                                                        : "status-danger"
+                                                }">
+                                                    ${statusLabel}
+                                                </span>
+                                            </td>
+
+                                        </tr>
+                                    `;
+
+                                }).join("")}
 
                             </tbody>
 
@@ -4139,8 +4169,6 @@ async function renderPaymentMethods(container) {
 
     await loadPaymentMethods();
 }
-
-
 /* =========================================================
    RISQUE
 ========================================================= */
