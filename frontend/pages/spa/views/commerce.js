@@ -4363,7 +4363,7 @@ async function renderPaymentMethods(container) {
             return;
         }
 
-        console.log("TOUTES LES CONFIGURATIONS STRIPE :", configurations);
+        const configuration = configurations.find(config => config.application) || configurations[0];
 
         /* =========================================================
            EXTRACTION DYNAMIQUE DES MOYENS STRIPE
