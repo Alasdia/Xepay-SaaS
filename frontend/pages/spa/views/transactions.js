@@ -205,6 +205,7 @@ export async function mount(container, params = {}) {
   let offset = 0;
   const limit = 10;
   let isLoading = false;
+  let hasMorePayments = true;
   let currentType = fixedType || "";
   let statusChart = null;
   let lockedCountdownIntervals = [];
@@ -566,6 +567,7 @@ export async function mount(container, params = {}) {
 
   async function chargerTransactions() {
     if (isLoading) return;
+    if (currentType === "payment" && !hasMorePayments) return;
     isLoading = true;
     const loader = document.getElementById("loading-more");
     loader.classList.remove("d-none");
@@ -607,6 +609,7 @@ export async function mount(container, params = {}) {
         res = await apiFetch(`/payments?${paymentParams}`);
         const result = await res.json();
         console.log("Data paiements: ", result);
+        hasMorePayments = result.has_more;
         data = (result.data ?? []).map((charge) => ({
           type: "payment",
           payment_id: charge.payment_intent ?? charge.id,
@@ -681,6 +684,7 @@ export async function mount(container, params = {}) {
       );
       offset = 0;
       transactions = [];
+
       document.getElementById("tbody-transactions").innerHTML = "";
       await chargerTransactions();
     } catch (error) {
@@ -735,6 +739,7 @@ export async function mount(container, params = {}) {
     updatePaymentsViewMode();
     offset = 0;
     transactions = [];
+    hasMorePayments = true;
     chargerTransactions();
   }
 
@@ -1032,11 +1037,13 @@ export async function mount(container, params = {}) {
   on(document.getElementById("filter-statut"), "change", () => {
     offset = 0;
     transactions = [];
+    hasMorePayments = true;
     chargerTransactions();
   });
   function relancerPaiements() {
     offset = 0;
     transactions = [];
+    hasMorePayments = true;
     chargerTransactions();
   }
   on(document.getElementById("startDate"), "change", relancerPaiements);
