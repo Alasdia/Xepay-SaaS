@@ -164,10 +164,38 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 36px;
-  padding: 6px 14px;
+  min-height: 22px;
+  height: 22px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;
+  border-radius: none;
+}
+/* Transactions : statuts sobres, sans badge ni pastille */
+#tbody-transactions .status-pill {
+  display: inline;
+  padding: 0;
+  border: none !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  animation: none !important;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+#tbody-transactions .status-pill::before {
+  content: none !important;
+  display: none !important;
+}
+/* Couleurs neutres */
+#tbody-transactions .status-pill.badge-success,
+#tbody-transactions .status-pill.badge-warning,
+#tbody-transactions .status-pill.badge-danger {
+  color: #374151 !important;
 }
 .plans-section{position:relative;z-index:2;max-width:1300px;margin:0 auto;padding:0 48px 100px}
 .plans-header{text-align:center;margin-bottom:52px}

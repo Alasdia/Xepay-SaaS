@@ -243,7 +243,7 @@ export async function mount(container, params = {}) {
     boundListeners.push({ target, type, fn });
   }
 
-  const statusMap = { paid: "Réussi", pending: "En attente", expired: "Échoué" };
+  const statusMap = { paid: "Payé", success: "Payé", pending: "En attente", expired: "Échoué", refunded: "Remboursé", partially_refunded: "Partiellement remboursé" };
   const avatarPalette = ["#22d3ee", "#facc15", "#ec4899", "#4ade80", "#a78bfa", "#fb923c", "#60a5fa", "#f87171"];
   function avatarColor(str) {
     let h = 0;
@@ -372,7 +372,7 @@ export async function mount(container, params = {}) {
         </td>
         <td>
           <span class="status-pill ${statusBadgeClass(t.status)}">
-            ${statusMap[t.status] || t.status}
+            ${statusMap[String(t.status).toLowerCase()] || t.status}
           </span>
         </td>
         <td style="color:#6b7280;font-size:.85rem;">
