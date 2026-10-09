@@ -221,7 +221,7 @@ export async function mount(container, params = {}) {
 
   let transactions = [];
   let offset = 0;
-  const limit = 20;
+  const limit = 10;
   let isLoading = false;
   let hasNextPage = true;
   let pageNumber = 1;
