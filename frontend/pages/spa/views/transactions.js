@@ -123,13 +123,31 @@ const TEMPLATE = `
           <span class="table-title">Toutes les transactions</span>
           <span id="nb-transactions" class="count-badge">0 transactions</span>
         </div>
-        <div id="transactions-scroll-box" style="max-height: 500px; overflow-y: auto;">
+        <div id="transactions-scroll-box">
           <table class="table table-hover align-middle">
-            <thead><tr id="thead-row-transactions"><th>Client</th><th>Montant</th><th>Status</th><th>Date</th><th></th></tr></thead>
+            <thead>
+              <tr id="thead-row-transactions">
+                <th>Client</th>
+                <th>Montant</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th></th>
+              </tr>
+            </thead>
             <tbody id="tbody-transactions"></tbody>
           </table>
         </div>
-        <div id="loading-more" class="text-center py-3 d-none"><span class="text-muted">Chargement...</span></div>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+          <span id="pagination-info" class="text-muted">Page 1</span>
+          <div class="d-flex gap-2">
+            <button id="prev-page" class="btn btn-export" disabled>
+              <i class="bi bi-chevron-left"></i>
+            </button>
+            <button id="next-page" class="btn btn-export">
+              <i class="bi bi-chevron-right"></i>
+            </button>
+          </div>
+        </div>
         <div id="etat-vide" class="text-center py-5">
           <p style="font-size: 2rem;"><i class="fa-solid fa-credit-card"></i></p>
           <p class="text-muted">Aucune transaction pour le moment</p>
@@ -203,8 +221,10 @@ export async function mount(container, params = {}) {
 
   let transactions = [];
   let offset = 0;
-  const limit = 10;
+  const limit = 20;
   let isLoading = false;
+  let hasNextPage = true;
+  let pageNumber = 1;
   let currentType = fixedType || "";
   let statusChart = null;
   let lockedCountdownIntervals = [];
@@ -479,7 +499,7 @@ export async function mount(container, params = {}) {
           : renderGenericRow(t, i)
       )
       .join("");
-    tbody.innerHTML = offset === 0 ? html : tbody.innerHTML + html;
+    tbody.innerHTML =  html;
   }
 
   function voirDetailActivite(index) {
@@ -1066,13 +1086,6 @@ export async function mount(container, params = {}) {
     on(successCard, "mouseenter", () => (chartTooltip.style.display = "block"));
     on(successCard, "mouseleave", () => (chartTooltip.style.display = "none"));
   }
-
-  const scrollBox = document.getElementById("transactions-scroll-box");
-  const onScroll = () => {
-    if (scrollBox.scrollTop + scrollBox.clientHeight >= scrollBox.scrollHeight - 50) chargerTransactions();
-  };
-  on(scrollBox, "scroll", onScroll);
-
   const modalUpgradeEl = document.getElementById("modalUpgrade");
   const onShownUpgrade = () => {
     document.querySelectorAll("#modalUpgrade .reveal").forEach((el, index) => setTimeout(() => el.classList.add("visible"), index * 100));
