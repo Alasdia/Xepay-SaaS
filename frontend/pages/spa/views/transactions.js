@@ -582,7 +582,7 @@ export async function mount(container, params = {}) {
     if (isLoading) return;
     isLoading = true;
     const loader = document.getElementById("loading-more");
-    loader.classList.remove("d-none");
+    if (loader) loader.classList.remove("d-none");
     try {
       const statut = document.getElementById("filter-statut").value;
       const params = new URLSearchParams({ offset, limit });
