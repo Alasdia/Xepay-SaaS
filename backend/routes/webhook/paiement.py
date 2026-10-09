@@ -419,7 +419,8 @@ def get_payment_balance_transactions(
         for intent in result.data:
             if intent.latest_charge:
                 _, balance_tx = _fetch_settled_charge_data(
-                    intent.latest_charge
+                    intent.latest_charge,
+                    stripe_account=profile.stripe_account_id,
                 )
                 if balance_tx:
                     data.append(balance_tx.to_dict())
