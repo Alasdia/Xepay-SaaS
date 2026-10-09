@@ -547,23 +547,17 @@ export async function mount(container, params = {}) {
     container.querySelector(".table-wrap:not(#detail-view)").style.display = "none";
     document.getElementById("detail-view").style.display = "block";
   }
-
   function fermerDetail() {
     document.getElementById("kpi-row").style.display = "";
     container.querySelector(".toolbar").style.display = "";
     container.querySelector(".table-wrap:not(#detail-view)").style.display = "";
     document.getElementById("detail-view").style.display = "none";
   }
-
-  // Bascule l'affichage des filtres avancés Paiements (Montant/Devise/Moyen
-  // de paiement) selon l'onglet actif. Le tableau custom reste utilisé pour
-  // tous les types, y compris Paiements — aucun composant Stripe embarqué.
   function updatePaymentsViewMode() {
     const isPayments = currentType === "payment";
     const extraFiltersWrap = document.getElementById("pay-more-filters-wrap");
     if (extraFiltersWrap) extraFiltersWrap.style.display = isPayments ? "block" : "none";
   }
-
   async function chargerTransactions() {
     if (isLoading) return;
     isLoading = true;
@@ -675,7 +669,6 @@ export async function mount(container, params = {}) {
       }, 600);
     }
   }
-
   function filtrerTransactions() {
     const search = document.getElementById("search-input").value.toLowerCase();
     const statut = document.getElementById("filter-statut").value;
@@ -686,7 +679,6 @@ export async function mount(container, params = {}) {
     });
     afficherTransactions(filtered);
   }
-
   function setStatutChip(el) {
     container.querySelectorAll(".chip:not(.type-chip)").forEach((c) => c.classList.remove("active"));
     el.classList.add("active");
