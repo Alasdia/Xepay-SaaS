@@ -57,9 +57,9 @@ def _fetch_settled_charge_data(charge_id, stripe_account=None):
     charge_dict = None
     balance_tx = None
     for attempt in range(MAX_SETTLEMENT_ATTEMPTS):
-        charge = stripe.Charge.retrieve(charge_id)
+        charge = stripe.Charge.retrieve(charge_id, stripe_account=stripe_account)
         charge_dict = charge.to_dict()
-        balance_txs = stripe.BalanceTransaction.list(source=charge_id, limit=1)
+        balance_txs = stripe.BalanceTransaction.list(source=charge_id, limit=1, stripe_account=stripe_account)
         if balance_txs.data:
             balance_tx = balance_txs.data[0]
             if charge_dict.get("application_fee") and charge_dict.get("transfer"):
