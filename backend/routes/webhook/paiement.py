@@ -295,7 +295,7 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
             return {"status": "ok"}
         elif event_type == "charge.refunded":
             charge_id = object_data["id"]
-            pi_id = object_data.get("payment_intent")
+            pi_id = object_data.payment_intent
             payment = (
                 db.query(Payment)
                 .filter(Payment.stripe_payment_intent_id == pi_id)
