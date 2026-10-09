@@ -374,6 +374,7 @@ def get_stripe_payments(
     try:
         result = stripe.Charge.list(
             **params,
+            expand=["data.balance_transaction"],
             stripe_account=profile.stripe_account_id,
         )
         return {
