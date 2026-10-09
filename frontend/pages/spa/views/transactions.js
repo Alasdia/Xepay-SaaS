@@ -597,9 +597,13 @@ export async function mount(container, params = {}) {
         const result = await res.json();
         data = result.payouts ?? result;
       } else if (currentType === "payment") {
-        const paymentParams = new URLSearchParams({ limit: 100 });
+        const paymentParams = new URLSearchParams({
+          limit: String(limit),
+          offset: String(offset),
+        });
         res = await apiFetch(`/payments?${paymentParams}`);
         const result = await res.json();
+        console.log("Data paiements: ", result)
         data = (result.data ?? []).map((charge) => ({
           type: "payment",
           payment_id: charge.payment_intent ?? charge.id,
