@@ -606,20 +606,34 @@ export async function mount(container, params = {}) {
         if (lastPayment?.stripe_charge_id) {
           paymentParams.set("starting_after", lastPayment.stripe_charge_id);
         }
-        const [paymentsRes, balanceRes] = await Promise.all([
-          apiFetch(`/payments?${paymentParams}`),
-          apiFetch("/payment-balance-transactions?limit=100"),
-        ]);
-        res = paymentsRes;
-        if (!paymentsRes.ok || !balanceRes.ok) {
-          throw new Error("Impossible de récupérer les paiements et les transactions de solde Stripe");
-        }
-        const paymentsResult = await paymentsRes.json();
-        const balanceResult = await balanceRes.json();
+        res = await apiFetch(`/payments?${paymentParams}`);
+          if (!res.ok) {
+            throw new Error(`Erreur chargement paiements : HTTP ${res.status}`);
+          }
+        const paymentsResult = await res.json();
         console.log("Paiements Stripe :", paymentsResult);
-        console.log("Transactions de solde Stripe :", balanceResult);
+        let balanceTransactions = [];
+        try {
+          const balanceRes = await apiFetch(
+            "/payment-balance-transactions?limit=100"
+          );
+          if (balanceRes.ok) {
+            const balanceResult = await balanceRes.json();
+            console.log("Transactions de solde Stripe :", balanceResult);
+            balanceTransactions = balanceResult.data ?? [];
+          } else {
+            console.error(
+              "Erreur chargement transactions de solde :",
+              balanceRes.status
+            );
+          }
+        } catch (error) {
+          console.error(
+            "Chargement des transactions de solde impossible :",
+            error
+          );
+        }
         hasMorePayments = paymentsResult.has_more;
-        const balanceTransactions = balanceResult.data ?? [];
         const balanceBySource = new Map(
           balanceTransactions
             .filter((bt) => bt.source)
