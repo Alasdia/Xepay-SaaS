@@ -595,8 +595,33 @@ export async function mount(container, params = {}) {
       if (currentType === "withdraw") {
         res = await apiFetch("/withdrawals");
         const result = await res.json();
-        console.log("DATA payout: ", result)
         data = result.payouts ?? result;
+      } else if (currentType === "payment") {
+        const paymentParams = new URLSearchParams({ limit: 100 });
+        res = await apiFetch(`/payments?${paymentParams}`);
+        const result = await res.json();
+        data = (result.data ?? []).map((charge) => ({
+          type: "payment",
+          payment_id: charge.payment_intent ?? charge.id,
+          client_email: charge.billing_details?.email ?? charge.receipt_email ?? "-",
+          amount_gross: charge.amount / 100,
+          currency_gross: charge.currency?.toUpperCase() ?? "USD",
+          status: charge.refunded
+            ? "refunded"
+            : charge.paid
+              ? "paid"
+              : charge.status,
+          date: new Date(charge.created * 1000).toISOString(),
+          details: {
+            ...charge,
+            payment_method_type: charge.payment_method_details?.type,
+            card_brand: charge.payment_method_details?.card?.brand,
+            card_last4: charge.payment_method_details?.card?.last4,
+          },
+          stripe_charge_id: charge.id,
+          amount_refunded: charge.amount_refunded,
+        }));
+
       } else {
         res = await apiFetch(`/activity?${params}`);
         data = await res.json();

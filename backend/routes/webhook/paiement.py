@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Request, Header, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Request, Header, HTTPException, BackgroundTasks, Depends
 import stripe
+from sqlalchemy.orm import Session
 from sqlalchemy import text
 from backend.database import SessionLocal
 from backend.models import UserDB, Wallet
 from backend.models import Payment, WalletTransaction, Link, Profile
 from backend.models import Webhook, WebhookDeliveryLog
+from backend.auth import get_current_user
+from backend.database import get_db
 from backend.services.pdf_service import generate_invoice_pdf
 from backend.services.email_service import send_payment_email
 from backend.services.email_service import (
@@ -349,3 +352,42 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
+
+@router.get("/payments")
+def get_stripe_payments(
+    limit: int = 100,
+    starting_after: str | None = None,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    profile = db.query(Profile).filter(
+        Profile.user_id == current_user.id
+    ).first()
+    if not profile or not profile.stripe_account_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Compte Stripe Connect introuvable"
+        )
+    params = {"limit": min(max(limit, 1), 100)}
+    if starting_after:
+        params["starting_after"] = starting_after
+    try:
+        result = stripe.Charge.list(
+            **params,
+            stripe_account=profile.stripe_account_id,
+        )
+        return {
+            "data": [
+                charge.to_dict_recursive()
+                for charge in result.data
+            ],
+            "has_more": result.has_more,
+            "next_cursor": (
+                result.data[-1].id if result.data else None
+            ),
+        }
+    except stripe.StripeError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Impossible de récupérer les paiements Stripe"
+        ) from exc
