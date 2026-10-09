@@ -430,7 +430,7 @@ export async function mount(container, params = {}) {
     const statusLabels = {
       pending: "En attente",
       in_transit: "En cours",
-      paid: "Payé",
+      paid: "Réussi",
       failed: "Échoué",
       canceled: "Annulé"
     };
