@@ -663,7 +663,10 @@ export async function mount(container, params = {}) {
             amount_gross: amountGross,
             commission_xepay: commissionXepay,
             stripe_fee: stripeFee,
-            amount_net_merchant: null,
+            amount_net_merchant:
+              balanceTransaction?.net != null
+                ? balanceTransaction.net / 100
+                : null,
             currency_gross: charge.currency?.toUpperCase() ?? "USD",
             status: charge.refunded
               ? "refunded"
