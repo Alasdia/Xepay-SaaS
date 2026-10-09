@@ -205,7 +205,6 @@ export async function mount(container, params = {}) {
   let offset = 0;
   const limit = 10;
   let isLoading = false;
-  let hasMorePayments = true;
   let currentType = fixedType || "";
   let statusChart = null;
   let lockedCountdownIntervals = [];
@@ -567,7 +566,6 @@ export async function mount(container, params = {}) {
 
   async function chargerTransactions() {
     if (isLoading) return;
-    if (currentType === "payment" && !hasMorePayments) return;
     isLoading = true;
     const loader = document.getElementById("loading-more");
     loader.classList.remove("d-none");
@@ -594,80 +592,7 @@ export async function mount(container, params = {}) {
       }
       let res;
       let data;
-      if (currentType === "withdraw") {
-        res = await apiFetch("/withdrawals");
-        const result = await res.json();
-        data = result.payouts ?? result;
-      } else if (currentType === "payment") {
-        const paymentParams = new URLSearchParams({
-          limit: String(limit),
-        });
-        const lastPayment = transactions[transactions.length - 1];
-        if (lastPayment?.stripe_charge_id) {
-          paymentParams.set("starting_after", lastPayment.stripe_charge_id);
-        }
-        res = await apiFetch(`/payments?${paymentParams}`);
-        const result = await res.json();
-        console.log("Data paiements: ", result);
-        hasMorePayments = result.has_more;
-        data = (result.data ?? []).map((charge) => {
-          const balanceTransaction =
-            charge.balance_transaction &&
-            typeof charge.balance_transaction === "object"
-              ? charge.balance_transaction
-              : null;
-          const amountNetMerchant =
-            balanceTransaction?.net != null
-              ? balanceTransaction.net / 100
-              : null;
-          const amountGross = charge.amount / 100;
-          const applicationFee =
-            charge.application_fee_amount != null
-              ? charge.application_fee_amount / 100
-              : null;
-          const stripeFee =
-            balanceTransaction?.fee != null
-              ? balanceTransaction.fee / 100
-              : null;
-          const commissionXepay =
-            applicationFee != null && stripeFee != null
-              ? applicationFee - stripeFee
-              : null;
-          return {
-            type: "payment",
-            payment_id: charge.payment_intent ?? charge.id,
-            client_email:
-              charge.billing_details?.email ??
-              charge.receipt_email ??
-              "-",
-            amount_gross: amountGross,
-            commission_xepay: commissionXepay,
-            stripe_fee: stripeFee,
-            amount_net_merchant: amountNetMerchant,
-            currency_gross: charge.currency?.toUpperCase() ?? "USD",
-            status: charge.refunded
-              ? "refunded"
-              : charge.paid
-                ? "paid"
-                : charge.status,
-            date: new Date(charge.created * 1000).toISOString(),
-            details: {
-              ...charge,
-              payment_method_type:
-                charge.payment_method_details?.type,
-              card_brand:
-                charge.payment_method_details?.card?.brand,
-              card_last4:
-                charge.payment_method_details?.card?.last4,
-            },
-            stripe_charge_id: charge.id,
-            amount_refunded: charge.amount_refunded,
-          };
-        });
-      } else {
-        res = await apiFetch(`/activity?${params}`);
-        data = await res.json();
-      }
+      
       if (!res.ok) {
         throw new Error(`Erreur HTTP ${res.status}`);
       }
@@ -716,7 +641,6 @@ export async function mount(container, params = {}) {
       );
       offset = 0;
       transactions = [];
-
       document.getElementById("tbody-transactions").innerHTML = "";
       await chargerTransactions();
     } catch (error) {
@@ -771,7 +695,6 @@ export async function mount(container, params = {}) {
     updatePaymentsViewMode();
     offset = 0;
     transactions = [];
-    hasMorePayments = true;
     chargerTransactions();
   }
 
@@ -1069,13 +992,11 @@ export async function mount(container, params = {}) {
   on(document.getElementById("filter-statut"), "change", () => {
     offset = 0;
     transactions = [];
-    hasMorePayments = true;
     chargerTransactions();
   });
   function relancerPaiements() {
     offset = 0;
     transactions = [];
-    hasMorePayments = true;
     chargerTransactions();
   }
   on(document.getElementById("startDate"), "change", relancerPaiements);
