@@ -592,7 +592,15 @@ export async function mount(container, params = {}) {
       }
       let res;
       let data;
-      
+      if (currentType === "withdraw") {
+        res = await apiFetch("/withdrawals");
+        const result = await res.json();
+        console.log("DATA payout: ", result)
+        data = result.payouts ?? result;
+      } else {
+        res = await apiFetch(`/activity?${params}`);
+        data = await res.json();
+      }
       if (!res.ok) {
         throw new Error(`Erreur HTTP ${res.status}`);
       }
