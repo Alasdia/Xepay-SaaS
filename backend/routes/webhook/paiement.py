@@ -47,7 +47,7 @@ SETTLEMENT_RETRY_DELAYS_SECONDS = [2, 3, 5, 8, 10, 15, 20, 20, 20, 20, 20, 20, 2
 MAX_SETTLEMENT_ATTEMPTS = len(SETTLEMENT_RETRY_DELAYS_SECONDS) + 1
 
 
-def _fetch_settled_charge_data(charge_id):
+def _fetch_settled_charge_data(charge_id, stripe_account=None):
     """Relit le Charge et sa BalanceTransaction jusqu'à ce que les deux
     soient disponibles (balance_transaction est strictement requis, le
     calcul du montant en dépend) et, si possible, jusqu'à ce que
