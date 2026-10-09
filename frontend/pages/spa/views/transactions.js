@@ -630,12 +630,16 @@ export async function mount(container, params = {}) {
             typeof charge.balance_transaction === "string"
               ? charge.balance_transaction
               : charge.balance_transaction?.id;
-          const balanceTransaction =
-            balanceTransactions.find(
-              (bt) => bt.id === balanceTransactionId
-            ) ??
-            balanceBySource.get(charge.id) ??
-            null;
+          const balanceTransaction = balanceTransactions.find(
+            (bt) => bt.id === balanceTransactionId
+          );
+          console.log({
+            chargeId: charge.id,
+            balanceTransactionId,
+            stripeFee: balanceTransaction?.fee,
+            net: balanceTransaction?.net,
+            applicationFee: charge.application_fee_amount,
+          });
           const amountGross = charge.amount / 100;
           const applicationFee =
             charge.application_fee_amount != null
