@@ -626,20 +626,8 @@ export async function mount(container, params = {}) {
             .map((bt) => [bt.source, bt])
         );
         data = (paymentsResult.data ?? []).map((charge) => {
-          const balanceTransactionId =
-            typeof charge.balance_transaction === "string"
-              ? charge.balance_transaction
-              : charge.balance_transaction?.id;
-          const balanceTransaction = balanceTransactions.find(
-            (bt) => bt.id === balanceTransactionId
-          );
-          console.log({
-            chargeId: charge.id,
-            balanceTransactionId,
-            stripeFee: balanceTransaction?.fee,
-            net: balanceTransaction?.net,
-            applicationFee: charge.application_fee_amount,
-          });
+          const balanceTransaction =
+            balanceBySource.get(charge.id) ?? null;
           const amountGross = charge.amount / 100;
           const applicationFee =
             charge.application_fee_amount != null
@@ -649,10 +637,6 @@ export async function mount(container, params = {}) {
             balanceTransaction?.fee != null
               ? balanceTransaction.fee / 100
               : null;
-          const commissionXepay =
-            applicationFee != null && stripeFee != null
-              ? applicationFee - stripeFee
-              : null;
           return {
             type: "payment",
             payment_id: charge.payment_intent ?? charge.id,
@@ -661,7 +645,7 @@ export async function mount(container, params = {}) {
               charge.receipt_email ??
               "-",
             amount_gross: amountGross,
-            commission_xepay: commissionXepay,
+            commission_xepay: applicationFee,
             stripe_fee: stripeFee,
             amount_net_merchant:
               balanceTransaction?.net != null

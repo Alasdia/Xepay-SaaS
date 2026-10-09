@@ -407,21 +407,24 @@ def get_payment_balance_transactions(
             status_code=404,
             detail="Compte Stripe Connect introuvable"
         )
-    params = {
-        "limit": min(max(limit, 1), 100),
-    }
+    params = {"limit": min(max(limit, 1), 100)}
     if starting_after:
         params["starting_after"] = starting_after
     try:
-        result = stripe.BalanceTransaction.list(
+        result = stripe.PaymentIntent.list(
             **params,
             stripe_account=profile.stripe_account_id,
         )
+        data = []
+        for intent in result.data:
+            if intent.latest_charge:
+                _, balance_tx = _fetch_settled_charge_data(
+                    intent.latest_charge
+                )
+                if balance_tx:
+                    data.append(balance_tx.to_dict())
         return {
-            "data": [
-                transaction.to_dict()
-                for transaction in result.data
-            ],
+            "data": data,
             "has_more": result.has_more,
             "next_cursor": (
                 result.data[-1].id
