@@ -378,7 +378,7 @@ def get_stripe_payments(
         )
         return {
             "data": [
-                charge.to_dict_recursive()
+                charge.to_dict()
                 for charge in result.data
             ],
             "has_more": result.has_more,
