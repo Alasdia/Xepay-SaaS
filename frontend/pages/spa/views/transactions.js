@@ -543,6 +543,7 @@ export async function mount(container, params = {}) {
       if (currentType === "withdraw") {
         res = await apiFetch("/withdrawals");
         const result = await res.json();
+        console.log("DATA payout: ", result)
         data = result.payouts ?? result;
       } else {
         res = await apiFetch(`/activity?${params}`);
