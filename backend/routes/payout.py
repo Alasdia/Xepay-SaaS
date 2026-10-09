@@ -273,11 +273,11 @@ def process_withdraw(
     db.flush()
     try:
         payout = stripe.Payout.create(amount=amount_cents, currency="usd", stripe_account=profile.stripe_account_id, method="instant")
-        wd.status = payout["status"]
-        wd.stripe_payout_id = payout["id"]
-        wd.payout_method = payout.get("method")
-        if payout.get("arrival_date"):
-            wd.payout_arrival_date = datetime.fromtimestamp(payout["arrival_date"], tz=timezone.utc)
+        wd.status = payout.status
+        wd.stripe_payout_id = payout.id
+        wd.payout_method = payout.method
+        if payout.arrival_date:
+            wd.payout_arrival_date = datetime.fromtimestamp(payout.arrival_date, tz=timezone.utc)
         wallet.pending -= wd.amount
         tx = db.query(WalletTransaction).filter(WalletTransaction.reference == wd.reference).first()
         if tx:
