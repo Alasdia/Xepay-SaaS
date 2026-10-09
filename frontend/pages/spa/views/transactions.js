@@ -638,9 +638,15 @@ export async function mount(container, params = {}) {
         return;
       }
       showToast(
-        `Demande de remboursement transmise à Stripe (${data.status})`,
+        data.status === "succeeded"
+          ? "Remboursement confirmé par Stripe"
+          : `Demande de remboursement transmise à Stripe (${data.status})`,
         "success"
       );
+      offset = 0;
+      transactions = [];
+      document.getElementById("tbody-transactions").innerHTML = "";
+      await chargerTransactions();
       offset = 0;
       transactions = [];
       document.getElementById("tbody-transactions").innerHTML = "";

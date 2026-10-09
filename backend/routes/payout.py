@@ -432,12 +432,22 @@ def refund_payment(
             **refund_params,
             idempotency_key=f"xepay-refund-{payment.id}-{uuid.uuid4()}"
         )
+        if refund.status == "succeeded":
+            charge = stripe.Charge.retrieve(charge_id)
+            if charge.refunded:
+                payment.status = "refunded"
+            else:
+                payment.status = "partially_refunded"
+            db.commit()
+            db.refresh(payment)
+
         return {
             "payment_id": payment.id,
             "refund_id": refund.id,
             "amount": refund.amount,
             "currency": refund.currency,
             "status": refund.status,
+            "payment_status": payment.status,
             "message": "Demande de remboursement transmise à Stripe"
         }
     except HTTPException:
