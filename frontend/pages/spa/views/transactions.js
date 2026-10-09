@@ -610,6 +610,7 @@ export async function mount(container, params = {}) {
           apiFetch(`/payments?${paymentParams}`),
           apiFetch("/payment-balance-transactions?limit=100"),
         ]);
+        res = paymentsRes;
         if (!paymentsRes.ok || !balanceRes.ok) {
           throw new Error("Impossible de récupérer les paiements et les transactions de solde Stripe");
         }
