@@ -607,41 +607,14 @@ export async function mount(container, params = {}) {
           paymentParams.set("starting_after", lastPayment.stripe_charge_id);
         }
         res = await apiFetch(`/payments?${paymentParams}`);
-          if (!res.ok) {
-            throw new Error(`Erreur chargement paiements : HTTP ${res.status}`);
-          }
-        const paymentsResult = await res.json();
-        console.log("Paiements Stripe :", paymentsResult);
-        let balanceTransactions = [];
-        try {
-          const balanceRes = await apiFetch(
-            "/payment-balance-transactions?limit=100"
-          );
-          if (balanceRes.ok) {
-            const balanceResult = await balanceRes.json();
-            console.log("Transactions de solde Stripe :", balanceResult);
-            balanceTransactions = balanceResult.data ?? [];
-          } else {
-            console.error(
-              "Erreur chargement transactions de solde :",
-              balanceRes.status
-            );
-          }
-        } catch (error) {
-          console.error(
-            "Chargement des transactions de solde impossible :",
-            error
-          );
-        }
-        hasMorePayments = paymentsResult.has_more;
-        const balanceBySource = new Map(
-          balanceTransactions
-            .filter((bt) => bt.source)
-            .map((bt) => [bt.source, bt])
-        );
-        data = (paymentsResult.data ?? []).map((charge) => {
+        const result = await res.json();
+        console.log("Data paiements: ", result);
+        hasMorePayments = result.has_more;
+        data = (result.data ?? []).map((charge) => {
           const balanceTransaction =
-            balanceBySource.get(charge.id) ?? null;
+            typeof charge.balance_transaction === "object"
+              ? charge.balance_transaction
+              : null;
           const amountGross = charge.amount / 100;
           const applicationFee =
             charge.application_fee_amount != null
@@ -651,6 +624,10 @@ export async function mount(container, params = {}) {
             balanceTransaction?.fee != null
               ? balanceTransaction.fee / 100
               : null;
+          const commissionXepay =
+            applicationFee != null && stripeFee != null
+              ? applicationFee - stripeFee
+              : null;
           return {
             type: "payment",
             payment_id: charge.payment_intent ?? charge.id,
@@ -659,12 +636,12 @@ export async function mount(container, params = {}) {
               charge.receipt_email ??
               "-",
             amount_gross: amountGross,
-            commission_xepay: applicationFee,
+            commission_xepay: commissionXepay,
             stripe_fee: stripeFee,
             amount_net_merchant:
               balanceTransaction?.net != null
                 ? balanceTransaction.net / 100
-                : null,
+              : null,
             currency_gross: charge.currency?.toUpperCase() ?? "USD",
             status: charge.refunded
               ? "refunded"

@@ -47,7 +47,7 @@ SETTLEMENT_RETRY_DELAYS_SECONDS = [2, 3, 5, 8, 10, 15, 20, 20, 20, 20, 20, 20, 2
 MAX_SETTLEMENT_ATTEMPTS = len(SETTLEMENT_RETRY_DELAYS_SECONDS) + 1
 
 
-def _fetch_settled_charge_data(charge_id, stripe_account=None):
+def _fetch_settled_charge_data(charge_id):
     """Relit le Charge et sa BalanceTransaction jusqu'à ce que les deux
     soient disponibles (balance_transaction est strictement requis, le
     calcul du montant en dépend) et, si possible, jusqu'à ce que
@@ -57,9 +57,9 @@ def _fetch_settled_charge_data(charge_id, stripe_account=None):
     charge_dict = None
     balance_tx = None
     for attempt in range(MAX_SETTLEMENT_ATTEMPTS):
-        charge = stripe.Charge.retrieve(charge_id, stripe_account=stripe_account)
+        charge = stripe.Charge.retrieve(charge_id)
         charge_dict = charge.to_dict()
-        balance_txs = stripe.BalanceTransaction.list(source=charge_id, limit=1, stripe_account=stripe_account)
+        balance_txs = stripe.BalanceTransaction.list(source=charge_id, limit=1)
         if balance_txs.data:
             balance_tx = balance_txs.data[0]
             if charge_dict.get("application_fee") and charge_dict.get("transfer"):
@@ -390,52 +390,4 @@ def get_stripe_payments(
         raise HTTPException(
             status_code=502,
             detail="Impossible de récupérer les paiements Stripe"
-        ) from exc
-
-@router.get("/payment-balance-transactions")
-def get_payment_balance_transactions(
-    limit: int = 100,
-    starting_after: str | None = None,
-    current_user=Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    profile = db.query(Profile).filter(
-        Profile.user_id == current_user.id
-    ).first()
-    if not profile or not profile.stripe_account_id:
-        raise HTTPException(
-            status_code=404,
-            detail="Compte Stripe Connect introuvable"
-        )
-    params = {"limit": min(max(limit, 1), 100)}
-    if starting_after:
-        params["starting_after"] = starting_after
-    try:
-        result = stripe.PaymentIntent.list(
-            **params,
-            stripe_account=profile.stripe_account_id,
-        )
-        data = []
-        for intent in result.data:
-            if intent.latest_charge:
-                _, balance_tx = _fetch_settled_charge_data(
-                    intent.latest_charge,
-                    stripe_account=profile.stripe_account_id,
-                )
-                if balance_tx:
-                    data.append(balance_tx.to_dict())
-        return {
-            "data": data,
-            "has_more": result.has_more,
-            "next_cursor": (
-                result.data[-1].id
-                if result.data
-                else None
-            ),
-        }
-    except Exception as exc:
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=500,
-            detail=f"{type(exc).__name__}: {exc}",
         ) from exc
