@@ -308,13 +308,19 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
                     else "partially_refunded"
                 )
             reference = pi_id
+            print("EVENEMENT :", event_type)
+            print("REFERENCE RECUE :", reference)
             tx = db.query(WalletTransaction).filter(WalletTransaction.reference == reference).first()
+            print("TRANSACTION TROUVEE :", tx.id if tx else None)
+            print("STATUT AVANT :", tx.status if tx else None)
             if tx and tx.status != "refunded":
                 tx.status = "refunded"
                 wallet = db.query(Wallet).filter(Wallet.id == tx.wallet_id).first()
                 if wallet:
                     wallet.balance -= tx.amount
                 db.commit()
+                db.refresh(tx)
+                print("STATUT APRES COMMIT :", tx.status)
                 user = db.query(UserDB).filter(UserDB.id == tx.user_id).first()
                 if user and user.email:
                     send_payment_refunded_email(user.email, tx.amount)
