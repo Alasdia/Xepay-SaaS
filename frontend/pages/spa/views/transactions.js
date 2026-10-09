@@ -229,6 +229,14 @@ export async function mount(container, params = {}) {
   let statusChart = null;
   let lockedCountdownIntervals = [];
   const boundListeners = [];
+  function updatePagination() {
+    const prevBtn = document.getElementById("prev-page");
+    const nextBtn = document.getElementById("next-page");
+    const info = document.getElementById("pagination-info");
+    if (prevBtn) prevBtn.disabled = pageNumber <= 1;
+    if (nextBtn) nextBtn.disabled = !hasNextPage;
+    if (info) info.textContent = `Page ${pageNumber}`;
+  }
   function on(target, type, fn) {
     if (!target) return;
     target.addEventListener(type, fn);
@@ -618,14 +626,20 @@ export async function mount(container, params = {}) {
       if (!res.ok) {
         throw new Error(`Erreur HTTP ${res.status}`);
       }
-      transactions = [...transactions, ...data];
-      afficherTransactions(data);
-      offset += data.length;
+      if (!Array.isArray(data)) {
+        data = data.payouts ?? data.transactions ?? [];
+      }
+      transactions = data;
+      afficherTransactions(transactions);
+      hasNextPage = data.length === limit;
+      updatePagination();
     } catch (err) {
       console.error("Erreur activity:", err);
     }
     isLoading = false;
-    loader.classList.add("d-none");
+    if (loader) {
+      loader.classList.add("d-none");
+    }
   }
   on(document.getElementById("tbody-transactions"), "click", async (event) => {
     const btn = event.target.closest(".js-refund-payment");
@@ -721,7 +735,10 @@ export async function mount(container, params = {}) {
     updateTableHead();
     updatePaymentsViewMode();
     offset = 0;
+    pageNumber = 1;
+    hasNextPage = true;
     transactions = [];
+    updatePagination();
     chargerTransactions();
   }
 
@@ -1018,12 +1035,31 @@ export async function mount(container, params = {}) {
   on(document.getElementById("fermerDetailBtn"), "click", fermerDetail);
   on(document.getElementById("filter-statut"), "change", () => {
     offset = 0;
+    pageNumber = 1;
+    hasNextPage = true;
     transactions = [];
+    updatePagination();
     chargerTransactions();
+  });
+  // --- Pagination : boutons précédent / suivant
+  on(document.getElementById("next-page"), "click", async () => {
+    if (isLoading || !hasNextPage) return;
+    pageNumber++;
+    offset = (pageNumber - 1) * limit;
+    await chargerTransactions();
+  });
+  on(document.getElementById("prev-page"), "click", async () => {
+    if (isLoading || pageNumber <= 1) return;
+    pageNumber--;
+    offset = (pageNumber - 1) * limit;
+    await chargerTransactions();
   });
   function relancerPaiements() {
     offset = 0;
+    pageNumber = 1;
+    hasNextPage = true;
     transactions = [];
+    updatePagination();
     chargerTransactions();
   }
   on(document.getElementById("startDate"), "change", relancerPaiements);
