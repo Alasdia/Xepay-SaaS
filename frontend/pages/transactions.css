@@ -154,6 +154,21 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
   .dashboard-layout { display: block !important; }
   .main-dashboard-content { flex-basis: auto !important; max-width: 100% !important; }
 }
+/* Actions du tableau Paiements */
+#tbody-transactions td:last-child {
+  vertical-align: middle;
+  text-align: center;
+  white-space: nowrap;
+}
+#tbody-transactions .js-refund-payment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 6px 14px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
 .plans-section{position:relative;z-index:2;max-width:1300px;margin:0 auto;padding:0 48px 100px}
 .plans-header{text-align:center;margin-bottom:52px}
 .plans-header h2{font-family:var(--font-d);font-size:clamp(48px,5vw,76px);letter-spacing:.04em;line-height:.95;margin-bottom:14px}

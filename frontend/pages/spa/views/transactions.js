@@ -362,10 +362,11 @@ export async function mount(container, params = {}) {
           ${canRefund ? `
             <button
               type="button"
-              class="btn btn-sm btn-outline-danger js-refund-payment"
+              class="btn btn-export js-refund-payment"
               data-payment-id="${t.payment_id}"
               data-amount="${t.amount_gross ?? 0}"
               data-currency="${currency}"
+              style="white-space: nowrap;"
             >
               Rembourser
             </button>
