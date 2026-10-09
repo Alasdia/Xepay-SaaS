@@ -409,7 +409,7 @@ export async function mount(container, params = {}) {
         <td>${t.label ?? "-"}</td>
         <td>${formatMontant(t.amount, t.currency ?? "USD")}</td>
         <td>${formatMontant(t.amount_reversed, t.currency ?? "USD")}</td>
-        <td><span class="status-pill ${statusBadgeClass(t.status)}">${statusMap[t.status] || t.status}</span></td>
+        <td><span class="status-pill ${statusBadgeClass(t.status)}">${{ paid: "Transféré", success: "Transféré" }[String(t.status).toLowerCase()] || statusMap[String(t.status).toLowerCase()] || t.status}</span></td>
         <td style="color: #6b7280; font-size: 0.85rem;">${t.date && !isNaN(new Date(t.date)) ? new Date(t.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "N/A"}</td>
       </tr>
     `;
