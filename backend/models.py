@@ -151,6 +151,9 @@ class ConnectSubscriptionCreateRequest(BaseModel):
     collection_method: str = "charge_automatically"
     payment_method_id: str | None = None
 
+class RefundRequest(BaseModel):
+    amount: Optional[int] = Field(default=None, gt=0)
+    reason: Optional[str] = None
 
 class Wallet(Base):
     __tablename__ = "wallets"

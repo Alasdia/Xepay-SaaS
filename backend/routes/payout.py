@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 import uuid
 from backend.database import get_db
-from backend.models import Wallet, Withdrawal, WithdrawRequest, WalletTransaction, WebhookDeliveryLog, Webhook
+from backend.models import Wallet, Withdrawal, WithdrawRequest, WalletTransaction, WebhookDeliveryLog, Webhook, RefundRequest
 from backend.services.webhook_service import send_webhook_event
 from backend.middleware.authorization import require_owner, require_pro_or_business
 from backend.models import WorkspaceUser
@@ -331,6 +331,121 @@ def get_withdrawals(
         raise HTTPException(
             status_code=502,
             detail=str(e)
+        )
+
+@router.post("/payments/{payment_id}/refund")
+def refund_payment(
+    payment_id: str,
+    req: RefundRequest,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+    workspace_id: str = Header(None, alias="X-Workspace-Id")
+):
+    owner_id = get_workspace_owner_id(user, workspace_id, db)
+    payment = (
+        db.query(Payment)
+        .filter(
+            Payment.id == payment_id,
+            Payment.user_id == owner_id
+        )
+        .with_for_update()
+        .first()
+    )
+    if not payment:
+        raise HTTPException(
+            status_code=404,
+            detail="Paiement introuvable"
+        )
+    if payment.status != "paid":
+        raise HTTPException(
+            status_code=400,
+            detail="Ce paiement n'est pas remboursable dans son état actuel"
+        )
+    if not payment.stripe_payment_intent_id:
+        raise HTTPException(
+            status_code=400,
+            detail="PaymentIntent Stripe introuvable"
+        )
+    profile = (
+        db.query(Profile)
+        .filter(Profile.user_id == owner_id)
+        .first()
+    )
+    if not profile or not profile.stripe_account_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Compte Stripe Connect introuvable"
+        )
+    try:
+        intent = stripe.PaymentIntent.retrieve(
+            payment.stripe_payment_intent_id
+        )
+        if intent.status != "succeeded":
+            raise HTTPException(
+                status_code=400,
+                detail="Le paiement Stripe n'est pas confirmé"
+            )
+        charge_id = intent.latest_charge
+        if not charge_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Charge Stripe introuvable"
+            )
+        charge = stripe.Charge.retrieve(charge_id)
+        if charge.refunded:
+            raise HTTPException(
+                status_code=400,
+                detail="Ce paiement est déjà intégralement remboursé"
+            )
+        refunds = stripe.Refund.list(
+            charge=charge_id,
+            limit=100
+        )
+        refunded_amount = sum(
+            refund.amount for refund in refunds.data
+            if refund.status != "failed" and refund.status != "canceled"
+        )
+        remaining = charge.amount - refunded_amount
+        if remaining <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Aucun montant restant à rembourser"
+            )
+        amount = remaining if req.amount is None else req.amount
+        if amount > remaining:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "Le montant dépasse le montant remboursable",
+                    "remaining_amount": remaining,
+                    "currency": charge.currency
+                }
+            )
+        refund_params = {
+            "payment_intent": payment.stripe_payment_intent_id,
+            "amount": amount,
+            "reverse_transfer": True,
+            "refund_application_fee": True,
+            "reason": req.reason or "requested_by_customer",
+        }
+        refund = stripe.Refund.create(
+            **refund_params,
+            idempotency_key=f"xepay-refund-{payment.id}-{uuid.uuid4()}"
+        )
+        return {
+            "payment_id": payment.id,
+            "refund_id": refund.id,
+            "amount": refund.amount,
+            "currency": refund.currency,
+            "status": refund.status,
+            "message": "Demande de remboursement transmise à Stripe"
+        }
+    except HTTPException:
+        raise
+    except stripe.error.StripeError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=getattr(e, "user_message", None) or str(e)
         )
 
 @router.get("/withdrawals/{withdrawal_id}")

@@ -273,7 +273,7 @@ export async function mount(container, params = {}) {
     if (!theadRow) return;
     theadRow.innerHTML =
       currentType === "payment"
-        ? `<th>Client</th><th>Moyen de paiement</th><th>Montant brut</th><th>Commission Xepay</th><th>Frais Stripe</th><th>Montant net marchand</th><th>Statut</th><th>Date</th>`
+        ? `<th>Client</th><th>Moyen de paiement</th><th>Montant brut</th><th>Commission Xepay</th><th>Frais Stripe</th><th>Montant net marchand</th><th>Statut</th><th>Date</th><th>Actions</th>`
         : currentType === "transfer_stripe"
         ? `<th>Compte destinataire</th><th>Montant transféré</th><th>Montant reversé</th><th>Statut</th><th>Date</th>`
         : currentType === "withdraw"
@@ -314,22 +314,66 @@ export async function mount(container, params = {}) {
       : `${Number(value).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
   }
 
+  
   function renderPaymentRow(t, i) {
     const currency = t.currency_gross ?? "USD";
+    const canRefund = t.status === "paid" && t.payment_id;
     return `
-      <tr onclick="voirDetailActivite(${i})" style="cursor:pointer;">
-        <td>${t.client_email ?? "-"}</td>
-        <td>${paymentMethodIcon(t.details.payment_method_type, t.details.card_brand, t.details.card_last4)}</td>
-        <td class="amount-cell">${formatMontant(t.amount_gross, currency)}</td>
-        <td class="amount-cell">${formatMontant(t.commission_xepay, currency)}</td>
-        <td class="amount-cell">${formatMontant(t.stripe_fee, currency)}</td>
-        <td class="amount-cell">${formatMontant(t.amount_net_merchant, currency)}</td>
-        <td><span class="status-pill ${statusBadgeClass(t.status)}">${statusMap[t.status] || t.status}</span></td>
-        <td style="color: #6b7280; font-size: 0.85rem;">${t.date && !isNaN(new Date(t.date)) ? new Date(t.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "N/A"}</td>
+      <tr>
+        <td onclick="voirDetailActivite(${i})" style="cursor:pointer;">
+          ${t.client_email ?? "-"}
+        </td>
+        <td onclick="voirDetailActivite(${i})" style="cursor:pointer;">
+          ${paymentMethodIcon(
+            t.details?.payment_method_type,
+            t.details?.card_brand,
+            t.details?.card_last4
+          )}
+        </td>
+        <td class="amount-cell" onclick="voirDetailActivite(${i})">
+          ${formatMontant(t.amount_gross, currency)}
+        </td>
+        <td class="amount-cell" onclick="voirDetailActivite(${i})">
+          ${formatMontant(t.commission_xepay, currency)}
+        </td>
+        <td class="amount-cell" onclick="voirDetailActivite(${i})">
+          ${formatMontant(t.stripe_fee, currency)}
+        </td>
+        <td class="amount-cell" onclick="voirDetailActivite(${i})">
+          ${formatMontant(t.amount_net_merchant, currency)}
+        </td>
+        <td>
+          <span class="status-pill ${statusBadgeClass(t.status)}">
+            ${statusMap[t.status] || t.status}
+          </span>
+        </td>
+        <td style="color:#6b7280;font-size:.85rem;">
+          ${t.date && !isNaN(new Date(t.date))
+            ? new Date(t.date).toLocaleDateString("fr-FR", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+              })
+            : "N/A"}
+        </td>
+        <td>
+          ${canRefund ? `
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-danger js-refund-payment"
+              data-payment-id="${t.payment_id}"
+              data-amount="${t.amount_gross ?? 0}"
+              data-currency="${currency}"
+            >
+              Rembourser
+            </button>
+          ` : "-"}
+        </td>
       </tr>
     `;
   }
-
   function renderTransferRow(t, i) {
     return `
       <tr onclick="voirDetailActivite(${i})" style="cursor:pointer;">
@@ -568,7 +612,52 @@ export async function mount(container, params = {}) {
     isLoading = false;
     loader.classList.add("d-none");
   }
-
+  on(document.getElementById("tbody-transactions"), "click", async (event) => {
+    const btn = event.target.closest(".js-refund-payment");
+    if (!btn || btn.disabled) return;
+    const paymentId = btn.dataset.paymentId;
+    if (!paymentId) {
+      showToast("Identifiant du paiement introuvable", "error");
+      return;
+    }
+    const amount = btn.dataset.amount;
+    const currency = btn.dataset.currency || "USD";
+    if (!confirm(
+      `Confirmer le remboursement du paiement de ${amount} ${currency} ?`
+    )) return;
+    btn.disabled = true;
+    btn.textContent = "Traitement...";
+    try {
+      const res = await apiFetch(
+        `/payments/${encodeURIComponent(paymentId)}/refund`,
+        { method: "POST", body: {} }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(
+          typeof data.detail === "string"
+            ? data.detail
+            : "Impossible d'effectuer le remboursement",
+          "error"
+        );
+        return;
+      }
+      showToast(
+        `Demande de remboursement transmise à Stripe (${data.status})`,
+        "success"
+      );
+      offset = 0;
+      transactions = [];
+      document.getElementById("tbody-transactions").innerHTML = "";
+      await chargerTransactions();
+    } catch (error) {
+      console.error("Erreur remboursement :", error);
+      showToast("Erreur de connexion au serveur", "error");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Rembourser";
+    }
+  });
   async function rafraichir(btn) {
     try {
       btn.style.transition = "transform 0.6s linear";
