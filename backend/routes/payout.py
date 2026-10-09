@@ -304,6 +304,35 @@ def process_withdraw(
     })
     return {"status": wd.status}
 
+@router.get("/withdrawals")
+def get_withdrawals(
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_owner)
+):
+    owner_id = membership.workspace_id
+    profile = db.query(Profile).filter(
+        Profile.user_id == owner_id
+    ).first()
+    if not profile or not profile.stripe_account_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Stripe account not connected"
+        )
+    try:
+        payouts = stripe.Payout.list(
+            limit=100,
+            stripe_account=profile.stripe_account_id
+        )
+        return [
+            payout.to_dict()
+            for payout in payouts.data
+        ]
+    except stripe.error.StripeError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=str(e)
+        )
+
 @router.get("/withdrawals/{withdrawal_id}")
 def get_withdrawal_detail(
     withdrawal_id: str,

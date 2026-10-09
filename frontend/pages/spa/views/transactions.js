@@ -345,14 +345,40 @@ export async function mount(container, params = {}) {
   const payoutMethodLabel = { standard: "Standard", instant: "Instantané" };
 
   function renderWithdrawalRow(t, i) {
+    const amountXof = t.amount_xof ?? t.amount;
+    const currency = t.currency ?? "USD";
+    const statusLabels = {
+      pending: "En attente",
+      in_transit: "En cours",
+      paid: "Payé",
+      failed: "Échoué",
+      canceled: "Annulé"
+    };
+    const payoutDate = t.created
+      ? new Date(t.created * 1000)
+      : null;
+    const dateDisplay =
+      payoutDate && !isNaN(payoutDate)
+        ? payoutDate.toLocaleString("fr-FR")
+        : "N/A";
     return `
       <tr onclick="voirDetailActivite(${i})" style="cursor:pointer;">
-        <td>${t.reference ?? "-"}</td>
-        <td>${payoutMethodLabel[t.payout_method] ?? t.payout_method ?? "-"}</td>
-        <td class="amount-cell">${formatMontant(t.amount, t.currency ?? "XOF")}</td>
-        <td><span class="status-pill ${statusBadgeClass(t.status)}">${statusMap[t.status] || t.status}</span></td>
-        <td style="color: #6b7280; font-size: 0.85rem;">${t.payout_failure_message ?? "-"}</td>
-        <td style="color: #6b7280; font-size: 0.85rem;">${t.date && !isNaN(new Date(t.date)) ? new Date(t.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "N/A"}</td>
+        <td>${t.id ?? "-"}</td>
+        <td>${payoutMethodLabel[t.method] ?? t.method ?? "-"}</td>
+        <td class="amount-cell">
+          ${formatMontant(amountXof, currency)}
+        </td>
+        <td>
+          <span class="status-pill ${statusBadgeClass(t.status)}">
+            ${statusLabels[t.status] ?? t.status ?? "-"}
+          </span>
+        </td>
+        <td style="color: #6b7280; font-size: 0.85rem;">
+          ${t.failure_message ?? t.failure_code ?? "-"}
+        </td>
+        <td style="color: #6b7280; font-size: 0.85rem;">
+          ${dateDisplay}
+        </td>
       </tr>
     `;
   }
@@ -512,8 +538,19 @@ export async function mount(container, params = {}) {
         if (currency) params.append("currency", currency);
         if (paymentMethod) params.append("payment_method", paymentMethod);
       }
-      const res = await apiFetch(`/activity?${params}`);
-      const data = await res.json();
+      let res;
+      let data;
+      if (currentType === "withdraw") {
+        res = await apiFetch("/withdrawals");
+        const result = await res.json();
+        data = result.payouts ?? result;
+      } else {
+        res = await apiFetch(`/activity?${params}`);
+        data = await res.json();
+      }
+      if (!res.ok) {
+        throw new Error(`Erreur HTTP ${res.status}`);
+      }
       transactions = [...transactions, ...data];
       afficherTransactions(data);
       offset += data.length;
