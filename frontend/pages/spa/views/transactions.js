@@ -599,11 +599,14 @@ export async function mount(container, params = {}) {
       } else if (currentType === "payment") {
         const paymentParams = new URLSearchParams({
           limit: String(limit),
-          offset: String(offset),
         });
+        const lastPayment = transactions[transactions.length - 1];
+        if (lastPayment?.stripe_charge_id) {
+          paymentParams.set("starting_after", lastPayment.stripe_charge_id);
+        }
         res = await apiFetch(`/payments?${paymentParams}`);
         const result = await res.json();
-        console.log("Data paiements: ", result)
+        console.log("Data paiements: ", result);
         data = (result.data ?? []).map((charge) => ({
           type: "payment",
           payment_id: charge.payment_intent ?? charge.id,
