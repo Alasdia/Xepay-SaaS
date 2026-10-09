@@ -345,8 +345,15 @@ export async function mount(container, params = {}) {
   const payoutMethodLabel = { standard: "Standard", instant: "Instantané" };
 
   function renderWithdrawalRow(t, i) {
-    const amountXof = t.amount_xof ?? t.amount;
-    const currency = t.currency ?? "USD";
+    const currency = (t.currency ?? "usd").toLowerCase();
+    const zeroDecimalCurrencies = [
+      "bif", "clp", "djf", "gnf", "jpy", "kmf",
+      "krw", "pyg", "rwf", "ugx", "vnd", "vuv",
+      "xaf", "xof", "xpf"
+    ];
+    const amount = Number(t.amount ?? 0) /
+
+    (zeroDecimalCurrencies.includes(currency) ? 1 : 100);
     const statusLabels = {
       pending: "En attente",
       in_transit: "En cours",
@@ -366,7 +373,7 @@ export async function mount(container, params = {}) {
         <td>${t.id ?? "-"}</td>
         <td>${payoutMethodLabel[t.method] ?? t.method ?? "-"}</td>
         <td class="amount-cell">
-          ${formatMontant(amountXof, currency)}
+          ${formatMontant(amount, currency.toUpperCase())}
         </td>
         <td>
           <span class="status-pill ${statusBadgeClass(t.status)}">
