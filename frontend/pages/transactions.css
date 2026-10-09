@@ -179,7 +179,6 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
   padding: 0;
   border: none !important;
   border-radius: 0;
-  color: #22c55e;
   background: transparent !important;
   box-shadow: none !important;
   animation: none !important;
@@ -192,11 +191,15 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
   content: none !important;
   display: none !important;
 }
-/* Couleurs neutres */
-#tbody-transactions .status-pill.badge-success,
-#tbody-transactions .status-pill.badge-warning,
+/* Couleurs des statuts : texte simple, sans badge */
+#tbody-transactions .status-pill.badge-success {
+  color: #16a34a !important;
+}
+#tbody-transactions .status-pill.badge-warning {
+  color: #ca8a04 !important;
+}
 #tbody-transactions .status-pill.badge-danger {
-  color: #374151 !important;
+  color: #dc2626 !important;
 }
 /* Pagination transactions : boutons très compacts */
 #transactions-normal-view #prev-page,
