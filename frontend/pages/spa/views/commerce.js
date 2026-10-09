@@ -4006,9 +4006,19 @@ async function renderPaymentMethods(container) {
         zip: "Zip"
     };
     const PAYMENT_METHOD_ICONS = {
+        affirm: "/assets/affirm.svg",
         apple_pay: "/assets/apple-pay.svg",
+        bancontact: "/assets/bancontact.svg",
+        blik: "/assets/blik-logo.svg",
+        card: "/assets/carte.svg",
+        cartes_bancaires: "/assets/carte_bancaire.svg",
+        cashapp: "/assets/cashapp.svg",
+        eps: "/assets/eps.svg",
+        google_pay: "/assets/google-pay.svg",
+        ideal: "/assets/ideal.svg",
+        klarna: "/assets/klarna-logo.svg",
         link: "/assets/link.svg",
-        card: "/assets/visa.svg"
+        mastercard: "/assets/mastercard.svg"
     };
 
     const PAYMENT_METHOD_TYPES = {

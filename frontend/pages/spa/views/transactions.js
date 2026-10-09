@@ -288,7 +288,10 @@ export async function mount(container, params = {}) {
       visa: "/assets/visa.svg",
       mastercard: "/assets/mastercard.svg",
       link: "/assets/link.svg",
-      apple_pay: "/assets/apple-pay.svg"
+      apple_pay: "/assets/apple-pay.svg",
+      google_pay: "/assets/google-pay.svg",
+      klarna: "/assets/klarna-logo.svg",
+      bancontact: "/assets/bancontact.svg",
     };
     const logoKey = method === "card" ? brand : method;
     const src = icons[logoKey];
