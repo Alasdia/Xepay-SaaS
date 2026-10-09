@@ -374,7 +374,6 @@ def get_stripe_payments(
     try:
         result = stripe.Charge.list(
             **params,
-            expand=["data.balance_transaction"],
             stripe_account=profile.stripe_account_id,
         )
         return {
@@ -391,4 +390,50 @@ def get_stripe_payments(
         raise HTTPException(
             status_code=502,
             detail="Impossible de récupérer les paiements Stripe"
+        ) from exc
+
+@router.get("/payment-balance-transactions")
+def get_payment_balance_transactions(
+    limit: int = 100,
+    starting_after: str | None = None,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    profile = db.query(Profile).filter(
+        Profile.user_id == current_user.id
+    ).first()
+    if not profile or not profile.stripe_account_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Compte Stripe Connect introuvable"
+        )
+    params = {
+        "limit": min(max(limit, 1), 100),
+    }
+    if starting_after:
+        params["starting_after"] = starting_after
+    try:
+        result = stripe.BalanceTransaction.list(
+            **params,
+            stripe_account=profile.stripe_account_id,
+        )
+        return {
+            "data": [
+                transaction.to_dict()
+                for transaction in result.data
+            ],
+            "has_more": result.has_more,
+            "next_cursor": (
+                result.data[-1].id
+                if result.data
+                else None
+            ),
+        }
+    except stripe.StripeError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Impossible de récupérer les transactions "
+                "de solde Stripe"
+            ),
         ) from exc

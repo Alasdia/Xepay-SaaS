@@ -606,15 +606,35 @@ export async function mount(container, params = {}) {
         if (lastPayment?.stripe_charge_id) {
           paymentParams.set("starting_after", lastPayment.stripe_charge_id);
         }
-        res = await apiFetch(`/payments?${paymentParams}`);
-        const result = await res.json();
-        console.log("Data paiements: ", result);
-        hasMorePayments = result.has_more;
-        data = (result.data ?? []).map((charge) => {
-          const balanceTransaction =
-            typeof charge.balance_transaction === "object"
+        const [paymentsRes, balanceRes] = await Promise.all([
+          apiFetch(`/payments?${paymentParams}`),
+          apiFetch("/payment-balance-transactions?limit=100"),
+        ]);
+        if (!paymentsRes.ok || !balanceRes.ok) {
+          throw new Error("Impossible de récupérer les paiements et les transactions de solde Stripe");
+        }
+        const paymentsResult = await paymentsRes.json();
+        const balanceResult = await balanceRes.json();
+        console.log("Paiements Stripe :", paymentsResult);
+        console.log("Transactions de solde Stripe :", balanceResult);
+        hasMorePayments = paymentsResult.has_more;
+        const balanceTransactions = balanceResult.data ?? [];
+        const balanceBySource = new Map(
+          balanceTransactions
+            .filter((bt) => bt.source)
+            .map((bt) => [bt.source, bt])
+        );
+        data = (paymentsResult.data ?? []).map((charge) => {
+          const balanceTransactionId =
+            typeof charge.balance_transaction === "string"
               ? charge.balance_transaction
-              : null;
+              : charge.balance_transaction?.id;
+          const balanceTransaction =
+            balanceTransactions.find(
+              (bt) => bt.id === balanceTransactionId
+            ) ??
+            balanceBySource.get(charge.id) ??
+            null;
           const amountGross = charge.amount / 100;
           const applicationFee =
             charge.application_fee_amount != null
