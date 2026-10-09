@@ -612,8 +612,13 @@ export async function mount(container, params = {}) {
         hasMorePayments = result.has_more;
         data = (result.data ?? []).map((charge) => {
           const balanceTransaction =
+            charge.balance_transaction &&
             typeof charge.balance_transaction === "object"
               ? charge.balance_transaction
+              : null;
+          const amountNetMerchant =
+            balanceTransaction?.net != null
+              ? balanceTransaction.net / 100
               : null;
           const amountGross = charge.amount / 100;
           const applicationFee =
@@ -638,10 +643,7 @@ export async function mount(container, params = {}) {
             amount_gross: amountGross,
             commission_xepay: commissionXepay,
             stripe_fee: stripeFee,
-            amount_net_merchant:
-              balanceTransaction?.net != null
-                ? balanceTransaction.net / 100
-              : null,
+            amount_net_merchant: amountNetMerchant,
             currency_gross: charge.currency?.toUpperCase() ?? "USD",
             status: charge.refunded
               ? "refunded"
