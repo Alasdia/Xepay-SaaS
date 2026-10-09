@@ -434,8 +434,8 @@ def get_payment_balance_transactions(
             ),
         }
     except Exception as exc:
-    traceback.print_exc()
-    raise HTTPException(
-        status_code=500,
-        detail=f"{type(exc).__name__}: {exc}",
-    ) from exc
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"{type(exc).__name__}: {exc}",
+        ) from exc
