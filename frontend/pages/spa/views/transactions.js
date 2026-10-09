@@ -628,6 +628,7 @@ export async function mount(container, params = {}) {
         { method: "POST", body: {} }
       );
       const data = await res.json();
+      console.log("DATA REFUND :", data)
       if (!res.ok) {
         showToast(
           typeof data.detail === "string"
