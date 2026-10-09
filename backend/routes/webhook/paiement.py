@@ -433,11 +433,9 @@ def get_payment_balance_transactions(
                 else None
             ),
         }
-    except stripe.StripeError as exc:
-        raise HTTPException(
-            status_code=502,
-            detail=(
-                "Impossible de récupérer les transactions "
-                "de solde Stripe"
-            ),
-        ) from exc
+    except Exception as exc:
+    traceback.print_exc()
+    raise HTTPException(
+        status_code=500,
+        detail=f"{type(exc).__name__}: {exc}",
+    ) from exc
