@@ -281,6 +281,30 @@ class WorkspaceInvite(Base):
         Index("idx_invite_email_workspace", "email", "workspace_id"),
     )
 
+class RefreshToken(Base):
+    """Refresh token de session (cookie HttpOnly côté client) — seul le hash
+    est stocké, jamais la valeur brute. `family_id` identifie une même chaîne
+    de connexion : à la rotation, l'ancien jeton est révoqué et un enfant est
+    créé dans la même famille ; en cas de réutilisation d'un jeton déjà
+    révoqué (vol potentiel), toute la famille est révoquée d'un coup
+    (voir backend/services/refresh_token_service.py)."""
+    __tablename__ = "refresh_tokens"
+
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("rtk"))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    family_id = Column(String, nullable=False)
+    token_hash = Column(String, nullable=False, unique=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    replaced_by = Column(String, nullable=True)
+
+    __table_args__ = (
+        Index("idx_refresh_token_hash", "token_hash"),
+        Index("idx_refresh_token_family", "family_id"),
+        Index("idx_refresh_token_user", "user_id"),
+    )
+
 class Webhook(Base):
     __tablename__ = "webhooks"
 

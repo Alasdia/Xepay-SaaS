@@ -1,6 +1,6 @@
 // Vue "Mes liens de paiement" — port fidèle de liens.html + liens.js.
 import { apiFetch } from "../core/apiClient.js";
-import { getToken, getWorkspaceId } from "../core/state.js";
+import { isAuthenticated, getWorkspaceId } from "../core/state.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { updateUpgradeModal } from "../shared/modalUpgrade.js";
 import { navigate } from "../core/router.js";
@@ -135,8 +135,7 @@ export async function mount(container) {
     const aucun = document.getElementById("aucun-lien");
     if (!listeLiens || isLoading) return;
     isLoading = true;
-    const token = getToken();
-    if (!token) {
+    if (!isAuthenticated()) {
       window.location.href = "/login";
       return;
     }

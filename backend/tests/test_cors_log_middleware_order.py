@@ -35,6 +35,10 @@ def build_app():
     def health():
         return {"ok": True}
 
+    @app.post("/some-protected-action")
+    def protected_action():
+        return {"ok": True}
+
     return app
 
 
@@ -62,6 +66,33 @@ class TestCorsWrapsLogMiddleware(unittest.TestCase):
             },
         )
         self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.headers.get("access-control-allow-origin"), ALLOWED_ORIGIN)
+
+    def test_401_from_cookie_based_check_carries_cors_header(self):
+        # Migration cookies de session (voir audit) : plus de header
+        # Authorization, mais le même principe doit tenir pour le cookie
+        # d'accès manquant/invalide.
+        res = self.client.get(
+            "/protected",
+            headers={"Origin": ALLOWED_ORIGIN},
+            cookies={"access_token": "not-a-valid-jwt"},
+        )
+        self.assertEqual(res.status_code, 401)
+        self.assertEqual(res.headers.get("access-control-allow-origin"), ALLOWED_ORIGIN)
+
+    def test_403_from_csrf_check_carries_cors_header(self):
+        # Même raisonnement que le 401 ci-dessus, pour le 403 renvoyé
+        # directement par la protection CSRF (double-submit cookie) : sans
+        # header CORS, le SPA ne pourrait pas distinguer ce 403 applicatif
+        # d'une erreur CORS et réagir en conséquence.
+        from backend.security import create_access_token
+        token = create_access_token({"sub": "csrf-order-test@example.com"})
+        res = self.client.post(
+            "/some-protected-action",
+            headers={"Origin": ALLOWED_ORIGIN},
+            cookies={"access_token": token},
+        )
+        self.assertEqual(res.status_code, 403)
         self.assertEqual(res.headers.get("access-control-allow-origin"), ALLOWED_ORIGIN)
 
 

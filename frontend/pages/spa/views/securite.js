@@ -2,6 +2,7 @@
 import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
+import { clearSession } from "../core/state.js";
 
 const TEMPLATE = `
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -251,7 +252,10 @@ export async function mount(container) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Erreur suppression");
       showToast("Compte supprimé avec succès");
-      localStorage.removeItem("token");
+      // "token" n'existe plus depuis la migration cookies : l'indicateur
+      // local réel est has_session (voir core/state.js), effacé par
+      // clearSession() avec le reste de l'état (workspace, email, plan).
+      clearSession();
       window.location.href = "/login";
     } catch (error) {
       showToast(error.message, "error");

@@ -177,7 +177,15 @@ function updatePlanUI(plan) {
   badge.textContent = plan.toUpperCase();
 }
 
-function logout() {
+async function logout() {
+  try {
+    // Révoque le refresh token côté serveur et efface les cookies de
+    // session — best-effort : une panne réseau ne doit jamais empêcher la
+    // déconnexion locale ci-dessous.
+    await apiFetch("/logout", { method: "POST" });
+  } catch (err) {
+    console.error("Erreur lors de la déconnexion serveur:", err);
+  }
   clearSession();
   window.location.href = "/login";
 }

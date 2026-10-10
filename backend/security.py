@@ -7,6 +7,8 @@ from cryptography.fernet import Fernet
 import os
 import ipaddress
 import socket
+import secrets
+import hashlib
 from urllib.parse import urlparse
 
 load_dotenv()
@@ -21,6 +23,26 @@ if not SECRET_KEY:
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 PRE_AUTH_TOKEN_EXPIRE_MINUTES = 5
+REFRESH_TOKEN_EXPIRE_DAYS = 14
+# Fenêtre de tolérance pendant laquelle la réutilisation d'un refresh token
+# déjà tourné (rotation) est traitée comme une course bénigne entre requêtes
+# concurrentes (cf. audit) plutôt que comme une tentative de vol — au-delà,
+# toute la famille de jetons est révoquée.
+REFRESH_TOKEN_REUSE_GRACE_SECONDS = 10
+
+# Noms des cookies de session posés par /login, /auth/2fa/verify-login,
+# /auth/google/callback, /auth/google/exchange et /refresh.
+ACCESS_COOKIE_NAME = "access_token"
+REFRESH_COOKIE_NAME = "refresh_token"
+CSRF_COOKIE_NAME = "csrf_token"
+
+# Domain explicite pour le seul cookie non-HttpOnly (csrf_token) : il doit
+# être lisible via document.cookie par le JS de la SPA, servie depuis
+# alasdia.com/www.alasdia.com — un host différent d'api.alasdia.com où ce
+# cookie est posé. "alasdia.com" couvre ses propres sous-domaines
+# (alasdia.com, www.alasdia.com, api.alasdia.com), même convention que les
+# URLs de redirection déjà en dur ailleurs dans ce fichier/routes/users.py.
+CSRF_COOKIE_DOMAIN = os.getenv("CSRF_COOKIE_DOMAIN", "alasdia.com")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -74,6 +96,27 @@ def decode_token(token: str):
         return payload
     except JWTError:
         return None
+
+# =========================
+# 🔁 REFRESH TOKEN (opaque, révocable en base — voir models.RefreshToken et
+# services/refresh_token_service.py)
+# =========================
+
+def generate_refresh_token() -> str:
+    """Valeur brute envoyée au client (cookie HttpOnly) — jamais stockée
+    telle quelle en base, seul son hash l'est (cf. hash_refresh_token)."""
+    return secrets.token_urlsafe(48)
+
+
+def hash_refresh_token(raw_token: str) -> str:
+    """SHA-256 simple (pas bcrypt) : le token a déjà ~384 bits d'entropie
+    (secrets.token_urlsafe), un hash lent par itération n'apporte rien ici
+    et empêcherait une recherche par égalité en base à chaque /refresh."""
+    return hashlib.sha256(raw_token.encode()).hexdigest()
+
+
+def generate_csrf_token() -> str:
+    return secrets.token_urlsafe(32)
 
 # =========================
 # 🔐 PRE-AUTH TOKEN (étape 1 -> étape 2 du login 2FA)

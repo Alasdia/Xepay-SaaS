@@ -2,37 +2,102 @@ import pyotp
 import qrcode
 import base64
 from io import BytesIO
-from fastapi import Header, HTTPException, Depends, APIRouter, Request
+from fastapi import Header, HTTPException, Depends, APIRouter, Request, Response
 from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import UserDB, TwoFAVerifyRequest, WorkspaceUser, LoginTwoFAVerify
 from datetime import datetime, timezone
 from backend.security import (
-    decode_token, jwt, JWTError, SECRET_KEY, ALGORITHM, create_access_token,
-    encrypt_secret, decrypt_secret, decode_2fa_pending_token
+    decode_token, create_access_token,
+    encrypt_secret, decrypt_secret, decode_2fa_pending_token,
+    generate_csrf_token,
+    ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS,
+    ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME, CSRF_COOKIE_NAME,
+    CSRF_COOKIE_DOMAIN,
 )
-from fastapi.security import OAuth2PasswordBearer
-from jose import JOSEError, ExpiredSignatureError
+from backend.services.refresh_token_service import (
+    issue_refresh_token, rotate_refresh_token, revoke_refresh_token,
+)
 from backend.services.email_service import send_login_alert_email
 from backend.services.rate_limit import allow_attempt, reset as reset_rate_limit
 router = APIRouter()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+# Cookies de session posés par /login, /auth/2fa/verify-login,
+# /auth/google/callback, /auth/google/exchange et /refresh — jamais de
+# jeton exposé dans un corps JSON "sensible côté stockage" ni dans une URL.
+#
+# access_token / refresh_token restent host-only (pas de Domain) : HttpOnly,
+# jamais lus en JS, ils n'ont besoin que d'être ENVOYÉS vers api.alasdia.com
+# (ce qui fonctionne déjà sans Domain, l'envoi suit le host ciblé par la
+# requête, pas l'origine de la page) — host-only est la portée la plus
+# restrictive possible, ne pas l'élargir.
+#
+# csrf_token DOIT en revanche porter Domain="alasdia.com" : non-HttpOnly par
+# construction (pattern double-submit cookie), il doit être lisible via
+# document.cookie par le JS de la SPA, qui tourne sur alasdia.com/
+# www.alasdia.com — un host DIFFÉRENT d'api.alasdia.com. Un cookie est
+# ENVOYÉ en fonction du host ciblé par la requête (host-only suffisait pour
+# ça), mais il n'est LU en JS que sur les hosts couverts par son attribut
+# Domain — sans cette ligne, document.cookie ne retourne jamais csrf_token
+# sur les pages de la SPA, et aucune requête mutative ne peut jamais poser
+# un X-CSRF-Token correct (trouvé en revue finale). Domain="alasdia.com"
+# couvre alasdia.com, www.alasdia.com ET api.alasdia.com (sous-domaine) :
+# aucune des trois cookies n'est donc envoyée à un host hors de ce domaine.
+def set_session_cookies(response: Response, access_token: str, refresh_token: str, csrf_token: str) -> None:
+    response.set_cookie(
+        key=ACCESS_COOKIE_NAME, value=access_token,
+        httponly=True, secure=True, samesite="lax", path="/",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    response.set_cookie(
+        key=REFRESH_COOKIE_NAME, value=refresh_token,
+        httponly=True, secure=True, samesite="lax", path="/",
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+    )
+    response.set_cookie(
+        key=CSRF_COOKIE_NAME, value=csrf_token,
+        httponly=False, secure=True, samesite="lax", path="/",
+        domain=CSRF_COOKIE_DOMAIN,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+    )
+
+
+def clear_session_cookies(response: Response) -> None:
+    response.delete_cookie(key=ACCESS_COOKIE_NAME, path="/")
+    response.delete_cookie(key=REFRESH_COOKIE_NAME, path="/")
+    # Le Domain doit être identique à celui posé par set_cookie ci-dessus,
+    # sinon le navigateur ne reconnaît pas la même cookie et ne la supprime
+    # pas (il en créerait même une seconde, host-only, avec Max-Age=0 —
+    # inoffensif mais n'efface pas l'originale à Domain=alasdia.com).
+    response.delete_cookie(key=CSRF_COOKIE_NAME, path="/", domain=CSRF_COOKIE_DOMAIN)
+
+
+def issue_new_session(db: Session, response: Response, user: UserDB) -> None:
+    """Point d'entrée unique pour démarrer une session (login classique,
+    2FA, Google) : émet l'access token (JWT) + un nouveau refresh token
+    (nouvelle famille, DB) + un jeton CSRF, et les pose en cookies."""
+    access_token = create_access_token({"sub": user.email})
+    refresh_token = issue_refresh_token(db, user.id)
+    csrf_token = generate_csrf_token()
+    set_session_cookies(response, access_token, refresh_token, csrf_token)
 
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    request: Request,
     db: Session = Depends(get_db)
 ):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expiré")
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Token invalide")
+    token = request.cookies.get(ACCESS_COOKIE_NAME)
+    if not token:
+        raise HTTPException(status_code=401, detail="Non authentifié")
 
+    # decode_token() (backend/security.py) vérifie signature, expiration ET
+    # le claim "type" == "access" — seule implémentation de décodage JWT
+    # côté access token, partagée avec LogMiddleware (voir audit : les deux
+    # validateurs étaient auparavant dupliqués et divergents).
+    payload = decode_token(token)
     if payload is None:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=401, detail="Session invalide ou expirée")
 
     email = payload.get("sub")
     user = db.query(UserDB).filter(UserDB.email == email).first()
@@ -44,6 +109,43 @@ def get_current_user(
         raise HTTPException(status_code=403, detail="Compte désactivé")
 
     return user
+
+
+@router.post("/refresh")
+def refresh_session(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db)
+):
+    raw_refresh = request.cookies.get(REFRESH_COOKIE_NAME)
+    if not raw_refresh:
+        raise HTTPException(status_code=401, detail="Aucune session à renouveler")
+
+    result = rotate_refresh_token(db, raw_refresh)
+    if result is None:
+        # Jeton invalide/expiré/réutilisé hors fenêtre de grâce : on efface
+        # les cookies existants pour forcer une reconnexion propre côté SPA.
+        clear_session_cookies(response)
+        raise HTTPException(status_code=401, detail="Session expirée, veuillez vous reconnecter")
+
+    new_refresh_token, user = result
+    access_token = create_access_token({"sub": user.email})
+    csrf_token = generate_csrf_token()
+    set_session_cookies(response, access_token, new_refresh_token, csrf_token)
+    return {"ok": True}
+
+
+@router.post("/logout")
+def logout_session(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db)
+):
+    raw_refresh = request.cookies.get(REFRESH_COOKIE_NAME)
+    if raw_refresh:
+        revoke_refresh_token(db, raw_refresh)
+    clear_session_cookies(response)
+    return {"ok": True}
 
 
 @router.post("/2fa/setup")
@@ -109,6 +211,7 @@ def disable_2fa(
 def verify_login_2fa(
     data: LoginTwoFAVerify,
     request: Request,
+    response: Response,
     db: Session = Depends(get_db)
 ):
     ip = request.client.host if request.client else "unknown"
@@ -149,7 +252,7 @@ def verify_login_2fa(
             WorkspaceUser.user_id == user.id
         ).first()
 
-    token = create_access_token({"sub": user.email})
+    issue_new_session(db, response, user)
 
     if user.alert_login:
         device = request.headers.get("user-agent", "Appareil inconnu")
@@ -160,6 +263,6 @@ def verify_login_2fa(
         )
 
     return {
-        "access_token": token,
-        "workspace_id": workspace_user.workspace_id
+        "workspace_id": workspace_user.workspace_id,
+        "account_id": user.account_id
     }

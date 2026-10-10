@@ -1,16 +1,19 @@
-// État global utilisateur/workspace — source unique de vérité pour le JWT,
-// le workspace actif et le plan en cache. Rétrocompatible avec les clés
-// localStorage déjà utilisées par l'app (token, workspace_id, email, plan)
-// pour ne rien casser côté persistance navigateur existante.
+// État global utilisateur/workspace — depuis la migration vers des cookies
+// de session HttpOnly, le JWT ne vit plus jamais côté JS (illisible, posé
+// par le backend). localStorage ne garde que des informations non
+// sensibles (workspace actif, email, plan en cache) + un simple indicateur
+// local "has_session" : il ne fait QUE refléter qu'un login a réussi à un
+// moment donné, ce n'est jamais la source de vérité de l'authentification
+// (seul le cookie HttpOnly, vérifié serveur, tranche réellement) — un
+// cookie expiré sans indicateur à jour est intercepté par apiClient.js
+// (401 -> tentative de /refresh -> redirection vers /login si ça échoue
+// aussi). Rétrocompatible avec les clés déjà utilisées (workspace_id,
+// email, plan) pour ne rien casser côté persistance navigateur existante.
 
-const LS_TOKEN = "token";
+const LS_SESSION_HINT = "has_session";
 const LS_WORKSPACE = "workspace_id";
 const LS_EMAIL = "email";
 const LS_PLAN = "plan";
-
-export function getToken() {
-  return localStorage.getItem(LS_TOKEN);
-}
 
 export function getWorkspaceId() {
   return localStorage.getItem(LS_WORKSPACE);
@@ -28,8 +31,8 @@ export function setPlan(plan) {
   if (plan) localStorage.setItem(LS_PLAN, plan);
 }
 
-export function setSession({ token, workspaceId, email } = {}) {
-  if (token) localStorage.setItem(LS_TOKEN, token);
+export function setSession({ workspaceId, email } = {}) {
+  localStorage.setItem(LS_SESSION_HINT, "1");
   if (workspaceId) localStorage.setItem(LS_WORKSPACE, workspaceId);
   if (email) localStorage.setItem(LS_EMAIL, email);
 }
@@ -39,12 +42,12 @@ export function setWorkspaceId(workspaceId) {
 }
 
 export function clearSession() {
-  localStorage.removeItem(LS_TOKEN);
+  localStorage.removeItem(LS_SESSION_HINT);
   localStorage.removeItem(LS_WORKSPACE);
   localStorage.removeItem(LS_EMAIL);
   localStorage.removeItem(LS_PLAN);
 }
 
 export function isAuthenticated() {
-  return !!getToken();
+  return localStorage.getItem(LS_SESSION_HINT) === "1";
 }

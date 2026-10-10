@@ -1,12 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from backend.database import engine, get_db
 from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, PlanUpdate, Link, SecurityAlertsRequest, GoogleCodeExchange
-from backend.auth import get_current_user
+from backend.auth import get_current_user, issue_new_session
 from backend.services.workspace_service import (
     get_workspace_owner_id
 )
-from backend.security import verify_password, create_access_token, create_2fa_pending_token
+from backend.security import verify_password, create_2fa_pending_token
 from backend.middleware.authorization import require_admin, require_owner, require_member, require_manager, normalize_role, require_business
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import text
@@ -162,7 +162,8 @@ def signup(
 @router.post("/login")
 def login(
     request: Request,
-    form_data: OAuth2PasswordRequestForm = Depends(), 
+    response: Response,
+    form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
     email = form_data.username
@@ -189,12 +190,10 @@ def login(
     device = request.headers.get("user-agent", "Appareil inconnu")
     user.last_login = datetime.now(timezone.utc)
     db.commit()
-    token = create_access_token({"sub": user.email})
+    issue_new_session(db, response, user)
     if user.alert_login:
         send_login_alert_email(email=user.email, device=device, ip=ip)
     return {
-        "access_token": token,
-        "token_type": "bearer",
         "workspace_id": workspace_user.workspace_id,
         "account_id": user.account_id
     }
@@ -359,11 +358,9 @@ def _exchange_google_code(code: str, db: Session, redirect_uri: str) -> dict:
             "pre_auth_token": create_2fa_pending_token(user.email),
         }
 
-    token = create_access_token({"sub": user.email})
-
     return {
         "requires_2fa": False,
-        "token": token,
+        "user": user,
         "email": user.email,
         "workspace_id": workspace_id,
         "account_id": user.account_id,
@@ -382,14 +379,20 @@ def google_callback(
             url=f"https://alasdia.com/login.html?requires_2fa=true&email={result['email']}&workspace_id={result['workspace_id']}"
         )
 
-    return RedirectResponse(
-        url=f"https://alasdia.com/dashboard.html?token={result['token']}&workspace_id={result['workspace_id']}"
+    # Plus aucun jeton dans l'URL de redirection (ni dans les logs du
+    # navigateur/serveur) : le cookie de session est posé directement sur
+    # cette RedirectResponse, avant de renvoyer vers le dashboard.
+    redirect = RedirectResponse(
+        url=f"https://alasdia.com/dashboard.html?workspace_id={result['workspace_id']}"
     )
+    issue_new_session(db, redirect, result["user"])
+    return redirect
 
 
 @router.post("/auth/google/exchange")
 def google_exchange(
     payload: GoogleCodeExchange,
+    response: Response,
     db: Session = Depends(get_db)
 ):
     """Variante JSON du callback ci-dessus, pour le widget GIS
@@ -409,9 +412,8 @@ def google_exchange(
             "pre_auth_token": result["pre_auth_token"],
         }
 
+    issue_new_session(db, response, result["user"])
     return {
-        "access_token": result["token"],
-        "token_type": "bearer",
         "email": result["email"],
         "workspace_id": result["workspace_id"],
         "account_id": result["account_id"],
@@ -1095,13 +1097,13 @@ def accept_invite(
 
         db.commit()
 
-        jwt_token = create_access_token({
-            "sub": existing_user.email
-        })
-
-        return RedirectResponse(
-            url=f"https://alasdia.com/multi-users.html?token={jwt_token}&workspace_id={invite.workspace_id}"
+        # Plus de jeton dans l'URL de redirection : cookie de session posé
+        # directement ici, comme pour /auth/google/callback.
+        redirect = RedirectResponse(
+            url=f"https://alasdia.com/multi-users.html?workspace_id={invite.workspace_id}"
         )
+        issue_new_session(db, redirect, existing_user)
+        return redirect
     # ==================================================
     # CAS 2 → NOUVEL UTILISATEUR
     # ==================================================

@@ -19,17 +19,21 @@ import { mount as mountLienDetail } from "./views/lienDetail.js";
 
 const WORKSPACE_PLACEHOLDER = "me";
 
-// Atterrissage depuis le callback OAuth Google (backend/routes/users.py:346,
-// redirige vers dashboard.html?token=...&workspace_id=...). Traité une seule
-// fois, avant le démarrage du router, puis l'URL est réécrite au format
-// applicatif propre.
+// Atterrissage depuis une redirection serveur qui vient d'établir une
+// session — callback OAuth Google (backend/routes/users.py) ou acceptation
+// d'invitation (/invites/accept) — via un cookie HttpOnly posé directement
+// sur la redirection : plus aucun jeton dans l'URL (migration cookies de
+// session, voir audit). Le seul paramètre `workspace_id` suffit à détecter
+// cet atterrissage : aucune navigation normale de la SPA ne passe par une
+// query string sur dashboard.html (le schéma applicatif utilise
+// /dash/workspace/{id}/...). Traité une seule fois, avant le démarrage du
+// router, puis l'URL est réécrite au format applicatif propre.
 function consumeOAuthBootstrap() {
   const params = new URLSearchParams(window.location.search);
-  const urlToken = params.get("token");
-  if (!urlToken) return;
   const workspaceId = params.get("workspace_id");
+  if (!workspaceId) return;
   localStorage.clear();
-  setSession({ token: urlToken, workspaceId: workspaceId || undefined });
+  setSession({ workspaceId });
 }
 
 // Normalise l'URL d'entrée vers le schéma applicatif /dash/workspace/{id}/...

@@ -168,6 +168,7 @@ async function login() {
     formData.append('password', password);
     const response = await fetch('https://api.alasdia.com/login', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: formData
     });
@@ -187,8 +188,12 @@ async function login() {
       setTimeout(() => document.getElementById('twofa-code').focus(), 100);
       return;
     }
-    if (data.access_token && data.account_id) {
-      finalizeLogin(data.access_token, email, data.workspace_id, data.account_id);
+    // Plus de jeton dans le corps de la réponse : la session vit dans des
+    // cookies HttpOnly posés par le serveur (Set-Cookie sur cette même
+    // réponse). response.ok + account_id valident juste que la connexion
+    // a réussi.
+    if (response.ok && data.account_id) {
+      finalizeLogin(email, data.workspace_id, data.account_id);
     } else {
       showToast('error', 'ACCÈS REFUSÉ', 'Email ou mot de passe incorrect. Vérifiez vos identifiants.');
       btn.innerHTML = 'Se connecter →';
@@ -212,6 +217,7 @@ async function verifyTwoFaCode() {
   try {
     const response = await fetch('https://api.alasdia.com/auth/2fa/verify-login', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: twoFaEmail, code, pre_auth_token: twoFaPreAuthToken })
     });
@@ -219,7 +225,7 @@ async function verifyTwoFaCode() {
     if (!response.ok) {
       throw new Error(data.detail || 'Code incorrect');
     }
-    finalizeLogin(data.access_token, twoFaEmail, data.workspace_id, null);
+    finalizeLogin(twoFaEmail, data.workspace_id, data.account_id);
   } catch (error) {
     showToast('error', 'CODE INCORRECT', error.message);
     btn.innerHTML = 'Vérifier →';
@@ -228,11 +234,15 @@ async function verifyTwoFaCode() {
     document.getElementById('twofa-code').focus();
   }
 }
-function finalizeLogin(token, email, workspaceId, accountId) {
+function finalizeLogin(email, workspaceId, accountId) {
   const btn = document.getElementById('btnLogin');
-  localStorage.setItem('token', token);
+  // Le cookie de session (HttpOnly) a déjà été posé par la réponse du
+  // serveur : on ne garde en localStorage que l'indicateur local "une
+  // session a été établie" (lu par state.js:isAuthenticated, jamais la
+  // source de vérité) + des informations non sensibles.
+  localStorage.setItem('has_session', '1');
   localStorage.setItem('email', email);
-  localStorage.setItem('workspace_id', workspaceId);
+  if (workspaceId) localStorage.setItem('workspace_id', workspaceId);
   btn.classList.add('success');
   btn.innerHTML = `
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:6px"><path d="M20 6L9 17l-5-5" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -309,6 +319,7 @@ async function handleGoogleCodeResponse(response) {
   try {
     const res = await fetch('https://api.alasdia.com/auth/google/exchange', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code: response.code, redirect_uri: window.location.origin }),
     });
@@ -338,7 +349,7 @@ async function handleGoogleCodeResponse(response) {
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:6px"><path d="M20 6L9 17l-5-5" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Connecté — Redirection...
     `;
-    finalizeLogin(data.access_token, data.email, data.workspace_id, data.account_id);
+    finalizeLogin(data.email, data.workspace_id, data.account_id);
   } catch (err) {
     resetGoogleBtn();
     showToast('error', 'ERREUR GOOGLE', err.message || 'Impossible de terminer la connexion avec Google.');
