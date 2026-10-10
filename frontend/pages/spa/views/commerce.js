@@ -831,29 +831,17 @@ async function renderClients(container) {
     ===================================================== */
 
     form.addEventListener("submit", async (event) => {
-
         event.preventDefault();
-
-        const name =
-            container
-                .querySelector("#client-name")
-                .value
-                .trim();
-
+        const firstName =
+          container.querySelector("#client-first-name").value.trim();
+        const lastName =
+          container.querySelector("#client-last-name").value.trim();
+        const name = `${firstName} ${lastName}`.trim();
         const email =
-            container
-                .querySelector("#client-email")
-                .value
-                .trim();
-
+          container.querySelector("#client-email").value.trim();
         const phone =
-            container
-                .querySelector("#client-phone")
-                .value
-                .trim();
-
+          container.querySelector("#client-phone").value.trim();
         try {
-
             const response = await apiFetch(
                 "/stripe/connect/customers",
                 {
@@ -865,9 +853,7 @@ async function renderClients(container) {
                     }
                 }
             );
-
             const data = await response.json();
-
             if (!response.ok) {
                 throw new Error(
                     data.detail ||
