@@ -287,7 +287,13 @@ class RefreshToken(Base):
     de connexion : à la rotation, l'ancien jeton est révoqué et un enfant est
     créé dans la même famille ; en cas de réutilisation d'un jeton déjà
     révoqué (vol potentiel), toute la famille est révoquée d'un coup
-    (voir backend/services/refresh_token_service.py)."""
+    (voir backend/services/refresh_token_service.py).
+
+    `session_started_at` fixe la limite de session ABSOLUE (30 jours,
+    ABSOLUTE_SESSION_MAX_DAYS) : posé une seule fois à la connexion initiale,
+    puis copié tel quel sur chaque jeton enfant à la rotation — jamais
+    réinitialisé. C'est ce qui empêche la rotation de repousser
+    indéfiniment la session."""
     __tablename__ = "refresh_tokens"
 
     id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("rtk"))
@@ -298,6 +304,7 @@ class RefreshToken(Base):
     expires_at = Column(DateTime(timezone=True), nullable=False)
     revoked_at = Column(DateTime(timezone=True), nullable=True)
     replaced_by = Column(String, nullable=True)
+    session_started_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("idx_refresh_token_hash", "token_hash"),

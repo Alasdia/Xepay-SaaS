@@ -29,6 +29,13 @@ REFRESH_TOKEN_EXPIRE_DAYS = 14
 # concurrentes (cf. audit) plutôt que comme une tentative de vol — au-delà,
 # toute la famille de jetons est révoquée.
 REFRESH_TOKEN_REUSE_GRACE_SECONDS = 10
+# Durée de vie ABSOLUE d'une session, dès la première connexion (champ
+# RefreshToken.session_started_at, propagé tel quel à chaque rotation —
+# jamais réinitialisé). Indépendante de REFRESH_TOKEN_EXPIRE_DAYS : même si
+# l'utilisateur reste actif et que chaque rotation individuelle reste dans
+# sa fenêtre de 14 jours, aucune rotation n'est acceptée après ce délai —
+# reconnexion complète obligatoire.
+ABSOLUTE_SESSION_MAX_DAYS = 30
 
 # Noms des cookies de session posés par /login, /auth/2fa/verify-login,
 # /auth/google/callback, /auth/google/exchange et /refresh.

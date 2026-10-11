@@ -7,7 +7,11 @@ from sqlalchemy.pool import StaticPool
 
 from backend.database import Base
 from backend.models import UserDB, RefreshToken
-from backend.security import hash_refresh_token, REFRESH_TOKEN_REUSE_GRACE_SECONDS
+from backend.security import (
+    hash_refresh_token,
+    REFRESH_TOKEN_REUSE_GRACE_SECONDS,
+    ABSOLUTE_SESSION_MAX_DAYS,
+)
 from backend.services.refresh_token_service import (
     issue_refresh_token,
     rotate_refresh_token,
@@ -166,6 +170,52 @@ class RefreshTokenRotationTests(unittest.TestCase):
         # grâce ne s'applique qu'aux courses de ROTATION, jamais à un
         # logout explicite.
         self.assertIsNone(rotate_refresh_token(self.db, raw2))
+
+    def test_absolute_session_limit_blocks_rotation_even_if_token_itself_valid(self):
+        """Limite de session absolue (30 jours) : une fois dépassée, la
+        rotation échoue même si le jeton présenté n'a, par ailleurs, ni été
+        révoqué ni expiré individuellement — et toute la famille est
+        révoquée (reconnexion complète obligatoire)."""
+        raw1 = issue_refresh_token(self.db, self.user.id)
+        row1 = self.db.query(RefreshToken).filter(
+            RefreshToken.token_hash == hash_refresh_token(raw1)
+        ).first()
+        row1.session_started_at = datetime.now(timezone.utc) - timedelta(
+            days=ABSOLUTE_SESSION_MAX_DAYS + 1
+        )
+        self.db.commit()
+
+        self.assertIsNone(rotate_refresh_token(self.db, raw1))
+
+        self.db.refresh(row1)
+        self.assertIsNotNone(row1.revoked_at)
+
+    def test_rotation_never_pushes_back_the_absolute_session_limit(self):
+        """session_started_at doit être propagé TEL QUEL à chaque enfant,
+        sur plusieurs rotations successives — jamais réinitialisé à
+        l'instant de la rotation — sinon un utilisateur actif pourrait
+        prolonger sa session indéfiniment en se rafraîchissant souvent."""
+        raw = issue_refresh_token(self.db, self.user.id)
+        row = self.db.query(RefreshToken).filter(
+            RefreshToken.token_hash == hash_refresh_token(raw)
+        ).first()
+        original_start = row.session_started_at
+
+        for _ in range(3):
+            raw, _ = rotate_refresh_token(self.db, raw)
+            row = self.db.query(RefreshToken).filter(
+                RefreshToken.token_hash == hash_refresh_token(raw)
+            ).first()
+            self.assertEqual(row.session_started_at, original_start)
+
+        # Puisque session_started_at n'a jamais bougé malgré 3 rotations, le
+        # reculer une seule fois (comme dans le test précédent) suffit
+        # toujours à bloquer la 4e rotation.
+        row.session_started_at = datetime.now(timezone.utc) - timedelta(
+            days=ABSOLUTE_SESSION_MAX_DAYS + 1
+        )
+        self.db.commit()
+        self.assertIsNone(rotate_refresh_token(self.db, raw))
 
 
 if __name__ == "__main__":
