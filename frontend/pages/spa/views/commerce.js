@@ -1,6 +1,7 @@
 import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
+import { initDetailsDrawer } from "../shared/detailsDrawer.js";
 
 export async function mount(container, params = {}) {
 
@@ -512,6 +513,13 @@ async function renderClients(container) {
 
     const detailsModal =
         container.querySelector("#customer-details-modal");
+
+    // Détails client -> tiroir latéral droit (voir shared/detailsDrawer.js) ;
+    // la logique d'ouverture/fermeture (classList "open") reste inchangée.
+    initDetailsDrawer(
+        detailsModal,
+        detailsModal.querySelector(".customer-modal")
+    );
 
     const form =
         container.querySelector("#create-client-form");
@@ -1249,6 +1257,13 @@ async function renderProducts(container) {
 
     const detailsModal =
         container.querySelector("#product-details-modal");
+
+    // Détails produit -> tiroir latéral droit (voir shared/detailsDrawer.js) ;
+    // la logique d'ouverture/fermeture (classList "open") reste inchangée.
+    initDetailsDrawer(
+        detailsModal,
+        detailsModal.querySelector(".customer-modal")
+    );
 
     const form =
         container.querySelector("#create-product-form");

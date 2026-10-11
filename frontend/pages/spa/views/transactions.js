@@ -8,6 +8,7 @@ import { showUpgradeModal } from "../shared/modalUpgrade.js";
 import { navigate } from "../core/router.js";
 import { getWorkspaceId } from "../core/state.js";
 import { renderCommerceKpis } from "./commerce.js";
+import { initDetailsDrawer } from "../shared/detailsDrawer.js";
 
 const STRIPE_PUBLISHABLE_KEY =
   "pk_test_51ULZVC0I86XW25IrioDmxFoRvLJhP3QC6wJ11Qil9UmVrVtiYxxnY9gyxoM7X6VPxJaKtUGF8K1j9q1dsnUU2uhB0057G12ETb";
@@ -217,6 +218,14 @@ export async function mount(container, params = {}) {
   container.innerHTML = TEMPLATE;
   document.body.insertAdjacentHTML("beforeend", STRIPE_REPORT_MODAL_HTML);
   document.body.insertAdjacentHTML("beforeend", WITHDRAW_MODAL_HTML);
+
+  // Rapport de solde Stripe : consultation de détails -> tiroir latéral
+  // droit (voir shared/detailsDrawer.js). #withdrawModal (création d'un
+  // retrait) n'est volontairement pas concerné.
+  initDetailsDrawer(
+    document.getElementById("stripeReportModal"),
+    document.querySelector("#stripeReportModal .modal-content")
+  );
 
   // Pages dédiées (/transactions/paiements|retraits|transferts, voir
   // app.js) : type verrouillé dès le montage, pas de bascule entre
