@@ -319,8 +319,12 @@ def list_merchant_subscriptions(
             detail="Compte Stripe introuvable"
         )
     try:
+        # status="all" : par défaut, Stripe exclut les abonnements annulés
+        # de la liste — nécessaire ici pour que les KPI "Annulés"/"Tout" de
+        # la sous-vue Abonnements comptent des valeurs réelles.
         subscriptions = stripe.Subscription.list(
             limit=100,
+            status="all",
             stripe_account=profile.stripe_account_id,
         )
         return {
@@ -508,6 +512,10 @@ def list_merchant_customers(
                 "currency": customer.currency,
                 "description": customer.description,
                 "delinquent": customer.delinquent,
+                # Positif = le client doit ce montant sur sa prochaine
+                # facture ("solde restant") ; négatif = crédit. Utilisé par
+                # le KPI "Soldes restants" de la sous-vue Clients.
+                "balance": customer.balance,
 
                 "address": customer.address,
                 "shipping": customer.shipping,

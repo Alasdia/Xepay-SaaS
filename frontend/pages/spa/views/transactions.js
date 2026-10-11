@@ -7,6 +7,7 @@ import { showToast } from "../shared/toast.js";
 import { showUpgradeModal } from "../shared/modalUpgrade.js";
 import { navigate } from "../core/router.js";
 import { getWorkspaceId } from "../core/state.js";
+import { renderCommerceKpis } from "./commerce.js";
 
 const STRIPE_PUBLISHABLE_KEY =
   "pk_test_51ULZVC0I86XW25IrioDmxFoRvLJhP3QC6wJ11Qil9UmVrVtiYxxnY9gyxoM7X6VPxJaKtUGF8K1j9q1dsnUU2uhB0057G12ETb";
@@ -72,6 +73,10 @@ const TEMPLATE = `
           </div>
         </div>
       </div>
+      <!-- KPI cliquables Paiements (visibles uniquement sur l'onglet
+           Paiements, voir updatePaymentsViewMode) : zone indépendante du
+           tableau, même style/logique que "Moyens de paiement". -->
+      <div id="payments-kpi-summary" style="display:none;"></div>
       <div class="toolbar">
         <div class="filter-row-1">
           <div class="search-wrap"><i class="bi bi-search"></i><input type="text" id="search-input" class="search-input" placeholder="Rechercher par client, email..."></div>
@@ -226,6 +231,11 @@ export async function mount(container, params = {}) {
   let hasNextPage = true;
   let pageNumber = 1;
   let currentType = fixedType || "";
+  // Statut sélectionné via les KPI Paiements (Tous/Réussis/Remboursés/
+  // Contestés/En échec/Non capturés) — prioritaire sur le select
+  // #filter-statut/les chips existants quand non vide. "" = pas de filtre
+  // KPI actif (comportement existant inchangé).
+  let kpiPaymentStatus = "";
   let statusChart = null;
   let lockedCountdownIntervals = [];
   const boundListeners = [];
@@ -581,10 +591,83 @@ export async function mount(container, params = {}) {
     container.querySelector(".table-wrap:not(#detail-view)").style.display = "";
     document.getElementById("detail-view").style.display = "none";
   }
+  // Filtre KPI -> statut(s) réel(s) envoyé(s) à /activity (voir
+  // chargerTransactions). "" = pas de filtre (Tous). "Contestés" et "Non
+  // capturés" n'ont pas d'équivalent dans Payment.status aujourd'hui (seul
+  // Stripe le sait, via charge.disputed/charge.captured) : leur compteur
+  // vaut donc 0 par construction, ce n'est pas un bug d'affichage.
+  const PAYMENT_KPI_STATUS_MAP = {
+    all: "",
+    paid: "paid",
+    refunded: "refunded,partially_refunded",
+    disputed: "disputed",
+    expired: "expired",
+    uncaptured: "uncaptured",
+  };
+
+  async function loadPaymentsKpiSummary() {
+    const summaryEl = document.getElementById("payments-kpi-summary");
+    if (!summaryEl) return;
+    try {
+      // /activity charge déjà TOUT en mémoire côté backend avant de
+      // paginer (cf. routes/payments.py:get_activity) : demander une limite
+      // large ici ne coûte rien de plus et donne des compteurs exacts, sans
+      // toucher à la pagination normale du tableau.
+      const res = await apiFetch("/activity?type=payment&limit=100000");
+      const data = await res.json();
+      if (!res.ok) throw new Error("Impossible de récupérer les paiements");
+      const allPayments = Array.isArray(data) ? data : [];
+
+      const countFor = (statusValue) => {
+        if (!statusValue) return allPayments.length;
+        const wanted = statusValue.split(",");
+        return allPayments.filter((p) => wanted.includes(p.status)).length;
+      };
+
+      const activeFilter =
+        Object.keys(PAYMENT_KPI_STATUS_MAP).find(
+          (key) => PAYMENT_KPI_STATUS_MAP[key] === kpiPaymentStatus
+        ) || "all";
+
+      renderCommerceKpis(
+        summaryEl,
+        [
+          { filter: "all", label: "Tous", count: countFor(PAYMENT_KPI_STATUS_MAP.all) },
+          { filter: "paid", label: "Réussis", count: countFor(PAYMENT_KPI_STATUS_MAP.paid) },
+          { filter: "refunded", label: "Remboursés", count: countFor(PAYMENT_KPI_STATUS_MAP.refunded) },
+          { filter: "disputed", label: "Contestés", count: countFor(PAYMENT_KPI_STATUS_MAP.disputed) },
+          { filter: "expired", label: "En échec", count: countFor(PAYMENT_KPI_STATUS_MAP.expired) },
+          { filter: "uncaptured", label: "Non capturés", count: countFor(PAYMENT_KPI_STATUS_MAP.uncaptured) },
+        ],
+        activeFilter,
+        (filter) => {
+          kpiPaymentStatus = PAYMENT_KPI_STATUS_MAP[filter] || "";
+          offset = 0;
+          pageNumber = 1;
+          hasNextPage = true;
+          transactions = [];
+          updatePagination();
+          chargerTransactions();
+        }
+      );
+    } catch (err) {
+      console.error("Erreur chargement KPI paiements :", err);
+    }
+  }
+
   function updatePaymentsViewMode() {
     const isPayments = currentType === "payment";
     const extraFiltersWrap = document.getElementById("pay-more-filters-wrap");
     if (extraFiltersWrap) extraFiltersWrap.style.display = isPayments ? "block" : "none";
+    const kpiSummaryEl = document.getElementById("payments-kpi-summary");
+    if (kpiSummaryEl) {
+      kpiSummaryEl.style.display = isPayments ? "block" : "none";
+      if (isPayments) {
+        loadPaymentsKpiSummary();
+      } else {
+        kpiPaymentStatus = "";
+      }
+    }
   }
   async function chargerTransactions() {
     if (isLoading) return;
@@ -595,7 +678,10 @@ export async function mount(container, params = {}) {
       const statut = document.getElementById("filter-statut").value;
       const params = new URLSearchParams({ offset, limit });
       if (currentType) params.append("type", currentType);
-      if (statut) params.append("status", statut);
+      // Le filtre KPI Paiements (voir kpiPaymentStatus) prend le pas sur le
+      // select/les chips de statut existants quand il est actif.
+      const effectiveStatus = kpiPaymentStatus || statut;
+      if (effectiveStatus) params.append("status", effectiveStatus);
       // Filtres avancés : uniquement pertinents et envoyés sur l'onglet
       // Paiements (jamais sur Retraits/Transferts/Tous).
       if (currentType === "payment") {
@@ -686,6 +772,9 @@ export async function mount(container, params = {}) {
       transactions = [];
       document.getElementById("tbody-transactions").innerHTML = "";
       await chargerTransactions();
+      // Le remboursement change le statut du paiement (paid -> refunded) :
+      // les compteurs KPI doivent refléter ce changement immédiatement.
+      if (currentType === "payment") await loadPaymentsKpiSummary();
     } catch (error) {
       console.error("Erreur remboursement :", error);
       showToast("Erreur de connexion au serveur", "error");
@@ -701,6 +790,7 @@ export async function mount(container, params = {}) {
       btn.disabled = true;
       await chargerTransactions();
       await loadStats();
+      if (currentType === "payment") await loadPaymentsKpiSummary();
     } catch (err) {
       console.error(err);
     } finally {

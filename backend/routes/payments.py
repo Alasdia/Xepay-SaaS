@@ -125,7 +125,15 @@ def get_activity(
 
     if type in (None, "payment"):
         q = db.query(Payment).filter(Payment.user_id == owner_id)
-        if status: q = q.filter(Payment.status == status)
+        if status:
+            # Liste de statuts séparés par des virgules (ex: KPI "Remboursés"
+            # = refunded,partially_refunded) : comportement à un seul statut
+            # inchangé (toujours une égalité exacte).
+            statuses = [s.strip() for s in status.split(",") if s.strip()]
+            q = q.filter(
+                Payment.status.in_(statuses) if len(statuses) > 1
+                else Payment.status == status
+            )
         # Filtres propres à la page Paiements (Montant/Devise/Moyen de
         # paiement/Date), jamais envoyés par les vues Retraits/Transferts.
         if min_amount is not None: q = q.filter(Payment.amount >= min_amount)

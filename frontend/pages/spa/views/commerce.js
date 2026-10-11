@@ -48,6 +48,106 @@ export async function mount(container, params = {}) {
 }
 
 /* =========================================================
+   KPI CLIQUABLES — composant partagé
+   (style et logique de filtrage repris de "Moyens de paiement" :
+   .payment-method-kpi / .payment-method-filters, voir renderPaymentMethods
+   plus bas — classes génériques ici pour être réutilisées par Clients,
+   Produits, Abonnements, Factures et Paiements sans dupliquer le CSS
+   4 fois.)
+========================================================= */
+
+function ensureCommerceKpiStyles() {
+
+    if (document.querySelector("#commerce-kpi-style")) return;
+
+    const style = document.createElement("style");
+    style.id = "commerce-kpi-style";
+    style.textContent = `
+        .commerce-kpi-filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .commerce-kpi {
+            width: 100%;
+            min-height: 58px;
+            padding: 9px 13px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #ffffff;
+            text-align: left;
+            cursor: pointer;
+            transition:
+                border-color .15s ease,
+                background .15s ease,
+                box-shadow .15s ease;
+        }
+        .commerce-kpi:hover {
+            border-color: #cbd5e1;
+            background: #fafafa;
+        }
+        .commerce-kpi.active {
+            border-color: #94a3b8;
+            background: #f8fafc;
+            box-shadow: 0 0 0 1px #94a3b8;
+        }
+        .commerce-kpi-label {
+            display: block;
+            font-size: 12px;
+            line-height: 16px;
+            color: #6b7280;
+            margin-bottom: 2px;
+        }
+        .commerce-kpi-value {
+            display: block;
+            font-size: 19px;
+            line-height: 21px;
+            font-weight: 600;
+            color: #111827;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+/**
+ * Affiche une rangée de KPI cliquables dans `targetEl` et rebranche les
+ * écouteurs de clic à chaque appel (targetEl.innerHTML est régénéré).
+ * `kpis` : [{ filter, label, count }]. `onSelect(filter)` est appelé au
+ * clic — à charge de l'appelant de ré-afficher la liste filtrée (le KPI ne
+ * touche jamais lui-même au tableau).
+ */
+export function renderCommerceKpis(targetEl, kpis, activeFilter, onSelect) {
+
+    ensureCommerceKpiStyles();
+
+    targetEl.innerHTML = `
+        <div class="commerce-kpi-filters">
+            ${kpis.map(kpi => `
+                <button
+                    type="button"
+                    class="commerce-kpi${kpi.filter === activeFilter ? " active" : ""}"
+                    data-filter="${kpi.filter}"
+                >
+                    <span class="commerce-kpi-label">${kpi.label}</span>
+                    <strong class="commerce-kpi-value">${kpi.count}</strong>
+                </button>
+            `).join("")}
+        </div>
+    `;
+
+    targetEl.querySelectorAll(".commerce-kpi").forEach(button => {
+        button.addEventListener("click", () => {
+            targetEl.querySelectorAll(".commerce-kpi").forEach(item => {
+                item.classList.remove("active");
+            });
+            button.classList.add("active");
+            onSelect(button.dataset.filter);
+        });
+    });
+}
+
+/* =========================================================
    CLIENTS
 ========================================================= */
 async function renderClients(container) {
@@ -67,6 +167,9 @@ async function renderClients(container) {
                 + Créer un client
             </button>
         </div>
+
+        <!-- KPI : ZONE INDÉPENDANTE DU TABLEAU -->
+        <div id="clients-summary"></div>
 
         <div id="clients-list"></div>
 
@@ -486,16 +589,24 @@ async function renderClients(container) {
 
             const customers = data.data || [];
 
-            if (!customers.length) {
+            const summaryEl = container.querySelector("#clients-summary");
 
-                list.innerHTML = `
-                    <div class="commerce-card">
-                        <p>Aucun client pour le moment.</p>
-                    </div>
-                `;
+            function renderTable(filter = "all") {
 
-                return;
-            }
+                const filteredCustomers = filter === "balance"
+                    ? customers.filter(c => (c.balance ?? 0) > 0)
+                    : customers;
+
+                if (!filteredCustomers.length) {
+
+                    list.innerHTML = `
+                        <div class="commerce-card">
+                            <p>Aucun client dans cette catégorie.</p>
+                        </div>
+                    `;
+
+                    return;
+                }
 
             list.innerHTML = `
                 <div class="table-wrap">
@@ -504,7 +615,7 @@ async function renderClients(container) {
                         <div>
                             <div class="table-title">Clients</div>
                             <div class="page-subtitle">
-                                ${customers.length} client(s)
+                                ${filteredCustomers.length} client(s)
                             </div>
                         </div>
                     </div>
@@ -534,7 +645,7 @@ async function renderClients(container) {
 
                             <tbody>
 
-                                ${customers.map(customer => `
+                                ${filteredCustomers.map(customer => `
 
                                     <tr>
 
@@ -667,6 +778,28 @@ async function renderClients(container) {
                         showCustomerDetails(customer);
                     });
                 });
+
+            }
+
+            /* =================================================
+               KPI — Tous / Soldes restants
+            ================================================= */
+
+            renderCommerceKpis(
+                summaryEl,
+                [
+                    { filter: "all", label: "Tous", count: customers.length },
+                    {
+                        filter: "balance",
+                        label: "Soldes restants",
+                        count: customers.filter(c => (c.balance ?? 0) > 0).length
+                    },
+                ],
+                "all",
+                renderTable
+            );
+
+            renderTable("all");
 
         } catch (error) {
 
@@ -910,6 +1043,9 @@ async function renderProducts(container) {
             </button>
 
         </div>
+
+        <!-- KPI : ZONE INDÉPENDANTE DU TABLEAU -->
+        <div id="products-summary"></div>
 
         <div id="products-list"></div>
 
@@ -1245,19 +1381,29 @@ async function renderProducts(container) {
             );
 
 
-            if (!products.length) {
+            const summaryEl = container.querySelector("#products-summary");
 
-                list.innerHTML = `
-                    <div class="commerce-card">
-                        <p>
-                            Aucun produit pour le moment.
-                        </p>
-                    </div>
-                `;
+            function renderTable(filter = "all") {
 
-                return;
+                const filteredProducts = filter === "active"
+                    ? products.filter(p => p.active)
+                    : filter === "archived"
+                        ? products.filter(p => !p.active)
+                        : products;
 
-            }
+                if (!filteredProducts.length) {
+
+                    list.innerHTML = `
+                        <div class="commerce-card">
+                            <p>
+                                Aucun produit dans cette catégorie.
+                            </p>
+                        </div>
+                    `;
+
+                    return;
+
+                }
 
 
             /* =================================================
@@ -1276,7 +1422,7 @@ async function renderProducts(container) {
                             </div>
 
                             <div class="page-subtitle">
-                                ${products.length} produit(s)
+                                ${filteredProducts.length} produit(s)
                             </div>
                         </div>
                     </div>
@@ -1297,7 +1443,7 @@ async function renderProducts(container) {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${products.map(product => {
+                                ${filteredProducts.map(product => {
                                     const prices =
                                         product.prices || [];
                                     const price =
@@ -1487,6 +1633,32 @@ async function renderProducts(container) {
 
                 });
 
+            }
+
+            /* =================================================
+               KPI — Tout / Actifs / Archivés
+            ================================================= */
+
+            renderCommerceKpis(
+                summaryEl,
+                [
+                    { filter: "all", label: "Tout", count: products.length },
+                    {
+                        filter: "active",
+                        label: "Actifs",
+                        count: products.filter(p => p.active).length
+                    },
+                    {
+                        filter: "archived",
+                        label: "Archivés",
+                        count: products.filter(p => !p.active).length
+                    },
+                ],
+                "all",
+                renderTable
+            );
+
+            renderTable("all");
 
         } catch (error) {
 
@@ -1944,6 +2116,9 @@ async function renderSubscriptions(container) {
             </button>
 
         </div>
+
+        <!-- KPI : ZONE INDÉPENDANTE DU TABLEAU -->
+        <div id="subscriptions-summary"></div>
 
         <div id="subscriptions-list"></div>
 
@@ -2433,21 +2608,45 @@ async function renderSubscriptions(container) {
             );
 
 
-            if (!subscriptions.length) {
+            const summaryEl = container.querySelector("#subscriptions-summary");
 
-                list.innerHTML = `
-                    <div class="commerce-card">
-
-                        <p>
-                            Aucun abonnement pour le moment.
-                        </p>
-
-                    </div>
-                `;
-
-                return;
-
+            // Mapping des 6 KPI sur les statuts Stripe réels (status="all"
+            // côté backend, sinon les annulés ne seraient même pas
+            // remontés) : Planifiés = essai (trialing), En attente =
+            // paiement initial pas encore confirmé (incomplete), Fictifs =
+            // jamais finalisés et expirés (incomplete_expired).
+            function matchesSubscriptionFilter(subscription, filter) {
+                switch (filter) {
+                    case "active": return subscription.status === "active";
+                    case "trialing": return subscription.status === "trialing";
+                    case "incomplete": return subscription.status === "incomplete";
+                    case "canceled": return subscription.status === "canceled";
+                    case "incomplete_expired": return subscription.status === "incomplete_expired";
+                    default: return true;
+                }
             }
+
+            function renderTable(filter = "all") {
+
+                const filteredSubscriptions = subscriptions.filter(
+                    subscription => matchesSubscriptionFilter(subscription, filter)
+                );
+
+                if (!filteredSubscriptions.length) {
+
+                    list.innerHTML = `
+                        <div class="commerce-card">
+
+                            <p>
+                                Aucun abonnement dans cette catégorie.
+                            </p>
+
+                        </div>
+                    `;
+
+                    return;
+
+                }
 
 
             list.innerHTML = `
@@ -2466,7 +2665,7 @@ async function renderSubscriptions(container) {
 
                             <div class="page-subtitle">
 
-                                ${subscriptions.length}
+                                ${filteredSubscriptions.length}
                                 abonnement(s)
 
                             </div>
@@ -2509,7 +2708,7 @@ async function renderSubscriptions(container) {
 
                             <tbody>
 
-                                ${subscriptions.map(subscription => {
+                                ${filteredSubscriptions.map(subscription => {
 
                                     const item =
                                         subscription.items?.data?.[0];
@@ -2780,6 +2979,47 @@ async function renderSubscriptions(container) {
 
             `;
 
+            }
+
+            /* =================================================
+               KPI — Actifs / Planifiés / En attente / Annulés / Fictifs / Tout
+            ================================================= */
+
+            renderCommerceKpis(
+                summaryEl,
+                [
+                    {
+                        filter: "active",
+                        label: "Actifs",
+                        count: subscriptions.filter(s => matchesSubscriptionFilter(s, "active")).length
+                    },
+                    {
+                        filter: "trialing",
+                        label: "Planifiés",
+                        count: subscriptions.filter(s => matchesSubscriptionFilter(s, "trialing")).length
+                    },
+                    {
+                        filter: "incomplete",
+                        label: "En attente",
+                        count: subscriptions.filter(s => matchesSubscriptionFilter(s, "incomplete")).length
+                    },
+                    {
+                        filter: "canceled",
+                        label: "Annulés",
+                        count: subscriptions.filter(s => matchesSubscriptionFilter(s, "canceled")).length
+                    },
+                    {
+                        filter: "incomplete_expired",
+                        label: "Fictifs",
+                        count: subscriptions.filter(s => matchesSubscriptionFilter(s, "incomplete_expired")).length
+                    },
+                    { filter: "all", label: "Tout", count: subscriptions.length },
+                ],
+                "all",
+                renderTable
+            );
+
+            renderTable("all");
 
         } catch (error) {
 
@@ -3088,6 +3328,8 @@ async function renderInvoices(container) {
                 + Créer une facture
             </button>
         </div>
+        <!-- KPI : ZONE INDÉPENDANTE DU TABLEAU -->
+        <div id="invoices-summary"></div>
         <div id="invoices-list"></div>
         <!-- MODAL CRÉATION FACTURE -->
         <div
@@ -3464,16 +3706,43 @@ async function renderInvoices(container) {
             }
             const invoices =
                 data.data || [];
-            if (!invoices.length) {
-                list.innerHTML = `
-                    <div class="commerce-card">
-                        <p>
-                            Aucune facture pour le moment.
-                        </p>
-                    </div>
-                `;
-                return;
+
+            const summaryEl = container.querySelector("#invoices-summary");
+
+            function isInvoiceLate(invoice) {
+                return (
+                    invoice.status === "open" &&
+                    !!invoice.due_date &&
+                    (invoice.due_date * 1000) < Date.now()
+                );
             }
+
+            function matchesInvoiceFilter(invoice, filter) {
+                switch (filter) {
+                    case "draft": return invoice.status === "draft";
+                    case "open": return invoice.status === "open" && !isInvoiceLate(invoice);
+                    case "late": return isInvoiceLate(invoice);
+                    case "paid": return invoice.status === "paid";
+                    default: return true;
+                }
+            }
+
+            function renderTable(filter = "all") {
+
+                const filteredInvoices = invoices.filter(
+                    invoice => matchesInvoiceFilter(invoice, filter)
+                );
+
+                if (!filteredInvoices.length) {
+                    list.innerHTML = `
+                        <div class="commerce-card">
+                            <p>
+                                Aucune facture dans cette catégorie.
+                            </p>
+                        </div>
+                    `;
+                    return;
+                }
             /* =================================================
                TABLEAU
             ================================================= */
@@ -3493,7 +3762,7 @@ async function renderInvoices(container) {
                             </div>
 
                             <div class="page-subtitle">
-                                ${invoices.length}
+                                ${filteredInvoices.length}
                                 facture(s)
                             </div>
 
@@ -3535,7 +3804,7 @@ async function renderInvoices(container) {
 
                             <tbody>
 
-                                ${invoices.map(invoice => {
+                                ${filteredInvoices.map(invoice => {
 
                                     const amountDue =
                                         invoice.amount_due != null
@@ -3769,6 +4038,42 @@ async function renderInvoices(container) {
 
             `;
 
+            }
+
+            /* =================================================
+               KPI — Toutes / Brouillons / À encaisser / En retard / Payées
+            ================================================= */
+
+            renderCommerceKpis(
+                summaryEl,
+                [
+                    { filter: "all", label: "Toutes les factures", count: invoices.length },
+                    {
+                        filter: "draft",
+                        label: "Brouillons",
+                        count: invoices.filter(i => matchesInvoiceFilter(i, "draft")).length
+                    },
+                    {
+                        filter: "open",
+                        label: "À encaisser",
+                        count: invoices.filter(i => matchesInvoiceFilter(i, "open")).length
+                    },
+                    {
+                        filter: "late",
+                        label: "En retard de paiement",
+                        count: invoices.filter(i => matchesInvoiceFilter(i, "late")).length
+                    },
+                    {
+                        filter: "paid",
+                        label: "Payées",
+                        count: invoices.filter(i => matchesInvoiceFilter(i, "paid")).length
+                    },
+                ],
+                "all",
+                renderTable
+            );
+
+            renderTable("all");
 
         } catch (error) {
 
