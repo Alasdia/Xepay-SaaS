@@ -13,13 +13,16 @@
 //
 // Comportement responsive :
 //   - Grand écran (>=1200px) : contenu principal (#main-content) rétréci
-//     (margin-right), le tiroir ne le recouvre pas.
+//     exactement de la largeur du tiroir ouvert (margin-right dynamique via
+//     --xepay-drawer-width) ; sidebar jamais touchée ; aucun voile/overlay
+//     grisé — le contenu rétréci reste pleinement interactif.
 //   - Écran moyen : superposition classique (le tiroir recouvre le
-//     contenu, comme un modal), sans rétrécir #main-content.
+//     contenu, voile assombri conservé), sans rétrécir #main-content.
 //   - Mobile (<=640px) : le tiroir occupe toute la largeur de l'écran.
 
 const LARGE_SCREEN_QUERY = "(min-width: 1200px)";
 const STYLE_ID = "xepay-details-drawer-style";
+const DEFAULT_WIDTH = 480;
 
 function ensureDrawerStyles() {
     if (document.querySelector(`#${STYLE_ID}`)) return;
@@ -37,7 +40,7 @@ function ensureDrawerStyles() {
             padding: 0 !important;
         }
         .customer-modal-overlay.xepay-drawer .xepay-drawer-panel {
-            width: min(480px, 100%);
+            width: min(var(--xepay-drawer-width, ${DEFAULT_WIDTH}px), 100%);
             max-width: 100%;
             height: 100%;
             max-height: 100%;
@@ -47,6 +50,7 @@ function ensureDrawerStyles() {
             display: flex;
             flex-direction: column;
             overflow-y: auto;
+            pointer-events: auto;
         }
         .customer-modal-overlay.xepay-drawer.open .xepay-drawer-panel {
             animation: xepayDrawerSlideIn .25s ease;
@@ -54,18 +58,22 @@ function ensureDrawerStyles() {
 
         /* ================================================
            Bootstrap (.modal) — Rapport de solde Stripe
+           !important nécessaire : .modal-lg/.modal-dialog-centered/
+           .modal-dialog-scrollable (déjà posées sur ce modal) ont plus de
+           sélecteurs de classe que les miens et gagneraient sinon la
+           bataille de spécificité CSS sur width/max-width/position.
         ================================================ */
         .modal.xepay-drawer .modal-dialog {
             position: fixed !important;
-            top: 0;
-            right: 0;
-            bottom: 0;
+            top: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
             left: auto !important;
             margin: 0 !important;
-            max-width: min(560px, 100%);
-            width: 100%;
-            height: 100%;
-            display: flex;
+            max-width: min(var(--xepay-drawer-width, ${DEFAULT_WIDTH}px), 100vw) !important;
+            width: 100% !important;
+            height: 100% !important;
+            display: flex !important;
         }
         .modal.xepay-drawer .xepay-drawer-panel {
             width: 100%;
@@ -75,6 +83,7 @@ function ensureDrawerStyles() {
             border: none;
             box-shadow: -12px 0 40px rgba(0, 0, 0, .18);
             overflow-y: auto;
+            pointer-events: auto;
         }
         .modal.xepay-drawer.show .xepay-drawer-panel {
             animation: xepayDrawerSlideIn .25s ease;
@@ -89,24 +98,51 @@ function ensureDrawerStyles() {
         @media (max-width: 640px) {
             .customer-modal-overlay.xepay-drawer .xepay-drawer-panel,
             .modal.xepay-drawer .modal-dialog {
-                width: 100%;
-                max-width: 100%;
+                width: 100% !important;
+                max-width: 100% !important;
             }
         }
 
-        /* Grand écran : le tiroir rétrécit le contenu principal au lieu de
-           le recouvrir — sur écran moyen, superposition classique
-           (inchangée). Rétrécit l'espace disponible au niveau de <body>
-           plutôt que de surcharger la largeur de #main-content : chaque
-           vue définit #main-content différemment (calc(100% - 18%) sur
-           sidebar.css, flex-grow:1 + margin-left fixe sur transactions.css,
-           etc.) — recalculer "100%" une fois ici, au niveau du body, reste
-           correct quelle que soit la formule propre à la vue affichée. */
+        /* ================================================
+           GRAND ÉCRAN (push) : le contenu principal se rétrécit exactement
+           de la largeur du tiroir ouvert, la sidebar n'est JAMAIS touchée,
+           et le fond assombri (overlay maison + .modal-backdrop Bootstrap)
+           est neutralisé — sans ça, le voile semi-transparent couvrant tout
+           le viewport (inset:0) donnait l'impression que la sidebar et le
+           contenu étaient "recouverts" même une fois le panneau rétréci à
+           droite. Sur écran moyen/mobile (hors de cette media query) :
+           superposition classique inchangée (voile assombri conservé).
+        ================================================ */
         @media (min-width: 1200px) {
-            body.xepay-drawer-open {
-                box-sizing: border-box;
-                padding-right: 480px;
-                transition: padding-right .25s ease;
+            /* flex:1 1 auto + width:auto annulent la largeur explicite
+               propre à chaque vue (calc(100% - 18%) sur sidebar.css,
+               flex-grow:1 + margin-left fixe sur transactions.css, etc.)
+               pour laisser margin-right réserver proprement la place du
+               tiroir, quelle que soit la formule d'origine de la vue
+               affichée. La sidebar (hors de ce sélecteur) garde sa largeur
+               et sa position intactes. --xepay-drawer-width est posée par
+               initDetailsDrawer() ci-dessous, propre à chaque tiroir. */
+            body.xepay-drawer-open #main-content {
+                flex: 1 1 auto !important;
+                width: auto !important;
+                margin-right: var(--xepay-drawer-width, ${DEFAULT_WIDTH}px) !important;
+                transition: margin-right .25s ease;
+            }
+
+            /* Overlay maison : fond transparent + clic traversant (le
+               panneau garde pointer-events:auto ci-dessus), pour que le
+               contenu rétréci reste pleinement interactif. */
+            body.xepay-drawer-open .customer-modal-overlay.xepay-drawer {
+                background: transparent !important;
+                backdrop-filter: none !important;
+                pointer-events: none !important;
+            }
+
+            /* Backdrop Bootstrap : posé par le JS de Bootstrap comme frère
+               dans <body>, jamais grisé en mode "push". */
+            body.xepay-drawer-open .modal-backdrop {
+                opacity: 0 !important;
+                pointer-events: none !important;
             }
         }
     `;
@@ -120,14 +156,18 @@ function ensureDrawerStyles() {
  *   (.customer-modal-overlay ou .modal Bootstrap).
  * @param {HTMLElement} panelEl - le panneau visuel à l'intérieur
  *   (.customer-modal ou .modal-content).
+ * @param {{ width?: number }} [options] - largeur du tiroir en px
+ *   (défaut 480) ; le "push" de #main-content réserve exactement cette
+ *   largeur, quelle que soit la valeur choisie par l'appelant.
  */
-export function initDetailsDrawer(overlayEl, panelEl) {
+export function initDetailsDrawer(overlayEl, panelEl, { width = DEFAULT_WIDTH } = {}) {
     if (!overlayEl || !panelEl) return;
 
     ensureDrawerStyles();
 
     overlayEl.classList.add("xepay-drawer");
     panelEl.classList.add("xepay-drawer-panel");
+    panelEl.style.setProperty("--xepay-drawer-width", `${width}px`);
 
     const largeScreen = window.matchMedia(LARGE_SCREEN_QUERY);
 
@@ -139,10 +179,14 @@ export function initDetailsDrawer(overlayEl, panelEl) {
     }
 
     function syncPush() {
-        document.body.classList.toggle(
-            "xepay-drawer-open",
-            isOpen() && largeScreen.matches
-        );
+        const push = isOpen() && largeScreen.matches;
+        if (push) {
+            // Posée sur <body> (lu par la media query ci-dessus pour
+            // #main-content) uniquement pendant que CE tiroir est ouvert —
+            // un seul tiroir de détails est ouvert à la fois dans l'app.
+            document.body.style.setProperty("--xepay-drawer-width", `${width}px`);
+        }
+        document.body.classList.toggle("xepay-drawer-open", push);
     }
 
     // Système maison : ouverture/fermeture via classList("open") — observé

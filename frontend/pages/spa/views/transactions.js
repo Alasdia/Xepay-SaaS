@@ -224,7 +224,8 @@ export async function mount(container, params = {}) {
   // retrait) n'est volontairement pas concerné.
   initDetailsDrawer(
     document.getElementById("stripeReportModal"),
-    document.querySelector("#stripeReportModal .modal-content")
+    document.querySelector("#stripeReportModal .modal-content"),
+    { width: 560 }
   );
 
   // Pages dédiées (/transactions/paiements|retraits|transferts, voir
