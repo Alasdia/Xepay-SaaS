@@ -3299,16 +3299,12 @@ async function renderInvoices(container) {
 
 
                 productPrices.forEach(price => {
-
-                    if (price.active) {
-
+                    if (price.active && price.type === "one_time") {
                         prices.push({
                             product,
                             price
                         });
-
                     }
-
                 });
 
             });
