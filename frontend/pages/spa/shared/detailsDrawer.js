@@ -129,6 +129,21 @@ function ensureDrawerStyles() {
                 transition: margin-right .25s ease;
             }
 
+            /* Paiements (Rapport de solde Stripe) uniquement, voir l'option
+               "instant" d'initDetailsDrawer() : le modal Bootstrap joue déjà
+               son propre fondu (~300ms, backdrop + .modal-dialog) avant que
+               la classe "show" n'apparaisse et ne déclenche notre push — en
+               ajoutant par-dessus notre propre transition de 250ms, le
+               contenu restait visuellement non rétréci pendant que le
+               tiroir était déjà visible, donnant l'impression qu'il
+               recouvrait le contenu. Supprimer la transition ici rend le
+               rétrécissement instantané dès que le tiroir s'ouvre. Clients/
+               Produits (sans "instant") gardent leur transition fluide
+               inchangée.*/
+            body.xepay-drawer-instant #main-content {
+                transition: none !important;
+            }
+
             /* Overlay maison : fond transparent + clic traversant (le
                panneau garde pointer-events:auto ci-dessus), pour que le
                contenu rétréci reste pleinement interactif. */
@@ -156,11 +171,14 @@ function ensureDrawerStyles() {
  *   (.customer-modal-overlay ou .modal Bootstrap).
  * @param {HTMLElement} panelEl - le panneau visuel à l'intérieur
  *   (.customer-modal ou .modal-content).
- * @param {{ width?: number }} [options] - largeur du tiroir en px
- *   (défaut 480) ; le "push" de #main-content réserve exactement cette
- *   largeur, quelle que soit la valeur choisie par l'appelant.
+ * @param {{ width?: number, instant?: boolean }} [options] - width : largeur
+ *   du tiroir en px (défaut 480), le "push" de #main-content réserve
+ *   exactement cette largeur. instant : désactive la transition CSS du
+ *   push (défaut false, transition fluide de 250ms) — à utiliser pour un
+ *   tiroir Bootstrap dont le propre fondu d'ouverture retarderait sinon la
+ *   perception du rétrécissement.
  */
-export function initDetailsDrawer(overlayEl, panelEl, { width = DEFAULT_WIDTH } = {}) {
+export function initDetailsDrawer(overlayEl, panelEl, { width = DEFAULT_WIDTH, instant = false } = {}) {
     if (!overlayEl || !panelEl) return;
 
     ensureDrawerStyles();
@@ -187,6 +205,7 @@ export function initDetailsDrawer(overlayEl, panelEl, { width = DEFAULT_WIDTH } 
             document.body.style.setProperty("--xepay-drawer-width", `${width}px`);
         }
         document.body.classList.toggle("xepay-drawer-open", push);
+        document.body.classList.toggle("xepay-drawer-instant", push && instant);
     }
 
     // Système maison : ouverture/fermeture via classList("open") — observé

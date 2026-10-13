@@ -225,7 +225,7 @@ export async function mount(container, params = {}) {
   initDetailsDrawer(
     document.getElementById("stripeReportModal"),
     document.querySelector("#stripeReportModal .modal-content"),
-    { width: 560 }
+    { width: 560, instant: true }
   );
 
   // Pages dédiées (/transactions/paiements|retraits|transferts, voir
