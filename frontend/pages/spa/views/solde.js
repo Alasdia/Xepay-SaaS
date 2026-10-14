@@ -5,11 +5,20 @@
 // annulerRetrait, #withdrawModal) ; transactions.css est réutilisé tel quel
 // pour .wallet-popup/.retrait-btn.
 //
-// Architecture : un container global (.balance-section, 80% de la largeur
-// de #main-content) contenant 4 blocs INDÉPENDANTS (chacun sa propre carte
-// .balance-block) plutôt qu'un bloc unique fusionné : Solde disponible (+
-// retrait), barre de légende, Montant verrouillé (cliquable, détaille
-// chaque montant verrouillé et sa date de disponibilité), Montant
+// Architecture à deux zones, reprenant le principe de mise en page d'une
+// page de solde de référence (voir frontend/pages/assets/
+// vue_solde_référence.png) : une zone de contenu principal (à gauche) et
+// une zone de panneau latéral (à droite), chacune avec son propre espace,
+// sans jamais se recouvrir. On réutilise ici .dashboard-layout/
+// .main-dashboard-content, déjà définis dans transactions.css avec
+// exactement cette proportion (73% contenu / 27% réservé) pour la vue
+// "Toute activité" — la zone de droite reste vide pour l'instant (aucun
+// contenu de panneau latéral n'a été demandé), mais l'espace est réservé.
+//
+// Dans la zone de contenu principal, 4 blocs INDÉPENDANTS (chacun sa
+// propre carte .balance-block) plutôt qu'un bloc unique fusionné : Solde
+// disponible (+ retrait), barre de légende, Montant verrouillé (cliquable,
+// détaille chaque montant verrouillé et sa date de disponibilité), Montant
 // disponible. La barre affiche la somme correspondante au survol de chaque
 // zone colorée (title natif).
 import { apiFetch } from "../core/apiClient.js";
@@ -22,7 +31,7 @@ function ensureSoldeStyles() {
   style.id = "solde-balance-style";
   style.textContent = `
     .balance-section {
-        width: 80%;
+        width: 100%;
         display: flex;
         flex-direction: column;
         gap: 14px;
@@ -153,6 +162,8 @@ const TEMPLATE = `
     <div class="page-subtitle">Votre solde disponible et vos fonds verrouillés</div>
   </div>
 </div>
+<div class="dashboard-layout">
+<div class="main-dashboard-content">
 <div class="balance-section">
   <div class="balance-block balance-block-header wallet-hover-wrapper">
     <div>
@@ -188,6 +199,8 @@ const TEMPLATE = `
       </div>
     </div>
   </div>
+</div>
+</div>
 </div>
 `;
 

@@ -844,7 +844,7 @@ export async function mount(container, params = {}) {
     const linksLimitText = usage.links_limit === null ? "Illimité" : usage.links_limit;
     const paidLimitText = usage.paid_limit === null ? "Illimité" : usage.paid_limit;
     if (createdEl) createdEl.innerText = `${usage.paid_count ?? 0} / ${paidLimitText}`;
-    if (paidEl) paidEl.innerText = `Sur un maximum de ${linksLimitText} liens créés`;
+    if (paidEl) paidEl.innerText = `Sur un maximum de ${linksLimitText} liens offert`;
     if (barEl) {
       const pct = usage.paid_limit > 0 ? Math.min(100, (usage.paid_count / usage.paid_limit) * 100) : 0;
       barEl.style.width = pct + "%";
