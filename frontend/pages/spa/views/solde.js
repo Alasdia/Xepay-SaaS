@@ -18,20 +18,21 @@
 // absent) — son lien renvoie vers les exports déjà disponibles sur la
 // vue Paiements (CSV/PDF/rapport Stripe), sans dupliquer cette logique ici.
 //
-// Dans la zone de contenu principal, UNE SEULE carte (.balance-card, fond
-// gris, coins arrondis) contenant SEULEMENT DEUX sous-cartes accolées
-// (.balance-subcard, fond blanc, coins droits — seule la carte mère est
-// arrondie) : la carte principale (Solde disponible + retrait) et une 2e
-// carte qui regroupe tout le reste (barre de légende, Montant verrouillé,
-// Montant disponible) — comme dans la page de solde de référence (voir
-// frontend/pages/assets/vue_solde_référence.png). Dans cette 2e carte, les
-// lignes Montant verrouillé/Montant disponible utilisent le même padding
-// horizontal que la barre (via un alignement en bordure pleine largeur) :
-// le texte démarre au même niveau que le début de la barre (à gauche), le
-// montant se termine au même niveau que la fin de la barre (à droite).
-// Montant verrouillé reste cliquable pour détailler chaque montant et sa
-// date de disponibilité. La barre affiche, au survol de chaque zone
-// colorée, une info-bulle (texte en haut, montant en bas).
+// Dans la zone de contenu principal, DEUX cartes empilées seulement :
+// .balance-card (fond gris, bordure arrondie) et, à l'intérieur,
+// .balance-subcard (fond blanc, bordure arrondie elle aussi) qui regroupe
+// RÉELLEMENT tous les éléments — Solde disponible + retrait, barre de
+// légende, Montant verrouillé, Montant disponible — dans une seule carte,
+// sans bordure/séparateur solide entre eux (l'espacement se fait par
+// marge, pas par ligne de séparation), comme dans la page de solde de
+// référence (voir frontend/pages/assets/vue_solde_référence.png). Les
+// lignes Montant verrouillé/Montant disponible partagent le même padding
+// horizontal que la barre, juste au-dessus dans la même carte : le texte
+// démarre au même niveau que le début de la barre (à gauche), le montant
+// se termine au même niveau que sa fin (à droite). Montant verrouillé
+// reste cliquable pour détailler chaque montant et sa date de
+// disponibilité. La barre affiche, au survol de chaque zone colorée, une
+// info-bulle (texte en haut, montant en bas).
 import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
@@ -54,10 +55,11 @@ function ensureSoldeStyles() {
         gap: 2px;
     }
     .balance-subcard {
+        position: relative;
         background: #ffffff;
         border: 1px solid #e5e7eb;
-        border-radius: 0;
-        padding: 18px 20px;
+        border-radius: 10px;
+        padding: 20px;
         transition: border-color .15s ease;
     }
     .balance-subcard:hover {
@@ -91,6 +93,7 @@ function ensureSoldeStyles() {
         border-radius: 999px;
         overflow: visible;
         background: #e5e7eb;
+        margin-top: 20px;
     }
     .balance-bar-segment {
         position: relative;
@@ -129,20 +132,17 @@ function ensureSoldeStyles() {
     .balance-bar-tooltip-amount {
         font-weight: 700;
     }
-    /* Lignes Montant verrouillé / Montant disponible : marge négative
-       égale au padding horizontal de la carte (20px) puis padding
-       identique, pour que la bordure de séparation morde sur toute la
-       largeur de la carte tout en gardant le texte/montant alignés
-       exactement sur les bords gauche/droite de la barre au-dessus
-       (même inset que .balance-bar, simple enfant direct de la carte). */
+    /* Lignes Montant verrouillé / Montant disponible : aucun séparateur
+       solide, juste un espacement par marge — simples enfants directs de
+       la carte, donc avec le même inset horizontal que .balance-bar
+       au-dessus : le texte démarre au même niveau que le début de la
+       barre, le montant se termine au même niveau que sa fin. */
     .balance-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        margin: 0 -20px;
-        padding: 14px 20px;
-        border-top: 1px solid #e5e7eb;
+        margin-top: 16px;
     }
     .balance-row-label {
         display: flex;
@@ -169,21 +169,19 @@ function ensureSoldeStyles() {
         font-size: 11px;
         font-weight: 400;
         color: #9ca3af;
-        margin-top: -6px;
-        padding-bottom: 10px;
+        margin-top: 4px;
         text-align: left;
     }
     .balance-row-locked {
         cursor: pointer;
-        transition: background-color .15s ease;
     }
-    .balance-row-locked:hover {
-        background-color: #fffbeb;
+    .balance-row-locked:hover .balance-row-label,
+    .balance-row-locked:hover .balance-row-amount {
+        color: #b45309;
     }
     .balance-locked-details {
         display: none;
-        margin-top: -6px;
-        padding-bottom: 10px;
+        margin-top: 10px;
     }
     .balance-locked-details.open {
         display: block;
@@ -264,19 +262,19 @@ const TEMPLATE = `
 <div class="dashboard-layout">
 <div class="main-dashboard-content">
 <div class="balance-card">
-  <div class="balance-subcard balance-block-header wallet-hover-wrapper">
-    <div>
-      <div class="balance-card-label">Solde disponible</div>
-      <div class="balance-card-amount" id="wallet-balance">0 XOF</div>
+  <div class="balance-subcard wallet-hover-wrapper">
+    <div class="balance-block-header">
+      <div>
+        <div class="balance-card-label">Solde disponible</div>
+        <div class="balance-card-amount" id="wallet-balance">0 XOF</div>
+      </div>
+      <button id="retraitBtn" class="btn retrait-btn" data-bs-toggle="modal" data-bs-target="#withdrawModal">Retirer des fonds</button>
     </div>
-    <button id="retraitBtn" class="btn retrait-btn" data-bs-toggle="modal" data-bs-target="#withdrawModal">Retirer des fonds</button>
     <div id="walletHistoryPopup" class="wallet-popup">
       <h6 class="mb-3">Historique du wallet</h6>
       <div id="wallet-scroll-box" style="max-height: 500px; overflow-y: auto;"><div id="walletHistoryList"></div></div>
       <div id="wallet-loading-more" class="text-center py-3 d-none"><span class="text-muted">Chargement...</span></div>
     </div>
-  </div>
-  <div class="balance-subcard">
     <div class="balance-bar">
       <div class="balance-bar-segment balance-bar-available" id="balance-bar-available" style="width: 0%;">
         <div class="balance-bar-tooltip">
