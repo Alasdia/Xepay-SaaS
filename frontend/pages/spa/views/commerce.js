@@ -143,6 +143,35 @@ export function ensureCommerceKpiStyles() {
             font-size: 24px;
             line-height: 28px;
         }
+        /* Variante Paiements : contenu décalé à droite de la carte, avec
+           icône représentative du KPI à l'extrême droite, et typographie
+           réduite/grisée (voir transactions.js) — l'opacité réduite
+           s'ajoute à .text-muted (qui ne fait que griser la couleur, pas
+           l'opacité) pour un rendu plus discret que le reste des KPI. */
+        .commerce-kpi-paiements-row {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .commerce-kpi-paiements-text {
+            text-align: right;
+            opacity: .85;
+        }
+        .commerce-kpi-paiements-text .commerce-kpi-label {
+            font-size: 13px;
+        }
+        .commerce-kpi-paiements-text .commerce-kpi-value {
+            font-size: 14px;
+        }
+        .commerce-kpi-paiements-text .commerce-kpi-sub {
+            font-size: 13px;
+        }
+        .commerce-kpi-paiements-icon {
+            font-size: 15px;
+            flex-shrink: 0;
+            opacity: .85;
+        }
     `;
     document.head.appendChild(style);
 }

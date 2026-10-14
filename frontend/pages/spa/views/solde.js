@@ -3,11 +3,116 @@
 // où ils cohabitaient avec les KPI d'activité. Reprend telle quelle la
 // logique wallet/retrait qui y existait (chargerWallet, loadWalletHistory,
 // annulerRetrait, #withdrawModal) ; transactions.css est réutilisé tel quel
-// (.card-epay / .kpi-value / .wallet-popup / .retrait-btn) pour ne pas
-// dupliquer ce CSS dans un nouveau fichier.
+// pour .wallet-popup/.retrait-btn.
+//
+// Architecture de la carte de solde (montant + barre + répartition)
+// inspirée de la disposition d'une page de solde de référence (grand
+// montant en tête, barre segmentée disponible/verrouillé, tableau de
+// répartition par type) — contenu et boutons d'action de cette référence
+// volontairement NON repris (pas de sélecteur de devise, pas de bouton
+// "Commentaires", pas de ligne Virer/Transfert/Ajouter des fonds/Gérer les
+// comptes bancaires, pas de bloc "Virements automatiques", pas de
+// sous-titres de bas de carte) : seule la vue Paiements/Solde est concernée
+// par cette passe, le reste de la page Solde recevra du contenu plus tard.
 import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
+
+function ensureSoldeStyles() {
+  if (document.querySelector("#solde-balance-style")) return;
+  const style = document.createElement("style");
+  style.id = "solde-balance-style";
+  style.textContent = `
+    .balance-card-wrapper {
+        position: relative;
+        max-width: 520px;
+    }
+    .balance-card {
+        background: #f8f9fb;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 20px 22px;
+    }
+    .balance-card-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+    }
+    .balance-card-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: .6px;
+        color: #9ca3af;
+        font-weight: 600;
+        margin-bottom: 6px;
+    }
+    .balance-card-amount {
+        font-size: 30px;
+        font-weight: 700;
+        color: #111827;
+        line-height: 1.1;
+    }
+    .balance-bar {
+        display: flex;
+        width: 100%;
+        height: 8px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: #e5e7eb;
+        margin-bottom: 18px;
+    }
+    .balance-bar-segment {
+        height: 100%;
+        transition: width .4s ease;
+    }
+    .balance-bar-available { background: #16a34a; }
+    .balance-bar-locked { background: #f59e0b; }
+    .balance-breakdown {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .balance-breakdown thead th {
+        text-align: left;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        color: #9ca3af;
+        font-weight: 600;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .balance-breakdown thead th:last-child { text-align: right; }
+    .balance-breakdown tbody td {
+        padding: 12px 0;
+        border-bottom: 1px solid #e5e7eb;
+        font-size: 13px;
+        color: #111827;
+        font-weight: 600;
+        vertical-align: top;
+    }
+    .balance-breakdown tbody tr:last-child td { border-bottom: none; }
+    .balance-breakdown tbody td:last-child { text-align: right; }
+    .balance-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    .balance-dot-available { background: #16a34a; }
+    .balance-dot-locked { background: #f59e0b; }
+    .balance-breakdown-sub {
+        font-size: 11px;
+        font-weight: 400;
+        color: #9ca3af;
+        margin-top: 2px;
+        margin-left: 16px;
+    }
+  `;
+  document.head.appendChild(style);
+}
 
 const TEMPLATE = `
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
@@ -16,33 +121,42 @@ const TEMPLATE = `
     <div class="page-subtitle">Votre solde disponible et vos fonds verrouillés</div>
   </div>
 </div>
-<div class="dashboard-layout subview-mode">
-  <div class="main-dashboard-content">
-    <div id="kpi-row" class="row g-3 mb-4">
-      <div class="col-md-6">
-        <div class="wallet-hover-wrapper position-relative">
-          <div class="card-epay">
-            <div class="d-flex justify-content-between align-items-start">
-              <div><div class="kpi-label">Solde disponible</div><h4 id="wallet-balance" class="kpi-value green text-dark text-muted">0 XOF</h4></div>
-              <button id="retraitBtn" class="btn retrait-btn" data-bs-toggle="modal" data-bs-target="#withdrawModal">Retirer des fonds</button>
-            </div>
-            <div class="kpi-sub">Disponible maintenant</div>
-          </div>
-          <div id="walletHistoryPopup" class="wallet-popup">
-            <h6 class="mb-3">Historique du wallet</h6>
-            <div id="wallet-scroll-box" style="max-height: 500px; overflow-y: auto;"><div id="walletHistoryList"></div></div>
-            <div id="wallet-loading-more" class="text-center py-3 d-none"><span class="text-muted">Chargement...</span></div>
-          </div>
-        </div>
+<div class="balance-card-wrapper wallet-hover-wrapper">
+  <div class="balance-card">
+    <div class="balance-card-header">
+      <div>
+        <div class="balance-card-label">Solde disponible</div>
+        <div class="balance-card-amount" id="wallet-balance">0 XOF</div>
       </div>
-      <div class="col-md-6">
-        <div class="card-epay">
-          <div class="kpi-label">Montant verrouillé</div>
-          <h4 id="locked-amount" class="kpi-value yellow text-dark text-muted">0 XOF</h4>
-          <div id="locked-countdown" class="kpi-sub">Chargement...</div>
-        </div>
-      </div>
+      <button id="retraitBtn" class="btn retrait-btn" data-bs-toggle="modal" data-bs-target="#withdrawModal">Retirer des fonds</button>
     </div>
+    <div class="balance-bar">
+      <div class="balance-bar-segment balance-bar-available" id="balance-bar-available" style="width: 0%;"></div>
+      <div class="balance-bar-segment balance-bar-locked" id="balance-bar-locked" style="width: 0%;"></div>
+    </div>
+    <table class="balance-breakdown">
+      <thead>
+        <tr><th>Type</th><th>Montant</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <span class="balance-dot balance-dot-locked"></span>Montant verrouillé
+            <div class="balance-breakdown-sub" id="locked-countdown">Chargement...</div>
+          </td>
+          <td id="locked-amount">0 XOF</td>
+        </tr>
+        <tr>
+          <td><span class="balance-dot balance-dot-available"></span>Disponible</td>
+          <td id="wallet-balance-row">0 XOF</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="walletHistoryPopup" class="wallet-popup">
+    <h6 class="mb-3">Historique du wallet</h6>
+    <div id="wallet-scroll-box" style="max-height: 500px; overflow-y: auto;"><div id="walletHistoryList"></div></div>
+    <div id="wallet-loading-more" class="text-center py-3 d-none"><span class="text-muted">Chargement...</span></div>
   </div>
 </div>
 `;
@@ -69,6 +183,7 @@ const WITHDRAW_MODAL_HTML = `
 
 export async function mount(container) {
   await setViewStyles(["transactions.css"]);
+  ensureSoldeStyles();
   container.innerHTML = TEMPLATE;
   document.body.insertAdjacentHTML("beforeend", WITHDRAW_MODAL_HTML);
 
@@ -101,13 +216,24 @@ export async function mount(container) {
     try {
       const res = await apiFetch("/wallet/me");
       const data = await res.json();
-      document.getElementById("wallet-balance").innerText =
-        Number(data.available || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " XOF";
+      const available = Number(data.available || 0);
+      const locked = Number(data.locked_amount || 0);
+      const format = (n) => n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " XOF";
+
+      document.getElementById("wallet-balance").innerText = format(available);
+      const balanceRowEl = document.getElementById("wallet-balance-row");
+      if (balanceRowEl) balanceRowEl.innerText = format(available);
       const lockedAmountEl = document.getElementById("locked-amount");
-      if (lockedAmountEl) {
-        lockedAmountEl.innerText =
-          Number(data.locked_amount || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " XOF";
-      }
+      if (lockedAmountEl) lockedAmountEl.innerText = format(locked);
+
+      const total = available + locked;
+      const availablePct = total > 0 ? (available / total) * 100 : 0;
+      const lockedPct = total > 0 ? 100 - availablePct : 0;
+      const availableBarEl = document.getElementById("balance-bar-available");
+      const lockedBarEl = document.getElementById("balance-bar-locked");
+      if (availableBarEl) availableBarEl.style.width = availablePct + "%";
+      if (lockedBarEl) lockedBarEl.style.width = lockedPct + "%";
+
       const lockedCountdownEl = document.getElementById("locked-countdown");
       if (lockedCountdownEl) {
         if (data.next_available_at) {
