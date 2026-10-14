@@ -31,8 +31,10 @@
 // démarre au même niveau que le début de la barre (à gauche), le montant
 // se termine au même niveau que sa fin (à droite). Montant verrouillé
 // reste cliquable pour détailler chaque montant et sa date de
-// disponibilité. La barre affiche, au survol de chaque zone colorée, une
-// info-bulle (texte en haut, montant en bas).
+// disponibilité (date à gauche, montant à droite). La barre affiche, au
+// survol de chaque zone colorée, une info-bulle (texte en haut, montant en
+// bas). L'historique du wallet n'est plus un popup au survol : c'est un
+// bloc fixe du panneau latéral, au-dessus du bloc Rapports.
 import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
@@ -217,6 +219,25 @@ function ensureSoldeStyles() {
         color: #111827;
         margin-bottom: 12px;
     }
+    /* Historique du wallet : affiché en permanence dans le panneau
+       latéral (au-dessus de Rapports) au lieu d'un popup au survol —
+       reprend le fond sombre de l'ancien .wallet-popup (transactions.css)
+       dont .wallet-item/.wallet-row/.wallet-label/.wallet-value sont déjà
+       stylés en clair-sur-sombre. */
+    .balance-wallet-history {
+        background: linear-gradient(135deg, #1a1238, #2a1a4d);
+        border-color: rgba(255,255,255,0.1);
+    }
+    .balance-wallet-history:hover {
+        border-color: rgba(255,255,255,0.1);
+    }
+    .balance-wallet-history .balance-side-panel-title {
+        color: #ffffff;
+    }
+    .balance-wallet-history-scroll {
+        max-height: 320px;
+        overflow-y: auto;
+    }
     .balance-side-panel-link {
         display: flex;
         align-items: center;
@@ -262,18 +283,13 @@ const TEMPLATE = `
 <div class="dashboard-layout">
 <div class="main-dashboard-content">
 <div class="balance-card">
-  <div class="balance-subcard wallet-hover-wrapper">
+  <div class="balance-subcard">
     <div class="balance-block-header">
       <div>
         <div class="balance-card-label">Solde disponible</div>
         <div class="balance-card-amount" id="wallet-balance">0 XOF</div>
       </div>
       <button id="retraitBtn" class="btn retrait-btn" data-bs-toggle="modal" data-bs-target="#withdrawModal">Retirer des fonds</button>
-    </div>
-    <div id="walletHistoryPopup" class="wallet-popup">
-      <h6 class="mb-3">Historique du wallet</h6>
-      <div id="wallet-scroll-box" style="max-height: 500px; overflow-y: auto;"><div id="walletHistoryList"></div></div>
-      <div id="wallet-loading-more" class="text-center py-3 d-none"><span class="text-muted">Chargement...</span></div>
     </div>
     <div class="balance-bar">
       <div class="balance-bar-segment balance-bar-available" id="balance-bar-available" style="width: 0%;">
@@ -303,6 +319,11 @@ const TEMPLATE = `
 </div>
 </div>
 <div class="balance-side-panel">
+  <div class="balance-subcard balance-wallet-history" id="walletHistoryPopup">
+    <div class="balance-side-panel-title">Historique du wallet</div>
+    <div id="wallet-scroll-box" class="balance-wallet-history-scroll"><div id="walletHistoryList"></div></div>
+    <div id="wallet-loading-more" class="text-center py-3 d-none"><span class="text-muted">Chargement...</span></div>
+  </div>
   <div class="balance-subcard">
     <div class="balance-side-panel-title">Rapports</div>
     <button type="button" class="balance-side-panel-link" id="balance-reports-link">
@@ -413,7 +434,7 @@ export async function mount(container) {
           ? items
               .map(
                 (item) =>
-                  `<div class="balance-locked-item"><span>${formatAmount(item.amount)}</span><span class="balance-locked-item-date">Disponible le ${formatDate(item.available_at)}</span></div>`
+                  `<div class="balance-locked-item"><span class="balance-locked-item-date">Disponible le ${formatDate(item.available_at)}</span><span>${formatAmount(item.amount)}</span></div>`
               )
               .join("")
           : `<div class="balance-locked-empty">Aucun montant verrouillé</div>`;
