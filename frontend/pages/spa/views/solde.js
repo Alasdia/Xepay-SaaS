@@ -12,35 +12,49 @@
 // sans jamais se recouvrir. On réutilise ici .dashboard-layout/
 // .main-dashboard-content, déjà définis dans transactions.css avec
 // exactement cette proportion (73% contenu / 27% réservé) pour la vue
-// "Toute activité" — la zone de droite reste vide pour l'instant (aucun
-// contenu de panneau latéral n'a été demandé), mais l'espace est réservé.
+// "Toute activité". Le panneau latéral (.balance-side-panel) reprend le
+// seul bloc de la référence qui n'a pas été explicitement exclu :
+// "Rapports" (le bloc "Virements automatiques" reste volontairement
+// absent) — son lien renvoie vers les exports déjà disponibles sur la
+// vue Paiements (CSV/PDF/rapport Stripe), sans dupliquer cette logique ici.
 //
-// Dans la zone de contenu principal, 4 blocs INDÉPENDANTS (chacun sa
-// propre carte .balance-block) plutôt qu'un bloc unique fusionné : Solde
-// disponible (+ retrait), barre de légende, Montant verrouillé (cliquable,
-// détaille chaque montant verrouillé et sa date de disponibilité), Montant
-// disponible. La barre affiche la somme correspondante au survol de chaque
-// zone colorée (title natif).
+// Dans la zone de contenu principal, UNE SEULE carte (.balance-card, fond
+// gris) contenant 4 sous-cartes (.balance-subcard, fond blanc) qui
+// conservent chacune leur propre effet (survol, et clic pour Montant
+// verrouillé qui détaille chaque montant et sa date de disponibilité) :
+// Solde disponible (+ retrait), barre de légende, Montant verrouillé,
+// Montant disponible. La barre affiche la somme correspondante au survol
+// de chaque zone colorée (title natif).
 import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
+import { navigate } from "../core/router.js";
+import { getWorkspaceId } from "../core/state.js";
 
 function ensureSoldeStyles() {
   if (document.querySelector("#solde-balance-style")) return;
   const style = document.createElement("style");
   style.id = "solde-balance-style";
   style.textContent = `
-    .balance-section {
+    .balance-card {
         width: 100%;
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-    }
-    .balance-block {
         background: #f8f9fb;
         border: 1px solid #e5e7eb;
         border-radius: 12px;
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .balance-subcard {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
         padding: 18px 20px;
+        transition: border-color .15s ease;
+    }
+    .balance-subcard:hover {
+        border-color: #cbd5e1;
     }
     .balance-block-header {
         position: relative;
@@ -79,9 +93,9 @@ function ensureSoldeStyles() {
     .balance-bar-locked { background: #f59e0b; }
     .balance-breakdown-row {
         display: flex;
-        gap: 14px;
+        gap: 10px;
     }
-    .balance-breakdown-row .balance-block {
+    .balance-breakdown-row .balance-subcard {
         flex: 1 1 0;
         min-width: 0;
     }
@@ -151,6 +165,50 @@ function ensureSoldeStyles() {
         font-size: 12px;
         color: #9ca3af;
     }
+    .balance-side-panel {
+        flex: 1 1 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+    .balance-side-panel-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 12px;
+    }
+    .balance-side-panel-link {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        background: transparent;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        color: #111827;
+        text-align: left;
+    }
+    .balance-side-panel-link-icon {
+        flex-shrink: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 13px;
+        color: #6b7280;
+        transition: border-color .15s ease;
+    }
+    .balance-side-panel-link:hover .balance-side-panel-link-icon {
+        border-color: #9ca3af;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -164,8 +222,8 @@ const TEMPLATE = `
 </div>
 <div class="dashboard-layout">
 <div class="main-dashboard-content">
-<div class="balance-section">
-  <div class="balance-block balance-block-header wallet-hover-wrapper">
+<div class="balance-card">
+  <div class="balance-subcard balance-block-header wallet-hover-wrapper">
     <div>
       <div class="balance-card-label">Solde disponible</div>
       <div class="balance-card-amount" id="wallet-balance">0 XOF</div>
@@ -177,14 +235,14 @@ const TEMPLATE = `
       <div id="wallet-loading-more" class="text-center py-3 d-none"><span class="text-muted">Chargement...</span></div>
     </div>
   </div>
-  <div class="balance-block">
+  <div class="balance-subcard">
     <div class="balance-bar">
       <div class="balance-bar-segment balance-bar-available" id="balance-bar-available" style="width: 0%;"></div>
       <div class="balance-bar-segment balance-bar-locked" id="balance-bar-locked" style="width: 0%;"></div>
     </div>
   </div>
   <div class="balance-breakdown-row">
-    <div class="balance-block balance-block-locked" id="locked-block">
+    <div class="balance-subcard balance-block-locked" id="locked-block">
       <div class="balance-block-row">
         <span><span class="balance-dot balance-dot-locked"></span><span class="balance-block-label">Montant verrouillé</span></span>
         <strong class="balance-block-amount" id="locked-amount">0 XOF</strong>
@@ -192,7 +250,7 @@ const TEMPLATE = `
       <div class="balance-breakdown-sub" id="locked-countdown">Chargement...</div>
       <div class="balance-locked-details" id="locked-details"></div>
     </div>
-    <div class="balance-block">
+    <div class="balance-subcard">
       <div class="balance-block-row">
         <span><span class="balance-dot balance-dot-available"></span><span class="balance-block-label">Montant disponible</span></span>
         <strong class="balance-block-amount" id="wallet-balance-row">0 XOF</strong>
@@ -200,6 +258,15 @@ const TEMPLATE = `
     </div>
   </div>
 </div>
+</div>
+<div class="balance-side-panel">
+  <div class="balance-subcard">
+    <div class="balance-side-panel-title">Rapports</div>
+    <button type="button" class="balance-side-panel-link" id="balance-reports-link">
+      <span class="balance-side-panel-link-icon"><i class="fa-solid fa-file-lines"></i></span>
+      <span>Relevés et rapports</span>
+    </button>
+  </div>
 </div>
 </div>
 `;
@@ -424,6 +491,10 @@ export async function mount(container) {
 
   on(document.getElementById("locked-block"), "click", () => {
     document.getElementById("locked-details")?.classList.toggle("open");
+  });
+
+  on(document.getElementById("balance-reports-link"), "click", () => {
+    navigate(`/dash/workspace/${encodeURIComponent(getWorkspaceId() || "me")}/transactions/paiements`);
   });
 
   window.annulerRetrait = annulerRetrait;
