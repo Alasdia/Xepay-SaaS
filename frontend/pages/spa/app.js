@@ -7,6 +7,7 @@ import { initSidebar, setActiveRoute } from "./sidebar.js";
 import { ensureModalLoaded, upgrade } from "./shared/modalUpgrade.js";
 
 import { mount as mountDashboard } from "./views/dashboard.js";
+import { mount as mountSolde } from "./views/solde.js";
 import { mount as mountTransactions } from "./views/transactions.js";
 import { mount as mountLiens } from "./views/liens.js";
 import { mount as mountCommerce } from "./views/commerce.js";
@@ -71,6 +72,7 @@ async function init() {
   });
 
   registerRoute("/dash/workspace/:workspaceId/", mountDashboard, { name: "dashboard" });
+  registerRoute("/dash/workspace/:workspaceId/solde", mountSolde, { name: "solde" });
   registerRoute("/dash/workspace/:workspaceId/transactions", mountTransactions, { name: "transactions" });
   // Pages dédiées Paiements/Retraits/Transferts : même vue/layout que
   // "transactions" (mountTransactions), avec le type verrouillé via un

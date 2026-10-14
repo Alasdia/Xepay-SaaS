@@ -13,6 +13,7 @@ import { showUpgradeModal } from "./shared/modalUpgrade.js";
 // data-page (déjà présent dans sidebar.html) -> segment de route SPA
 const ROUTE_BY_PAGE = {
   dashboard: "",
+  solde: "solde",
   transactions: "transactions",
   paiements: "transactions/paiements",
   retraits: "transactions/retraits",

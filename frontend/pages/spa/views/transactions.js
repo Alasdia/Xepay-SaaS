@@ -7,7 +7,7 @@ import { showToast } from "../shared/toast.js";
 import { showUpgradeModal } from "../shared/modalUpgrade.js";
 import { navigate } from "../core/router.js";
 import { getWorkspaceId } from "../core/state.js";
-import { renderCommerceKpis } from "./commerce.js";
+import { renderCommerceKpis, ensureCommerceKpiStyles } from "./commerce.js";
 import { initDetailsDrawer } from "../shared/detailsDrawer.js";
 
 const STRIPE_PUBLISHABLE_KEY =
@@ -37,41 +37,30 @@ const TEMPLATE = `
   </div>
   <div class="dashboard-layout">
     <div class="main-dashboard-content">
-      <div id="kpi-row" class="row g-3 mb-4">
-        <div class="col-md-4">
-          <div class="wallet-hover-wrapper position-relative">
-            <div class="card-epay">
-              <div class="d-flex justify-content-between align-items-start">
-                <div><div class="kpi-label"> total Solde </div><h4 id="wallet-balance" class="kpi-value green text-dark text-muted">0 XOF</h4></div>
-                <button id="retraitBtn" class="btn retrait-btn" data-bs-toggle="modal" data-bs-target="#withdrawModal">Retirer des fonds</button>
-              </div>
-              <div class="kpi-sub">Disponible maintenant</div>
-            </div>
-            <div id="walletHistoryPopup" class="wallet-popup">
-              <h6 class="mb-3">Historique du wallet</h6>
-              <div id="wallet-scroll-box" style="max-height: 500px; overflow-y: auto;"><div id="walletHistoryList"></div></div>
-              <div id="wallet-loading-more" class="text-center py-3 d-none"><span class="text-muted">Chargement...</span></div>
-            </div>
-          </div>
+      <!-- KPI finance (Solde disponible, Montant verrouillé, Montant en
+           attente) déplacés vers la vue Solde (Montant en attente
+           simplement retiré) — voir views/solde.js. Il ne reste ici que les
+           3 KPI propres à l'activité Paiements, restylés au même gabarit
+           que les KPI cliquables des sous-vues Commerce (.commerce-kpi),
+           en taille agrandie (.commerce-kpi-lg) puisqu'il s'agit ici de
+           simples statistiques d'affichage, pas de filtres. -->
+      <div id="kpi-row" class="commerce-kpi-filters commerce-kpi-filters-lg mb-4">
+        <div class="commerce-kpi commerce-kpi-display commerce-kpi-lg">
+          <span class="commerce-kpi-label">Paiements réussis ce mois</span>
+          <strong class="commerce-kpi-value"><span id="links-created">0</span></strong>
+          <span class="commerce-kpi-sub"><span id="links-paid" style="color:#16a34a; font-weight:700;">0</span></span>
+          <div class="mini-progress"><div id="links-progress-bar" class="mini-progress-bar" style="width: 0%;"></div></div>
         </div>
-        <div class="col-md-4"><div class="card-epay"><div class="kpi-label">Montant verrouillé</div><h4 id="locked-amount" class="kpi-value yellow text-dark text-muted">0 XOF</h4><div id="locked-countdown" class="kpi-sub">Chargement...</div></div></div>
-        <div class="col-md-4"><div class="card-epay"><div class="kpi-label">Total reçu</div><h4 id="total-xof" class="kpi-value cyan text-dark text-muted">0 XOF</h4><div class="kpi-sub">Revenus cumulés</div></div></div>
-        <div class="col-md-4"><div class="card-epay"><div class="kpi-label"> Montant en attente</div><h4 id="pending-xof" class="kpi-value yellow text-dark text-muted">0 XOF</h4><div class="kpi-sub">Paiements en attente</div></div></div>
-        <div class="col-md-4">
-          <div class="card-epay">
-            <div class="kpi-label">paiements réussis ce mois</div>
-            <h4 class="kpi-value purple text-dark text-muted"><span id="links-created">0</span></h4>
-            <div class="kpi-sub"><span id="links-paid" style="color:#4ade80; font-weight:700;">0</span></div>
-            <div class="mini-progress"><div id="links-progress-bar" class="mini-progress-bar" style="width: 0%;"></div></div>
-          </div>
+        <div class="commerce-kpi commerce-kpi-display commerce-kpi-lg position-relative" id="successCard">
+          <span class="commerce-kpi-label">Taux de réussite</span>
+          <strong id="success-rate" class="commerce-kpi-value">0%</strong>
+          <div id="chartTooltip" style="display:none; position:absolute; top:10px; right:10px; width:320px; height:240px; padding:10px; z-index:1000;"><canvas id="statusChart"></canvas></div>
+          <span class="commerce-kpi-sub">Transactions réussies ce mois</span>
         </div>
-        <div class="col-md-4">
-          <div class="card-epay position-relative" id="successCard">
-            <div class="kpi-label">Taux de réussite</div>
-            <h4 id="success-rate" class="kpi-value text-dark text-muted green">0%</h4>
-            <div id="chartTooltip" style="display:none; position:absolute; top:10px; right:10px; width:320px; height:240px; padding:10px; z-index:1000;"><canvas id="statusChart"></canvas></div>
-            <div class="kpi-sub">Transactions réussies ce mois</div>
-          </div>
+        <div class="commerce-kpi commerce-kpi-display commerce-kpi-lg">
+          <span class="commerce-kpi-label">Total reçu</span>
+          <strong id="total-xof" class="commerce-kpi-value">0 XOF</strong>
+          <span class="commerce-kpi-sub">Revenus cumulés</span>
         </div>
       </div>
       <!-- KPI cliquables Paiements (visibles uniquement sur l'onglet
@@ -178,30 +167,15 @@ const TEMPLATE = `
 </div>
 `;
 
-// #withdrawModal est rendu à part, injecté dans document.body (pas dans le
-// TEMPLATE ci-dessus) : #main-content a position:relative + z-index:1
-// (sidebar.css), ce qui crée un contexte d'empilement qui enfermait le
-// z-index:1055 du modal en dessous du .modal-backdrop que Bootstrap ajoute
-// directement dans body (z-index:1050) — rendant le modal visible mais non
-// cliquable. En sortant le modal de #main-content, il rejoint le même
-// contexte d'empilement que son propre backdrop, où son z-index reprend
-// effet normalement.
-const WITHDRAW_MODAL_HTML = `
-<div class="modal fade" id="withdrawModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header border-0"><h5 class="modal-title fw-bold">Retirer de l'argent</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body px-4"><div class="mb-3"><label class="form-label">Montant</label><input type="number" id="withdrawAmount" class="form-control" placeholder="Ex: 5000"></div></div>
-      <div class="modal-footer border-0"><button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button><button id="confirmWithdrawBtn" class="btn btn-cyan">Confirmer</button></div>
-    </div>
-  </div>
-</div>
-`;
-
-// #stripeReportModal est rendu à part, injecté dans document.body — même
-// raison que #withdrawModal ci-dessus : #main-content a position:relative +
-// z-index:1, ce qui enfermait le z-index:1055 du modal en dessous du
-// .modal-backdrop ajouté par Bootstrap directement dans body (z-index:1050).
+// #stripeReportModal est rendu à part, injecté dans document.body :
+// #main-content a position:relative + z-index:1 (sidebar.css), ce qui
+// enfermait le z-index:1055 du modal en dessous du .modal-backdrop que
+// Bootstrap ajoute directement dans body (z-index:1050) — rendant le modal
+// visible mais non cliquable. En sortant le modal de #main-content, il
+// rejoint le même contexte d'empilement que son propre backdrop, où son
+// z-index reprend effet normalement. (Le retrait de fonds/#withdrawModal
+// suit le même principe, voir views/solde.js où il a été déplacé avec le
+// KPI "Solde disponible".)
 const STRIPE_REPORT_MODAL_HTML = `
 <div class="modal fade" id="stripeReportModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
@@ -215,9 +189,9 @@ const STRIPE_REPORT_MODAL_HTML = `
 
 export async function mount(container, params = {}) {
   await setViewStyles(["transactions.css"]);
+  ensureCommerceKpiStyles();
   container.innerHTML = TEMPLATE;
   document.body.insertAdjacentHTML("beforeend", STRIPE_REPORT_MODAL_HTML);
-  document.body.insertAdjacentHTML("beforeend", WITHDRAW_MODAL_HTML);
 
   // Rapport de solde Stripe : consultation de détails -> tiroir latéral
   // droit (voir shared/detailsDrawer.js). #withdrawModal (création d'un
@@ -247,7 +221,6 @@ export async function mount(container, params = {}) {
   // KPI actif (comportement existant inchangé).
   let kpiPaymentStatus = "";
   let statusChart = null;
-  let lockedCountdownIntervals = [];
   const boundListeners = [];
   function updatePagination() {
     const prevBtn = document.getElementById("prev-page");
@@ -844,7 +817,6 @@ export async function mount(container, params = {}) {
 
   function renderStats(stats) {
     document.getElementById("total-xof").innerText = (stats.total_received || 0).toLocaleString("fr-FR") + " XOF";
-    document.getElementById("pending-xof").innerText = (stats.pending_total || 0).toLocaleString("fr-FR") + " XOF";
     document.getElementById("success-rate").innerText = (stats.success_rate || 0) + "%";
     renderStatusChart(stats.paid_links || 0, stats.pending_links || 0, stats.failed_links || 0);
   }
@@ -875,117 +847,6 @@ export async function mount(container, params = {}) {
     } catch (error) {
       console.error("Erreur stats:", error);
     }
-  }
-
-  function formatCountdown(targetDate) {
-    const now = new Date();
-    const diff = new Date(targetDate) - now;
-    if (diff <= 0) return "Disponible maintenant";
-    const totalSeconds = Math.floor(diff / 1000);
-    const days = Math.floor(totalSeconds / 86400);
-    const hours = Math.floor((totalSeconds % 86400) / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    let result = "Disponible dans ";
-    if (days > 0) result += `${days}j `;
-    if (hours > 0 || days > 0) result += `${hours}h `;
-    if (minutes > 0 || hours > 0 || days > 0) result += `${minutes}min `;
-    result += `${seconds}s`;
-    return result;
-  }
-
-  async function chargerWallet() {
-    try {
-      const res = await apiFetch("/wallet/me");
-      const data = await res.json();
-      document.getElementById("wallet-balance").innerText =
-        Number(data.available || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " XOF";
-      const lockedAmountEl = document.getElementById("locked-amount");
-      if (lockedAmountEl) {
-        lockedAmountEl.innerText =
-          Number(data.locked_amount || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " XOF";
-      }
-      const lockedCountdownEl = document.getElementById("locked-countdown");
-      if (lockedCountdownEl) {
-        if (data.next_available_at) {
-          const lockedTarget = new Date(data.next_available_at);
-          const update = () => (lockedCountdownEl.innerText = formatCountdown(lockedTarget));
-          update();
-          lockedCountdownIntervals.push(setInterval(update, 1000));
-        } else {
-          lockedCountdownEl.innerText = "Aucun montant verrouillé";
-        }
-      }
-    } catch (err) {
-      console.error("Erreur wallet:", err);
-    }
-  }
-
-  async function loadWalletHistory() {
-    const historyList = document.getElementById("walletHistoryList");
-    try {
-      const res = await apiFetch("/wallet/history");
-      const data = await res.json();
-      if (!data.transactions || data.transactions.length === 0) {
-        historyList.innerHTML = "<small>Aucun mouvement wallet</small>";
-        return;
-      }
-      historyList.innerHTML = data.transactions
-        .map((tx) => {
-          const estRetraitEnAttente = tx.type === "withdraw" && tx.status === "pending";
-          const boutonAnnuler =
-            estRetraitEnAttente && tx.withdrawal_id
-              ? `<div style="margin-top: 8px; text-align: right;"><button onclick="annulerRetrait('${tx.withdrawal_id}')" style="background:#facc15;color:#111827;border:none;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">Annuler le retrait</button></div>`
-              : "";
-          return `
-          <div class="wallet-item" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px;">
-            <div class="wallet-row"><span class="wallet-label">Type :</span><span class="wallet-value">${tx.type === "deposit" ? "Dépôt" : tx.type === "withdraw" ? "Retrait" : tx.type}</span></div>
-            <div class="wallet-row"><span class="wallet-label">Montant :</span><span class="wallet-value ${tx.direction === "in" ? "text-success" : "text-danger"}">${tx.direction === "in" ? "+" : "-"}${Number(tx.amount).toLocaleString("fr-FR")} XOF</span></div>
-            <div class="wallet-row"><span class="wallet-label">Date :</span><span class="wallet-value">${new Date(tx.created_at).toLocaleString("fr-FR")}</span></div>
-            <div class="wallet-row"><span class="wallet-label">Référence :</span><span class="wallet-value">${tx.reference || "N/A"}</span></div>
-            <div class="wallet-row"><span class="wallet-label">Note :</span><span class="wallet-value">${tx.description || "-"}</span></div>
-            ${boutonAnnuler}
-          </div>
-        `;
-        })
-        .join("");
-    } catch (e) {
-      if (historyList) historyList.innerHTML = "<small>Erreur chargement historique</small>";
-    }
-  }
-
-  async function annulerRetrait(retraitId) {
-    if (!retraitId) {
-      showToast("Identifiant du retrait introuvable", "error");
-      return;
-    }
-    if (!confirm("Voulez-vous vraiment annuler ce retrait ? Les fonds seront recrédités.")) return;
-    try {
-      const res = await apiFetch(`/withdrawals/${retraitId}/cancel`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) {
-        showToast(data.detail || "Erreur lors de l'annulation", "error");
-        return;
-      }
-      showToast("Retrait annulé avec succès !", "success");
-      await loadWalletHistory();
-      await chargerWallet();
-    } catch (err) {
-      console.error("Erreur annulation retrait :", err);
-      showToast("Erreur de connexion au serveur", "error");
-    }
-  }
-
-  function closeWithdrawModalCleanly() {
-    const modalEl = document.getElementById("withdrawModal");
-    const modal = bootstrap.Modal.getInstance(modalEl);
-    if (modal) modal.hide();
-    setTimeout(() => {
-      document.body.classList.remove("modal-open");
-      document.body.style.removeProperty("overflow");
-      document.body.style.removeProperty("padding-right");
-      document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
-    }, 300);
   }
 
   async function loadPlan() {
@@ -1176,46 +1037,6 @@ export async function mount(container, params = {}) {
   on(document.getElementById("exportBtn"), "click", exportCSV);
   on(document.getElementById("exportPdfBtn"), "click", exportPDF);
 
-  const confirmBtn = document.getElementById("confirmWithdrawBtn");
-  on(confirmBtn, "click", async () => {
-    if (confirmBtn.disabled) return;
-    confirmBtn.disabled = true;
-    const amount = parseFloat(document.getElementById("withdrawAmount").value);
-    if (!amount || amount <= 0) {
-      alert("Montant invalide");
-      confirmBtn.disabled = false;
-      return;
-    }
-    try {
-      const res = await apiFetch("/withdraw", { method: "POST", body: { amount } });
-      const data = await res.json();
-      if (!res.ok) {
-        let message = "Impossible d'effectuer ce retrait";
-        if (data.detail === "Permission insuffisante") message = "Seul le propriétaire du compte peut effectuer un retrait";
-        else if (typeof data.detail === "string") message = data.detail;
-        showToast(message, "error");
-        closeWithdrawModalCleanly();
-        return;
-      }
-      const res2 = await apiFetch(`/withdraw/${data.id}/process`, { method: "POST" });
-      const data2 = await res2.json();
-      if (!res2.ok) {
-        showToast(data2.detail || "Erreur lors du traitement Stripe", "error");
-        closeWithdrawModalCleanly();
-        return;
-      }
-      showToast("Retrait envoyé avec succès");
-      closeWithdrawModalCleanly();
-      document.getElementById("withdrawAmount").value = "";
-      await Promise.all([chargerWallet(), loadWalletHistory(), chargerTransactions()]);
-    } catch (err) {
-      showToast("Erreur serveur, veuillez réessayer", "error");
-      closeWithdrawModalCleanly();
-    } finally {
-      confirmBtn.disabled = false;
-    }
-  });
-
   const successCard = document.getElementById("successCard");
   const chartTooltip = document.getElementById("chartTooltip");
   if (successCard && chartTooltip) {
@@ -1258,26 +1079,6 @@ export async function mount(container, params = {}) {
     normalView.style.display = "block";
   });
 
-  const retraitBtn = document.getElementById("retraitBtn");
-  const exportActionsEl = document.getElementById("export-actions");
-  // Toujours dans la barre d'actions du haut (plus seulement sous 768px) :
-  // "all" matche en permanence (aucune ambiguïté de parsing contrairement à
-  // une largeur numérique), placeButton(mq) prend donc toujours la branche
-  // query.matches ci-dessous.
-  const mq = window.matchMedia("all");
-  let placeButton = () => {};
-  if (retraitBtn && exportActionsEl) {
-    const originalParent = retraitBtn.parentElement;
-    const originalNextSibling = retraitBtn.nextSibling;
-    placeButton = (query) => {
-      if (query.matches) exportActionsEl.prepend(retraitBtn);
-      else if (originalNextSibling) originalParent.insertBefore(retraitBtn, originalNextSibling);
-      else originalParent.appendChild(retraitBtn);
-    };
-    placeButton(mq);
-    mq.addEventListener("change", placeButton);
-  }
-
   // Page dédiée (fixedType) : masque le sélecteur de catégorie (rien à
   // basculer depuis ici), élargit la colonne de contenu, adapte le titre, et
   // applique l'état initial (updateTableHead/updatePaymentsViewMode ne sont
@@ -1317,7 +1118,6 @@ export async function mount(container, params = {}) {
 
   // window.upgrade est exposé globalement par app.js (modale partagée persistante)
   window.voirDetailActivite = voirDetailActivite;
-  window.annulerRetrait = annulerRetrait;
 
   (async () => {
     const res = await apiFetch("/me");
@@ -1332,8 +1132,6 @@ export async function mount(container, params = {}) {
     lock.style.display = "none";
     loadStats();
     chargerTransactions();
-    chargerWallet();
-    loadWalletHistory();
     loadPlan();
   })();
 
@@ -1350,24 +1148,10 @@ export async function mount(container, params = {}) {
         document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
       }
       stripeReportModalEl?.remove();
-      const withdrawModalEl = document.getElementById("withdrawModal");
-      const withdrawModalInstance = withdrawModalEl && bootstrap.Modal.getInstance(withdrawModalEl);
-      if (withdrawModalInstance) {
-        withdrawModalInstance.hide();
-        withdrawModalInstance.dispose();
-        document.body.classList.remove("modal-open");
-        document.body.style.removeProperty("overflow");
-        document.body.style.removeProperty("padding-right");
-        document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
-      }
-      withdrawModalEl?.remove();
       if (statusChart) statusChart.destroy();
-      lockedCountdownIntervals.forEach(clearInterval);
       boundListeners.forEach(({ target, type, fn }) => target.removeEventListener(type, fn));
-      mq.removeEventListener("change", placeButton);
       document.body.classList.remove("locked-page");
       delete window.voirDetailActivite;
-      delete window.annulerRetrait;
     },
   };
 }

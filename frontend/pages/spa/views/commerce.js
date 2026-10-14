@@ -57,7 +57,7 @@ export async function mount(container, params = {}) {
    4 fois.)
 ========================================================= */
 
-function ensureCommerceKpiStyles() {
+export function ensureCommerceKpiStyles() {
 
     if (document.querySelector("#commerce-kpi-style")) return;
 
@@ -106,6 +106,42 @@ function ensureCommerceKpiStyles() {
             line-height: 21px;
             font-weight: 600;
             color: #111827;
+        }
+        .commerce-kpi-sub {
+            display: block;
+            font-size: 11px;
+            line-height: 14px;
+            color: #9ca3af;
+            margin-top: 4px;
+        }
+        /* Variante non cliquable (simple affichage de stat, pas de filtre)
+           — même carte visuelle que .commerce-kpi, sans curseur pointeur ni
+           effet hover/active. Utilisée par les KPI "Paiements" (voir
+           transactions.js) qui n'ont pas de logique de filtrage. */
+        .commerce-kpi-display {
+            cursor: default;
+        }
+        .commerce-kpi-display:hover {
+            border-color: #e5e7eb;
+            background: #ffffff;
+        }
+        /* Variante agrandie — même style (couleurs/bordure/radius), juste
+           une taille plus importante pour des KPI mis en avant (grille
+           moins dense, police plus grande) plutôt que des petits filtres. */
+        .commerce-kpi-filters.commerce-kpi-filters-lg {
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+        .commerce-kpi-lg {
+            min-height: 92px;
+            padding: 16px 18px;
+        }
+        .commerce-kpi-lg .commerce-kpi-label {
+            font-size: 13px;
+        }
+        .commerce-kpi-lg .commerce-kpi-value {
+            font-size: 24px;
+            line-height: 28px;
         }
     `;
     document.head.appendChild(style);
