@@ -5,15 +5,13 @@
 // annulerRetrait, #withdrawModal) ; transactions.css est réutilisé tel quel
 // pour .wallet-popup/.retrait-btn.
 //
-// Architecture de la carte de solde (montant + barre + répartition)
-// inspirée de la disposition d'une page de solde de référence (grand
-// montant en tête, barre segmentée disponible/verrouillé, tableau de
-// répartition par type) — contenu et boutons d'action de cette référence
-// volontairement NON repris (pas de sélecteur de devise, pas de bouton
-// "Commentaires", pas de ligne Virer/Transfert/Ajouter des fonds/Gérer les
-// comptes bancaires, pas de bloc "Virements automatiques", pas de
-// sous-titres de bas de carte) : seule la vue Paiements/Solde est concernée
-// par cette passe, le reste de la page Solde recevra du contenu plus tard.
+// Architecture : un container global (.balance-section, 80% de la largeur
+// de #main-content) contenant 4 blocs INDÉPENDANTS (chacun sa propre carte
+// .balance-block) plutôt qu'un bloc unique fusionné : Solde disponible (+
+// retrait), barre de légende, Montant verrouillé (cliquable, détaille
+// chaque montant verrouillé et sa date de disponibilité), Montant
+// disponible. La barre affiche la somme correspondante au survol de chaque
+// zone colorée (title natif).
 import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
@@ -23,22 +21,24 @@ function ensureSoldeStyles() {
   const style = document.createElement("style");
   style.id = "solde-balance-style";
   style.textContent = `
-    .balance-card-wrapper {
-        position: relative;
-        max-width: 520px;
+    .balance-section {
+        width: 80%;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
     }
-    .balance-card {
+    .balance-block {
         background: #f8f9fb;
         border: 1px solid #e5e7eb;
         border-radius: 12px;
-        padding: 20px 22px;
+        padding: 18px 20px;
     }
-    .balance-card-header {
+    .balance-block-header {
+        position: relative;
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
         gap: 16px;
-        margin-bottom: 18px;
     }
     .balance-card-label {
         font-size: 12px;
@@ -61,7 +61,6 @@ function ensureSoldeStyles() {
         border-radius: 999px;
         overflow: hidden;
         background: #e5e7eb;
-        margin-bottom: 18px;
     }
     .balance-bar-segment {
         height: 100%;
@@ -69,31 +68,30 @@ function ensureSoldeStyles() {
     }
     .balance-bar-available { background: #16a34a; }
     .balance-bar-locked { background: #f59e0b; }
-    .balance-breakdown {
-        width: 100%;
-        border-collapse: collapse;
+    .balance-breakdown-row {
+        display: flex;
+        gap: 14px;
     }
-    .balance-breakdown thead th {
-        text-align: left;
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: .5px;
-        color: #9ca3af;
-        font-weight: 600;
-        padding-bottom: 8px;
-        border-bottom: 1px solid #e5e7eb;
+    .balance-breakdown-row .balance-block {
+        flex: 1 1 0;
+        min-width: 0;
     }
-    .balance-breakdown thead th:last-child { text-align: right; }
-    .balance-breakdown tbody td {
-        padding: 12px 0;
-        border-bottom: 1px solid #e5e7eb;
+    .balance-block-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+    .balance-block-label {
         font-size: 13px;
-        color: #111827;
         font-weight: 600;
-        vertical-align: top;
+        color: #111827;
     }
-    .balance-breakdown tbody tr:last-child td { border-bottom: none; }
-    .balance-breakdown tbody td:last-child { text-align: right; }
+    .balance-block-amount {
+        font-size: 14px;
+        font-weight: 700;
+        color: #111827;
+    }
     .balance-dot {
         display: inline-block;
         width: 8px;
@@ -107,8 +105,42 @@ function ensureSoldeStyles() {
         font-size: 11px;
         font-weight: 400;
         color: #9ca3af;
-        margin-top: 2px;
+        margin-top: 6px;
         margin-left: 16px;
+    }
+    .balance-block-locked {
+        cursor: pointer;
+        transition: border-color .15s ease;
+    }
+    .balance-block-locked:hover {
+        border-color: #f59e0b;
+    }
+    .balance-locked-details {
+        display: none;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #e5e7eb;
+    }
+    .balance-locked-details.open {
+        display: block;
+    }
+    .balance-locked-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 12px;
+        color: #374151;
+        padding: 6px 0;
+    }
+    .balance-locked-item + .balance-locked-item {
+        border-top: 1px dashed #e5e7eb;
+    }
+    .balance-locked-item-date {
+        color: #9ca3af;
+    }
+    .balance-locked-empty {
+        font-size: 12px;
+        color: #9ca3af;
     }
   `;
   document.head.appendChild(style);
@@ -121,42 +153,40 @@ const TEMPLATE = `
     <div class="page-subtitle">Votre solde disponible et vos fonds verrouillés</div>
   </div>
 </div>
-<div class="balance-card-wrapper wallet-hover-wrapper">
-  <div class="balance-card">
-    <div class="balance-card-header">
-      <div>
-        <div class="balance-card-label">Solde disponible</div>
-        <div class="balance-card-amount" id="wallet-balance">0 XOF</div>
-      </div>
-      <button id="retraitBtn" class="btn retrait-btn" data-bs-toggle="modal" data-bs-target="#withdrawModal">Retirer des fonds</button>
+<div class="balance-section">
+  <div class="balance-block balance-block-header wallet-hover-wrapper">
+    <div>
+      <div class="balance-card-label">Solde disponible</div>
+      <div class="balance-card-amount" id="wallet-balance">0 XOF</div>
     </div>
+    <button id="retraitBtn" class="btn retrait-btn" data-bs-toggle="modal" data-bs-target="#withdrawModal">Retirer des fonds</button>
+    <div id="walletHistoryPopup" class="wallet-popup">
+      <h6 class="mb-3">Historique du wallet</h6>
+      <div id="wallet-scroll-box" style="max-height: 500px; overflow-y: auto;"><div id="walletHistoryList"></div></div>
+      <div id="wallet-loading-more" class="text-center py-3 d-none"><span class="text-muted">Chargement...</span></div>
+    </div>
+  </div>
+  <div class="balance-block">
     <div class="balance-bar">
       <div class="balance-bar-segment balance-bar-available" id="balance-bar-available" style="width: 0%;"></div>
       <div class="balance-bar-segment balance-bar-locked" id="balance-bar-locked" style="width: 0%;"></div>
     </div>
-    <table class="balance-breakdown">
-      <thead>
-        <tr><th>Type</th><th>Montant</th></tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>
-            <span class="balance-dot balance-dot-locked"></span>Montant verrouillé
-            <div class="balance-breakdown-sub" id="locked-countdown">Chargement...</div>
-          </td>
-          <td id="locked-amount">0 XOF</td>
-        </tr>
-        <tr>
-          <td><span class="balance-dot balance-dot-available"></span>Disponible</td>
-          <td id="wallet-balance-row">0 XOF</td>
-        </tr>
-      </tbody>
-    </table>
   </div>
-  <div id="walletHistoryPopup" class="wallet-popup">
-    <h6 class="mb-3">Historique du wallet</h6>
-    <div id="wallet-scroll-box" style="max-height: 500px; overflow-y: auto;"><div id="walletHistoryList"></div></div>
-    <div id="wallet-loading-more" class="text-center py-3 d-none"><span class="text-muted">Chargement...</span></div>
+  <div class="balance-breakdown-row">
+    <div class="balance-block balance-block-locked" id="locked-block">
+      <div class="balance-block-row">
+        <span><span class="balance-dot balance-dot-locked"></span><span class="balance-block-label">Montant verrouillé</span></span>
+        <strong class="balance-block-amount" id="locked-amount">0 XOF</strong>
+      </div>
+      <div class="balance-breakdown-sub" id="locked-countdown">Chargement...</div>
+      <div class="balance-locked-details" id="locked-details"></div>
+    </div>
+    <div class="balance-block">
+      <div class="balance-block-row">
+        <span><span class="balance-dot balance-dot-available"></span><span class="balance-block-label">Montant disponible</span></span>
+        <strong class="balance-block-amount" id="wallet-balance-row">0 XOF</strong>
+      </div>
+    </div>
   </div>
 </div>
 `;
@@ -212,27 +242,36 @@ export async function mount(container) {
     return result;
   }
 
+  const formatAmount = (n) => Number(n || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " XOF";
+  const formatDate = (d) =>
+    new Date(d).toLocaleString("fr-FR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
   async function chargerWallet() {
     try {
       const res = await apiFetch("/wallet/me");
       const data = await res.json();
       const available = Number(data.available || 0);
       const locked = Number(data.locked_amount || 0);
-      const format = (n) => n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " XOF";
 
-      document.getElementById("wallet-balance").innerText = format(available);
+      document.getElementById("wallet-balance").innerText = formatAmount(available);
       const balanceRowEl = document.getElementById("wallet-balance-row");
-      if (balanceRowEl) balanceRowEl.innerText = format(available);
+      if (balanceRowEl) balanceRowEl.innerText = formatAmount(available);
       const lockedAmountEl = document.getElementById("locked-amount");
-      if (lockedAmountEl) lockedAmountEl.innerText = format(locked);
+      if (lockedAmountEl) lockedAmountEl.innerText = formatAmount(locked);
 
       const total = available + locked;
       const availablePct = total > 0 ? (available / total) * 100 : 0;
       const lockedPct = total > 0 ? 100 - availablePct : 0;
       const availableBarEl = document.getElementById("balance-bar-available");
       const lockedBarEl = document.getElementById("balance-bar-locked");
-      if (availableBarEl) availableBarEl.style.width = availablePct + "%";
-      if (lockedBarEl) lockedBarEl.style.width = lockedPct + "%";
+      if (availableBarEl) {
+        availableBarEl.style.width = availablePct + "%";
+        availableBarEl.title = "Disponible : " + formatAmount(available);
+      }
+      if (lockedBarEl) {
+        lockedBarEl.style.width = lockedPct + "%";
+        lockedBarEl.title = "Montant verrouillé : " + formatAmount(locked);
+      }
 
       const lockedCountdownEl = document.getElementById("locked-countdown");
       if (lockedCountdownEl) {
@@ -244,6 +283,19 @@ export async function mount(container) {
         } else {
           lockedCountdownEl.innerText = "Aucun montant verrouillé";
         }
+      }
+
+      const lockedDetailsEl = document.getElementById("locked-details");
+      if (lockedDetailsEl) {
+        const items = data.locked_items || [];
+        lockedDetailsEl.innerHTML = items.length
+          ? items
+              .map(
+                (item) =>
+                  `<div class="balance-locked-item"><span>${formatAmount(item.amount)}</span><span class="balance-locked-item-date">Disponible le ${formatDate(item.available_at)}</span></div>`
+              )
+              .join("")
+          : `<div class="balance-locked-empty">Aucun montant verrouillé</div>`;
       }
     } catch (err) {
       console.error("Erreur wallet:", err);
@@ -355,6 +407,10 @@ export async function mount(container) {
     } finally {
       confirmBtn.disabled = false;
     }
+  });
+
+  on(document.getElementById("locked-block"), "click", () => {
+    document.getElementById("locked-details")?.classList.toggle("open");
   });
 
   window.annulerRetrait = annulerRetrait;

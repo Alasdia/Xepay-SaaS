@@ -79,11 +79,21 @@ def get_wallet(
     future_dates = [tx.available_at for tx in txs if tx.available_at and tx.available_at > now]
     next_available_at = min(future_dates) if future_dates else None
 
+    locked_items = sorted(
+        (
+            {"amount": tx.amount, "available_at": tx.available_at}
+            for tx in txs
+            if tx.type == "deposit" and tx.available_at and tx.available_at > now
+        ),
+        key=lambda item: item["available_at"],
+    )
+
     return {
         "available": available_amount,
         "pending_withdrawal": wallet.pending,
         "locked_amount": locked_amount,
-        "next_available_at": next_available_at
+        "next_available_at": next_available_at,
+        "locked_items": locked_items
     }
 
 
