@@ -143,15 +143,17 @@ export function ensureCommerceKpiStyles() {
             font-size: 24px;
             line-height: 28px;
         }
-        /* Variante Paiements : contenu décalé à droite de la carte, avec
-           icône représentative du KPI à l'extrême droite, et typographie
-           réduite/grisée (voir transactions.js) — l'opacité réduite
-           s'ajoute à .text-muted (qui ne fait que griser la couleur, pas
-           l'opacité) pour un rendu plus discret que le reste des KPI. */
+        /* Variante Paiements : icône représentative du KPI à gauche de la
+           carte, contenu (titre/valeur/sous-titre) à droite — space-between
+           pour que l'icône reste ancrée à gauche et le texte à droite,
+           avec l'espace réservé entre les deux (voir transactions.js).
+           Typographie réduite/grisée : l'opacité réduite s'ajoute à
+           .text-muted (qui ne fait que griser la couleur, pas l'opacité)
+           pour un rendu plus discret que le reste des KPI. */
         .commerce-kpi-paiements-row {
             display: flex;
             align-items: center;
-            justify-content: flex-end;
+            justify-content: space-between;
             gap: 10px;
         }
         .commerce-kpi-paiements-text {

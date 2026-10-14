@@ -47,34 +47,34 @@ const TEMPLATE = `
       <div id="kpi-row" class="commerce-kpi-filters commerce-kpi-filters-lg mb-4">
         <div class="commerce-kpi commerce-kpi-display commerce-kpi-lg commerce-kpi-paiements">
           <div class="commerce-kpi-paiements-row">
+            <i class="fa-solid fa-circle-check commerce-kpi-paiements-icon text-muted"></i>
             <div class="commerce-kpi-paiements-text">
               <span class="commerce-kpi-label text-muted">Paiements réussis ce mois</span>
               <strong class="commerce-kpi-value text-muted"><span id="links-created">0</span></strong>
               <span class="commerce-kpi-sub text-muted"><span id="links-paid" style="font-weight:700;">0</span></span>
             </div>
-            <i class="fa-solid fa-circle-check commerce-kpi-paiements-icon text-muted"></i>
           </div>
           <div class="mini-progress"><div id="links-progress-bar" class="mini-progress-bar" style="width: 0%;"></div></div>
         </div>
         <div class="commerce-kpi commerce-kpi-display commerce-kpi-lg commerce-kpi-paiements position-relative" id="successCard">
           <div class="commerce-kpi-paiements-row">
+            <i class="fa-solid fa-gauge-high commerce-kpi-paiements-icon text-muted"></i>
             <div class="commerce-kpi-paiements-text">
               <span class="commerce-kpi-label text-muted">Taux de réussite</span>
               <strong id="success-rate" class="commerce-kpi-value text-muted">0%</strong>
               <span class="commerce-kpi-sub text-muted">Transactions réussies ce mois</span>
             </div>
-            <i class="fa-solid fa-gauge-high commerce-kpi-paiements-icon text-muted"></i>
           </div>
           <div id="chartTooltip" style="display:none; position:absolute; top:10px; right:10px; width:320px; height:240px; padding:10px; z-index:1000;"><canvas id="statusChart"></canvas></div>
         </div>
         <div class="commerce-kpi commerce-kpi-display commerce-kpi-lg commerce-kpi-paiements">
           <div class="commerce-kpi-paiements-row">
+            <i class="fa-solid fa-sack-dollar commerce-kpi-paiements-icon text-muted"></i>
             <div class="commerce-kpi-paiements-text">
               <span class="commerce-kpi-label text-muted">Total reçu</span>
               <strong id="total-xof" class="commerce-kpi-value text-muted">0 XOF</strong>
               <span class="commerce-kpi-sub text-muted">Revenus cumulés</span>
             </div>
-            <i class="fa-solid fa-sack-dollar commerce-kpi-paiements-icon text-muted"></i>
           </div>
         </div>
       </div>
