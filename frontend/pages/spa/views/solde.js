@@ -19,16 +19,19 @@
 // vue Paiements (CSV/PDF/rapport Stripe), sans dupliquer cette logique ici.
 //
 // Dans la zone de contenu principal, UNE SEULE carte (.balance-card, fond
-// gris, coins arrondis) contenant 4 sous-cartes accolées (.balance-subcard,
-// fond blanc, coins droits — seule la carte mère est arrondie) qui
-// conservent chacune leur propre effet (survol, et clic pour Montant
-// verrouillé qui détaille chaque montant et sa date de disponibilité) :
-// Solde disponible (+ retrait), barre de légende, Montant verrouillé,
-// Montant disponible. Montant verrouillé/Montant disponible sont empilés
-// (l'un au-dessus de l'autre, 92% de la largeur de la carte mère) plutôt
-// que côte à côte, chacun avec son texte en haut et son montant en bas.
-// La barre affiche, au survol de chaque zone colorée, une info-bulle
-// (texte en haut, montant en bas) avec la somme correspondante.
+// gris, coins arrondis) contenant SEULEMENT DEUX sous-cartes accolées
+// (.balance-subcard, fond blanc, coins droits — seule la carte mère est
+// arrondie) : la carte principale (Solde disponible + retrait) et une 2e
+// carte qui regroupe tout le reste (barre de légende, Montant verrouillé,
+// Montant disponible) — comme dans la page de solde de référence (voir
+// frontend/pages/assets/vue_solde_référence.png). Dans cette 2e carte, les
+// lignes Montant verrouillé/Montant disponible utilisent le même padding
+// horizontal que la barre (via un alignement en bordure pleine largeur) :
+// le texte démarre au même niveau que le début de la barre (à gauche), le
+// montant se termine au même niveau que la fin de la barre (à droite).
+// Montant verrouillé reste cliquable pour détailler chaque montant et sa
+// date de disponibilité. La barre affiche, au survol de chaque zone
+// colorée, une info-bulle (texte en haut, montant en bas).
 import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
@@ -126,28 +129,29 @@ function ensureSoldeStyles() {
     .balance-bar-tooltip-amount {
         font-weight: 700;
     }
-    .balance-breakdown-row {
+    /* Lignes Montant verrouillé / Montant disponible : marge négative
+       égale au padding horizontal de la carte (20px) puis padding
+       identique, pour que la bordure de séparation morde sur toute la
+       largeur de la carte tout en gardant le texte/montant alignés
+       exactement sur les bords gauche/droite de la barre au-dessus
+       (même inset que .balance-bar, simple enfant direct de la carte). */
+    .balance-row {
         display: flex;
-        flex-direction: column;
         align-items: center;
-        gap: 2px;
+        justify-content: space-between;
+        gap: 12px;
+        margin: 0 -20px;
+        padding: 14px 20px;
+        border-top: 1px solid #e5e7eb;
     }
-    .balance-breakdown-row .balance-subcard {
-        width: 92%;
-    }
-    .balance-block-row {
+    .balance-row-label {
         display: flex;
-        flex-direction: column;
         align-items: center;
-        gap: 6px;
-        text-align: center;
-    }
-    .balance-block-label {
         font-size: 13px;
         font-weight: 600;
         color: #111827;
     }
-    .balance-block-amount {
+    .balance-row-amount {
         font-size: 14px;
         font-weight: 700;
         color: #111827;
@@ -165,21 +169,21 @@ function ensureSoldeStyles() {
         font-size: 11px;
         font-weight: 400;
         color: #9ca3af;
-        margin-top: 2px;
-        text-align: center;
+        margin-top: -6px;
+        padding-bottom: 10px;
+        text-align: left;
     }
-    .balance-block-locked {
+    .balance-row-locked {
         cursor: pointer;
-        transition: border-color .15s ease;
+        transition: background-color .15s ease;
     }
-    .balance-block-locked:hover {
-        border-color: #f59e0b;
+    .balance-row-locked:hover {
+        background-color: #fffbeb;
     }
     .balance-locked-details {
         display: none;
-        margin-top: 12px;
-        padding-top: 12px;
-        border-top: 1px solid #e5e7eb;
+        margin-top: -6px;
+        padding-bottom: 10px;
     }
     .balance-locked-details.open {
         display: block;
@@ -287,21 +291,15 @@ const TEMPLATE = `
         </div>
       </div>
     </div>
-  </div>
-  <div class="balance-breakdown-row">
-    <div class="balance-subcard balance-block-locked" id="locked-block">
-      <div class="balance-block-row">
-        <span><span class="balance-dot balance-dot-locked"></span><span class="balance-block-label">Montant verrouillé</span></span>
-        <strong class="balance-block-amount" id="locked-amount">0 XOF</strong>
-      </div>
-      <div class="balance-breakdown-sub" id="locked-countdown">Chargement...</div>
-      <div class="balance-locked-details" id="locked-details"></div>
+    <div class="balance-row balance-row-locked" id="locked-block">
+      <span class="balance-row-label"><span class="balance-dot balance-dot-locked"></span>Montant verrouillé</span>
+      <strong class="balance-row-amount" id="locked-amount">0 XOF</strong>
     </div>
-    <div class="balance-subcard">
-      <div class="balance-block-row">
-        <span><span class="balance-dot balance-dot-available"></span><span class="balance-block-label">Montant disponible</span></span>
-        <strong class="balance-block-amount" id="wallet-balance-row">0 XOF</strong>
-      </div>
+    <div class="balance-breakdown-sub" id="locked-countdown">Chargement...</div>
+    <div class="balance-locked-details" id="locked-details"></div>
+    <div class="balance-row">
+      <span class="balance-row-label"><span class="balance-dot balance-dot-available"></span>Montant disponible</span>
+      <strong class="balance-row-amount" id="wallet-balance-row">0 XOF</strong>
     </div>
   </div>
 </div>
