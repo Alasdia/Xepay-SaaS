@@ -146,7 +146,10 @@ def create_connect_activity_session(
                     }
                 },
                 "payment_details": {
-                    "enabled": True
+                    "enabled": True,
+                    "features": {
+                        "capture_payments": False
+                    }
                 },
                 "payouts": {
                     "enabled": True,
