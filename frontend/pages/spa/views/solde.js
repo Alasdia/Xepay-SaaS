@@ -19,12 +19,16 @@
 // vue Paiements (CSV/PDF/rapport Stripe), sans dupliquer cette logique ici.
 //
 // Dans la zone de contenu principal, UNE SEULE carte (.balance-card, fond
-// gris) contenant 4 sous-cartes (.balance-subcard, fond blanc) qui
+// gris, coins arrondis) contenant 4 sous-cartes accolées (.balance-subcard,
+// fond blanc, coins droits — seule la carte mère est arrondie) qui
 // conservent chacune leur propre effet (survol, et clic pour Montant
 // verrouillé qui détaille chaque montant et sa date de disponibilité) :
 // Solde disponible (+ retrait), barre de légende, Montant verrouillé,
-// Montant disponible. La barre affiche la somme correspondante au survol
-// de chaque zone colorée (title natif).
+// Montant disponible. Montant verrouillé/Montant disponible sont empilés
+// (l'un au-dessus de l'autre, 92% de la largeur de la carte mère) plutôt
+// que côte à côte, chacun avec son texte en haut et son montant en bas.
+// La barre affiche, au survol de chaque zone colorée, une info-bulle
+// (texte en haut, montant en bas) avec la somme correspondante.
 import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
@@ -44,12 +48,12 @@ function ensureSoldeStyles() {
         padding: 14px;
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 2px;
     }
     .balance-subcard {
         background: #ffffff;
         border: 1px solid #e5e7eb;
-        border-radius: 10px;
+        border-radius: 0;
         padding: 18px 20px;
         transition: border-color .15s ease;
     }
@@ -80,30 +84,63 @@ function ensureSoldeStyles() {
     .balance-bar {
         display: flex;
         width: 100%;
-        height: 8px;
+        height: 12px;
         border-radius: 999px;
-        overflow: hidden;
+        overflow: visible;
         background: #e5e7eb;
     }
     .balance-bar-segment {
+        position: relative;
         height: 100%;
         transition: width .4s ease;
+        overflow: visible;
     }
+    .balance-bar-segment:first-child { border-radius: 999px 0 0 999px; }
+    .balance-bar-segment:last-child { border-radius: 0 999px 999px 0; }
     .balance-bar-available { background: #16a34a; }
     .balance-bar-locked { background: #f59e0b; }
+    .balance-bar-tooltip {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        position: absolute;
+        bottom: calc(100% + 10px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: #111827;
+        color: #ffffff;
+        border-radius: 6px;
+        padding: 6px 10px;
+        font-size: 11px;
+        white-space: nowrap;
+        z-index: 10;
+    }
+    .balance-bar-segment:hover .balance-bar-tooltip {
+        display: flex;
+    }
+    .balance-bar-tooltip-label {
+        color: #9ca3af;
+        font-size: 10px;
+        margin-bottom: 2px;
+    }
+    .balance-bar-tooltip-amount {
+        font-weight: 700;
+    }
     .balance-breakdown-row {
         display: flex;
-        gap: 10px;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
     }
     .balance-breakdown-row .balance-subcard {
-        flex: 1 1 0;
-        min-width: 0;
+        width: 92%;
     }
     .balance-block-row {
         display: flex;
+        flex-direction: column;
         align-items: center;
-        justify-content: space-between;
-        gap: 12px;
+        gap: 6px;
+        text-align: center;
     }
     .balance-block-label {
         font-size: 13px;
@@ -128,8 +165,8 @@ function ensureSoldeStyles() {
         font-size: 11px;
         font-weight: 400;
         color: #9ca3af;
-        margin-top: 6px;
-        margin-left: 16px;
+        margin-top: 2px;
+        text-align: center;
     }
     .balance-block-locked {
         cursor: pointer;
@@ -237,8 +274,18 @@ const TEMPLATE = `
   </div>
   <div class="balance-subcard">
     <div class="balance-bar">
-      <div class="balance-bar-segment balance-bar-available" id="balance-bar-available" style="width: 0%;"></div>
-      <div class="balance-bar-segment balance-bar-locked" id="balance-bar-locked" style="width: 0%;"></div>
+      <div class="balance-bar-segment balance-bar-available" id="balance-bar-available" style="width: 0%;">
+        <div class="balance-bar-tooltip">
+          <span class="balance-bar-tooltip-label">Disponible</span>
+          <span class="balance-bar-tooltip-amount" id="balance-bar-available-amount">0 XOF</span>
+        </div>
+      </div>
+      <div class="balance-bar-segment balance-bar-locked" id="balance-bar-locked" style="width: 0%;">
+        <div class="balance-bar-tooltip">
+          <span class="balance-bar-tooltip-label">Montant verrouillé</span>
+          <span class="balance-bar-tooltip-amount" id="balance-bar-locked-amount">0 XOF</span>
+        </div>
+      </div>
     </div>
   </div>
   <div class="balance-breakdown-row">
@@ -344,14 +391,12 @@ export async function mount(container) {
       const lockedPct = total > 0 ? 100 - availablePct : 0;
       const availableBarEl = document.getElementById("balance-bar-available");
       const lockedBarEl = document.getElementById("balance-bar-locked");
-      if (availableBarEl) {
-        availableBarEl.style.width = availablePct + "%";
-        availableBarEl.title = "Disponible : " + formatAmount(available);
-      }
-      if (lockedBarEl) {
-        lockedBarEl.style.width = lockedPct + "%";
-        lockedBarEl.title = "Montant verrouillé : " + formatAmount(locked);
-      }
+      if (availableBarEl) availableBarEl.style.width = availablePct + "%";
+      if (lockedBarEl) lockedBarEl.style.width = lockedPct + "%";
+      const availableBarAmountEl = document.getElementById("balance-bar-available-amount");
+      if (availableBarAmountEl) availableBarAmountEl.textContent = formatAmount(available);
+      const lockedBarAmountEl = document.getElementById("balance-bar-locked-amount");
+      if (lockedBarAmountEl) lockedBarAmountEl.textContent = formatAmount(locked);
 
       const lockedCountdownEl = document.getElementById("locked-countdown");
       if (lockedCountdownEl) {
