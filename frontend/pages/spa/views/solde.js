@@ -446,6 +446,14 @@ export async function mount(container) {
   ensureSoldeStyles();
   container.innerHTML = TEMPLATE;
   document.body.insertAdjacentHTML("beforeend", WITHDRAW_MODAL_HTML);
+
+  let lockedCountdownIntervals = [];
+  const boundListeners = [];
+  function on(target, type, fn) {
+    if (!target) return;
+    target.addEventListener(type, fn);
+    boundListeners.push({ target, type, fn });
+  }
   const balanceViewButtons = container.querySelectorAll(
     "[data-balance-view]"
   );
@@ -471,14 +479,6 @@ export async function mount(container) {
     });
   });
   switchBalanceView("global");
-
-  let lockedCountdownIntervals = [];
-  const boundListeners = [];
-  function on(target, type, fn) {
-    if (!target) return;
-    target.addEventListener(type, fn);
-    boundListeners.push({ target, type, fn });
-  }
   function formatCountdown(targetDate) {
     const now = new Date();
     const diff = new Date(targetDate) - now;
