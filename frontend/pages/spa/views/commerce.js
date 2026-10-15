@@ -3792,6 +3792,7 @@ async function renderInvoices(container) {
                     "/stripe/connect/invoices"
                 );
             const data = await response.json();
+            console.log("Invoice objet :", data)
             if (!response.ok) {
                 throw new Error(
                     response.status === 401
