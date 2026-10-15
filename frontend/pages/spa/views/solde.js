@@ -266,7 +266,52 @@ function ensureSoldeStyles() {
         color: #6b7280;
         transition: border-color .15s ease;
     }
-    .balance-side-panel-link:hover .balance-side-panel-link-icon {
+    .balance-view-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      width: fit-content;
+      max-width: 100%;
+    }
+    .balance-switch-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 16px;
+      border: none;
+      border-radius: 7px;
+      background: transparent;
+      color: #6b7280;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .balance-switch-btn.active {
+      background: #fff;
+      color: #111827;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .10);
+    }
+    .balance-card[hidden] {
+      display: none !important;
+    }
+    @media (max-width: 576px) {
+      .balance-view-switch {
+        display: flex;
+        width: 100%;
+      }
+
+      .balance-switch-btn {
+        flex: 1;
+        padding: 9px 8px;
+      }
+
+      .balance-side-panel-link:hover .balance-side-panel-link-icon {
         border-color: #9ca3af;
     }
   `;
@@ -280,9 +325,30 @@ const TEMPLATE = `
     <div class="page-subtitle">Votre solde disponible et vos fonds verrouillés</div>
   </div>
 </div>
+<div class="balance-view-switch mb-4">
+  <button
+    type="button"
+    class="balance-switch-btn active"
+    data-balance-view="global"
+    aria-selected="true"
+  >
+    <i class="fa-solid fa-wallet"></i>
+    Solde global
+  </button>
+
+  <button
+    type="button"
+    class="balance-switch-btn"
+    data-balance-view="breakdown"
+    aria-selected="false"
+  >
+    <i class="fa-solid fa-chart-pie"></i>
+    Répartition
+  </button>
+</div>
 <div class="dashboard-layout">
 <div class="main-dashboard-content">
-<div class="balance-card">
+<div class="balance-card" id="balance-global-view">
   <div class="balance-subcard">
     <div class="balance-block-header">
       <div>
@@ -317,9 +383,7 @@ const TEMPLATE = `
     </div>
   </div>
 </div>
-</div>
-<!-- SOUS-SOLDES PAR SOURCE -->
-<div class="balance-card" id="source-balances-card">
+<div class="balance-card" id="balance-breakdown-view" hidden>
   <div class="balance-subcard">
     <div class="balance-card-label">Répartition des soldes</div>
 
@@ -338,6 +402,7 @@ const TEMPLATE = `
       <strong class="balance-row-amount" id="balance-subscription">0 XOF</strong>
     </div>
   </div>
+</div>
 </div>
 <div class="balance-side-panel">
   <div class="balance-subcard balance-wallet-history" id="walletHistoryPopup">
@@ -381,6 +446,31 @@ export async function mount(container) {
   ensureSoldeStyles();
   container.innerHTML = TEMPLATE;
   document.body.insertAdjacentHTML("beforeend", WITHDRAW_MODAL_HTML);
+  const balanceViewButtons = container.querySelectorAll(
+    "[data-balance-view]"
+  );
+  const balanceGlobalView = container.querySelector(
+    "#balance-global-view"
+  );
+  const balanceBreakdownView = container.querySelector(
+    "#balance-breakdown-view"
+  );
+  function switchBalanceView(view) {
+    const showGlobal = view === "global";
+    balanceGlobalView.hidden = !showGlobal;
+    balanceBreakdownView.hidden = showGlobal;
+    balanceViewButtons.forEach((button) => {
+      const active = button.dataset.balanceView === view;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", String(active));
+    });
+  }
+  balanceViewButtons.forEach((button) => {
+    on(button, "click", () => {
+      switchBalanceView(button.dataset.balanceView);
+    });
+  });
+  switchBalanceView("global");
 
   let lockedCountdownIntervals = [];
   const boundListeners = [];
