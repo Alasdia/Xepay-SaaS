@@ -210,6 +210,7 @@ class WalletTransaction(Base):
     card_exp_year = Column(Integer, nullable=True)
     related_user_id = Column(String, ForeignKey("users.id"), nullable=True)
     description = Column(String, nullable=True)
+    source = Column(String, nullable=False, default="payment_link", index=True)
     available_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(
         DateTime(timezone=True),

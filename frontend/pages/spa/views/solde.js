@@ -318,6 +318,27 @@ const TEMPLATE = `
   </div>
 </div>
 </div>
+<!-- SOUS-SOLDES PAR SOURCE -->
+<div class="balance-card" id="source-balances-card">
+  <div class="balance-subcard">
+    <div class="balance-card-label">Répartition des soldes</div>
+
+    <div class="balance-row">
+      <span class="balance-row-label">Liens de paiement</span>
+      <strong class="balance-row-amount" id="balance-payment-link">0 XOF</strong>
+    </div>
+
+    <div class="balance-row">
+      <span class="balance-row-label">Factures</span>
+      <strong class="balance-row-amount" id="balance-invoice">0 XOF</strong>
+    </div>
+
+    <div class="balance-row">
+      <span class="balance-row-label">Abonnements</span>
+      <strong class="balance-row-amount" id="balance-subscription">0 XOF</strong>
+    </div>
+  </div>
+</div>
 <div class="balance-side-panel">
   <div class="balance-subcard balance-wallet-history" id="walletHistoryPopup">
     <div class="balance-side-panel-title">Historique du wallet</div>
@@ -368,71 +389,6 @@ export async function mount(container) {
     target.addEventListener(type, fn);
     boundListeners.push({ target, type, fn });
   }
-
-  async function inspectStripePayments() {
-    try {
-      const res = await apiFetch("/stripe/revenue-breakdown");
-      const data = await res.json();
-      console.log("HTTP status :", res.status);
-      if (!res.ok) {
-        console.error("Erreur API :", data);
-        return;
-      }
-      console.log("Compte Stripe Connect :", data.account_id);
-      console.log("Objets PaymentIntent complets :");
-      console.dir(data.data, { depth: null });
-      console.table(
-        (data.data || []).map((payment) => {
-          const charge = payment.latest_charge;
-          const balanceTransaction =
-            charge && typeof charge === "object"
-              ? charge.balance_transaction
-              : null;
-          return {
-            id: payment.id,
-            object: payment.object,
-            amount: payment.amount,
-            amount_received: payment.amount_received,
-            currency: payment.currency,
-            status: payment.status,
-            customer: payment.customer,
-            application: payment.application,
-            application_fee_amount: payment.application_fee_amount,
-            invoice_id:
-              payment.payment_details?.order_reference ?? null,
-            latest_charge:
-              typeof charge === "string"
-                ? charge
-                : charge?.id ?? null,
-            balance_transaction:
-              typeof balanceTransaction === "string"
-                ? balanceTransaction
-                : balanceTransaction?.id ?? null,
-            created: payment.created
-              ? new Date(payment.created * 1000).toLocaleString()
-              : null,
-            available_on: payment.available_on
-              ? new Date(payment.available_on * 1000).toLocaleString()
-              : null,
-            balance_status:
-              balanceTransaction &&
-              typeof balanceTransaction === "object"
-                ? balanceTransaction.status
-                : null,
-            balance_net:
-              balanceTransaction &&
-              typeof balanceTransaction === "object"
-                ? balanceTransaction.net
-                : null,
-          };
-        })
-      );
-      console.log("Pagination :", data.pagination);
-    } catch (error) {
-      console.error("Erreur inspection Stripe :", error);
-    }
-  }
-
   function formatCountdown(targetDate) {
     const now = new Date();
     const diff = new Date(targetDate) - now;
@@ -505,6 +461,38 @@ export async function mount(container) {
       }
     } catch (err) {
       console.error("Erreur wallet:", err);
+    }
+  }
+  async function chargerSousSoldes() {
+    const elements = {
+      payment_link: document.getElementById("balance-payment-link"),
+      invoice: document.getElementById("balance-invoice"),
+      subscription: document.getElementById("balance-subscription"),
+    };
+    try {
+      const res = await apiFetch("/wallet/history");
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "Erreur de chargement");
+      }
+      const totals = {
+        payment_link: 0,
+        invoice: 0,
+        subscription: 0,
+      };
+      for (const tx of data.transactions || []) {
+        if (!(tx.source in totals)) continue;
+        // Les retraits ne doivent pas être comptabilisés comme des revenus.
+        if (tx.type !== "deposit" || tx.direction !== "in") continue;
+        totals[tx.source] += Number(tx.amount || 0);
+      }
+      for (const [source, element] of Object.entries(elements)) {
+        if (element) {
+          element.textContent = formatAmount(totals[source]);
+        }
+      }
+    } catch (error) {
+      console.error("Erreur sous-soldes :", error);
     }
   }
 
@@ -627,7 +615,7 @@ export async function mount(container) {
 
   chargerWallet();
   loadWalletHistory();
-  inspectStripePayments();
+  chargerSousSoldes();
 
   return {
     unmount() {

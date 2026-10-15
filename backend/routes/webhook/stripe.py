@@ -15,6 +15,209 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 
 router = APIRouter()
 
+
+def process_connect_invoice_event(
+    invoice_data: dict,
+    event_type: str,
+    connected_account_id: str,
+    db: Session,
+):
+    import logging
+    from datetime import datetime, timezone
+    from decimal import Decimal, ROUND_DOWN
+    from sqlalchemy import text
+
+    logger = logging.getLogger(__name__)
+    invoice_id = invoice_data["id"]
+
+    if event_type == "invoice.payment_failed":
+        logger.info("Paiement échoué pour la facture %s", invoice_id)
+        return {"status": "payment_failed", "invoice_id": invoice_id}
+
+    if event_type != "invoice.paid":
+        return {"status": "ignored", "invoice_id": invoice_id}
+
+    if not connected_account_id:
+        raise ValueError("Compte Connect absent")
+
+    invoice = stripe.Invoice.retrieve(
+        invoice_id,
+        stripe_account=connected_account_id,
+    )
+    invoice_data = (
+        invoice.to_dict()
+        if hasattr(invoice, "to_dict")
+        else dict(invoice)
+    )
+
+    if invoice_data.get("status") != "paid":
+        raise ValueError(f"Facture non payée : {invoice_id}")
+
+    subscription_id = invoice_data.get("subscription")
+
+    if not subscription_id:
+        parent = invoice_data.get("parent") or {}
+        if not isinstance(parent, dict):
+            parent = parent.to_dict() if hasattr(parent, "to_dict") else {}
+
+        details = parent.get("subscription_details") or {}
+        if not isinstance(details, dict):
+            details = details.to_dict() if hasattr(details, "to_dict") else {}
+
+        subscription_id = details.get("subscription")
+
+    source = "subscription" if subscription_id else "invoice"
+
+    profile = db.query(Profile).filter(
+        Profile.stripe_account_id == connected_account_id
+    ).first()
+
+    if not profile:
+        raise ValueError(f"Profil introuvable : {connected_account_id}")
+
+    merchant_id = profile.user_id
+
+    user = db.query(UserDB).filter(
+        UserDB.id == merchant_id
+    ).first()
+
+    if not user:
+        raise ValueError(f"Marchand introuvable : {merchant_id}")
+
+    wallet = db.query(Wallet).filter(
+        Wallet.user_id == merchant_id
+    ).with_for_update().first()
+
+    if not wallet:
+        raise ValueError(f"Portefeuille introuvable : {merchant_id}")
+
+    invoice_payments = stripe.InvoicePayment.list(
+        invoice=invoice_id,
+        limit=100,
+        stripe_account=connected_account_id,
+    )
+
+    payment_intent_ids = []
+
+    for invoice_payment in invoice_payments.data:
+        item = invoice_payment.to_dict()
+        payment = item.get("payment") or {}
+
+        if payment.get("type") == "payment_intent":
+            pi_id = payment.get("payment_intent")
+            if pi_id:
+                payment_intent_ids.append(pi_id)
+
+    if not payment_intent_ids:
+        raise ValueError(f"Aucun paiement trouvé pour {invoice_id}")
+
+    recorded = 0
+
+    for pi_id in payment_intent_ids:
+        existing = db.query(WalletTransaction).filter(
+            WalletTransaction.reference == pi_id
+        ).first()
+
+        if existing:
+            continue
+
+        intent = stripe.PaymentIntent.retrieve(
+            pi_id,
+            expand=["latest_charge.balance_transaction"],
+            stripe_account=connected_account_id,
+        )
+
+        if intent.status != "succeeded":
+            continue
+
+        charge = intent.latest_charge
+
+        if not charge or isinstance(charge, str):
+            raise ValueError(f"Charge indisponible : {pi_id}")
+
+        balance_tx = charge.balance_transaction
+
+        if not balance_tx or isinstance(balance_tx, str):
+            raise ValueError(f"Règlement indisponible : {pi_id}")
+
+        currency = balance_tx.currency.upper()
+        amount_net = Decimal(balance_tx.net) / Decimal("100")
+
+        if currency == "XOF":
+            amount_local = amount_net.quantize(
+                Decimal("1"),
+                rounding=ROUND_DOWN,
+            )
+        else:
+            rate_row = db.execute(
+                text("""
+                    SELECT rate
+                    FROM exchange_rates
+                    WHERE from_currency = :currency
+                      AND to_currency = 'XOF'
+                """),
+                {"currency": currency},
+            ).fetchone()
+
+            if not rate_row:
+                raise ValueError(f"Taux {currency}/XOF introuvable")
+
+            amount_local = (
+                amount_net * Decimal(str(rate_row.rate))
+            ).quantize(Decimal("1"), rounding=ROUND_DOWN)
+
+        available_at = datetime.fromtimestamp(
+            balance_tx.available_on,
+            tz=timezone.utc,
+        )
+
+        fee_id = charge.get("application_fee")
+        fee_amount = None
+
+        if fee_id:
+            fee = stripe.ApplicationFee.retrieve(
+                fee_id,
+                stripe_account=connected_account_id,
+            )
+            fee_amount = Decimal(fee.amount) / Decimal("100")
+        tx = WalletTransaction(
+            user_id=merchant_id,
+            wallet_id=wallet.id,
+            source=source,
+            type="deposit",
+            direction="in",
+            status=intent.status,
+            reference=intent.id,
+            invoice_id=invoice_id,
+            charge_id=charge.id,
+            gross_amount=Decimal(balance_tx.amount) / Decimal("100"),
+            net_amount=Decimal(balance_tx.net) / Decimal("100"),
+            stripe_fee_amount=Decimal(balance_tx.fee) / Decimal("100"),
+            currency=balance_tx.currency.upper(),
+            fee_id=fee_id,
+            fee_amount=(
+                float(fee_amount)
+                if fee_amount is not None
+                else None
+            ),
+            payment_method_id=charge.get("payment_method"),
+            available_at=available_at,
+            description=f"Paiement {source} — facture {invoice_id}",
+        )
+        db.add(tx)
+        db.flush()
+        wallet.balance = (
+            Decimal(str(wallet.balance or 0)) + amount_local
+        )
+        recorded += 1
+    db.commit()
+    return {
+        "status": "processed",
+        "invoice_id": invoice_id,
+        "source": source,
+        "recorded_transactions": recorded,
+    }
+
 @router.post("/webhook/stripe")
 async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     import logging
@@ -136,79 +339,41 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                         send_payout_failed_email(
                             merchant.email, wd.amount
                         )
-
         # --------------------------------------------------
         # FACTURES CONNECT
         # --------------------------------------------------
         elif event_type in (
             "invoice.paid",
             "invoice.payment_failed",
+            "invoice.finalized",
+            "invoice.voided",
         ):
-            invoice_id = object_data["id"]
-
-            # Compatibilité avec différentes versions de l'API Stripe.
-            subscription_id = object_data.get("subscription")
-
-            if not subscription_id:
-                parent = object_data.get("parent")
-
-                if parent:
-                    subscription_details = (
-                        parent.get("subscription_details")
-                        if isinstance(parent, dict)
-                        else getattr(parent, "subscription_details", None)
+            invoice_data = (
+                object_data.to_dict()
+                if hasattr(object_data, "to_dict")
+                else dict(object_data)
+            )
+            if event_type in ("invoice.paid", "invoice.payment_failed"):
+                if not connected_account_id:
+                    raise ValueError(
+                        "Compte Connect absent de l'événement"
                     )
-
-                    if subscription_details:
-                        if isinstance(subscription_details, dict):
-                            subscription_id = subscription_details.get(
-                                "subscription"
-                            )
-                        else:
-                            subscription_id = getattr(
-                                subscription_details,
-                                "subscription",
-                                None
-                            )
-
-            # Si un abonnement est associé, il s'agit d'une
-            # facture d'abonnement. Sinon, elle est ponctuelle.
-            source_type = (
-                "subscription"
-                if subscription_id
-                else "one_off_invoice"
-            )
-
-            profile = None
-
-            if connected_account_id:
-                profile = db.query(Profile).filter(
-                    Profile.stripe_account_id == connected_account_id
-                ).first()
-
-            logger.info(
-                "Stripe invoice event: type=%s invoice_id=%s "
-                "source=%s subscription_id=%s connected_account=%s",
-                event_type,
-                invoice_id,
-                source_type,
-                subscription_id,
-                connected_account_id
-            )
-
-            if not connected_account_id or not profile:
-                logger.warning(
-                    "Compte Connect ou profil introuvable pour la facture %s",
-                    invoice_id
+                result = process_connect_invoice_event(
+                    invoice_data=invoice_data,
+                    event_type=event_type,
+                    connected_account_id=connected_account_id,
+                    db=db,
                 )
-
-            # Ici, relier l'événement à ton système de notifications
-            # et à ton modèle comptable, avec une vérification
-            # d'idempotence fondée sur event.id ou invoice_id.
-            #
-            # Ne pas créditer le wallet ici sans vérifier si le
-            # paiement a déjà été enregistré par un autre webhook.
-
+                logger.info(
+                    "Traitement facture Connect : %s",
+                    result,
+                )
+            else:
+                logger.info(
+                    "Événement facture Connect : type=%s invoice_id=%s",
+                    event_type,
+                    invoice_data.get("id"),
+                )
         # --------------------------------------------------
         # CYCLE DE VIE DES ABONNEMENTS CONNECT
         # --------------------------------------------------

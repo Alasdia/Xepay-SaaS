@@ -227,6 +227,7 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             wallet_id=wallet.id,
             type=tx_type,
             direction=tx_direction,
+            source="payment_link",
             amount=amount_local,
             status=tx_status,
             available_at=available_at,
