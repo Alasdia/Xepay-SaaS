@@ -4045,16 +4045,15 @@ async function renderInvoices(container) {
                                                 </span>
 
                                             </td>
-
-
                                             <td>
                                                 ${
-                                                    invoice.collection_method ||
-                                                    "—"
+                                                    invoice.collection_method === "send_invoice"
+                                                        ? "Paiement par facture"
+                                                        : invoice.collection_method === "charge_automatically"
+                                                            ? "Prélèvement automatique"
+                                                            : "—"
                                                 }
                                             </td>
-
-
                                             <td>
 
                                                 ${
