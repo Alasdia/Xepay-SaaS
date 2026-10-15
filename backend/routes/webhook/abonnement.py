@@ -141,8 +141,14 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
     return {"status": "ok"}
 
 
+from fastapi import Depends, HTTPException, Query
+import stripe
+
+
 @router.get("/stripe/revenue-breakdown")
 def get_connect_revenue_breakdown(
+    starting_after: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
     db: Session = Depends(get_db),
     membership: WorkspaceUser = Depends(require_manager),
 ):
@@ -161,30 +167,39 @@ def get_connect_revenue_breakdown(
         account_id, db, membership
     )
     try:
+        params = {
+            "limit": limit,
+            "expand": ["data.balance_transaction"],
+        }
+        if starting_after:
+            params["starting_after"] = starting_after
         charges = stripe.Charge.list(
-            limit=100,
+            **params,
             stripe_account=account_id,
         )
         data = []
-        for charge in charges.auto_paging_iter():
+        for charge in charges.data:
             charge_data = charge.to_dict()
-            balance_transaction_id = charge.balance_transaction
-            if balance_transaction_id:
-                balance_transaction = (
-                    stripe.BalanceTransaction.retrieve(
-                        balance_transaction_id,
-                        stripe_account=account_id,
-                    )
-                )
-                charge_data["available_on"] = (
-                    balance_transaction.available_on
-                )
-            else:
-                charge_data["available_on"] = None
+            balance_transaction = charge.balance_transaction
+            charge_data["available_on"] = (
+                balance_transaction.available_on
+                if balance_transaction
+                and not isinstance(balance_transaction, str)
+                else None
+            )
             data.append(charge_data)
         return {
             "account_id": account_id,
             "data": data,
+            "pagination": {
+                "limit": limit,
+                "has_more": charges.has_more,
+                "next_cursor": (
+                    charges.data[-1].id
+                    if charges.has_more and charges.data
+                    else None
+                ),
+            },
         }
     except stripe.error.StripeError as e:
         raise HTTPException(
