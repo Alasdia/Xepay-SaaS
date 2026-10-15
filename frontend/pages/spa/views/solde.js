@@ -368,11 +368,11 @@ export async function mount(container) {
     target.addEventListener(type, fn);
     boundListeners.push({ target, type, fn });
   }
+
   async function inspectStripeCharges() {
     try {
       const res = await apiFetch("/stripe/revenue-breakdown");
       const data = await res.json();
-      console.log("Objet Charge :", data);
       console.log("HTTP status :", res.status);
       if (!res.ok) {
         console.error("Erreur API :", data);
@@ -395,16 +395,19 @@ export async function mount(container) {
           payment_intent: charge.payment_intent,
           balance_transaction: charge.balance_transaction,
           customer: charge.customer,
-          created: charge.created,
+          created: charge.created
+            ? new Date(charge.created * 1000).toLocaleString()
+            : null,
+          available_on: charge.available_on
+            ? new Date(charge.available_on * 1000).toLocaleString()
+            : null,
         }))
       );
     } catch (error) {
-      console.error(
-        "Erreur inspection charges Stripe :",
-        error
-      );
+      console.error("Erreur inspection charges Stripe :", error);
     }
   }
+
   function formatCountdown(targetDate) {
     const now = new Date();
     const diff = new Date(targetDate) - now;

@@ -140,6 +140,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
         db.close()
     return {"status": "ok"}
 
+
 @router.get("/stripe/revenue-breakdown")
 def get_connect_revenue_breakdown(
     db: Session = Depends(get_db),
@@ -147,9 +148,7 @@ def get_connect_revenue_breakdown(
 ):
     profile = (
         db.query(Profile)
-        .filter(
-            Profile.user_id == membership.workspace_id
-        )
+        .filter(Profile.user_id == membership.workspace_id)
         .first()
     )
     if not profile or not profile.stripe_account_id:
@@ -166,12 +165,26 @@ def get_connect_revenue_breakdown(
             limit=100,
             stripe_account=account_id,
         )
+        data = []
+        for charge in charges.auto_paging_iter():
+            charge_data = charge.to_dict()
+            balance_transaction_id = charge.balance_transaction
+            if balance_transaction_id:
+                balance_transaction = (
+                    stripe.BalanceTransaction.retrieve(
+                        balance_transaction_id,
+                        stripe_account=account_id,
+                    )
+                )
+                charge_data["available_on"] = (
+                    balance_transaction.available_on
+                )
+            else:
+                charge_data["available_on"] = None
+            data.append(charge_data)
         return {
             "account_id": account_id,
-            "data": [
-                charge.to_dict()
-                for charge in charges.auto_paging_iter()
-            ],
+            "data": data,
         }
     except stripe.error.StripeError as e:
         raise HTTPException(
