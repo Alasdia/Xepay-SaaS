@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Header, HTTPException, Depends
+from fastapi import APIRouter, Request, Header, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
 import stripe
 import os
@@ -141,10 +141,6 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
     return {"status": "ok"}
 
 
-from fastapi import Depends, HTTPException, Query
-import stripe
-
-
 @router.get("/stripe/revenue-breakdown")
 def get_connect_revenue_breakdown(
     starting_after: str | None = Query(default=None),
@@ -169,34 +165,45 @@ def get_connect_revenue_breakdown(
     try:
         params = {
             "limit": limit,
-            "expand": ["data.balance_transaction"],
+            "expand": [
+                "data.latest_charge.balance_transaction"
+            ],
         }
         if starting_after:
             params["starting_after"] = starting_after
-        charges = stripe.Charge.list(
+        payment_intents = stripe.PaymentIntent.list(
             **params,
             stripe_account=account_id,
         )
         data = []
-        for charge in charges.data:
-            charge_data = charge.to_dict()
-            balance_transaction = charge.balance_transaction
-            charge_data["available_on"] = (
-                balance_transaction.available_on
-                if balance_transaction
-                and not isinstance(balance_transaction, str)
-                else None
-            )
-            data.append(charge_data)
+        for payment_intent in payment_intents.data:
+            intent_data = payment_intent.to_dict()
+            latest_charge = payment_intent.latest_charge
+            if latest_charge and not isinstance(
+                latest_charge, str
+            ):
+                balance_transaction = (
+                    latest_charge.balance_transaction
+                )
+                intent_data["available_on"] = (
+                    balance_transaction.available_on
+                    if balance_transaction
+                    and not isinstance(balance_transaction, str)
+                    else None
+                )
+            else:
+                intent_data["available_on"] = None
+            data.append(intent_data)
         return {
             "account_id": account_id,
             "data": data,
             "pagination": {
                 "limit": limit,
-                "has_more": charges.has_more,
+                "has_more": payment_intents.has_more,
                 "next_cursor": (
-                    charges.data[-1].id
-                    if charges.has_more and charges.data
+                    payment_intents.data[-1].id
+                    if payment_intents.has_more
+                    and payment_intents.data
                     else None
                 ),
             },

@@ -369,7 +369,7 @@ export async function mount(container) {
     boundListeners.push({ target, type, fn });
   }
 
-  async function inspectStripeCharges() {
+  async function inspectStripePayments() {
     try {
       const res = await apiFetch("/stripe/revenue-breakdown");
       const data = await res.json();
@@ -379,32 +379,57 @@ export async function mount(container) {
         return;
       }
       console.log("Compte Stripe Connect :", data.account_id);
-      console.log("Objets Charge complets :");
+      console.log("Objets PaymentIntent complets :");
       console.dir(data.data, { depth: null });
       console.table(
-        (data.data || []).map((charge) => ({
-          id: charge.id,
-          object: charge.object,
-          amount: charge.amount,
-          currency: charge.currency,
-          paid: charge.paid,
-          captured: charge.captured,
-          status: charge.status,
-          application_fee: charge.application_fee,
-          application_fee_amount: charge.application_fee_amount,
-          payment_intent: charge.payment_intent,
-          balance_transaction: charge.balance_transaction,
-          customer: charge.customer,
-          created: charge.created
-            ? new Date(charge.created * 1000).toLocaleString()
-            : null,
-          available_on: charge.available_on
-            ? new Date(charge.available_on * 1000).toLocaleString()
-            : null,
-        }))
+        (data.data || []).map((payment) => {
+          const charge = payment.latest_charge;
+          const balanceTransaction =
+            charge && typeof charge === "object"
+              ? charge.balance_transaction
+              : null;
+          return {
+            id: payment.id,
+            object: payment.object,
+            amount: payment.amount,
+            amount_received: payment.amount_received,
+            currency: payment.currency,
+            status: payment.status,
+            customer: payment.customer,
+            application: payment.application,
+            application_fee_amount: payment.application_fee_amount,
+            invoice_id:
+              payment.payment_details?.order_reference ?? null,
+            latest_charge:
+              typeof charge === "string"
+                ? charge
+                : charge?.id ?? null,
+            balance_transaction:
+              typeof balanceTransaction === "string"
+                ? balanceTransaction
+                : balanceTransaction?.id ?? null,
+            created: payment.created
+              ? new Date(payment.created * 1000).toLocaleString()
+              : null,
+            available_on: payment.available_on
+              ? new Date(payment.available_on * 1000).toLocaleString()
+              : null,
+            balance_status:
+              balanceTransaction &&
+              typeof balanceTransaction === "object"
+                ? balanceTransaction.status
+                : null,
+            balance_net:
+              balanceTransaction &&
+              typeof balanceTransaction === "object"
+                ? balanceTransaction.net
+                : null,
+          };
+        })
       );
+      console.log("Pagination :", data.pagination);
     } catch (error) {
-      console.error("Erreur inspection charges Stripe :", error);
+      console.error("Erreur inspection Stripe :", error);
     }
   }
 
