@@ -372,6 +372,7 @@ export async function mount(container) {
     try {
       const res = await apiFetch("/stripe/revenue-breakdown");
       const data = await res.json();
+      console.log("Objet Charge :", data);
       console.log("HTTP status :", res.status);
       if (!res.ok) {
         console.error("Erreur API :", data);
