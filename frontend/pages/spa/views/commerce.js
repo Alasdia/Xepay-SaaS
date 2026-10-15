@@ -1625,7 +1625,13 @@ async function renderProducts(container) {
                                                 }
                                             </td>
                                             <td>
-                                                ${price?.type || "—"}
+                                                ${
+                                                    price?.type === "one_time"
+                                                        ? "Paiement unique"
+                                                        : price?.type === "recurring"
+                                                            ? "Paiement récurrent"
+                                                            : "—"
+                                                }
                                             </td>
                                             <td>
                                                 ${recurringText}
@@ -1997,21 +2003,28 @@ async function renderProducts(container) {
 
 
                                     <div class="customer-detail-item">
-
                                         <span>
                                             Récurrence
                                         </span>
-
                                         <strong>
-
                                             ${
-                                                price.recurring
-                                                    ? `${price.recurring.interval} × ${price.recurring.interval_count || 1}`
-                                                    : "—"
+                                                !price.recurring
+                                                    ? "Aucune"
+                                                    : price.recurring.interval === "month"
+                                                        ? (price.recurring.interval_count || 1) === 1
+                                                            ? "Tous les mois"
+                                                            : `Tous les ${price.recurring.interval_count} mois`
+                                                        : price.recurring.interval === "year"
+                                                            ? (price.recurring.interval_count || 1) === 1
+                                                                ? "Tous les ans"
+                                                                : `Tous les ${price.recurring.interval_count} ans`
+                                                            : price.recurring.interval === "week"
+                                                                ? (price.recurring.interval_count || 1) === 1
+                                                                    ? "Toutes les semaines"
+                                                                    : `Toutes les ${price.recurring.interval_count} semaines`
+                                                                : price.recurring.interval
                                             }
-
                                         </strong>
-
                                     </div>
 
                                 `).join("")}
