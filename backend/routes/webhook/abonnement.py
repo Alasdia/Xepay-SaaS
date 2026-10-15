@@ -4,7 +4,7 @@ import stripe
 import os
 from datetime import datetime, timezone, timedelta
 from backend.database import SessionLocal
-from backend.models import UserDB, WorkspaceUser
+from backend.models import UserDB, WorkspaceUser, Profile
 from backend.middleware.authorization import require_manager
 from backend.routes.webhook.stripe import get_authorized_connect_profile
 from backend.database import get_db
@@ -140,13 +140,22 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
         db.close()
     return {"status": "ok"}
 
-
-@router.get("/stripe/connect/{account_id}/revenue-breakdown")
+@router.get("/stripe/revenue-breakdown")
 def get_connect_revenue_breakdown(
-    account_id: str,
     db: Session = Depends(get_db),
     membership: WorkspaceUser = Depends(require_manager),
 ):
+    profile = (
+        db.query(Profile)
+        .filter(Profile.user_id == membership.workspace_id)
+        .first()
+    )
+    if not profile or not profile.stripe_account_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Compte Connect introuvable ou non configuré",
+        )
+    account_id = profile.stripe_account_id
     get_authorized_connect_profile(account_id, db, membership)
     try:
         invoices = stripe.Invoice.list(
