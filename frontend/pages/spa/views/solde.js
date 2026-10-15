@@ -627,7 +627,7 @@ export async function mount(container) {
 
   chargerWallet();
   loadWalletHistory();
-  inspectStripeCharges();
+  inspectStripePayments();
 
   return {
     unmount() {
