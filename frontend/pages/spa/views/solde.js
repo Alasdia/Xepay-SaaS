@@ -368,35 +368,42 @@ export async function mount(container) {
     target.addEventListener(type, fn);
     boundListeners.push({ target, type, fn });
   }
-  async function inspectStripeInvoices() {
+  async function inspectStripeCharges() {
     try {
       const res = await apiFetch("/stripe/revenue-breakdown");
       const data = await res.json();
       console.log("HTTP status :", res.status);
-      console.log("Objet complet renvoyé par l'API :", data);
-      console.dir(data, { depth: null });
       if (!res.ok) {
         console.error("Erreur API :", data);
         return;
       }
       console.log("Compte Stripe Connect :", data.account_id);
+      console.log("Objets Charge complets :");
+      console.dir(data.data, { depth: null });
       console.table(
-        (data.data || []).map((invoice) => ({
-          id: invoice.id,
-          status: invoice.status,
-          amount_paid: invoice.amount_paid,
-          currency: invoice.currency,
-          customer: invoice.customer,
-          subscription: invoice.subscription,
-          parent: invoice.parent,
-          created: invoice.created,
+        (data.data || []).map((charge) => ({
+          id: charge.id,
+          object: charge.object,
+          amount: charge.amount,
+          currency: charge.currency,
+          paid: charge.paid,
+          captured: charge.captured,
+          status: charge.status,
+          application_fee: charge.application_fee,
+          application_fee_amount: charge.application_fee_amount,
+          payment_intent: charge.payment_intent,
+          balance_transaction: charge.balance_transaction,
+          customer: charge.customer,
+          created: charge.created,
         }))
       );
     } catch (error) {
-      console.error("Erreur inspection factures Stripe :", error);
+      console.error(
+        "Erreur inspection charges Stripe :",
+        error
+      );
     }
   }
-
   function formatCountdown(targetDate) {
     const now = new Date();
     const diff = new Date(targetDate) - now;
@@ -591,7 +598,7 @@ export async function mount(container) {
 
   chargerWallet();
   loadWalletHistory();
-  inspectStripeInvoices();
+  inspectStripeCharges();
 
   return {
     unmount() {

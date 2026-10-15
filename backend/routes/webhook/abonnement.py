@@ -147,7 +147,9 @@ def get_connect_revenue_breakdown(
 ):
     profile = (
         db.query(Profile)
-        .filter(Profile.user_id == membership.workspace_id)
+        .filter(
+            Profile.user_id == membership.workspace_id
+        )
         .first()
     )
     if not profile or not profile.stripe_account_id:
@@ -156,20 +158,20 @@ def get_connect_revenue_breakdown(
             detail="Compte Connect introuvable ou non configuré",
         )
     account_id = profile.stripe_account_id
-    get_authorized_connect_profile(account_id, db, membership)
+    get_authorized_connect_profile(
+        account_id, db, membership
+    )
     try:
-        invoices = stripe.Invoice.list(
+        charges = stripe.Charge.list(
             limit=100,
             stripe_account=account_id,
         )
         return {
             "account_id": account_id,
             "data": [
-                invoice.to_dict()
-                for invoice in invoices.auto_paging_iter()
-                if invoice.status == "paid"
+                charge.to_dict()
+                for charge in charges.auto_paging_iter()
             ],
-            "has_more": invoices.has_more,
         }
     except stripe.error.StripeError as e:
         raise HTTPException(
