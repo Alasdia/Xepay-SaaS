@@ -154,6 +154,7 @@ def get_connect_revenue_breakdown(
             stripe_account=account_id,
         )
         return {
+            "account_id": account_id,
             "data": [
                 invoice.to_dict()
                 for invoice in invoices.auto_paging_iter()

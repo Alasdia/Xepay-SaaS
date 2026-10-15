@@ -370,10 +370,7 @@ export async function mount(container) {
   }
   async function inspectStripeInvoices() {
     try {
-      const accountId = "TON_STRIPE_ACCOUNT_ID";
-      const res = await apiFetch(
-        `/stripe/connect/${encodeURIComponent(accountId)}/revenue-breakdown`
-      );
+      const res = await apiFetch("/stripe/revenue-breakdown");
       const data = await res.json();
       console.log("HTTP status :", res.status);
       console.log("Objet complet renvoyé par l'API :", data);
@@ -382,6 +379,7 @@ export async function mount(container) {
         console.error("Erreur API :", data);
         return;
       }
+      console.log("Compte Stripe Connect :", data.account_id);
       console.table(
         (data.data || []).map((invoice) => ({
           id: invoice.id,
