@@ -368,6 +368,36 @@ export async function mount(container) {
     target.addEventListener(type, fn);
     boundListeners.push({ target, type, fn });
   }
+  async function inspectStripeInvoices() {
+    try {
+      const accountId = "TON_STRIPE_ACCOUNT_ID";
+      const res = await apiFetch(
+        `/stripe/connect/${encodeURIComponent(accountId)}/revenue-breakdown`
+      );
+      const data = await res.json();
+      console.log("HTTP status :", res.status);
+      console.log("Objet complet renvoyé par l'API :", data);
+      console.dir(data, { depth: null });
+      if (!res.ok) {
+        console.error("Erreur API :", data);
+        return;
+      }
+      console.table(
+        (data.data || []).map((invoice) => ({
+          id: invoice.id,
+          status: invoice.status,
+          amount_paid: invoice.amount_paid,
+          currency: invoice.currency,
+          customer: invoice.customer,
+          subscription: invoice.subscription,
+          parent: invoice.parent,
+          created: invoice.created,
+        }))
+      );
+    } catch (error) {
+      console.error("Erreur inspection factures Stripe :", error);
+    }
+  }
 
   function formatCountdown(targetDate) {
     const now = new Date();
@@ -563,6 +593,7 @@ export async function mount(container) {
 
   chargerWallet();
   loadWalletHistory();
+  inspectStripeInvoices();
 
   return {
     unmount() {

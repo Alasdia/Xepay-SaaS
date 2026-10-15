@@ -1,9 +1,13 @@
-from fastapi import APIRouter, Request, Header, HTTPException
+from fastapi import APIRouter, Request, Header, HTTPException, Depends
+from sqlalchemy.orm import Session
 import stripe
 import os
 from datetime import datetime, timezone, timedelta
 from backend.database import SessionLocal
-from backend.models import UserDB
+from backend.models import UserDB, WorkspaceUser
+from backend.middleware.authorization import require_manager
+from backend.routes.webhook.stripe import get_authorized_connect_profile
+from backend.database import get_db
 from backend.services.email_service import ( 
     send_subscription_email,
     send_subscription_updated_email,
@@ -135,3 +139,30 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
     finally:
         db.close()
     return {"status": "ok"}
+
+
+@router.get("/stripe/connect/{account_id}/revenue-breakdown")
+def get_connect_revenue_breakdown(
+    account_id: str,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_manager),
+):
+    get_authorized_connect_profile(account_id, db, membership)
+    try:
+        invoices = stripe.Invoice.list(
+            limit=100,
+            stripe_account=account_id,
+        )
+        return {
+            "data": [
+                invoice.to_dict()
+                for invoice in invoices.auto_paging_iter()
+                if invoice.status == "paid"
+            ],
+            "has_more": invoices.has_more,
+        }
+    except stripe.error.StripeError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Erreur Stripe : {e.user_message or str(e)}",
+        )

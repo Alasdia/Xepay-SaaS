@@ -17,74 +17,252 @@ router = APIRouter()
 
 @router.post("/webhook/stripe")
 async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
+    import logging
+
+    logger = logging.getLogger(__name__) 
+
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
+
     if not sig_header:
-        return {"status": "ignored"}
+        raise HTTPException(status_code=400, detail="Signature manquante")
+
     try:
         event = stripe.Webhook.construct_event(
-            payload, sig_header, STRIPE_WEBHOOK_SECRET_CONNECT
+            payload,
+            sig_header,
+            STRIPE_WEBHOOK_SECRET_CONNECT
         )
     except ValueError:
-        return {"status": "invalid_payload"}
+        raise HTTPException(status_code=400, detail="Payload invalide")
     except stripe.error.SignatureVerificationError:
-        return {"status": "invalid_signature"}
+        raise HTTPException(status_code=400, detail="Signature invalide")
+
     event_type = event["type"]
     object_data = event["data"]["object"]
-    if event_type == "account.updated":
-        stripe_id = object_data["id"]
-        account = stripe.Account.retrieve(stripe_id)
-        profile = db.query(Profile).filter(Profile.stripe_account_id == stripe_id).first()
-        if profile:
-            individual = getattr(account, "individual", None)
-            first_name = ""
-            last_name = ""
-            phone = None
-            if individual:
+
+    # Identifiant du compte Connect à l'origine de l'événement.
+    connected_account_id = event.get("account")
+
+    try:
+        # --------------------------------------------------
+        # MISE À JOUR DU COMPTE CONNECT
+        # --------------------------------------------------
+        if event_type == "account.updated":
+            stripe_id = object_data["id"]
+            account = stripe.Account.retrieve(stripe_id)
+
+            profile = db.query(Profile).filter(
+                Profile.stripe_account_id == stripe_id
+            ).first()
+
+            if profile:
+                individual = getattr(account, "individual", None)
+
                 first_name = getattr(individual, "first_name", "") or ""
                 last_name = getattr(individual, "last_name", "") or ""
                 phone = getattr(individual, "phone", None)
-            profile.full_name = f"{first_name} {last_name}".strip()
-            if phone:
-                profile.phone = phone
-            try:
+
+                profile.full_name = f"{first_name} {last_name}".strip()
+
+                if phone:
+                    profile.phone = phone
+
                 db.commit()
-                user = db.query(UserDB).filter(UserDB.id == profile.user_id).first()
+
+                user = db.query(UserDB).filter(
+                    UserDB.id == profile.user_id
+                ).first()
+
                 if user and user.email:
                     send_account_updated_email(user.email)
-            except Exception as e:
-                db.rollback()
-                return {"status": "db_error"}
-    elif event_type in ["payout.paid", "payout.failed", "payout.canceled"]:
-        payout_id = object_data["id"]
-        wd = db.query(Withdrawal).filter(Withdrawal.stripe_payout_id == payout_id).first()
-        if wd and wd.status not in ["success", "failed"]:
-            wallet = db.query(Wallet).filter(Wallet.id == wd.wallet_id).first()
-            tx = db.query(WalletTransaction).filter(WalletTransaction.reference == wd.reference).first()
-            if event_type == "payout.paid":
-                wd.status = "success"
-                if tx:
-                    tx.status = "success"
-                    tx.description = "Retrait réussi"
-            elif event_type in ["payout.failed", "payout.canceled"]:
-                wd.status = "failed"
-                wd.payout_failure_message = object_data.get("failure_message")
-                if wallet:
-                    wallet.pending -= wd.amount
-                    wallet.available += wd.amount
-                if tx:
-                    tx.status = "failed"    
-                    tx.description = "Retrait échoué"                            
-            db.commit()
-            merchant = db.query(UserDB).filter(UserDB.id == wd.user_id).first()
-            if merchant and merchant.email:
+
+        # --------------------------------------------------
+        # RETRAITS CONNECT
+        # --------------------------------------------------
+        elif event_type in (
+            "payout.paid",
+            "payout.failed",
+            "payout.canceled"
+        ):
+            payout_id = object_data["id"]
+
+            wd = db.query(Withdrawal).filter(
+                Withdrawal.stripe_payout_id == payout_id
+            ).first()
+
+            if wd and wd.status not in ("success", "failed"):
+                wallet = db.query(Wallet).filter(
+                    Wallet.id == wd.wallet_id
+                ).first()
+
+                tx = db.query(WalletTransaction).filter(
+                    WalletTransaction.reference == wd.reference
+                ).first()
+
                 if event_type == "payout.paid":
-                    send_payout_success_email(merchant.email, wd.amount)
-                elif event_type in ["payout.failed", "payout.canceled"]:
-                    send_payout_failed_email(merchant.email, wd.amount)     
-    else:
-        return {"status": "ignored"}
-    return {"ok": True}
+                    wd.status = "success"
+
+                    if tx:
+                        tx.status = "success"
+                        tx.description = "Retrait réussi"
+
+                else:
+                    wd.status = "failed"
+                    wd.payout_failure_message = object_data.get(
+                        "failure_message"
+                    )
+
+                    if wallet:
+                        wallet.pending -= wd.amount
+                        wallet.available += wd.amount
+
+                    if tx:
+                        tx.status = "failed"
+                        tx.description = "Retrait échoué"
+
+                db.commit()
+
+                merchant = db.query(UserDB).filter(
+                    UserDB.id == wd.user_id
+                ).first()
+
+                if merchant and merchant.email:
+                    if event_type == "payout.paid":
+                        send_payout_success_email(
+                            merchant.email, wd.amount
+                        )
+                    else:
+                        send_payout_failed_email(
+                            merchant.email, wd.amount
+                        )
+
+        # --------------------------------------------------
+        # FACTURES CONNECT
+        # --------------------------------------------------
+        elif event_type in (
+            "invoice.paid",
+            "invoice.payment_failed",
+        ):
+            invoice_id = object_data["id"]
+
+            # Compatibilité avec différentes versions de l'API Stripe.
+            subscription_id = object_data.get("subscription")
+
+            if not subscription_id:
+                parent = object_data.get("parent")
+
+                if parent:
+                    subscription_details = (
+                        parent.get("subscription_details")
+                        if isinstance(parent, dict)
+                        else getattr(parent, "subscription_details", None)
+                    )
+
+                    if subscription_details:
+                        if isinstance(subscription_details, dict):
+                            subscription_id = subscription_details.get(
+                                "subscription"
+                            )
+                        else:
+                            subscription_id = getattr(
+                                subscription_details,
+                                "subscription",
+                                None
+                            )
+
+            # Si un abonnement est associé, il s'agit d'une
+            # facture d'abonnement. Sinon, elle est ponctuelle.
+            source_type = (
+                "subscription"
+                if subscription_id
+                else "one_off_invoice"
+            )
+
+            profile = None
+
+            if connected_account_id:
+                profile = db.query(Profile).filter(
+                    Profile.stripe_account_id == connected_account_id
+                ).first()
+
+            logger.info(
+                "Stripe invoice event: type=%s invoice_id=%s "
+                "source=%s subscription_id=%s connected_account=%s",
+                event_type,
+                invoice_id,
+                source_type,
+                subscription_id,
+                connected_account_id
+            )
+
+            if not connected_account_id or not profile:
+                logger.warning(
+                    "Compte Connect ou profil introuvable pour la facture %s",
+                    invoice_id
+                )
+
+            # Ici, relier l'événement à ton système de notifications
+            # et à ton modèle comptable, avec une vérification
+            # d'idempotence fondée sur event.id ou invoice_id.
+            #
+            # Ne pas créditer le wallet ici sans vérifier si le
+            # paiement a déjà été enregistré par un autre webhook.
+
+        # --------------------------------------------------
+        # CYCLE DE VIE DES ABONNEMENTS CONNECT
+        # --------------------------------------------------
+        elif event_type in (
+            "customer.subscription.created",
+            "customer.subscription.updated",
+            "customer.subscription.deleted"
+        ):
+            subscription_id = object_data["id"]
+            subscription_status = object_data.get("status")
+
+            profile = None
+
+            if connected_account_id:
+                profile = db.query(Profile).filter(
+                    Profile.stripe_account_id == connected_account_id
+                ).first()
+
+            logger.info(
+                "Stripe subscription event: type=%s "
+                "subscription_id=%s status=%s connected_account=%s",
+                event_type,
+                subscription_id,
+                subscription_status,
+                connected_account_id
+            )
+
+            if not connected_account_id or not profile:
+                logger.warning(
+                    "Compte Connect ou profil introuvable "
+                    "pour l'abonnement %s",
+                    subscription_id
+                )
+
+            # Relier ici l'événement à la notification d'abonnement
+            # de Xepay. Un abonnement créé ou modifié ne signifie
+            # pas nécessairement qu'un paiement a réussi.
+
+        else:
+            return {"status": "ignored", "event_type": event_type}
+
+        return {"ok": True, "event_type": event_type}
+
+    except Exception:
+        db.rollback()
+        logger.exception(
+            "Erreur lors du traitement du webhook Stripe %s",
+            event_type
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Erreur de traitement du webhook"
+        )
+
 
 @router.post("/stripe/account-session")
 def create_account_session(
