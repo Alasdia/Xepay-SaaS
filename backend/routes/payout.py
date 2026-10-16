@@ -58,7 +58,15 @@ def get_wallet(
     # millions/milliards de lignes. fee_total réutilise fee_amount, déjà
     # posé sur chaque dépôt par les webhooks Stripe — aucun appel
     # supplémentaire (ni HTTP, ni Stripe) n'est nécessaire pour l'obtenir.
-    is_deposit = WalletTransaction.type == "deposit"
+    # status == "success" est requis ici : un remboursement (webhook
+    # charge.refunded, paiement.py) ne crée pas une ligne "sortie" séparée,
+    # il repasse directement le statut de CETTE ligne de dépôt à "refunded"
+    # (et décrémente wallet.balance en parallèle). Sans ce filtre, le dépôt
+    # remboursé restait compté dans unlocked_deposits/locked_amount comme
+    # s'il était toujours valide — le remboursement n'était alors jamais
+    # déduit du solde affiché ici (déjà correct sur /wallet/breakdown, qui
+    # filtre status=="success" depuis le départ).
+    is_deposit = and_(WalletTransaction.type == "deposit", WalletTransaction.status == "success")
     is_unlocked = or_(
         WalletTransaction.available_at.is_(None),
         WalletTransaction.available_at <= now,
@@ -87,7 +95,7 @@ def get_wallet(
             0,
         ).label("withdrawn_total"),
         func.coalesce(
-            func.sum(case((and_(is_deposit, WalletTransaction.status == "success"), WalletTransaction.fee_amount))),
+            func.sum(case((is_deposit, WalletTransaction.fee_amount))),
             0,
         ).label("fee_total"),
         func.min(case((and_(is_deposit, is_locked), WalletTransaction.available_at))).label("next_available_at"),
@@ -104,6 +112,7 @@ def get_wallet(
         .filter(
             WalletTransaction.user_id == owner_id,
             WalletTransaction.type == "deposit",
+            WalletTransaction.status == "success",
             WalletTransaction.available_at.isnot(None),
             WalletTransaction.available_at > now,
         )
@@ -499,9 +508,16 @@ def refund_payment(
             status_code=400,
             detail="Compte Stripe Connect introuvable"
         )
+    # Le paiement par lien est un destination charge : le PaymentIntent vit
+    # côté plateforme (pas de stripe_account). Facture/abonnement est un
+    # direct charge : il vit sur le compte connecté (stripe_account requis,
+    # sinon Stripe répond "no such payment_intent"). payment.link_id n'est
+    # posé que pour le paiement par lien (paiement.py) — seul signal fiable
+    # pour distinguer les deux ici, Payment n'a pas de colonne "source".
+    stripe_kwargs = {} if payment.link_id else {"stripe_account": profile.stripe_account_id}
     try:
         intent = stripe.PaymentIntent.retrieve(
-            payment.stripe_payment_intent_id
+            payment.stripe_payment_intent_id, **stripe_kwargs
         )
         if intent.status != "succeeded":
             raise HTTPException(
@@ -514,7 +530,7 @@ def refund_payment(
                 status_code=400,
                 detail="Charge Stripe introuvable"
             )
-        charge = stripe.Charge.retrieve(charge_id)
+        charge = stripe.Charge.retrieve(charge_id, **stripe_kwargs)
         if charge.refunded:
             raise HTTPException(
                 status_code=400,
@@ -522,7 +538,8 @@ def refund_payment(
             )
         refunds = stripe.Refund.list(
             charge=charge_id,
-            limit=100
+            limit=100,
+            **stripe_kwargs,
         )
         refunded_amount = sum(
             refund.amount for refund in refunds.data
@@ -553,14 +570,50 @@ def refund_payment(
         }
         refund = stripe.Refund.create(
             **refund_params,
-            idempotency_key=f"xepay-refund-{payment.id}-{uuid.uuid4()}"
+            idempotency_key=f"xepay-refund-{payment.id}-{uuid.uuid4()}",
+            **stripe_kwargs,
         )
         if refund.status == "succeeded":
-            charge = stripe.Charge.retrieve(charge_id)
+            charge = stripe.Charge.retrieve(charge_id, **stripe_kwargs)
             if charge.refunded:
                 payment.status = "refunded"
             else:
                 payment.status = "partially_refunded"
+
+            # Répercute sur le wallet : WalletTransaction.reference diffère
+            # selon le flux (payment_intent_id pour le paiement par lien,
+            # invoice_id pour facture/abonnement — charge.invoice n'existe
+            # plus depuis l'API basil, voir process_invoice_paid_event) donc
+            # on tente la correspondance directe d'abord, puis on résout
+            # l'invoice au besoin. Même simplification que le webhook
+            # charge.refunded de paiement.py : un remboursement, complet ou
+            # partiel, déduit tout le montant crédité et marque la ligne
+            # "refunded" (pas de comptabilité au prorata ici, pour rester
+            # cohérent avec ce que fait déjà ce webhook pour le même cas).
+            from decimal import Decimal
+
+            tx = db.query(WalletTransaction).filter(
+                WalletTransaction.reference == payment.stripe_payment_intent_id
+            ).first()
+            if not tx and not payment.link_id:
+                invoice_payments = stripe.InvoicePayment.list(
+                    payment={
+                        "type": "payment_intent",
+                        "payment_intent": payment.stripe_payment_intent_id,
+                    },
+                    stripe_account=profile.stripe_account_id,
+                )
+                if invoice_payments.data:
+                    tx = db.query(WalletTransaction).filter(
+                        WalletTransaction.reference == invoice_payments.data[0].invoice
+                    ).first()
+
+            if tx and tx.status != "refunded":
+                tx.status = "refunded"
+                tx_wallet = db.query(Wallet).filter(Wallet.id == tx.wallet_id).first()
+                if tx_wallet:
+                    tx_wallet.balance = Decimal(str(tx_wallet.balance or 0)) - Decimal(str(tx.amount))
+
             db.commit()
             db.refresh(payment)
 
