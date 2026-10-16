@@ -372,6 +372,13 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
             just_refunded = bool(tx and tx.status != "refunded")
             if just_refunded:
                 tx.status = "refunded"
+                # object_data (le Charge) porte la liste des Refund qui lui
+                # sont attachés ; on garde le plus récent (il peut y en
+                # avoir plusieurs sur des remboursements partiels successifs).
+                refunds_list = getattr(object_data, "refunds", None)
+                refunds_data = getattr(refunds_list, "data", None) or []
+                if refunds_data:
+                    tx.refund_id = max(refunds_data, key=lambda r: r.created).id
                 wallet = db.query(Wallet).filter(Wallet.id == tx.wallet_id).first()
                 if wallet:
                     wallet.balance -= tx.amount

@@ -255,6 +255,8 @@ def get_wallet_history(
             "status": display_status,
             "description": tx.description,
             "reference": tx.reference,
+            "refund_id": tx.refund_id,
+            "source": tx.source,
             "created_at": tx.created_at.isoformat(),
         })
     return {"transactions": transactions_data}
@@ -685,6 +687,7 @@ def refund_payment(
 
             if tx and tx.status != "refunded":
                 tx.status = "refunded"
+                tx.refund_id = refund.id
                 tx_wallet = db.query(Wallet).filter(Wallet.id == tx.wallet_id).first()
                 if tx_wallet:
                     tx_wallet.balance = Decimal(str(tx_wallet.balance or 0)) - Decimal(str(tx.amount))

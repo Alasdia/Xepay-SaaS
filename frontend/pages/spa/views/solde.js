@@ -722,20 +722,40 @@ export async function mount(container) {
         historyList.innerHTML = "<small>Aucun mouvement wallet</small>";
         return;
       }
+      const SOURCE_REFUND_LABEL = {
+        payment_link: "Remboursement d'un paiement par lien",
+        invoice: "Remboursement d'un paiement de facture",
+        subscription: "Remboursement d'un paiement d'abonnement",
+      };
       historyList.innerHTML = data.transactions
         .map((tx) => {
+          const estRemboursement = tx.status === "refunded";
           const estRetraitEnAttente = tx.type === "withdraw" && tx.status === "pending";
           const boutonAnnuler =
             estRetraitEnAttente && tx.withdrawal_id
               ? `<div style="margin-top: 8px; text-align: right;"><button onclick="annulerRetrait('${tx.withdrawal_id}')" style="background:#facc15;color:#111827;border:none;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">Annuler le retrait</button></div>`
               : "";
+          // Un remboursement ne crée pas de ligne séparée : il repasse le
+          // status d'une ligne de dépôt existante à "refunded" (voir
+          // refund_payment/le webhook charge.refunded), sans toucher à
+          // type/direction — sans ce repli d'affichage, la ligne resterait
+          // indiscernable d'un dépôt normal (type="deposit", direction="in").
+          const typeLabel = estRemboursement
+            ? "Remboursement"
+            : tx.type === "deposit" ? "Dépôt" : tx.type === "withdraw" ? "Retrait" : tx.type;
+          const montantClass = estRemboursement ? "text-danger" : (tx.direction === "in" ? "text-success" : "text-danger");
+          const montantSigne = estRemboursement ? "-" : (tx.direction === "in" ? "+" : "-");
+          const reference = estRemboursement ? (tx.refund_id || tx.reference) : tx.reference;
+          const note = estRemboursement
+            ? (SOURCE_REFUND_LABEL[tx.source] || "Remboursement d'un paiement")
+            : tx.description;
           return `
           <div class="wallet-item" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px;">
-            <div class="wallet-row"><span class="wallet-label">Type :</span><span class="wallet-value">${tx.type === "deposit" ? "Dépôt" : tx.type === "withdraw" ? "Retrait" : tx.type}</span></div>
-            <div class="wallet-row"><span class="wallet-label">Montant :</span><span class="wallet-value ${tx.direction === "in" ? "text-success" : "text-danger"}">${tx.direction === "in" ? "+" : "-"}${Number(tx.amount).toLocaleString("fr-FR")} XOF</span></div>
+            <div class="wallet-row"><span class="wallet-label">Type :</span><span class="wallet-value">${typeLabel}</span></div>
+            <div class="wallet-row"><span class="wallet-label">Montant :</span><span class="wallet-value ${montantClass}">${montantSigne}${Number(tx.amount).toLocaleString("fr-FR")} XOF</span></div>
             <div class="wallet-row"><span class="wallet-label">Date :</span><span class="wallet-value">${new Date(tx.created_at).toLocaleString("fr-FR")}</span></div>
-            <div class="wallet-row"><span class="wallet-label">Référence :</span><span class="wallet-value">${tx.reference || "N/A"}</span></div>
-            <div class="wallet-row"><span class="wallet-label">Note :</span><span class="wallet-value">${tx.description || "-"}</span></div>
+            <div class="wallet-row"><span class="wallet-label">Référence :</span><span class="wallet-value">${reference || "N/A"}</span></div>
+            <div class="wallet-row"><span class="wallet-label">Note :</span><span class="wallet-value">${note || "-"}</span></div>
             ${boutonAnnuler}
           </div>
         `;

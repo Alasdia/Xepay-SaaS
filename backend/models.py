@@ -199,6 +199,7 @@ class WalletTransaction(Base):
     amount = Column(Float, nullable=False)
     status = Column(String, default="success")
     reference = Column(String, unique=True, index=True)
+    refund_id = Column(String, nullable=True)
     fee_id = Column(String, nullable=True)
     fee_amount = Column(Float, nullable=True)
     transfer_id = Column(String, nullable=True)
