@@ -11,7 +11,7 @@ from backend.auth import get_current_user
 from backend.services.workspace_service import (
     get_workspace_owner_id
 )
-from sqlalchemy import func
+from sqlalchemy import func, case, and_, or_
 from backend.models import Payment, Link, UserDB, Profile, generate_prefixed_id
 from fastapi import Request
 import json
@@ -49,51 +49,147 @@ def get_wallet(
 
     if not wallet:
         raise HTTPException(404, "Wallet not found")
-    
+
     now = datetime.now(timezone.utc)
 
-    txs = db.query(WalletTransaction).filter(
-        WalletTransaction.user_id == owner_id
-    ).all()
-
-    deposits = [tx for tx in txs if tx.type == "deposit"]
-    withdrawals = [tx for tx in txs if tx.type == "withdraw"]
-
-    unlocked_deposits = sum(
-        tx.amount for tx in deposits
-        if not tx.available_at or tx.available_at <= now
+    # Agrégats calculés côté SQL (une seule ligne renvoyée par Postgres, pas
+    # un .all() qui rapatrie chaque transaction en mémoire Python) : seul
+    # moyen de rester performant quand l'historique d'un wallet atteint des
+    # millions/milliards de lignes. fee_total réutilise fee_amount, déjà
+    # posé sur chaque dépôt par les webhooks Stripe — aucun appel
+    # supplémentaire (ni HTTP, ni Stripe) n'est nécessaire pour l'obtenir.
+    is_deposit = WalletTransaction.type == "deposit"
+    is_unlocked = or_(
+        WalletTransaction.available_at.is_(None),
+        WalletTransaction.available_at <= now,
     )
+    is_locked = and_(WalletTransaction.available_at.isnot(None), WalletTransaction.available_at > now)
 
-    locked_amount = sum(
-        tx.amount for tx in txs
-        if tx.type == "deposit" and tx.available_at and tx.available_at > now
-    )
+    agg = db.query(
+        func.coalesce(
+            func.sum(case((and_(is_deposit, is_unlocked), WalletTransaction.amount))), 0
+        ).label("unlocked_deposits"),
+        func.coalesce(
+            func.sum(case((and_(is_deposit, is_locked), WalletTransaction.amount))), 0
+        ).label("locked_amount"),
+        func.coalesce(
+            func.sum(
+                case(
+                    (
+                        and_(
+                            WalletTransaction.type == "withdraw",
+                            WalletTransaction.status.in_(("pending", "processing", "success")),
+                        ),
+                        WalletTransaction.amount,
+                    )
+                )
+            ),
+            0,
+        ).label("withdrawn_total"),
+        func.coalesce(
+            func.sum(case((and_(is_deposit, WalletTransaction.status == "success"), WalletTransaction.fee_amount))),
+            0,
+        ).label("fee_total"),
+        func.min(case((and_(is_deposit, is_locked), WalletTransaction.available_at))).label("next_available_at"),
+    ).filter(WalletTransaction.user_id == owner_id).one()
 
-    withdrawn_total = sum(
-        tx.amount for tx in withdrawals
-        if tx.status in ("pending", "processing", "success")
-    )
+    available_amount = agg.unlocked_deposits - agg.withdrawn_total
 
-    available_amount = unlocked_deposits - withdrawn_total
-
-    future_dates = [tx.available_at for tx in txs if tx.available_at and tx.available_at > now]
-    next_available_at = min(future_dates) if future_dates else None
-
-    locked_items = sorted(
-        (
-            {"amount": tx.amount, "available_at": tx.available_at}
-            for tx in txs
-            if tx.type == "deposit" and tx.available_at and tx.available_at > now
-        ),
-        key=lambda item: item["available_at"],
+    # Liste détaillée bornée : à ce volume, afficher *chaque* dépôt encore
+    # verrouillé n'a pas de sens pour l'utilisateur et ferait grossir la
+    # réponse sans limite. L'index partiel (user_id, available_at) WHERE
+    # type='deposit' permet ce tri + LIMIT en O(log n) plutôt qu'un scan.
+    locked_rows = (
+        db.query(WalletTransaction.amount, WalletTransaction.available_at)
+        .filter(
+            WalletTransaction.user_id == owner_id,
+            WalletTransaction.type == "deposit",
+            WalletTransaction.available_at.isnot(None),
+            WalletTransaction.available_at > now,
+        )
+        .order_by(WalletTransaction.available_at.asc())
+        .limit(50)
+        .all()
     )
 
     return {
         "available": available_amount,
         "pending_withdrawal": wallet.pending,
-        "locked_amount": locked_amount,
-        "next_available_at": next_available_at,
-        "locked_items": locked_items
+        "locked_amount": agg.locked_amount,
+        "next_available_at": agg.next_available_at,
+        "locked_items": [
+            {"amount": row.amount, "available_at": row.available_at} for row in locked_rows
+        ],
+        "fee_total": float(agg.fee_total or 0),
+    }
+
+
+WALLET_SOURCE_LABELS = {
+    "payment_link": "Liens de paiement",
+    "payment_intent": "Paiements directs",
+    "invoice": "Factures",
+    "subscription": "Abonnements",
+}
+
+
+@router.get("/wallet/breakdown")
+def get_wallet_breakdown(
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+    workspace_id: str = Header(
+        None,
+        alias="X-Workspace-Id"
+    )
+):
+    """Solde principal décortiqué par source de revenu : chaque sous-solde
+    est la somme des dépôts réussis d'une source (`WalletTransaction.source`
+    — liens de paiement, factures, abonnements...), et leur somme totale
+    reconstitue le solde principal cumulé. Les sorties (retraits, transferts)
+    ne sont pas ventilées ici : elles réduisent le solde disponible affiché
+    dans la vue "Solde global", pas cette répartition par source de revenu.
+
+    fee_total et next_available_at sont calculés dans cette même requête
+    groupée (fee_amount et available_at sont déjà posés sur chaque ligne par
+    les webhooks Stripe) : aucun appel réseau ni aggregat Python supplémentaire,
+    donc un coût identique quel que soit le volume de transactions déjà
+    accumulé."""
+    owner_id = get_workspace_owner_id(user, workspace_id, db)
+    now = datetime.now(timezone.utc)
+
+    rows = (
+        db.query(
+            WalletTransaction.source,
+            func.sum(WalletTransaction.amount).label("amount"),
+            func.coalesce(func.sum(WalletTransaction.fee_amount), 0).label("fee_total"),
+            func.min(
+                case((WalletTransaction.available_at > now, WalletTransaction.available_at))
+            ).label("next_available_at"),
+        )
+        .filter(
+            WalletTransaction.user_id == owner_id,
+            WalletTransaction.type == "deposit",
+            WalletTransaction.direction == "in",
+            WalletTransaction.status == "success",
+        )
+        .group_by(WalletTransaction.source)
+        .all()
+    )
+
+    sub_balances = [
+        {
+            "source": row.source,
+            "label": WALLET_SOURCE_LABELS.get(row.source, row.source),
+            "amount": float(row.amount or 0),
+            "fee_total": float(row.fee_total or 0),
+            "next_available_at": row.next_available_at,
+        }
+        for row in rows
+    ]
+
+    return {
+        "total": sum(item["amount"] for item in sub_balances),
+        "fee_total": sum(item["fee_total"] for item in sub_balances),
+        "sub_balances": sub_balances,
     }
 
 

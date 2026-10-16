@@ -266,53 +266,88 @@ function ensureSoldeStyles() {
         color: #6b7280;
         transition: border-color .15s ease;
     }
-    .balance-view-switch {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px;
-      background: #f3f4f6;
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
+    /* Sélecteur de sous-solde — même mécanique chevron que .nav-toggle/
+       .nav-submenu dans la sidebar (sidebar.css) : glyphe dédié
+       fa-chevron-right/fa-chevron-down plutôt qu'une rotation CSS, liste
+       dépliée via max-height plutôt qu'un overlay, pour un rendu cohérent
+       avec les sous-menus Commerce/Transactions. */
+    .balance-source-select {
       width: fit-content;
       max-width: 100%;
     }
-    .balance-switch-btn {
+    .balance-source-toggle {
       display: inline-flex;
       align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 9px 16px;
-      border: none;
-      border-radius: 7px;
-      background: transparent;
-      color: #6b7280;
+      gap: 10px;
+      padding: 10px 14px;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      color: #111827;
       font-size: 13px;
-      font-weight: 600;
-      white-space: nowrap;
       cursor: pointer;
     }
-    .balance-switch-btn.active {
-      background: #fff;
-      color: #111827;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, .10);
+    .balance-source-toggle:hover {
+      border-color: #cbd5e1;
     }
-    .balance-card[hidden] {
-      display: none !important;
+    .balance-source-toggle-label strong {
+      font-weight: 700;
+    }
+    .balance-source-toggle i {
+      color: #6b7280;
+      font-size: 12px;
+    }
+    .balance-source-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height .25s ease;
+    }
+    .balance-source-list.open {
+      max-height: 240px;
+      margin-top: 6px;
+    }
+    .balance-source-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      width: 100%;
+      padding: 10px 14px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: #374151;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+    }
+    .balance-source-item:hover {
+      background: #f8f9fb;
+    }
+    .balance-source-item.active {
+      background: #eef2ff;
+      color: #111827;
+    }
+    .balance-source-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 14px;
+      margin-top: 6px;
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .balance-source-meta strong {
+      color: #374151;
+      font-weight: 600;
     }
     @media (max-width: 576px) {
-      .balance-view-switch {
-        display: flex;
+      .balance-source-select {
         width: 100%;
       }
-
-      .balance-switch-btn {
-        flex: 1;
-        padding: 9px 8px;
-      }
-
-      .balance-side-panel-link:hover .balance-side-panel-link-icon {
-        border-color: #9ca3af;
     }
   `;
   document.head.appendChild(style);
@@ -325,26 +360,35 @@ const TEMPLATE = `
     <div class="page-subtitle">Votre solde disponible et vos fonds verrouillés</div>
   </div>
 </div>
-<div class="balance-view-switch mb-4">
+<div class="balance-source-select mb-4" id="balanceSourceSelect">
   <button
     type="button"
-    class="balance-switch-btn active"
-    data-balance-view="global"
-    aria-selected="true"
+    class="balance-source-toggle"
+    id="balanceSourceToggle"
+    aria-expanded="false"
+    aria-controls="balanceSourceList"
   >
-    <i class="fa-solid fa-wallet"></i>
-    Solde global
+    <span class="balance-source-toggle-label">Afficher : <strong id="balanceSourceLabel">Tous les soldes</strong></span>
+    <i class="fa-solid fa-chevron-right"></i>
   </button>
-
-  <button
-    type="button"
-    class="balance-switch-btn"
-    data-balance-view="breakdown"
-    aria-selected="false"
-  >
-    <i class="fa-solid fa-chart-pie"></i>
-    Répartition
-  </button>
+  <div class="balance-source-list" id="balanceSourceList">
+    <button type="button" class="balance-source-item active" data-source="all" data-source-label="Tous les soldes">
+      <span>Tous les soldes</span>
+      <strong id="balance-source-amount-all">0 XOF</strong>
+    </button>
+    <button type="button" class="balance-source-item" data-source="payment_link" data-source-label="Liens de paiement">
+      <span>Liens de paiement</span>
+      <strong id="balance-source-amount-payment_link">0 XOF</strong>
+    </button>
+    <button type="button" class="balance-source-item" data-source="invoice" data-source-label="Factures">
+      <span>Factures</span>
+      <strong id="balance-source-amount-invoice">0 XOF</strong>
+    </button>
+    <button type="button" class="balance-source-item" data-source="subscription" data-source-label="Abonnements">
+      <span>Abonnements</span>
+      <strong id="balance-source-amount-subscription">0 XOF</strong>
+    </button>
+  </div>
 </div>
 <div class="dashboard-layout">
 <div class="main-dashboard-content">
@@ -352,8 +396,12 @@ const TEMPLATE = `
   <div class="balance-subcard">
     <div class="balance-block-header">
       <div>
-        <div class="balance-card-label">Solde disponible</div>
+        <div class="balance-card-label" id="balance-card-label">Solde disponible</div>
         <div class="balance-card-amount" id="wallet-balance">0 XOF</div>
+        <div class="balance-source-meta">
+          <span>Frais Stripe : <strong id="balanceSourceFee">0 XOF</strong></span>
+          <span id="balanceSourceAvailability"></span>
+        </div>
       </div>
       <button id="retraitBtn" class="btn retrait-btn" data-bs-toggle="modal" data-bs-target="#withdrawModal">Retirer des fonds</button>
     </div>
@@ -380,26 +428,6 @@ const TEMPLATE = `
     <div class="balance-row">
       <span class="balance-row-label"><span class="balance-dot balance-dot-available"></span>Montant disponible</span>
       <strong class="balance-row-amount" id="wallet-balance-row">0 XOF</strong>
-    </div>
-  </div>
-</div>
-<div class="balance-card" id="balance-breakdown-view" hidden>
-  <div class="balance-subcard">
-    <div class="balance-card-label">Répartition des soldes</div>
-
-    <div class="balance-row">
-      <span class="balance-row-label">Liens de paiement</span>
-      <strong class="balance-row-amount" id="balance-payment-link">0 XOF</strong>
-    </div>
-
-    <div class="balance-row">
-      <span class="balance-row-label">Factures</span>
-      <strong class="balance-row-amount" id="balance-invoice">0 XOF</strong>
-    </div>
-
-    <div class="balance-row">
-      <span class="balance-row-label">Abonnements</span>
-      <strong class="balance-row-amount" id="balance-subscription">0 XOF</strong>
     </div>
   </div>
 </div>
@@ -454,31 +482,81 @@ export async function mount(container) {
     target.addEventListener(type, fn);
     boundListeners.push({ target, type, fn });
   }
-  const balanceViewButtons = container.querySelectorAll(
-    "[data-balance-view]"
+  const sourceSelect = container.querySelector("#balanceSourceSelect");
+  const sourceToggle = container.querySelector("#balanceSourceToggle");
+  const sourceList = container.querySelector("#balanceSourceList");
+  const sourceLabelEl = container.querySelector("#balanceSourceLabel");
+  const sourceItems = Array.from(
+    container.querySelectorAll(".balance-source-item")
   );
-  const balanceGlobalView = container.querySelector(
-    "#balance-global-view"
-  );
-  const balanceBreakdownView = container.querySelector(
-    "#balance-breakdown-view"
-  );
-  function switchBalanceView(view) {
-    const showGlobal = view === "global";
-    balanceGlobalView.hidden = !showGlobal;
-    balanceBreakdownView.hidden = showGlobal;
-    balanceViewButtons.forEach((button) => {
-      const active = button.dataset.balanceView === view;
-      button.classList.toggle("active", active);
-      button.setAttribute("aria-selected", String(active));
+  const cardLabelEl = container.querySelector("#balance-card-label");
+  const walletBalanceEl = container.querySelector("#wallet-balance");
+  const sourceFeeEl = container.querySelector("#balanceSourceFee");
+  const sourceAvailabilityEl = container.querySelector("#balanceSourceAvailability");
+
+  let currentSource = "all";
+  const sourceAmounts = { all: 0, payment_link: 0, invoice: 0, subscription: 0 };
+  // fee_total/next_available_at viennent du même appel que le montant
+  // (/wallet/me pour "all", /wallet/breakdown pour les autres sources) :
+  // aucune requête dédiée n'est faite pour les afficher.
+  const sourceMeta = {
+    all: { fee_total: 0, next_available_at: null },
+    payment_link: { fee_total: 0, next_available_at: null },
+    invoice: { fee_total: 0, next_available_at: null },
+    subscription: { fee_total: 0, next_available_at: null },
+  };
+
+  function closeSourceList() {
+    sourceList.classList.remove("open");
+    sourceToggle.setAttribute("aria-expanded", "false");
+  }
+
+  function updateSourceListAmounts() {
+    sourceItems.forEach((item) => {
+      const amountEl = document.getElementById(
+        `balance-source-amount-${item.dataset.source}`
+      );
+      if (amountEl) amountEl.textContent = formatAmount(sourceAmounts[item.dataset.source] || 0);
     });
   }
-  balanceViewButtons.forEach((button) => {
-    on(button, "click", () => {
-      switchBalanceView(button.dataset.balanceView);
+
+  function renderSourceMeta() {
+    const meta = sourceMeta[currentSource] || { fee_total: 0, next_available_at: null };
+    sourceFeeEl.textContent = formatAmount(meta.fee_total || 0);
+    if (currentSource === "all") {
+      // Déjà couvert par le countdown/détails du bloc "Montant verrouillé".
+      sourceAvailabilityEl.textContent = "";
+    } else {
+      sourceAvailabilityEl.textContent = meta.next_available_at
+        ? `Prochaine disponibilité : ${formatDate(meta.next_available_at)}`
+        : "Entièrement disponible";
+    }
+  }
+
+  function applySource(source) {
+    const item = sourceItems.find((el) => el.dataset.source === source);
+    if (!item) return;
+    currentSource = source;
+    sourceItems.forEach((el) => el.classList.toggle("active", el === item));
+    sourceLabelEl.textContent = item.dataset.sourceLabel;
+    cardLabelEl.textContent = source === "all" ? "Solde disponible" : item.dataset.sourceLabel;
+    walletBalanceEl.innerText = formatAmount(sourceAmounts[source] || 0);
+    renderSourceMeta();
+  }
+
+  on(sourceToggle, "click", () => {
+    const isOpen = sourceList.classList.toggle("open");
+    sourceToggle.setAttribute("aria-expanded", String(isOpen));
+  });
+  sourceItems.forEach((item) => {
+    on(item, "click", () => {
+      applySource(item.dataset.source);
+      closeSourceList();
     });
   });
-  switchBalanceView("global");
+  on(document, "click", (event) => {
+    if (!sourceSelect.contains(event.target)) closeSourceList();
+  });
   function formatCountdown(targetDate) {
     const now = new Date();
     const diff = new Date(targetDate) - now;
@@ -507,7 +585,16 @@ export async function mount(container) {
       const available = Number(data.available || 0);
       const locked = Number(data.locked_amount || 0);
 
-      document.getElementById("wallet-balance").innerText = formatAmount(available);
+      sourceAmounts.all = available;
+      sourceMeta.all = {
+        fee_total: Number(data.fee_total || 0),
+        next_available_at: data.next_available_at || null,
+      };
+      if (currentSource === "all") {
+        walletBalanceEl.innerText = formatAmount(available);
+        renderSourceMeta();
+      }
+      updateSourceListAmounts();
       const balanceRowEl = document.getElementById("wallet-balance-row");
       if (balanceRowEl) balanceRowEl.innerText = formatAmount(available);
       const lockedAmountEl = document.getElementById("locked-amount");
@@ -554,32 +641,25 @@ export async function mount(container) {
     }
   }
   async function chargerSousSoldes() {
-    const elements = {
-      payment_link: document.getElementById("balance-payment-link"),
-      invoice: document.getElementById("balance-invoice"),
-      subscription: document.getElementById("balance-subscription"),
-    };
     try {
-      const res = await apiFetch("/wallet/history");
+      const res = await apiFetch("/wallet/breakdown");
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.detail || "Erreur de chargement");
       }
-      const totals = {
-        payment_link: 0,
-        invoice: 0,
-        subscription: 0,
-      };
-      for (const tx of data.transactions || []) {
-        if (!(tx.source in totals)) continue;
-        // Les retraits ne doivent pas être comptabilisés comme des revenus.
-        if (tx.type !== "deposit" || tx.direction !== "in") continue;
-        totals[tx.source] += Number(tx.amount || 0);
-      }
-      for (const [source, element] of Object.entries(elements)) {
-        if (element) {
-          element.textContent = formatAmount(totals[source]);
+      for (const item of data.sub_balances || []) {
+        if (item.source in sourceAmounts) {
+          sourceAmounts[item.source] = Number(item.amount || 0);
+          sourceMeta[item.source] = {
+            fee_total: Number(item.fee_total || 0),
+            next_available_at: item.next_available_at || null,
+          };
         }
+      }
+      updateSourceListAmounts();
+      if (currentSource !== "all") {
+        walletBalanceEl.innerText = formatAmount(sourceAmounts[currentSource] || 0);
+        renderSourceMeta();
       }
     } catch (error) {
       console.error("Erreur sous-soldes :", error);
