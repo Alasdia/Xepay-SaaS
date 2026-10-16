@@ -328,6 +328,7 @@ export async function mount(container, params = {}) {
       google_pay: "/assets/google-pay.svg",
       klarna: "/assets/klarna-logo.svg",
       bancontact: "/assets/bancontact.svg",
+      cash_app: "/assets/cashapp.svg",
     };
     const logoKey = method === "card" ? brand : method;
     const src = icons[logoKey];
