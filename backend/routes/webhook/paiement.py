@@ -305,6 +305,38 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
             pi_id = object_data.payment_intent
             connected_account_id = event.account
 
+            # Rembourse la part d'Application Fee correspondant au montant
+            # déjà remboursé sur ce charge (object_data.amount_refunded est
+            # cumulatif, pas seulement ce dernier remboursement). Calculé en
+            # comparant à ce que l'ApplicationFee a déjà rendu
+            # (fee_obj.amount_refunded) plutôt qu'en se fiant à qui a
+            # déclenché ce remboursement : si refund_application_fee=True
+            # (paiement par lien) ou POST /payments/{id}/refund (facture/
+            # abonnement) l'ont déjà fait, la différence calculée ici tombe
+            # à 0 et ce bloc ne fait rien — couvre donc aussi, sans double
+            # remboursement, un remboursement fait directement depuis le
+            # dashboard Stripe (jamais vu par notre code sinon).
+            fee_id = getattr(object_data, "application_fee", None)
+            if fee_id:
+                try:
+                    app_fee_amount = getattr(object_data, "application_fee_amount", None) or 0
+                    charge_amount = getattr(object_data, "amount", None) or 0
+                    amount_refunded = getattr(object_data, "amount_refunded", None) or 0
+                    if app_fee_amount and charge_amount:
+                        target_fee_refunded = int(app_fee_amount * amount_refunded / charge_amount)
+                        fee_obj = stripe.ApplicationFee.retrieve(fee_id)
+                        already_refunded = getattr(fee_obj, "amount_refunded", 0) or 0
+                        fee_refund_amount = target_fee_refunded - already_refunded
+                        if fee_refund_amount > 0:
+                            stripe.ApplicationFee.create_refund(
+                                fee_id, amount=fee_refund_amount
+                            )
+                except stripe.error.StripeError as e:
+                    print(
+                        f"⚠️ ApplicationFee.create_refund a échoué pour fee_id={fee_id} "
+                        f"(charge={charge_id}): {e}"
+                    )
+
             payment = (
                 db.query(Payment)
                 .filter(Payment.stripe_payment_intent_id == pi_id)
