@@ -211,19 +211,23 @@ def process_invoice_paid_event(
     voir create_merchant_subscription/create_connect_invoice dans
     stripe_service.py, qui posent déjà application_fee_percent/
     application_fee_amount sur ce flux). Reprend le même schéma défensif que
-    process_payment_intent_event (idempotence par référence, lock du wallet,
-    conversion XOF).
+    process_payment_intent_event (idempotence par référence, lock du wallet).
 
-    La date de disponibilité des fonds n'est pas portée par l'Invoice
-    elle-même (le champ invoice.payment_intent a été retiré par Stripe en
-    API 2025-03-31.basil) : elle vit sur la BalanceTransaction du Charge qui
-    a réglé la facture, remontée en 2 appels Stripe via invoice.payments ->
-    payment_intent -> latest_charge.balance_transaction (détails plus bas).
-    Best-effort et sans retry : cet événement est traité en ligne dans le
-    handler webhook (pas en tâche de fond comme pour le paiement par lien),
-    donc pas de polling bloquant ici ; si la BalanceTransaction n'a pas
-    encore propagé, available_at reste à None comme avant plutôt que de
-    bloquer la réponse à Stripe."""
+    Depuis l'API Stripe 2025-03-31.basil, l'Invoice du webhook n'a plus
+    payment_intent, charge, application_fee_amount ni subscription à plat
+    (retirés au profit de invoice.payments/invoice.parent — voir le
+    changelog "add-support-for-multiple-partial-payments-on-invoices"). Lire
+    ces champs sur invoice_data renvoyait donc toujours None/0, en silence
+    (fee toujours à 0, available_at toujours None, abonnements classés
+    "invoice"). Plutôt que de deviner/recalculer depuis un payload dont la
+    forme a changé sous nos pieds, cette fonction relit l'objet PaymentIntent
+    réel qui a réglé la facture (2 appels Stripe, détaillés plus bas) et lit
+    directement dessus tout ce qui peut l'être : montant, devise, frais,
+    moyen de paiement, carte, description, date de création, date de
+    disponibilité des fonds. Si ce PaymentIntent ne peut pas être retrouvé,
+    on lève plutôt que de créditer avec des valeurs devinées : l'exception
+    remonte jusqu'au handler webhook, qui répond 500 à Stripe, qui retentera
+    la livraison (l'idempotence par référence empêche tout double crédit)."""
     import logging
     from decimal import Decimal
     from datetime import datetime, timezone
@@ -273,19 +277,65 @@ def process_invoice_paid_event(
             f"Portefeuille introuvable : {merchant_id}"
         )
 
-    currency = invoice_data["currency"].upper()
+    # Un abonnement Connect se règle via une Invoice portant `subscription` —
+    # c'est le seul signal fiable qui distingue un sous-solde "Abonnements"
+    # d'un sous-solde "Factures" (customer.subscription.* ne porte, lui,
+    # aucune garantie de paiement réussi). Depuis l'API Stripe
+    # 2025-03-31.basil, invoice.subscription est retiré au profit de
+    # invoice.parent.subscription_details.subscription (avec
+    # invoice.parent.type == "subscription_details") — exactement la même
+    # vague de retrait que payment_intent/charge. Lire l'ancien champ seul
+    # classait donc TOUTE facture d'abonnement comme "invoice" (jamais
+    # "subscription"), silencieusement, sur cette clé API (pinnée sur une
+    # version postérieure à basil). On garde l'ancien champ en repli, au cas
+    # où l'API version du compte changerait.
+    parent = invoice_data.get("parent") or {}
+    if parent.get("type") == "subscription_details":
+        subscription_id = (parent.get("subscription_details") or {}).get("subscription")
+    else:
+        subscription_id = invoice_data.get("subscription")
+    source = "subscription" if subscription_id else "invoice"
 
-    amount_paid_raw = int(invoice_data.get("amount_paid") or 0)
-    application_fee_raw = int(invoice_data.get("application_fee_amount") or 0)
+    # Retrouve le PaymentIntent qui a réglé cette facture : invoice.payments
+    # supporte plusieurs paiements (partiels) par facture, donc on cherche
+    # l'entrée réellement payée. expand=["payments.data.payment.payment_intent"]
+    # est à la limite Stripe de 4 niveaux d'expand ; aller jusqu'à
+    # latest_charge.balance_transaction dans la même requête dépasserait
+    # cette limite, d'où le second appel sur le PaymentIntent lui-même.
+    inv = stripe.Invoice.retrieve(
+        invoice_id,
+        expand=["payments.data.payment.payment_intent"],
+        stripe_account=connected_account_id,
+    )
+    payment_intent_ref = None
+    for entry in (inv.payments.data if inv.payments else []):
+        if entry.status == "paid" and entry.payment.type == "payment_intent":
+            payment_intent_ref = entry.payment.payment_intent
+            break
+    if not payment_intent_ref:
+        raise ValueError(
+            f"Aucun PaymentIntent réglé trouvé pour la facture {invoice_id}"
+        )
 
+    intent = stripe.PaymentIntent.retrieve(
+        payment_intent_ref.id,
+        expand=["latest_charge.balance_transaction"],
+        stripe_account=connected_account_id,
+    )
+
+    # Montant et devise directement depuis le PaymentIntent réglé : déjà
+    # dans la devise de facturation du marchand (XOF pour ce projet), donc
+    # _convert_merchant_amount_to_xof ne fait qu'arrondir (pas de taux de
+    # change appliqué) — mais reste générique si une facture est un jour
+    # libellée dans une autre devise.
+    currency = intent.currency.upper()
     divisor = (
         Decimal("1")
         if currency in ZERO_DECIMAL_CURRENCIES
         else Decimal("100")
     )
-
-    gross_amount = Decimal(amount_paid_raw) / divisor
-    fee_amount = Decimal(application_fee_raw) / divisor
+    gross_amount = Decimal(intent.amount_received or intent.amount or 0) / divisor
+    fee_amount = Decimal(intent.application_fee_amount or 0) / divisor
 
     # Montant crédité au marchand après la commission Xepay.
     merchant_amount = gross_amount - fee_amount
@@ -297,54 +347,47 @@ def process_invoice_paid_event(
 
     amount_local = _convert_merchant_amount_to_xof(db, merchant_amount, currency)
 
-    # Un abonnement Connect se règle via une Invoice portant `subscription` —
-    # c'est le seul signal fiable qui distingue un sous-solde "Abonnements"
-    # d'un sous-solde "Factures" (customer.subscription.* ne porte, lui,
-    # aucune garantie de paiement réussi).
-    source = "subscription" if invoice_data.get("subscription") else "invoice"
+    latest_charge = intent.latest_charge
+    payment_method_details = (
+        latest_charge.get("payment_method_details", {}) if latest_charge else {}
+    ) or {}
+    card_info = payment_method_details.get("card", {}) or {}
 
-    # Depuis l'API Stripe 2025-03-31.basil, Invoice n'a plus de champ
-    # `payment_intent` (ni `charge`) : il a été retiré au profit de
-    # `invoice.payments`, qui supporte plusieurs paiements partiels par
-    # facture (voir le changelog "add-support-for-multiple-partial-payments-
-    # on-invoices"). Il faut donc relire explicitement la Facture avec
-    # expand=["payments.data.payment.payment_intent"] (4 niveaux, la limite
-    # Stripe) pour retrouver le PaymentIntent qui l'a réglée, puis un second
-    # appel sur ce PaymentIntent pour en tirer latest_charge.balance_transaction
-    # (un 5e niveau, au-delà de la limite, donc impossible à obtenir en un
-    # seul expand). Deux appels Stripe au total, inévitables : ces données
-    # n'existent nulle part dans le payload du webhook pour cette version
-    # d'API, contrairement à session_dict pour le paiement par lien.
-    available_at = None
-    try:
-        inv = stripe.Invoice.retrieve(
-            invoice_id,
-            expand=["payments.data.payment.payment_intent"],
-            stripe_account=connected_account_id,
-        )
-        payment_intent = None
-        for entry in (inv.payments.data if inv.payments else []):
-            if entry.status == "paid" and entry.payment.get("type") == "payment_intent":
-                payment_intent = entry.payment.get("payment_intent")
-                break
-        if payment_intent:
-            intent = stripe.PaymentIntent.retrieve(
-                payment_intent.id,
-                expand=["latest_charge.balance_transaction"],
-                stripe_account=connected_account_id,
-            )
-            balance_tx = (
-                getattr(intent.latest_charge, "balance_transaction", None)
-                if intent.latest_charge else None
-            )
-            if balance_tx:
-                available_at = datetime.fromtimestamp(
-                    balance_tx.available_on, tz=timezone.utc
-                )
-    except Exception:
-        logger.warning(
-            "Date de disponibilité indisponible pour la facture %s",
-            invoice_id, exc_info=True,
+    balance_tx = (
+        getattr(latest_charge, "balance_transaction", None) if latest_charge else None
+    )
+    available_at = (
+        datetime.fromtimestamp(balance_tx.available_on, tz=timezone.utc)
+        if balance_tx else None
+    )
+
+    created_at = datetime.fromtimestamp(intent.created, tz=timezone.utc)
+
+    stripe_description = (
+        latest_charge.get("description") if latest_charge else None
+    )
+
+    # status reste notre vocabulaire domaine ("success"/"pending"/"failed"),
+    # pas le statut brut Stripe ("succeeded", "processing"...) : les agrégats
+    # SQL de payout.py (solde disponible, breakdown) filtrent littéralement
+    # sur status == "success". Mais il est dérivé du vrai intent.status
+    # plutôt qu'écrit en dur — un paiement qui ne serait pas "succeeded" ici
+    # (cas limite : l'InvoicePayment était "paid" mais le PaymentIntent a
+    # depuis été contesté/annulé) ne doit pas compter comme crédité.
+    if intent.status == "succeeded":
+        status = "success"
+    elif intent.status == "processing":
+        status = "pending"
+    else:
+        status = "failed"
+
+    if status != "success":
+        # La facture/l'entrée de paiement est "paid" côté Stripe, mais le
+        # PaymentIntent qui l'a réglée ne l'est plus (contesté/annulé entre
+        # temps) : ne pas créditer le wallet sur la base d'une incohérence.
+        raise ValueError(
+            f"PaymentIntent {intent.id} non succeeded ({intent.status}) "
+            f"pour la facture {invoice_id}"
         )
 
     tx = WalletTransaction(
@@ -354,11 +397,19 @@ def process_invoice_paid_event(
         type="deposit",
         direction="in",
         amount=amount_local,
-        status="success",
+        status=status,
         reference=invoice_id,
+        fee_id=latest_charge.get("application_fee") if latest_charge else None,
         fee_amount=fee_amount,
+        transfer_id=latest_charge.get("transfer") if latest_charge else None,
+        payment_method_id=intent.payment_method,
+        card_brand=card_info.get("brand"),
+        card_last4=card_info.get("last4"),
+        card_exp_month=card_info.get("exp_month"),
+        card_exp_year=card_info.get("exp_year"),
         available_at=available_at,
-        description=(
+        created_at=created_at,
+        description=stripe_description or (
             f"Paiement {'abonnement' if source == 'subscription' else 'facture'} "
             f"Stripe {invoice_id}"
         ),
@@ -585,7 +636,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
             "customer.subscription.deleted"
         ):
             subscription_id = object_data["id"]
-            subscription_status = object_data.get("status")
+            subscription_status = object_data.status
 
             profile = None
 
