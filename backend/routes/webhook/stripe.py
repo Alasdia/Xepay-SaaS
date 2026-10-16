@@ -215,14 +215,15 @@ def process_invoice_paid_event(
     conversion XOF).
 
     La date de disponibilité des fonds n'est pas portée par l'Invoice
-    elle-même : elle vit sur la BalanceTransaction du Charge qui l'a réglée,
-    remontée via son PaymentIntent (invoice.payment_intent) avec
-    expand=["latest_charge.balance_transaction"] — un seul appel Stripe
-    regroupe Charge et BalanceTransaction. Best-effort et sans retry : cet
-    événement est traité en ligne dans le handler webhook (pas en tâche de
-    fond comme pour le paiement par lien), donc pas de polling bloquant ici ;
-    si la BalanceTransaction n'a pas encore propagé, available_at reste à
-    None comme avant plutôt que de bloquer la réponse à Stripe."""
+    elle-même (le champ invoice.payment_intent a été retiré par Stripe en
+    API 2025-03-31.basil) : elle vit sur la BalanceTransaction du Charge qui
+    a réglé la facture, remontée en 2 appels Stripe via invoice.payments ->
+    payment_intent -> latest_charge.balance_transaction (détails plus bas).
+    Best-effort et sans retry : cet événement est traité en ligne dans le
+    handler webhook (pas en tâche de fond comme pour le paiement par lien),
+    donc pas de polling bloquant ici ; si la BalanceTransaction n'a pas
+    encore propagé, available_at reste à None comme avant plutôt que de
+    bloquer la réponse à Stripe."""
     import logging
     from decimal import Decimal
     from datetime import datetime, timezone
@@ -302,12 +303,33 @@ def process_invoice_paid_event(
     # aucune garantie de paiement réussi).
     source = "subscription" if invoice_data.get("subscription") else "invoice"
 
+    # Depuis l'API Stripe 2025-03-31.basil, Invoice n'a plus de champ
+    # `payment_intent` (ni `charge`) : il a été retiré au profit de
+    # `invoice.payments`, qui supporte plusieurs paiements partiels par
+    # facture (voir le changelog "add-support-for-multiple-partial-payments-
+    # on-invoices"). Il faut donc relire explicitement la Facture avec
+    # expand=["payments.data.payment.payment_intent"] (4 niveaux, la limite
+    # Stripe) pour retrouver le PaymentIntent qui l'a réglée, puis un second
+    # appel sur ce PaymentIntent pour en tirer latest_charge.balance_transaction
+    # (un 5e niveau, au-delà de la limite, donc impossible à obtenir en un
+    # seul expand). Deux appels Stripe au total, inévitables : ces données
+    # n'existent nulle part dans le payload du webhook pour cette version
+    # d'API, contrairement à session_dict pour le paiement par lien.
     available_at = None
-    payment_intent_id = invoice_data.get("payment_intent")
-    if payment_intent_id:
-        try:
+    try:
+        inv = stripe.Invoice.retrieve(
+            invoice_id,
+            expand=["payments.data.payment.payment_intent"],
+            stripe_account=connected_account_id,
+        )
+        payment_intent = None
+        for entry in (inv.payments.data if inv.payments else []):
+            if entry.status == "paid" and entry.payment.get("type") == "payment_intent":
+                payment_intent = entry.payment.get("payment_intent")
+                break
+        if payment_intent:
             intent = stripe.PaymentIntent.retrieve(
-                payment_intent_id,
+                payment_intent.id,
                 expand=["latest_charge.balance_transaction"],
                 stripe_account=connected_account_id,
             )
@@ -319,11 +341,11 @@ def process_invoice_paid_event(
                 available_at = datetime.fromtimestamp(
                     balance_tx.available_on, tz=timezone.utc
                 )
-        except Exception:
-            logger.warning(
-                "Date de disponibilité indisponible pour la facture %s (payment_intent=%s)",
-                invoice_id, payment_intent_id, exc_info=True,
-            )
+    except Exception:
+        logger.warning(
+            "Date de disponibilité indisponible pour la facture %s",
+            invoice_id, exc_info=True,
+        )
 
     tx = WalletTransaction(
         user_id=merchant_id,
