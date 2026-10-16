@@ -205,9 +205,11 @@ def process_invoice_paid_event(
 
     latest_charge = intent.latest_charge
     payment_method_details = (
-        latest_charge.get("payment_method_details", {}) if latest_charge else {}
-    ) or {}
-    card_info = payment_method_details.get("card", {}) or {}
+        getattr(latest_charge, "payment_method_details", None) if latest_charge else None
+    )
+    card_info = (
+        getattr(payment_method_details, "card", None) if payment_method_details else None
+    )
 
     # expand=["latest_charge.balance_transaction"] n'est pas honoré de façon
     # fiable sur ce flux (constaté : balance_transaction revient comme un ID
@@ -233,7 +235,7 @@ def process_invoice_paid_event(
     created_at = datetime.fromtimestamp(intent.created, tz=timezone.utc)
 
     stripe_description = (
-        latest_charge.get("description") if latest_charge else None
+        getattr(latest_charge, "description", None) if latest_charge else None
     )
 
     # status reste notre vocabulaire domaine ("success"/"pending"/"failed"),
@@ -268,14 +270,14 @@ def process_invoice_paid_event(
         amount=amount_local,
         status=status,
         reference=invoice_id,
-        fee_id=latest_charge.get("application_fee") if latest_charge else None,
+        fee_id=getattr(latest_charge, "application_fee", None) if latest_charge else None,
         fee_amount=fee_amount,
-        transfer_id=latest_charge.get("transfer") if latest_charge else None,
+        transfer_id=getattr(latest_charge, "transfer", None) if latest_charge else None,
         payment_method_id=intent.payment_method,
-        card_brand=card_info.get("brand"),
-        card_last4=card_info.get("last4"),
-        card_exp_month=card_info.get("exp_month"),
-        card_exp_year=card_info.get("exp_year"),
+        card_brand=getattr(card_info, "brand", None) if card_info else None,
+        card_last4=getattr(card_info, "last4", None) if card_info else None,
+        card_exp_month=getattr(card_info, "exp_month", None) if card_info else None,
+        card_exp_year=getattr(card_info, "exp_year", None) if card_info else None,
         available_at=available_at,
         created_at=created_at,
         description=stripe_description or (
