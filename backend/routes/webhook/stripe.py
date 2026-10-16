@@ -233,40 +233,21 @@ def process_invoice_paid_event(
         datetime.fromtimestamp(balance_tx.available_on, tz=timezone.utc)
         if has_balance_tx else None
     )
-    # balance_tx.fee : le vrai frais Stripe (traitement carte + réseau),
-    # distinct de fee_amount (notre commission Xepay/application_fee_amount)
-    # — stocké uniquement sur Payment.stripe_fee_amount, comme pour le
-    # paiement par lien (WalletTransaction n'a pas cette colonne).
-    stripe_fee_amount = (
-        Decimal(balance_tx.fee) / divisor if has_balance_tx else None
-    )
-
     created_at = datetime.fromtimestamp(intent.created, tz=timezone.utc)
 
     stripe_description = (
         getattr(latest_charge, "description", None) if latest_charge else None
     )
 
+    # charge.transfer (destination charges) et balance_tx.fee_details de
+    # type "stripe_fee" sont systématiquement absents sur ce flux : c'est
+    # un direct charge (stripe_account=connected_account_id partout),
+    # l'argent est déjà sur le compte connecté dès le départ (pas de
+    # Transfer), et ce compte Connect n'a pas de ligne stripe_fee distincte
+    # (confirmé sur de vrais paiements test) — seul fee_id/fee_amount
+    # (l'Application Fee) a un sens ici, donc ni transfer_* ni
+    # stripe_fee_amount ne sont renseignés sur Payment/WalletTransaction.
     fee_id = getattr(latest_charge, "application_fee", None) if latest_charge else None
-    transfer_id = getattr(latest_charge, "transfer", None) if latest_charge else None
-
-    # Montant réellement transféré au compte connecté après prélèvement de
-    # la commission Xepay : vit sur l'objet Transfer lui-même, pas sur le
-    # Charge (qui ne porte que l'id). Même mécanisme que
-    # process_checkout_session_payment (paiement.py).
-    transfer_amount = transfer_destination = None
-    transfer_reversed = transfer_amount_reversed = transfer_created_at = None
-    if transfer_id:
-        transfer_obj = stripe.Transfer.retrieve(
-            transfer_id, stripe_account=connected_account_id
-        )
-        transfer_amount = Decimal(transfer_obj.amount) / divisor
-        transfer_destination = transfer_obj.destination
-        transfer_reversed = transfer_obj.reversed
-        transfer_amount_reversed = Decimal(transfer_obj.amount_reversed) / divisor
-        transfer_created_at = datetime.fromtimestamp(
-            transfer_obj.created, tz=timezone.utc
-        )
 
     # status reste notre vocabulaire domaine, pas le statut brut Stripe
     # ("succeeded", "processing"...) : les agrégats SQL de payout.py (solde
@@ -311,9 +292,11 @@ def process_invoice_paid_event(
 
     # Payment n'était jusqu'ici créé que pour le paiement par lien
     # (process_checkout_session_payment) : factures/abonnements ne
-    # créditaient que WalletTransaction, qui n'a pas de colonne
-    # stripe_fee_amount. Même table, même schéma, pour que les deux flux
-    # soient exploitables de la même façon (ex. relevés, rapports).
+    # créditaient que WalletTransaction. Même table, même schéma, pour que
+    # les deux flux soient exploitables de la même façon (ex. relevés,
+    # rapports). transfer_*/stripe_fee_amount ne sont pas renseignés ici :
+    # voir le commentaire au-dessus de fee_id (toujours absents sur ce
+    # compte Connect pour ce type de charge).
     payment = Payment(
         user_id=merchant_id,
         client_email=invoice_data.get("customer_email"),
@@ -328,15 +311,6 @@ def process_invoice_paid_event(
         stripe_payment_intent_id=intent.id,
         fee_id=fee_id,
         fee_amount=float(fee_amount),
-        stripe_fee_amount=float(stripe_fee_amount) if stripe_fee_amount is not None else None,
-        transfer_id=transfer_id,
-        transfer_amount=float(transfer_amount) if transfer_amount is not None else None,
-        transfer_destination=transfer_destination,
-        transfer_reversed=transfer_reversed,
-        transfer_amount_reversed=(
-            float(transfer_amount_reversed) if transfer_amount_reversed is not None else None
-        ),
-        transfer_created_at=transfer_created_at,
         payment_method_id=intent.payment_method,
         payment_method_type=payment_method_type,
         card_brand=card_brand,
@@ -356,7 +330,6 @@ def process_invoice_paid_event(
         reference=invoice_id,
         fee_id=fee_id,
         fee_amount=fee_amount,
-        transfer_id=transfer_id,
         payment_method_id=intent.payment_method,
         card_brand=card_brand,
         card_last4=card_last4,

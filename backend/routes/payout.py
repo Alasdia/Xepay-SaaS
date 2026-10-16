@@ -100,7 +100,7 @@ def get_wallet(
     # réponse sans limite. L'index partiel (user_id, available_at) WHERE
     # type='deposit' permet ce tri + LIMIT en O(log n) plutôt qu'un scan.
     locked_rows = (
-        db.query(WalletTransaction.amount, WalletTransaction.available_at)
+        db.query(WalletTransaction.amount, WalletTransaction.available_at, WalletTransaction.source)
         .filter(
             WalletTransaction.user_id == owner_id,
             WalletTransaction.type == "deposit",
@@ -118,7 +118,8 @@ def get_wallet(
         "locked_amount": agg.locked_amount,
         "next_available_at": agg.next_available_at,
         "locked_items": [
-            {"amount": row.amount, "available_at": row.available_at} for row in locked_rows
+            {"amount": row.amount, "available_at": row.available_at, "source": row.source}
+            for row in locked_rows
         ],
         "fee_total": float(agg.fee_total or 0),
     }
@@ -155,14 +156,29 @@ def get_wallet_breakdown(
     owner_id = get_workspace_owner_id(user, workspace_id, db)
     now = datetime.now(timezone.utc)
 
+    # available_amount/locked_amount par source : même case-based
+    # aggregation que /wallet/me (is_unlocked/is_locked), mais groupée par
+    # source — pure répartition par date de disponibilité des dépôts de
+    # cette source, sans déduire les retraits (jamais liés à une source
+    # précise, comme le "total" cumulé ci-dessous ne le fait déjà pas).
+    is_unlocked = or_(
+        WalletTransaction.available_at.is_(None),
+        WalletTransaction.available_at <= now,
+    )
+    is_locked = and_(WalletTransaction.available_at.isnot(None), WalletTransaction.available_at > now)
+
     rows = (
         db.query(
             WalletTransaction.source,
             func.sum(WalletTransaction.amount).label("amount"),
+            func.coalesce(
+                func.sum(case((is_unlocked, WalletTransaction.amount))), 0
+            ).label("available_amount"),
+            func.coalesce(
+                func.sum(case((is_locked, WalletTransaction.amount))), 0
+            ).label("locked_amount"),
             func.coalesce(func.sum(WalletTransaction.fee_amount), 0).label("fee_total"),
-            func.min(
-                case((WalletTransaction.available_at > now, WalletTransaction.available_at))
-            ).label("next_available_at"),
+            func.min(case((is_locked, WalletTransaction.available_at))).label("next_available_at"),
         )
         .filter(
             WalletTransaction.user_id == owner_id,
@@ -179,6 +195,8 @@ def get_wallet_breakdown(
             "source": row.source,
             "label": WALLET_SOURCE_LABELS.get(row.source, row.source),
             "amount": float(row.amount or 0),
+            "available_amount": float(row.available_amount or 0),
+            "locked_amount": float(row.locked_amount or 0),
             "fee_total": float(row.fee_total or 0),
             "next_available_at": row.next_available_at,
         }

@@ -399,7 +399,7 @@ const TEMPLATE = `
         <div class="balance-card-label" id="balance-card-label">Solde disponible</div>
         <div class="balance-card-amount" id="wallet-balance">0 XOF</div>
         <div class="balance-source-meta">
-          <span>Frais Stripe : <strong id="balanceSourceFee">0 XOF</strong></span>
+          <span>Commission Xepay (1%) : <strong id="balanceSourceFee">0 USD</strong></span>
           <span id="balanceSourceAvailability"></span>
         </div>
       </div>
@@ -493,18 +493,27 @@ export async function mount(container) {
   const walletBalanceEl = container.querySelector("#wallet-balance");
   const sourceFeeEl = container.querySelector("#balanceSourceFee");
   const sourceAvailabilityEl = container.querySelector("#balanceSourceAvailability");
+  const retraitBtn = container.querySelector("#retraitBtn");
 
   let currentSource = "all";
   const sourceAmounts = { all: 0, payment_link: 0, invoice: 0, subscription: 0 };
-  // fee_total/next_available_at viennent du même appel que le montant
-  // (/wallet/me pour "all", /wallet/breakdown pour les autres sources) :
-  // aucune requête dédiée n'est faite pour les afficher.
+  // fee_total/next_available_at/available_amount/locked_amount viennent du
+  // même appel que le montant (/wallet/me pour "all", /wallet/breakdown
+  // pour les autres sources) : aucune requête dédiée n'est faite pour les
+  // afficher.
+  function emptyMeta() {
+    return { fee_total: 0, next_available_at: null, available_amount: 0, locked_amount: 0 };
+  }
   const sourceMeta = {
-    all: { fee_total: 0, next_available_at: null },
-    payment_link: { fee_total: 0, next_available_at: null },
-    invoice: { fee_total: 0, next_available_at: null },
-    subscription: { fee_total: 0, next_available_at: null },
+    all: emptyMeta(),
+    payment_link: emptyMeta(),
+    invoice: emptyMeta(),
+    subscription: emptyMeta(),
   };
+  // Liste bornée des dépôts encore verrouillés (/wallet/me, max 50), tagués
+  // par source pour filtrer l'affichage sans appel dédié par source.
+  let lockedItemsAll = [];
+  let lockedCountdownInterval = null;
 
   function closeSourceList() {
     sourceList.classList.remove("open");
@@ -520,9 +529,76 @@ export async function mount(container) {
     });
   }
 
+  function startLockedCountdown(targetIso) {
+    if (lockedCountdownInterval) {
+      clearInterval(lockedCountdownInterval);
+      lockedCountdownInterval = null;
+    }
+    const lockedCountdownEl = document.getElementById("locked-countdown");
+    if (!lockedCountdownEl) return;
+    if (!targetIso) {
+      lockedCountdownEl.innerText = "Aucun montant verrouillé";
+      return;
+    }
+    const target = new Date(targetIso);
+    const update = () => (lockedCountdownEl.innerText = formatCountdown(target));
+    update();
+    lockedCountdownInterval = setInterval(update, 1000);
+    lockedCountdownIntervals.push(lockedCountdownInterval);
+  }
+
+  // Barre disponible/verrouillé, bloc "Montant verrouillé" + détails, et
+  // visibilité du bouton de retrait : tout se recalcule sur la source
+  // sélectionnée (pure répartition des dépôts de cette source par date de
+  // disponibilité, sans déduire les retraits — jamais liés à une source).
+  function renderBalanceSection() {
+    const meta = sourceMeta[currentSource] || emptyMeta();
+    const available = Number(meta.available_amount || 0);
+    const locked = Number(meta.locked_amount || 0);
+    const total = available + locked;
+    const availablePct = total > 0 ? (available / total) * 100 : 0;
+    const lockedPct = total > 0 ? 100 - availablePct : 0;
+
+    const availableBarEl = document.getElementById("balance-bar-available");
+    const lockedBarEl = document.getElementById("balance-bar-locked");
+    if (availableBarEl) availableBarEl.style.width = availablePct + "%";
+    if (lockedBarEl) lockedBarEl.style.width = lockedPct + "%";
+    const availableBarAmountEl = document.getElementById("balance-bar-available-amount");
+    if (availableBarAmountEl) availableBarAmountEl.textContent = formatAmount(available);
+    const lockedBarAmountEl = document.getElementById("balance-bar-locked-amount");
+    if (lockedBarAmountEl) lockedBarAmountEl.textContent = formatAmount(locked);
+
+    const lockedAmountEl = document.getElementById("locked-amount");
+    if (lockedAmountEl) lockedAmountEl.innerText = formatAmount(locked);
+
+    const balanceRowEl = document.getElementById("wallet-balance-row");
+    if (balanceRowEl) balanceRowEl.innerText = formatAmount(available);
+
+    startLockedCountdown(meta.next_available_at);
+
+    const lockedDetailsEl = document.getElementById("locked-details");
+    if (lockedDetailsEl) {
+      const items = currentSource === "all"
+        ? lockedItemsAll
+        : lockedItemsAll.filter((item) => item.source === currentSource);
+      lockedDetailsEl.innerHTML = items.length
+        ? items
+            .map(
+              (item) =>
+                `<div class="balance-locked-item"><span class="balance-locked-item-date">Disponible le ${formatDate(item.available_at)}</span><span>${formatAmount(item.amount)}</span></div>`
+            )
+            .join("")
+        : `<div class="balance-locked-empty">Aucun montant verrouillé</div>`;
+    }
+
+    // Un retrait pioche toujours dans le solde global : pas de sens tant
+    // qu'une source précise est sélectionnée.
+    if (retraitBtn) retraitBtn.hidden = currentSource !== "all";
+  }
+
   function renderSourceMeta() {
-    const meta = sourceMeta[currentSource] || { fee_total: 0, next_available_at: null };
-    sourceFeeEl.textContent = formatAmount(meta.fee_total || 0);
+    const meta = sourceMeta[currentSource] || emptyMeta();
+    sourceFeeEl.textContent = formatAmountUSD(meta.fee_total || 0);
     if (currentSource === "all") {
       // Déjà couvert par le countdown/détails du bloc "Montant verrouillé".
       sourceAvailabilityEl.textContent = "";
@@ -542,6 +618,7 @@ export async function mount(container) {
     cardLabelEl.textContent = source === "all" ? "Solde disponible" : item.dataset.sourceLabel;
     walletBalanceEl.innerText = formatAmount(sourceAmounts[source] || 0);
     renderSourceMeta();
+    renderBalanceSection();
   }
 
   on(sourceToggle, "click", () => {
@@ -575,6 +652,10 @@ export async function mount(container) {
   }
 
   const formatAmount = (n) => Number(n || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " XOF";
+  // fee_amount (commission Xepay) reste dans la devise d'origine du
+  // paiement (USD), jamais convertie en XOF côté backend — formatAmount
+  // ajoute toujours "XOF", donc ne pas l'utiliser pour cette valeur.
+  const formatAmountUSD = (n) => Number(n || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " USD";
   const formatDate = (d) =>
     new Date(d).toLocaleString("fr-FR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
@@ -589,52 +670,15 @@ export async function mount(container) {
       sourceMeta.all = {
         fee_total: Number(data.fee_total || 0),
         next_available_at: data.next_available_at || null,
+        available_amount: available,
+        locked_amount: locked,
       };
+      lockedItemsAll = data.locked_items || [];
+      updateSourceListAmounts();
       if (currentSource === "all") {
         walletBalanceEl.innerText = formatAmount(available);
         renderSourceMeta();
-      }
-      updateSourceListAmounts();
-      const balanceRowEl = document.getElementById("wallet-balance-row");
-      if (balanceRowEl) balanceRowEl.innerText = formatAmount(available);
-      const lockedAmountEl = document.getElementById("locked-amount");
-      if (lockedAmountEl) lockedAmountEl.innerText = formatAmount(locked);
-
-      const total = available + locked;
-      const availablePct = total > 0 ? (available / total) * 100 : 0;
-      const lockedPct = total > 0 ? 100 - availablePct : 0;
-      const availableBarEl = document.getElementById("balance-bar-available");
-      const lockedBarEl = document.getElementById("balance-bar-locked");
-      if (availableBarEl) availableBarEl.style.width = availablePct + "%";
-      if (lockedBarEl) lockedBarEl.style.width = lockedPct + "%";
-      const availableBarAmountEl = document.getElementById("balance-bar-available-amount");
-      if (availableBarAmountEl) availableBarAmountEl.textContent = formatAmount(available);
-      const lockedBarAmountEl = document.getElementById("balance-bar-locked-amount");
-      if (lockedBarAmountEl) lockedBarAmountEl.textContent = formatAmount(locked);
-
-      const lockedCountdownEl = document.getElementById("locked-countdown");
-      if (lockedCountdownEl) {
-        if (data.next_available_at) {
-          const lockedTarget = new Date(data.next_available_at);
-          const update = () => (lockedCountdownEl.innerText = formatCountdown(lockedTarget));
-          update();
-          lockedCountdownIntervals.push(setInterval(update, 1000));
-        } else {
-          lockedCountdownEl.innerText = "Aucun montant verrouillé";
-        }
-      }
-
-      const lockedDetailsEl = document.getElementById("locked-details");
-      if (lockedDetailsEl) {
-        const items = data.locked_items || [];
-        lockedDetailsEl.innerHTML = items.length
-          ? items
-              .map(
-                (item) =>
-                  `<div class="balance-locked-item"><span class="balance-locked-item-date">Disponible le ${formatDate(item.available_at)}</span><span>${formatAmount(item.amount)}</span></div>`
-              )
-              .join("")
-          : `<div class="balance-locked-empty">Aucun montant verrouillé</div>`;
+        renderBalanceSection();
       }
     } catch (err) {
       console.error("Erreur wallet:", err);
@@ -653,6 +697,8 @@ export async function mount(container) {
           sourceMeta[item.source] = {
             fee_total: Number(item.fee_total || 0),
             next_available_at: item.next_available_at || null,
+            available_amount: Number(item.available_amount || 0),
+            locked_amount: Number(item.locked_amount || 0),
           };
         }
       }
@@ -660,6 +706,7 @@ export async function mount(container) {
       if (currentSource !== "all") {
         walletBalanceEl.innerText = formatAmount(sourceAmounts[currentSource] || 0);
         renderSourceMeta();
+        renderBalanceSection();
       }
     } catch (error) {
       console.error("Erreur sous-soldes :", error);
