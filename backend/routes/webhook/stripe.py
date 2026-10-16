@@ -245,7 +245,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     object_data = event["data"]["object"]
 
     # Identifiant du compte Connect à l'origine de l'événement.
-    connected_account_id = event.get("account")
+    connected_account_id = event.account
 
     try:
         # --------------------------------------------------
