@@ -582,11 +582,45 @@ def refund_payment(
             **stripe_kwargs,
         )
         if refund.status == "succeeded":
+            import logging
+            from decimal import Decimal
+
+            logger = logging.getLogger(__name__)
+
             charge = stripe.Charge.retrieve(charge_id, **stripe_kwargs)
             if charge.refunded:
                 payment.status = "refunded"
             else:
                 payment.status = "partially_refunded"
+
+            if not payment.link_id:
+                # Direct charge (facture/abonnement) : reverse_transfer/
+                # refund_application_fee (qui auraient fait ça tout seuls)
+                # ne s'appliquent qu'aux destination charges. Sans ce
+                # remboursement explicite, Stripe débite le compte connecté
+                # du montant BRUT du remboursement, alors qu'il n'avait reçu
+                # net que gross - application_fee à l'encaissement : la
+                # commission Xepay n'étant jamais rendue, le compte connecté
+                # ressort perdant de ce montant (le "solde négatif" observé).
+                # Proportionnel au montant réellement remboursé (amount),
+                # comme le fait Stripe lui-même pour refund_application_fee
+                # sur un remboursement partiel d'une destination charge.
+                fee_id = getattr(charge, "application_fee", None)
+                app_fee_amount = getattr(charge, "application_fee_amount", None)
+                if fee_id and app_fee_amount and charge.amount:
+                    fee_refund_amount = int(app_fee_amount * amount / charge.amount)
+                    if fee_refund_amount > 0:
+                        try:
+                            stripe.ApplicationFee.create_refund(
+                                fee_id, amount=fee_refund_amount
+                            )
+                        except stripe.error.StripeError:
+                            logger.exception(
+                                "ApplicationFee.create_refund a échoué pour fee_id=%s "
+                                "(payment_id=%s, montant=%s) : la commission Xepay n'a "
+                                "pas été rendue au compte connecté",
+                                fee_id, payment.id, fee_refund_amount,
+                            )
 
             # Répercute sur le wallet : WalletTransaction.reference diffère
             # selon le flux (payment_intent_id pour le paiement par lien,
@@ -598,11 +632,6 @@ def refund_payment(
             # partiel, déduit tout le montant crédité et marque la ligne
             # "refunded" (pas de comptabilité au prorata ici, pour rester
             # cohérent avec ce que fait déjà ce webhook pour le même cas).
-            import logging
-            from decimal import Decimal
-
-            logger = logging.getLogger(__name__)
-
             tx = db.query(WalletTransaction).filter(
                 WalletTransaction.reference == payment.stripe_payment_intent_id
             ).first()
