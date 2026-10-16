@@ -576,22 +576,43 @@ def refund_payment(
             # faisait échouer tout remboursement sur ces deux flux.
             refund_params["reverse_transfer"] = True
             refund_params["refund_application_fee"] = True
+        import logging
+        from decimal import Decimal
+
+        logger = logging.getLogger(__name__)
+
         refund = stripe.Refund.create(
             **refund_params,
             idempotency_key=f"xepay-refund-{payment.id}-{uuid.uuid4()}",
             **stripe_kwargs,
         )
-        if refund.status == "succeeded":
-            import logging
-            from decimal import Decimal
-
-            logger = logging.getLogger(__name__)
-
+        logger.warning(
+            "refund_payment : Refund.create a renvoyé id=%s status=%s pour payment_id=%s",
+            refund.id, refund.status, payment.id,
+        )
+        # stripe.Refund.create() n'arrive ici que si Stripe a accepté le
+        # remboursement (toute vraie erreur lève stripe.error.StripeError,
+        # attrapé plus bas) : seuls "failed"/"canceled" signalent un rejet
+        # explicite malgré une réponse sans exception. On ne devine plus la
+        # liste exacte des statuts "ok" (vu en prod : se limiter à
+        # "succeeded" laissait passer d'autres valeurs sans jamais mettre
+        # à jour Payment/WalletTransaction).
+        if refund.status not in ("failed", "canceled"):
             charge = stripe.Charge.retrieve(charge_id, **stripe_kwargs)
+            logger.warning(
+                "refund_payment : charge.refunded=%s (amount_refunded=%s/%s) pour payment_id=%s",
+                charge.refunded, getattr(charge, "amount_refunded", None), charge.amount, payment.id,
+            )
             if charge.refunded:
                 payment.status = "refunded"
             else:
                 payment.status = "partially_refunded"
+        else:
+            logger.warning(
+                "refund_payment : Refund.create a renvoyé status=%s (rejeté), "
+                "payment_id=%s inchangé",
+                refund.status, payment.id,
+            )
 
             if not payment.link_id:
                 # Direct charge (facture/abonnement) : reverse_transfer/
@@ -680,8 +701,17 @@ def refund_payment(
                     payment.id,
                 )
 
+            logger.warning(
+                "refund_payment : avant commit, payment_id=%s payment.status=%s "
+                "tx_found=%s tx.status=%s",
+                payment.id, payment.status, bool(tx), tx.status if tx else None,
+            )
             db.commit()
             db.refresh(payment)
+            logger.warning(
+                "refund_payment : après commit+refresh, payment_id=%s payment.status=%s",
+                payment.id, payment.status,
+            )
 
         return {
             "payment_id": payment.id,
