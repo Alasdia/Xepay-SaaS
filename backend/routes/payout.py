@@ -598,29 +598,58 @@ def refund_payment(
             # partiel, déduit tout le montant crédité et marque la ligne
             # "refunded" (pas de comptabilité au prorata ici, pour rester
             # cohérent avec ce que fait déjà ce webhook pour le même cas).
+            import logging
             from decimal import Decimal
+
+            logger = logging.getLogger(__name__)
 
             tx = db.query(WalletTransaction).filter(
                 WalletTransaction.reference == payment.stripe_payment_intent_id
             ).first()
             if not tx and not payment.link_id:
-                invoice_payments = stripe.InvoicePayment.list(
-                    payment={
-                        "type": "payment_intent",
-                        "payment_intent": payment.stripe_payment_intent_id,
-                    },
-                    stripe_account=profile.stripe_account_id,
-                )
-                if invoice_payments.data:
+                try:
+                    invoice_payments = stripe.InvoicePayment.list(
+                        payment={
+                            "type": "payment_intent",
+                            "payment_intent": payment.stripe_payment_intent_id,
+                        },
+                        stripe_account=profile.stripe_account_id,
+                    )
+                except stripe.error.StripeError:
+                    logger.exception(
+                        "InvoicePayment.list a échoué pour payment_intent=%s (payment_id=%s)",
+                        payment.stripe_payment_intent_id, payment.id,
+                    )
+                    invoice_payments = None
+                if invoice_payments and invoice_payments.data:
+                    invoice_id = invoice_payments.data[0].invoice
                     tx = db.query(WalletTransaction).filter(
-                        WalletTransaction.reference == invoice_payments.data[0].invoice
+                        WalletTransaction.reference == invoice_id
                     ).first()
+                    if not tx:
+                        logger.warning(
+                            "Aucune WalletTransaction pour reference=%s "
+                            "(résolue depuis payment_intent=%s, payment_id=%s)",
+                            invoice_id, payment.stripe_payment_intent_id, payment.id,
+                        )
+                else:
+                    logger.warning(
+                        "Aucun InvoicePayment trouvé pour payment_intent=%s (payment_id=%s) "
+                        "-> wallet non mis à jour pour ce remboursement",
+                        payment.stripe_payment_intent_id, payment.id,
+                    )
 
             if tx and tx.status != "refunded":
                 tx.status = "refunded"
                 tx_wallet = db.query(Wallet).filter(Wallet.id == tx.wallet_id).first()
                 if tx_wallet:
                     tx_wallet.balance = Decimal(str(tx_wallet.balance or 0)) - Decimal(str(tx.amount))
+            elif not tx:
+                logger.warning(
+                    "refund_payment : impossible de retrouver la WalletTransaction "
+                    "pour payment_id=%s, wallet.balance non ajusté",
+                    payment.id,
+                )
 
             db.commit()
             db.refresh(payment)
