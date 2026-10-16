@@ -564,10 +564,18 @@ def refund_payment(
         refund_params = {
             "payment_intent": payment.stripe_payment_intent_id,
             "amount": amount,
-            "reverse_transfer": True,
-            "refund_application_fee": True,
             "reason": req.reason or "requested_by_customer",
         }
+        if payment.link_id:
+            # reverse_transfer (annule le Transfer vers le compte connecté)
+            # et refund_application_fee (récupère la commission Xepay déjà
+            # transférée) ne s'appliquent qu'aux destination charges
+            # (paiement par lien). Les direct charges (facture/abonnement)
+            # n'ont pas de Transfer séparé (voir process_invoice_paid_event)
+            # — Stripe rejette l'appel si on les passe quand même, ce qui
+            # faisait échouer tout remboursement sur ces deux flux.
+            refund_params["reverse_transfer"] = True
+            refund_params["refund_application_fee"] = True
         refund = stripe.Refund.create(
             **refund_params,
             idempotency_key=f"xepay-refund-{payment.id}-{uuid.uuid4()}",
