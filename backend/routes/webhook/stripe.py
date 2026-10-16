@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 import stripe
 
 from backend.database import get_db
-from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest
+from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest, Payment
 from backend.middleware.authorization import require_manager
 from backend.services.stripe_service import (create_connect_invoice, create_connect_product, create_connect_customer)
 from backend.services.email_service import send_account_updated_email, send_payout_success_email, send_payout_failed_email
@@ -27,12 +27,15 @@ ZERO_DECIMAL_CURRENCIES = {
 
 def _convert_merchant_amount_to_xof(db, merchant_amount, currency):
     """merchant_amount : Decimal, net de commission, dans `currency`.
-    Retourne le montant arrondi (ROUND_DOWN) en XOF."""
+    Retourne (montant arrondi ROUND_DOWN en XOF, taux utilisé) — le taux est
+    renvoyé pour être enregistré tel quel sur Payment.rate_used, comme le
+    fait déjà process_checkout_session_payment (paiement.py) pour le
+    paiement par lien."""
     from decimal import Decimal, ROUND_DOWN
     from sqlalchemy import text
 
     if currency == "XOF":
-        return merchant_amount.quantize(Decimal("1"), rounding=ROUND_DOWN)
+        return merchant_amount.quantize(Decimal("1"), rounding=ROUND_DOWN), Decimal("1")
 
     rate_row = db.execute(
         text("""
@@ -47,10 +50,8 @@ def _convert_merchant_amount_to_xof(db, merchant_amount, currency):
     if not rate_row:
         raise ValueError(f"Taux {currency}/XOF introuvable")
 
-    return (merchant_amount * Decimal(str(rate_row.rate))).quantize(
-        Decimal("1"),
-        rounding=ROUND_DOWN,
-    )
+    rate = Decimal(str(rate_row.rate))
+    return (merchant_amount * rate).quantize(Decimal("1"), rounding=ROUND_DOWN), rate
 
 
 def process_invoice_paid_event(
@@ -201,7 +202,7 @@ def process_invoice_paid_event(
             f"Commission supérieure à la facture : {invoice_id}"
         )
 
-    amount_local = _convert_merchant_amount_to_xof(db, merchant_amount, currency)
+    amount_local, rate_used = _convert_merchant_amount_to_xof(db, merchant_amount, currency)
 
     latest_charge = intent.latest_charge
     payment_method_details = (
@@ -227,9 +228,17 @@ def process_invoice_paid_event(
             stripe_account=connected_account_id,
         )
         balance_tx = balance_txs.data[0] if balance_txs.data else None
+    has_balance_tx = bool(balance_tx) and not isinstance(balance_tx, str)
     available_at = (
         datetime.fromtimestamp(balance_tx.available_on, tz=timezone.utc)
-        if balance_tx and not isinstance(balance_tx, str) else None
+        if has_balance_tx else None
+    )
+    # balance_tx.fee : le vrai frais Stripe (traitement carte + réseau),
+    # distinct de fee_amount (notre commission Xepay/application_fee_amount)
+    # — stocké uniquement sur Payment.stripe_fee_amount, comme pour le
+    # paiement par lien (WalletTransaction n'a pas cette colonne).
+    stripe_fee_amount = (
+        Decimal(balance_tx.fee) / divisor if has_balance_tx else None
     )
 
     created_at = datetime.fromtimestamp(intent.created, tz=timezone.utc)
@@ -238,19 +247,46 @@ def process_invoice_paid_event(
         getattr(latest_charge, "description", None) if latest_charge else None
     )
 
-    # status reste notre vocabulaire domaine ("success"/"pending"/"failed"),
-    # pas le statut brut Stripe ("succeeded", "processing"...) : les agrégats
-    # SQL de payout.py (solde disponible, breakdown) filtrent littéralement
-    # sur status == "success". Mais il est dérivé du vrai intent.status
-    # plutôt qu'écrit en dur — un paiement qui ne serait pas "succeeded" ici
-    # (cas limite : l'InvoicePayment était "paid" mais le PaymentIntent a
-    # depuis été contesté/annulé) ne doit pas compter comme crédité.
+    fee_id = getattr(latest_charge, "application_fee", None) if latest_charge else None
+    transfer_id = getattr(latest_charge, "transfer", None) if latest_charge else None
+
+    # Montant réellement transféré au compte connecté après prélèvement de
+    # la commission Xepay : vit sur l'objet Transfer lui-même, pas sur le
+    # Charge (qui ne porte que l'id). Même mécanisme que
+    # process_checkout_session_payment (paiement.py).
+    transfer_amount = transfer_destination = None
+    transfer_reversed = transfer_amount_reversed = transfer_created_at = None
+    if transfer_id:
+        transfer_obj = stripe.Transfer.retrieve(
+            transfer_id, stripe_account=connected_account_id
+        )
+        transfer_amount = Decimal(transfer_obj.amount) / divisor
+        transfer_destination = transfer_obj.destination
+        transfer_reversed = transfer_obj.reversed
+        transfer_amount_reversed = Decimal(transfer_obj.amount_reversed) / divisor
+        transfer_created_at = datetime.fromtimestamp(
+            transfer_obj.created, tz=timezone.utc
+        )
+
+    # status reste notre vocabulaire domaine, pas le statut brut Stripe
+    # ("succeeded", "processing"...) : les agrégats SQL de payout.py (solde
+    # disponible, breakdown) filtrent littéralement sur
+    # WalletTransaction.status == "success", et Payment utilise sa propre
+    # convention "paid"/"pending"/"failed"/"refunded" (voir lien.py,
+    # webhooks_api.py, payout.py). Les deux sont dérivés du vrai
+    # intent.status plutôt qu'écrits en dur — un paiement qui ne serait pas
+    # "succeeded" ici (cas limite : l'InvoicePayment était "paid" mais le
+    # PaymentIntent a depuis été contesté/annulé) ne doit pas compter comme
+    # crédité ni réglé.
     if intent.status == "succeeded":
         status = "success"
+        payment_status = "paid"
     elif intent.status == "processing":
         status = "pending"
+        payment_status = "pending"
     else:
         status = "failed"
+        payment_status = "failed"
 
     if status != "success":
         # La facture/l'entrée de paiement est "paid" côté Stripe, mais le
@@ -261,6 +297,54 @@ def process_invoice_paid_event(
             f"pour la facture {invoice_id}"
         )
 
+    card_brand = getattr(card_info, "brand", None) if card_info else None
+    card_last4 = getattr(card_info, "last4", None) if card_info else None
+    card_exp_month = getattr(card_info, "exp_month", None) if card_info else None
+    card_exp_year = getattr(card_info, "exp_year", None) if card_info else None
+    payment_method_type = (
+        getattr(payment_method_details, "type", None) if payment_method_details else None
+    )
+    description = stripe_description or (
+        f"Paiement {'abonnement' if source == 'subscription' else 'facture'} "
+        f"Stripe {invoice_id}"
+    )
+
+    # Payment n'était jusqu'ici créé que pour le paiement par lien
+    # (process_checkout_session_payment) : factures/abonnements ne
+    # créditaient que WalletTransaction, qui n'a pas de colonne
+    # stripe_fee_amount. Même table, même schéma, pour que les deux flux
+    # soient exploitables de la même façon (ex. relevés, rapports).
+    payment = Payment(
+        user_id=merchant_id,
+        client_email=invoice_data.get("customer_email"),
+        amount=float(gross_amount),
+        currency=currency,
+        amount_local=float(amount_local),
+        currency_local="XOF",
+        rate_used=float(rate_used),
+        status=payment_status,
+        created_at=created_at,
+        stripe_account_id=connected_account_id,
+        stripe_payment_intent_id=intent.id,
+        fee_id=fee_id,
+        fee_amount=float(fee_amount),
+        stripe_fee_amount=float(stripe_fee_amount) if stripe_fee_amount is not None else None,
+        transfer_id=transfer_id,
+        transfer_amount=float(transfer_amount) if transfer_amount is not None else None,
+        transfer_destination=transfer_destination,
+        transfer_reversed=transfer_reversed,
+        transfer_amount_reversed=(
+            float(transfer_amount_reversed) if transfer_amount_reversed is not None else None
+        ),
+        transfer_created_at=transfer_created_at,
+        payment_method_id=intent.payment_method,
+        payment_method_type=payment_method_type,
+        card_brand=card_brand,
+        card_last4=card_last4,
+        card_exp_month=card_exp_month,
+        card_exp_year=card_exp_year,
+    )
+
     tx = WalletTransaction(
         user_id=merchant_id,
         wallet_id=wallet.id,
@@ -270,23 +354,23 @@ def process_invoice_paid_event(
         amount=amount_local,
         status=status,
         reference=invoice_id,
-        fee_id=getattr(latest_charge, "application_fee", None) if latest_charge else None,
+        fee_id=fee_id,
         fee_amount=fee_amount,
-        transfer_id=getattr(latest_charge, "transfer", None) if latest_charge else None,
+        transfer_id=transfer_id,
         payment_method_id=intent.payment_method,
-        card_brand=getattr(card_info, "brand", None) if card_info else None,
-        card_last4=getattr(card_info, "last4", None) if card_info else None,
-        card_exp_month=getattr(card_info, "exp_month", None) if card_info else None,
-        card_exp_year=getattr(card_info, "exp_year", None) if card_info else None,
+        card_brand=card_brand,
+        card_last4=card_last4,
+        card_exp_month=card_exp_month,
+        card_exp_year=card_exp_year,
         available_at=available_at,
         created_at=created_at,
-        description=stripe_description or (
-            f"Paiement {'abonnement' if source == 'subscription' else 'facture'} "
-            f"Stripe {invoice_id}"
-        ),
+        description=description,
     )
 
     try:
+        db.add(payment)
+        db.flush()
+
         db.add(tx)
         db.flush()
 
