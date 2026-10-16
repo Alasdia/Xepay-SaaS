@@ -607,12 +607,6 @@ def refund_payment(
                 payment.status = "refunded"
             else:
                 payment.status = "partially_refunded"
-        else:
-            logger.warning(
-                "refund_payment : Refund.create a renvoyé status=%s (rejeté), "
-                "payment_id=%s inchangé",
-                refund.status, payment.id,
-            )
 
             if not payment.link_id:
                 # Direct charge (facture/abonnement) : reverse_transfer/
@@ -711,6 +705,12 @@ def refund_payment(
             logger.warning(
                 "refund_payment : après commit+refresh, payment_id=%s payment.status=%s",
                 payment.id, payment.status,
+            )
+        else:
+            logger.warning(
+                "refund_payment : Refund.create a renvoyé status=%s (rejeté), "
+                "payment_id=%s inchangé",
+                refund.status, payment.id,
             )
 
         return {
