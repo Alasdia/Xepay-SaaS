@@ -303,6 +303,8 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
         elif event_type == "charge.refunded":
             charge_id = object_data["id"]
             pi_id = object_data.payment_intent
+            connected_account_id = event.account
+
             payment = (
                 db.query(Payment)
                 .filter(Payment.stripe_payment_intent_id == pi_id)
@@ -314,20 +316,44 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
                     if object_data.refunded
                     else "partially_refunded"
                 )
+
             reference = pi_id
-            print("EVENEMENT :", event_type)
-            print("REFERENCE RECUE :", reference)
             tx = db.query(WalletTransaction).filter(WalletTransaction.reference == reference).first()
-            print("TRANSACTION TROUVEE :", tx.id if tx else None)
-            print("STATUT AVANT :", tx.status if tx else None)
-            if tx and tx.status != "refunded":
+            if not tx and connected_account_id:
+                # Facture/abonnement (direct charge sur le compte connecté) :
+                # WalletTransaction.reference vaut invoice_id, jamais
+                # payment_intent_id (voir process_invoice_paid_event dans
+                # stripe.py). charge.invoice n'existe plus depuis l'API
+                # basil, donc on retrouve la facture via InvoicePayment.list.
+                try:
+                    invoice_payments = stripe.InvoicePayment.list(
+                        payment={"type": "payment_intent", "payment_intent": pi_id},
+                        stripe_account=connected_account_id,
+                    )
+                    if invoice_payments.data:
+                        tx = db.query(WalletTransaction).filter(
+                            WalletTransaction.reference == invoice_payments.data[0].invoice
+                        ).first()
+                except stripe.error.StripeError as e:
+                    print(f"⚠️ InvoicePayment.list a échoué pour payment_intent={pi_id}: {e}")
+
+            just_refunded = bool(tx and tx.status != "refunded")
+            if just_refunded:
                 tx.status = "refunded"
                 wallet = db.query(Wallet).filter(Wallet.id == tx.wallet_id).first()
                 if wallet:
                     wallet.balance -= tx.amount
-                db.commit()
+
+            # Commit inconditionnel : avant, imbriqué dans le bloc
+            # just_refunded ci-dessus, payment.status se perdait
+            # silencieusement dès que tx n'était pas trouvé — systématique
+            # pour facture/abonnement, reference valant invoice_id et non
+            # payment_intent_id. Stripe marquait le paiement remboursé,
+            # notre base restait bloquée sur "paid".
+            db.commit()
+
+            if just_refunded:
                 db.refresh(tx)
-                print("STATUT APRES COMMIT :", tx.status)
                 user = db.query(UserDB).filter(UserDB.id == tx.user_id).first()
                 if user and user.email:
                     send_payment_refunded_email(user.email, tx.amount)
@@ -336,7 +362,7 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
                         "reference": reference,
                         "amount": tx.amount,
                         "status": "refunded"
-                    })    
+                    })
             return {"status": "ok"}
         if event_type == "checkout.session.completed":
             print("STRIPE EVENT:", event_type)
