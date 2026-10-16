@@ -37,11 +37,23 @@ def create_checkout_session(
                 "transfer_data": {
                     "destination": stripe_account_id
                 },
-                "on_behalf_of": stripe_account_id
+                "on_behalf_of": stripe_account_id,
+                  "metadata": {
+                    "source": "xepay",
+                    "payment_type": "payment_link",
+                    "link_id": str(link.id),
+                    "merchant_id": str(merchant.id),
+                    "user_id": str(user_id),
+                    "stripe_account_id": str(stripe_account_id)
+                }
             },
             metadata={
+                "source": "xepay",
+                "payment_type": "payment_link",
                 "user_id": str(user_id),
-                "link_id": str(link_id)
+                "link_id": str(link.id),
+                "merchant_id": str(merchant.id),
+                "stripe_account_id": str(stripe_account_id)
             },
             line_items=[{
                 "price_data": {
