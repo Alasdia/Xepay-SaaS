@@ -171,7 +171,7 @@ def process_connect_invoice_event(
             tz=timezone.utc,
         )
 
-        fee_id = charge.get("application_fee")
+        fee_id = charge.application_fee
         fee_amount = None
 
         if fee_id:
