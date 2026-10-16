@@ -311,7 +311,7 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
             if payment:
                 payment.status = (
                     "refunded"
-                    if object_data.get("refunded")
+                    if object_data.refunded
                     else "partially_refunded"
                 )
             reference = pi_id
