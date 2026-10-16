@@ -104,12 +104,18 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
         if intent and intent.latest_charge:
             charge_dict, balance_tx = _fetch_settled_charge_data(intent.latest_charge)
             payment_method_details = charge_dict.get("payment_method_details", {})
-            payment_method_type = payment_method_details.get("type")
             card_info = payment_method_details.get("card", {})
             card_brand = card_info.get("brand")
             card_last4 = card_info.get("last4")
             card_exp_month = card_info.get("exp_month")
             card_exp_year = card_info.get("exp_year")
+            # Apple Pay/Google Pay/Link payés par carte arrivent avec
+            # payment_method_details.type == "card" (le wallet est un
+            # sous-champ, card.wallet.type) — sans ça, payment_method_type
+            # vaut toujours "card" et l'UI affiche le logo Visa/Mastercard
+            # au lieu du logo du wallet.
+            wallet_type = (card_info.get("wallet") or {}).get("type")
+            payment_method_type = wallet_type or payment_method_details.get("type")
             fee_id = charge_dict.get("application_fee")
             transfer_id = charge_dict.get("transfer")
             payment_method_id = charge_dict.get("payment_method")

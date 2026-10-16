@@ -282,7 +282,13 @@ def process_invoice_paid_event(
     card_last4 = getattr(card_info, "last4", None) if card_info else None
     card_exp_month = getattr(card_info, "exp_month", None) if card_info else None
     card_exp_year = getattr(card_info, "exp_year", None) if card_info else None
-    payment_method_type = (
+    # Apple Pay/Google Pay/Link payés par carte arrivent avec
+    # payment_method_details.type == "card" (le wallet est un sous-champ,
+    # card.wallet.type) — sans ça, payment_method_type vaut toujours "card"
+    # et l'UI affiche le logo Visa/Mastercard au lieu du logo du wallet.
+    card_wallet = getattr(card_info, "wallet", None) if card_info else None
+    wallet_type = getattr(card_wallet, "type", None) if card_wallet else None
+    payment_method_type = wallet_type or (
         getattr(payment_method_details, "type", None) if payment_method_details else None
     )
     description = stripe_description or (

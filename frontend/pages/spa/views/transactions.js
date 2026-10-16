@@ -328,15 +328,29 @@ export async function mount(container, params = {}) {
       google_pay: "/assets/google-pay.svg",
       klarna: "/assets/klarna-logo.svg",
       bancontact: "/assets/bancontact.svg",
-      cash_app: "/assets/cashapp.svg",
+      cashapp: "/assets/cashapp.svg",
+      affirm: "/assets/affirm.svg",
+      blik: "/assets/blik-logo.svg",
+      eps: "/assets/eps.svg",
+      ideal: "/assets/ideal.svg",
+      cartes_bancaires: "/assets/carte_bancaire.svg",
+      card: "/assets/carte.svg",
     };
-    const logoKey = method === "card" ? brand : method;
+    // brand peut être absent (carte sans marque identifiée) : repli sur
+    // l'icône générique "card" plutôt que de perdre l'icône entièrement.
+    const logoKey = method === "card" ? (brand || "card") : method;
     const src = icons[logoKey];
     if (!src) {
       return `<span>${paymentMethodLabel[method] ?? method ?? "-"}</span>`;
     }
+    // Apple Pay/Google Pay restent des paiements carte sous le capot
+    // (backend : payment_method_type devient le wallet "apple_pay"/
+    // "google_pay" quand présent) — les 4 derniers chiffres restent donc
+    // pertinents à afficher, pas seulement pour method === "card".
     const last4Display =
-      method === "card" && last4 ? ` ···· ${last4}` : "";
+      last4 && (method === "card" || method === "apple_pay" || method === "google_pay")
+        ? ` ···· ${last4}`
+        : "";
     return `
       <span style="display:flex;align-items:center;gap:8px;">
         <img src="${src}" alt="${logoKey}" style="width:42px;height:28px;object-fit:contain;">
