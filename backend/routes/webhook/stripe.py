@@ -16,9 +16,9 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 router = APIRouter()
 
 
-def process_connect_invoice_event(
-    invoice_data: dict,
-    event_type: str,
+
+def process_payment_intent_event(
+    payment_intent_data: dict,
     connected_account_id: str,
     db: Session,
 ):
@@ -28,52 +28,39 @@ def process_connect_invoice_event(
     from sqlalchemy import text
 
     logger = logging.getLogger(__name__)
-    invoice_id = invoice_data["id"]
 
-    if event_type == "invoice.payment_failed":
-        logger.info("Paiement échoué pour la facture %s", invoice_id)
-        return {"status": "payment_failed", "invoice_id": invoice_id}
+    pi_id = payment_intent_data["id"]
 
-    if event_type != "invoice.paid":
-        return {"status": "ignored", "invoice_id": invoice_id}
+    # Seuls les paiements réussis sont traités.
+    if payment_intent_data.get("status") != "succeeded":
+        return {
+            "status": "ignored",
+            "payment_intent_id": pi_id,
+        }
 
     if not connected_account_id:
-        raise ValueError("Compte Connect absent")
+        raise ValueError("Compte Connect absent de l'événement")
 
-    invoice = stripe.Invoice.retrieve(
-        invoice_id,
-        stripe_account=connected_account_id,
-    )
-    invoice_data = (
-        invoice.to_dict()
-        if hasattr(invoice, "to_dict")
-        else dict(invoice)
-    )
+    # Idempotence : ne jamais créditer deux fois le même paiement.
+    existing = db.query(WalletTransaction).filter(
+        WalletTransaction.reference == pi_id
+    ).first()
 
-    if invoice_data.get("status") != "paid":
-        raise ValueError(f"Facture non payée : {invoice_id}")
+    if existing:
+        return {
+            "status": "already_processed",
+            "payment_intent_id": pi_id,
+        }
 
-    subscription_id = invoice_data.get("subscription")
-
-    if not subscription_id:
-        parent = invoice_data.get("parent") or {}
-        if not isinstance(parent, dict):
-            parent = parent.to_dict() if hasattr(parent, "to_dict") else {}
-
-        details = parent.get("subscription_details") or {}
-        if not isinstance(details, dict):
-            details = details.to_dict() if hasattr(details, "to_dict") else {}
-
-        subscription_id = details.get("subscription")
-
-    source = "subscription" if subscription_id else "invoice"
-
+    # Identifier le marchand à partir du compte Connect de l'événement.
     profile = db.query(Profile).filter(
         Profile.stripe_account_id == connected_account_id
     ).first()
 
     if not profile:
-        raise ValueError(f"Profil introuvable : {connected_account_id}")
+        raise ValueError(
+            f"Profil introuvable : {connected_account_id}"
+        )
 
     merchant_id = profile.user_id
 
@@ -89,133 +76,134 @@ def process_connect_invoice_event(
     ).with_for_update().first()
 
     if not wallet:
-        raise ValueError(f"Portefeuille introuvable : {merchant_id}")
+        raise ValueError(
+            f"Portefeuille introuvable : {merchant_id}"
+        )
 
-    invoice_payments = stripe.InvoicePayment.list(
-        invoice=invoice_id,
-        limit=100,
-        stripe_account=connected_account_id,
+    # Toutes les données du paiement viennent du PaymentIntent.
+    currency = payment_intent_data["currency"].upper()
+
+    amount_received_raw = int(
+        payment_intent_data.get("amount_received") or 0
     )
 
-    payment_intent_ids = []
+    application_fee_raw = int(
+        payment_intent_data.get("application_fee_amount") or 0
+    )
 
-    for invoice_payment in invoice_payments.data:
-        item = invoice_payment.to_dict()
-        payment = item.get("payment") or {}
+    payment_method = payment_intent_data.get("payment_method")
 
-        if payment.get("type") == "payment_intent":
-            pi_id = payment.get("payment_intent")
-            if pi_id:
-                payment_intent_ids.append(pi_id)
+    # Les montants Stripe sont exprimés dans l'unité minimale
+    # de la devise. XOF est une devise sans sous-unité.
+    zero_decimal_currencies = {
+        "BIF", "CLP", "DJF", "GNF", "ISK",
+        "JPY", "KMF", "KRW", "PYG", "RWF",
+        "UGX", "VND", "VUV", "XAF", "XOF",
+        "XPF",
+    }
 
-    if not payment_intent_ids:
-        raise ValueError(f"Aucun paiement trouvé pour {invoice_id}")
+    divisor = (
+        Decimal("1")
+        if currency in zero_decimal_currencies
+        else Decimal("100")
+    )
 
-    recorded = 0
+    gross_amount = Decimal(amount_received_raw) / divisor
+    fee_amount = Decimal(application_fee_raw) / divisor
 
-    for pi_id in payment_intent_ids:
-        existing = db.query(WalletTransaction).filter(
-            WalletTransaction.reference == pi_id
-        ).first()
+    # Montant crédité au marchand après la commission Xepay.
+    merchant_amount = gross_amount - fee_amount
 
-        if existing:
-            continue
-
-        intent = stripe.PaymentIntent.retrieve(
-            pi_id,
-            expand=["latest_charge.balance_transaction"],
-            stripe_account=connected_account_id,
+    if merchant_amount < 0:
+        raise ValueError(
+            f"Commission supérieure au paiement : {pi_id}"
         )
 
-        if intent.status != "succeeded":
-            continue
+    # Conversion en XOF si le paiement est dans une autre devise.
+    if currency == "XOF":
+        amount_local = merchant_amount.quantize(
+            Decimal("1"),
+            rounding=ROUND_DOWN,
+        )
+    else:
+        rate_row = db.execute(
+            text("""
+                SELECT rate
+                FROM exchange_rates
+                WHERE from_currency = :currency
+                  AND to_currency = 'XOF'
+            """),
+            {"currency": currency},
+        ).fetchone()
 
-        charge = intent.latest_charge
-
-        if not charge or isinstance(charge, str):
-            raise ValueError(f"Charge indisponible : {pi_id}")
-
-        balance_tx = charge.balance_transaction
-
-        if not balance_tx or isinstance(balance_tx, str):
-            raise ValueError(f"Règlement indisponible : {pi_id}")
-
-        currency = balance_tx.currency.upper()
-        amount_net = Decimal(balance_tx.net) / Decimal("100")
-
-        if currency == "XOF":
-            amount_local = amount_net.quantize(
-                Decimal("1"),
-                rounding=ROUND_DOWN,
+        if not rate_row:
+            raise ValueError(
+                f"Taux {currency}/XOF introuvable"
             )
-        else:
-            rate_row = db.execute(
-                text("""
-                    SELECT rate
-                    FROM exchange_rates
-                    WHERE from_currency = :currency
-                      AND to_currency = 'XOF'
-                """),
-                {"currency": currency},
-            ).fetchone()
 
-            if not rate_row:
-                raise ValueError(f"Taux {currency}/XOF introuvable")
-
-            amount_local = (
-                amount_net * Decimal(str(rate_row.rate))
-            ).quantize(Decimal("1"), rounding=ROUND_DOWN)
-
-        available_at = datetime.fromtimestamp(
-            balance_tx.available_on,
-            tz=timezone.utc,
+        amount_local = (
+            merchant_amount * Decimal(str(rate_row.rate))
+        ).quantize(
+            Decimal("1"),
+            rounding=ROUND_DOWN,
         )
 
-        fee_id = charge.application_fee
-        fee_amount = None
+    # Le PaymentIntent ne fournit pas directement la date
+    # de disponibilité des fonds ni les frais Stripe.
+    tx = WalletTransaction(
+        user_id=merchant_id,
+        wallet_id=wallet.id,
+        source="payment_intent",
+        type="deposit",
+        direction="in",
+        status=payment_intent_data["status"],
+        reference=pi_id,
+        invoice_id=None,
+        charge_id=None,
+        gross_amount=gross_amount,
+        net_amount=merchant_amount,
+        stripe_fee_amount=None,
+        currency=currency,
+        fee_id=None,
+        fee_amount=fee_amount,
+        payment_method_id=(
+            payment_method.get("id")
+            if isinstance(payment_method, dict)
+            else payment_method
+        ),
+        available_at=None,
+        description=f"Paiement Stripe {pi_id}",
+    )
 
-        if fee_id:
-            fee = stripe.ApplicationFee.retrieve(
-                fee_id,
-                stripe_account=connected_account_id,
-            )
-            fee_amount = Decimal(fee.amount) / Decimal("100")
-        tx = WalletTransaction(
-            user_id=merchant_id,
-            wallet_id=wallet.id,
-            source=source,
-            type="deposit",
-            direction="in",
-            status=intent.status,
-            reference=intent.id,
-            invoice_id=invoice_id,
-            charge_id=charge.id,
-            gross_amount=Decimal(balance_tx.amount) / Decimal("100"),
-            net_amount=Decimal(balance_tx.net) / Decimal("100"),
-            stripe_fee_amount=Decimal(balance_tx.fee) / Decimal("100"),
-            currency=balance_tx.currency.upper(),
-            fee_id=fee_id,
-            fee_amount=(
-                float(fee_amount)
-                if fee_amount is not None
-                else None
-            ),
-            payment_method_id=charge.get("payment_method"),
-            available_at=available_at,
-            description=f"Paiement {source} — facture {invoice_id}",
-        )
+    try:
         db.add(tx)
         db.flush()
+
         wallet.balance = (
             Decimal(str(wallet.balance or 0)) + amount_local
         )
-        recorded += 1
-    db.commit()
+
+        db.commit()
+
+    except Exception:
+        db.rollback()
+        raise
+
+    logger.info(
+        "PaymentIntent traité : id=%s marchand=%s montant_XOF=%s",
+        pi_id,
+        merchant_id,
+        amount_local,
+    )
+
     return {
         "status": "processed",
-        "invoice_id": invoice_id,
-        "source": source,
-        "recorded_transactions": recorded,
+        "payment_intent_id": pi_id,
+        "merchant_id": merchant_id,
+        "currency": currency,
+        "gross_amount": str(gross_amount),
+        "application_fee_amount": str(fee_amount),
+        "credited_amount_xof": str(amount_local),
     }
 
 @router.post("/webhook/stripe")
@@ -340,6 +328,32 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                             merchant.email, wd.amount
                         )
         # --------------------------------------------------
+        # PAYMENT INTENT CONNECT — PAIEMENT RÉUSSI
+        # --------------------------------------------------
+        elif event_type == "payment_intent.succeeded":
+            if not connected_account_id:
+                raise ValueError(
+                    "Compte Connect absent de l'événement PaymentIntent"
+                )
+
+            payment_intent_data = (
+                object_data.to_dict()
+                if hasattr(object_data, "to_dict")
+                else dict(object_data)
+            )
+
+            result = process_payment_intent_event(
+                payment_intent_data=payment_intent_data,
+                connected_account_id=connected_account_id,
+                db=db,
+            )
+
+            logger.info(
+                "Traitement PaymentIntent Connect : %s",
+                result,
+            )
+
+        # --------------------------------------------------
         # FACTURES CONNECT
         # --------------------------------------------------
         elif event_type in (
@@ -353,20 +367,12 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                 if hasattr(object_data, "to_dict")
                 else dict(object_data)
             )
+            
             if event_type in ("invoice.paid", "invoice.payment_failed"):
-                if not connected_account_id:
-                    raise ValueError(
-                        "Compte Connect absent de l'événement"
-                    )
-                result = process_connect_invoice_event(
-                    invoice_data=invoice_data,
-                    event_type=event_type,
-                    connected_account_id=connected_account_id,
-                    db=db,
-                )
                 logger.info(
-                    "Traitement facture Connect : %s",
-                    result,
+                    "Événement facture Connect : type=%s invoice_id=%s",
+                    event_type,
+                    invoice_data.get("id"),
                 )
             else:
                 logger.info(
