@@ -75,10 +75,12 @@ def process_invoice_paid_event(
     (fee toujours à 0, available_at toujours None, abonnements classés
     "invoice"). Plutôt que de deviner/recalculer depuis un payload dont la
     forme a changé sous nos pieds, cette fonction relit l'objet PaymentIntent
-    réel qui a réglé la facture (2 appels Stripe, détaillés plus bas) et lit
-    directement dessus tout ce qui peut l'être : montant, devise, frais,
+    réel qui a réglé la facture (2 à 3 appels Stripe, détaillés plus bas) et
+    lit directement dessus tout ce qui peut l'être : montant, devise, frais,
     moyen de paiement, carte, description, date de création, date de
-    disponibilité des fonds. Si ce PaymentIntent ne peut pas être retrouvé,
+    disponibilité des fonds (avec repli sur BalanceTransaction.list si
+    l'expand ne suffit pas — constaté peu fiable sur ce flux, contrairement
+    au paiement par lien). Si ce PaymentIntent ne peut pas être retrouvé,
     on lève plutôt que de créditer avec des valeurs devinées : l'exception
     remonte jusqu'au handler webhook, qui répond 500 à Stripe, qui retentera
     la livraison (l'idempotence par référence empêche tout double crédit)."""
@@ -207,12 +209,25 @@ def process_invoice_paid_event(
     ) or {}
     card_info = payment_method_details.get("card", {}) or {}
 
+    # expand=["latest_charge.balance_transaction"] n'est pas honoré de façon
+    # fiable sur ce flux (constaté : balance_transaction revient comme un ID
+    # brut "txn_..." plutôt qu'expandé en objet, contrairement au paiement
+    # par lien). Même filet de sécurité que process_checkout_session_payment
+    # (paiement.py) : BalanceTransaction.list(source=charge_id) retrouve
+    # l'objet complet indépendamment de ce que l'expand a renvoyé.
     balance_tx = (
         getattr(latest_charge, "balance_transaction", None) if latest_charge else None
     )
+    if latest_charge and (not balance_tx or isinstance(balance_tx, str)):
+        balance_txs = stripe.BalanceTransaction.list(
+            source=latest_charge.id,
+            limit=1,
+            stripe_account=connected_account_id,
+        )
+        balance_tx = balance_txs.data[0] if balance_txs.data else None
     available_at = (
         datetime.fromtimestamp(balance_tx.available_on, tz=timezone.utc)
-        if balance_tx else None
+        if balance_tx and not isinstance(balance_tx, str) else None
     )
 
     created_at = datetime.fromtimestamp(intent.created, tz=timezone.utc)
