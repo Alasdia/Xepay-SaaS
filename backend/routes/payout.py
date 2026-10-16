@@ -126,7 +126,6 @@ def get_wallet(
 
 WALLET_SOURCE_LABELS = {
     "payment_link": "Liens de paiement",
-    "payment_intent": "Paiements directs",
     "invoice": "Factures",
     "subscription": "Abonnements",
 }

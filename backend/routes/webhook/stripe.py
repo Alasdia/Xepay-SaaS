@@ -53,153 +53,6 @@ def _convert_merchant_amount_to_xof(db, merchant_amount, currency):
     )
 
 
-def process_payment_intent_event(
-    payment_intent_data: dict,
-    connected_account_id: str,
-    db: Session,
-):
-    import logging
-    from decimal import Decimal
-
-    logger = logging.getLogger(__name__)
-
-    pi_id = payment_intent_data["id"]
-
-    # Seuls les paiements réussis sont traités.
-    if payment_intent_data.get("status") != "succeeded":
-        return {
-            "status": "ignored",
-            "payment_intent_id": pi_id,
-        }
-
-    if not connected_account_id:
-        raise ValueError("Compte Connect absent de l'événement")
-
-    # Idempotence : ne jamais créditer deux fois le même paiement.
-    existing = db.query(WalletTransaction).filter(
-        WalletTransaction.reference == pi_id
-    ).first()
-
-    if existing:
-        return {
-            "status": "already_processed",
-            "payment_intent_id": pi_id,
-        }
-
-    # Identifier le marchand à partir du compte Connect de l'événement.
-    profile = db.query(Profile).filter(
-        Profile.stripe_account_id == connected_account_id
-    ).first()
-
-    if not profile:
-        raise ValueError(
-            f"Profil introuvable : {connected_account_id}"
-        )
-
-    merchant_id = profile.user_id
-
-    user = db.query(UserDB).filter(
-        UserDB.id == merchant_id
-    ).first()
-
-    if not user:
-        raise ValueError(f"Marchand introuvable : {merchant_id}")
-
-    wallet = db.query(Wallet).filter(
-        Wallet.user_id == merchant_id
-    ).with_for_update().first()
-
-    if not wallet:
-        raise ValueError(
-            f"Portefeuille introuvable : {merchant_id}"
-        )
-
-    # Toutes les données du paiement viennent du PaymentIntent.
-    currency = payment_intent_data["currency"].upper()
-
-    amount_received_raw = int(
-        payment_intent_data.get("amount_received") or 0
-    )
-
-    application_fee_raw = int(
-        payment_intent_data.get("application_fee_amount") or 0
-    )
-
-    payment_method = payment_intent_data.get("payment_method")
-
-    divisor = (
-        Decimal("1")
-        if currency in ZERO_DECIMAL_CURRENCIES
-        else Decimal("100")
-    )
-
-    gross_amount = Decimal(amount_received_raw) / divisor
-    fee_amount = Decimal(application_fee_raw) / divisor
-
-    # Montant crédité au marchand après la commission Xepay.
-    merchant_amount = gross_amount - fee_amount
-
-    if merchant_amount < 0:
-        raise ValueError(
-            f"Commission supérieure au paiement : {pi_id}"
-        )
-
-    # Conversion en XOF si le paiement est dans une autre devise.
-    amount_local = _convert_merchant_amount_to_xof(db, merchant_amount, currency)
-
-    # Le PaymentIntent ne fournit pas directement la date
-    # de disponibilité des fonds ni les frais Stripe.
-    tx = WalletTransaction(
-        user_id=merchant_id,
-        wallet_id=wallet.id,
-        source="payment_intent",
-        type="deposit",
-        direction="in",
-        amount=amount_local,
-        status=payment_intent_data["status"],
-        reference=pi_id,
-        fee_amount=fee_amount,
-        payment_method_id=(
-            payment_method.get("id")
-            if isinstance(payment_method, dict)
-            else payment_method
-        ),
-        available_at=None,
-        description=f"Paiement Stripe {pi_id}",
-    )
-
-    try:
-        db.add(tx)
-        db.flush()
-
-        wallet.balance = (
-            Decimal(str(wallet.balance or 0)) + amount_local
-        )
-
-        db.commit()
-
-    except Exception:
-        db.rollback()
-        raise
-
-    logger.info(
-        "PaymentIntent traité : id=%s marchand=%s montant_XOF=%s",
-        pi_id,
-        merchant_id,
-        amount_local,
-    )
-
-    return {
-        "status": "processed",
-        "payment_intent_id": pi_id,
-        "merchant_id": merchant_id,
-        "currency": currency,
-        "gross_amount": str(gross_amount),
-        "application_fee_amount": str(fee_amount),
-        "credited_amount_xof": str(amount_local),
-    }
-
-
 def process_invoice_paid_event(
     invoice_data: dict,
     connected_account_id: str,
@@ -210,8 +63,9 @@ def process_invoice_paid_event(
     se règlent eux aussi via une Invoice, portant `subscription` non nul :
     voir create_merchant_subscription/create_connect_invoice dans
     stripe_service.py, qui posent déjà application_fee_percent/
-    application_fee_amount sur ce flux). Reprend le même schéma défensif que
-    process_payment_intent_event (idempotence par référence, lock du wallet).
+    application_fee_amount sur ce flux). Schéma défensif classique
+    (idempotence par référence, lock du wallet) partagé avec
+    process_checkout_session_payment (paiement par lien, paiement.py).
 
     Depuis l'API Stripe 2025-03-31.basil, l'Invoice du webhook n'a plus
     payment_intent, charge, application_fee_amount ni subscription à plat
@@ -569,32 +423,6 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                         send_payout_failed_email(
                             merchant.email, wd.amount
                         )
-        # --------------------------------------------------
-        # PAYMENT INTENT CONNECT — PAIEMENT RÉUSSI
-        # --------------------------------------------------
-        elif event_type == "payment_intent.succeeded":
-            if not connected_account_id:
-                raise ValueError(
-                    "Compte Connect absent de l'événement PaymentIntent"
-                )
-
-            payment_intent_data = (
-                object_data.to_dict()
-                if hasattr(object_data, "to_dict")
-                else dict(object_data)
-            )
-
-            result = process_payment_intent_event(
-                payment_intent_data=payment_intent_data,
-                connected_account_id=connected_account_id,
-                db=db,
-            )
-
-            logger.info(
-                "Traitement PaymentIntent Connect : %s",
-                result,
-            )
-
         # --------------------------------------------------
         # FACTURES CONNECT
         # --------------------------------------------------
