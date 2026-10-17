@@ -42,9 +42,11 @@ function ensureDrawerStyles() {
         .customer-modal-overlay.xepay-drawer .xepay-drawer-panel {
             width: min(var(--xepay-drawer-width, ${DEFAULT_WIDTH}px), 100%);
             max-width: 100%;
-            height: 100%;
-            max-height: 100%;
-            margin: 0;
+            /* Démarre sous #top-banner (bande jaune, 5vh en haut de la
+               page, sidebar.css) plutôt que de la recouvrir. */
+            margin-top: 5vh;
+            height: calc(100% - 5vh);
+            max-height: calc(100% - 5vh);
             border-radius: 0;
             box-shadow: -12px 0 40px rgba(0, 0, 0, .18);
             display: flex;
@@ -65,14 +67,15 @@ function ensureDrawerStyles() {
         ================================================ */
         .modal.xepay-drawer .modal-dialog {
             position: fixed !important;
-            top: 0 !important;
+            /* Démarre sous #top-banner (bande jaune, 5vh en haut de la
+               page, sidebar.css) plutôt que de la recouvrir. */
+            top: 5vh !important;
             right: 0 !important;
-            bottom: 0 !important;
             left: auto !important;
             margin: 0 !important;
             max-width: min(var(--xepay-drawer-width, ${DEFAULT_WIDTH}px), 100vw) !important;
             width: 100% !important;
-            height: 100% !important;
+            height: calc(100% - 5vh) !important;
             display: flex !important;
         }
         .modal.xepay-drawer .xepay-drawer-panel {
@@ -92,19 +95,6 @@ function ensureDrawerStyles() {
         @keyframes xepayDrawerSlideIn {
             from { transform: translateX(100%); }
             to { transform: translateX(0); }
-        }
-
-        /* #main-content a son propre stacking context (position:relative +
-           z-index:1, sidebar.css), ce qui emprisonne tout z-index interne —
-           y compris le 9999 de .customer-modal-overlay — en dessous de
-           #top-banner (z-index:200, bande jaune réservée en haut de la
-           page). Résultat : le haut du tiroir (qui démarre à inset:0, donc
-           chevauche cette bande) se retrouvait caché derrière elle. On
-           réhausse #main-content au-dessus du banner/sidebar pendant qu'un
-           tiroir de détails est ouvert, à toutes les tailles d'écran (pas
-           seulement en mode push) — see syncPush() plus bas. */
-        body.xepay-drawer-any-open #main-content {
-            z-index: 300;
         }
 
         /* Mobile : plein écran */
@@ -210,11 +200,6 @@ export function initDetailsDrawer(overlayEl, panelEl, { width = DEFAULT_WIDTH, i
     }
 
     function syncPush() {
-        // Indépendant du mode push (contrairement aux classes plus bas) :
-        // couvre aussi la superposition classique et le plein écran mobile,
-        // seuls modes où le correctif #top-banner ci-dessus est nécessaire.
-        document.body.classList.toggle("xepay-drawer-any-open", isOpen());
-
         const push = isOpen() && largeScreen.matches;
         if (push) {
             // Posée sur <body> (lu par la media query ci-dessus pour

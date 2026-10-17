@@ -16,7 +16,7 @@ body {font-family: var(--font-d); background: #ffffff !important; color: #111827
 #main-content { margin-left: 260px; padding: 28px; }
 .card-epay { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; color: #374151; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
 .lien-card { background: #ffffff; border: 1px solid #e5e7eb; display: flex; flex-direction: column; border-radius: 14px; padding: 16px; margin-bottom: 12px; transition: .25s; }
-.lien-card:hover{ border-color:#facc15; box-shadow:0 8px 24px rgba(250,204,21,.12); }
+.lien-card:hover{ box-shadow:0 8px 20px rgba(15,23,42,.08); }
 .lien-compact { flex-direction: row; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; }
 .lien-compact-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .lien-compact-url { flex: 1; min-width: 0; font-family: monospace; font-size: 13px; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
