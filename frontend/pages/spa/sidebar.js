@@ -127,7 +127,6 @@ export async function initSidebar() {
 const DETAIL_ROUTE_PARENT = {
   "transaction-paiement-detail": "transactions",
   "transaction-retrait-detail": "transactions",
-  "lien-detail": "liens",
 };
 
 export function setActiveRoute(routeName) {

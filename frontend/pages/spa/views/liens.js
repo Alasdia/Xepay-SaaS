@@ -1,9 +1,9 @@
 // Vue "Mes liens de paiement" — port fidèle de liens.html + liens.js.
 import { apiFetch } from "../core/apiClient.js";
-import { isAuthenticated, getWorkspaceId } from "../core/state.js";
+import { isAuthenticated } from "../core/state.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { updateUpgradeModal } from "../shared/modalUpgrade.js";
-import { navigate } from "../core/router.js";
+import { initDetailsDrawer } from "../shared/detailsDrawer.js";
 
 const TEMPLATE = `
 <div id="links-lock" class="d-none">
@@ -42,6 +42,18 @@ const TEMPLATE = `
   <div id="aucun-lien" class="text-center py-5 d-none">
     <p class="text-muted">Aucun lien de paiement créé</p>
     <button class="btn btn-warning fw-bold" data-bs-toggle="modal" data-bs-target="#modalCreationLien">+ Créer mon premier lien</button>
+  </div>
+</div>
+<div class="customer-modal-overlay" id="lien-details-modal">
+  <div class="customer-modal customer-details-modal">
+    <div class="customer-modal-header">
+      <div>
+        <h3>Détails du lien</h3>
+        <p id="lien-details-subtitle"></p>
+      </div>
+      <button type="button" class="customer-modal-close" id="close-lien-details">×</button>
+    </div>
+    <div id="lien-details-content"></div>
   </div>
 </div>
 <div class="modal fade" id="modalLienGenere" tabindex="-1">
@@ -108,7 +120,7 @@ const CREATION_LIEN_MODAL_HTML = `
 `;
 
 export async function mount(container) {
-  await setViewStyles(["responsive.css", "liens.css"]);
+  await setViewStyles(["responsive.css", "liens.css", "commerce.css"]);
   container.innerHTML = TEMPLATE;
   document.body.insertAdjacentHTML("beforeend", CREATION_LIEN_MODAL_HTML);
 
@@ -116,6 +128,15 @@ export async function mount(container) {
   let offset = 0;
   const limit = 10;
   let isLoading = false;
+
+  const detailsModal = container.querySelector("#lien-details-modal");
+  initDetailsDrawer(detailsModal, detailsModal.querySelector(".customer-modal"));
+  container.querySelector("#close-lien-details").addEventListener("click", () => {
+    detailsModal.classList.remove("open");
+  });
+  detailsModal.addEventListener("click", (event) => {
+    if (event.target === detailsModal) detailsModal.classList.remove("open");
+  });
 
   async function checkPlanLock() {
     const res = await apiFetch("/me");
@@ -162,79 +183,110 @@ export async function mount(container) {
     }
     offset += liens.length;
 
-    function getStatusLabel(lien) {
-      if (lien.status === "paid") return "Payé";
-      if (!lien.active) return "Expiré";
-      if (lien.status === "pending") return "En attente";
-      return "Actif";
-    }
-    function getStatusClass(lien) {
-      if (lien.status === "paid") return "status-paid";
-      if (!lien.active) return "status-expired";
-      if (lien.status === "pending") return "status-pending";
-      return "status-active";
-    }
-
     liens
       .filter((lien) => !lien.archived)
       .forEach((lien) => {
-        const amount =
-          typeof lien.amount === "number"
-            ? `${new Intl.NumberFormat("fr-FR").format(lien.amount)} ${lien.currency}`
-            : "Montant invalide";
+        const info = getStatusInfo(lien);
         const div = document.createElement("div");
-        div.className = "lien-card";
+        div.className = `lien-card lien-compact ${info.accent}`;
         div.setAttribute("data-id", lien.id);
-        const exp = new Date(lien.expires_at);
-        const now = new Date();
-        const diff = exp - now;
-        const minutes = Math.floor(diff / 60000);
-        const seconds = Math.floor((diff % 60000) / 1000);
-        const heure = exp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        let expirationLabel = "";
-        let color = "orange";
-        if (diff <= 0) {
-          expirationLabel = "Expiré";
-          color = "red";
-        } else if (minutes === 0) {
-          expirationLabel = `expire dans ${seconds}s`;
-          color = "#ff4d4d";
-        } else {
-          expirationLabel = `expire dans ${minutes} min (${heure})`;
-        }
         div.innerHTML = `
-          <div class="lien-content">
-            <div class="lien-header ">
-              <div class="lien-infos">
-                <h6>${lien.name}</h6>
-                <small style="color:${color}; font-weight:500;">${expirationLabel}</small>
-                <div class="montant">${amount}</div>
-              </div>
-              <div class="lien-status ${getStatusClass(lien)}">${getStatusLabel(lien)}</div>
-            </div>
-          </div>
-          <div class="lien-url ${getStatusClass(lien)}">${lien.url}</div>
-          <div class="actions">
-            ${
-              lien.status === "pending"
-                ? `<button class="btn-copy-actif" onclick="event.stopPropagation(); copier('${lien.url}')">Copier</button>`
-                : ""
-            }
-            ${
-              lien.status === "paid"
-                ? `<button class="btn-delete-neutral" onclick="event.stopPropagation(); archiverLien('${lien.id}')">Archiver</button>`
-                : `<button class="${lien.status === "expired" ? "btn-delete-actif" : "btn-delete-neutral"}" onclick="event.stopPropagation(); supprimer('${lien.id}')">Supprimer</button>`
-            }
-          </div>
+          <span class="lien-compact-dot"></span>
+          <span class="lien-compact-url">${lien.url}</span>
+          <i class="fa-solid fa-chevron-right lien-compact-chevron"></i>
         `;
-        div.style.cursor = "pointer";
-        div.addEventListener("click", () => {
-          const workspaceId = getWorkspaceId() || "me";
-          navigate(`/dash/workspace/${encodeURIComponent(workspaceId)}/liens/lk/${encodeURIComponent(lien.id)}`);
-        });
+        div.addEventListener("click", () => showLienDetails(lien));
         listeLiens.appendChild(div);
       });
     isLoading = false;
+  }
+
+  function getStatusInfo(lien) {
+    if (lien.status === "paid") {
+      return { key: "paid", label: "Payé", badge: "status-success", accent: "lien-accent-success", legacy: "status-paid" };
+    }
+    if (lien.status === "expired" || !lien.active) {
+      return { key: "expired", label: "Expiré", badge: "status-danger", accent: "lien-accent-danger", legacy: "status-expired" };
+    }
+    return { key: "pending", label: "En attente", badge: "status-warning", accent: "lien-accent-warning", legacy: "status-pending" };
+  }
+
+  function showLienDetails(lien) {
+    const info = getStatusInfo(lien);
+    const amount =
+      typeof lien.amount === "number"
+        ? `${new Intl.NumberFormat("fr-FR").format(lien.amount)} ${lien.currency}`
+        : "Montant invalide";
+
+    const exp = new Date(lien.expires_at);
+    const now = new Date();
+    const diff = exp - now;
+    let expirationLabel;
+    if (diff <= 0) {
+      expirationLabel = "Expiré";
+    } else {
+      const minutes = Math.floor(diff / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      const heure = exp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      expirationLabel = minutes === 0 ? `Expire dans ${seconds}s` : `Expire dans ${minutes} min (${heure})`;
+    }
+
+    container.querySelector("#lien-details-subtitle").textContent = lien.name || lien.id;
+    container.querySelector("#lien-details-content").innerHTML = `
+      <div class="customer-profile">
+        <div class="customer-profile-avatar"><i class="fa-solid fa-link"></i></div>
+        <div>
+          <h4>${lien.name || "Lien de paiement"}</h4>
+          <code>${lien.id}</code>
+        </div>
+      </div>
+      <div class="customer-details-grid">
+        <div class="customer-detail-item">
+          <span>Montant</span>
+          <strong>${amount}</strong>
+        </div>
+        <div class="customer-detail-item">
+          <span>Statut</span>
+          <strong><span class="status-badge ${info.badge}">${info.label}</span></strong>
+        </div>
+        <div class="customer-detail-item">
+          <span>Expiration</span>
+          <strong>${expirationLabel}</strong>
+        </div>
+        <div class="customer-detail-item">
+          <span>Créé le</span>
+          <strong>${lien.created_at ? new Date(lien.created_at).toLocaleString("fr-FR") : "—"}</strong>
+        </div>
+      </div>
+      <div class="lien-url ${info.legacy}">${lien.url}</div>
+      <div class="actions">
+        ${lien.status === "pending" ? `<button class="btn-copy-actif" id="lien-details-copy">Copier</button>` : ""}
+        ${
+          lien.status === "paid"
+            ? `<button class="btn-delete-neutral" id="lien-details-archive">Archiver</button>`
+            : `<button class="${lien.status === "expired" ? "btn-delete-actif" : "btn-delete-neutral"}" id="lien-details-delete">Supprimer</button>`
+        }
+      </div>
+    `;
+
+    const copyBtn = container.querySelector("#lien-details-copy");
+    if (copyBtn) copyBtn.addEventListener("click", () => copier(lien.url));
+    const archiveBtn = container.querySelector("#lien-details-archive");
+    if (archiveBtn) {
+      archiveBtn.addEventListener("click", async () => {
+        detailsModal.classList.remove("open");
+        await archiverLien(lien.id);
+      });
+    }
+    const deleteBtn = container.querySelector("#lien-details-delete");
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", async () => {
+        detailsModal.classList.remove("open");
+        await supprimer(lien.id);
+      });
+    }
+
+    detailsModal.classList.add("open");
   }
 
   async function genererLien() {
@@ -338,9 +390,6 @@ export async function mount(container) {
   scrollBox.addEventListener("scroll", onScroll);
 
   window.genererLien = genererLien;
-  window.supprimer = supprimer;
-  window.copier = copier;
-  window.archiverLien = archiverLien;
   window.showUpgradeModal = showUpgradeModal;
   // window.upgrade est exposé globalement par app.js (modale partagée persistante)
 
@@ -365,9 +414,6 @@ export async function mount(container) {
       document.body.classList.remove("locked-page");
       scrollBox.removeEventListener("scroll", onScroll);
       delete window.genererLien;
-      delete window.supprimer;
-      delete window.copier;
-      delete window.archiverLien;
       delete window.showUpgradeModal;
     },
   };

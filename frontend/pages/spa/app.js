@@ -16,7 +16,6 @@ import { mount as mountMultiUsers } from "./views/multiUsers.js";
 import { mount as mountProfil } from "./views/profil.js";
 import { mount as mountSecurite } from "./views/securite.js";
 import { mountPayment as mountPaymentDetail, mountWithdrawal as mountWithdrawalDetail } from "./views/transactionDetail.js";
-import { mount as mountLienDetail } from "./views/lienDetail.js";
 
 const WORKSPACE_PLACEHOLDER = "me";
 
@@ -93,7 +92,6 @@ async function init() {
   registerRoute("/dash/workspace/:workspaceId/commerce/factures", (c, p) => mountCommerce(c, { ...p, section: "factures" }), { name: "commerce-factures" });
   registerRoute("/dash/workspace/:workspaceId/commerce/moyens-paiement", (c, p) => mountCommerce(c, { ...p, section: "moyens-paiement" }), { name: "commerce-moyens-paiement" });
   registerRoute("/dash/workspace/:workspaceId/commerce/risque", (c, p) => mountCommerce(c, { ...p, section: "risque" }),{ name: "commerce-risque" });
-  registerRoute("/dash/workspace/:workspaceId/liens/lk/:linkId", mountLienDetail, { name: "lien-detail" });
   registerRoute("/dash/workspace/:workspaceId/api", mountApi, { name: "api" });
   registerRoute("/dash/workspace/:workspaceId/multi-users", mountMultiUsers, { name: "multi-users" });
   registerRoute("/dash/workspace/:workspaceId/profil", mountProfil, { name: "profil" });

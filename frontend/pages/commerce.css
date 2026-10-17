@@ -379,6 +379,18 @@
     background: #f87171;
 }
 
+.status-warning {
+    background: rgba(245, 158, 11, 0.12) !important;
+    color: #f59e0b !important;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    box-shadow: none;
+}
+
+.status-warning::before {
+    background: #f59e0b;
+    box-shadow: 0 0 6px #f59e0b;
+}
+
 
 /* =========================================================
    DETAILS
