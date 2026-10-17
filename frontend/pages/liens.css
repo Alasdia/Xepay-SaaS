@@ -22,6 +22,13 @@ body {font-family: var(--font-d); background: #ffffff !important; color: #111827
 .lien-compact-url { flex: 1; min-width: 0; font-family: monospace; font-size: 13px; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lien-compact-chevron { color: #9ca3af; font-size: 12px; flex-shrink: 0; transition: transform .2s; }
 .lien-compact:hover .lien-compact-chevron { transform: translateX(2px); }
+.lien-compact-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.lien-icon-btn { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid #e5e7eb; background: #ffffff; color: #6b7280; font-size: 12px; cursor: pointer; transition: .15s; }
+.lien-icon-btn:hover { border-color: #facc15; color: #111827; background: #fffbeb; }
+.lien-icon-copy:hover { border-color: #4ade80; color: #16a34a; background: #f0fdf4; }
+.lien-icon-archive:hover { border-color: #f59e0b; color: #b45309; background: #fffbeb; }
+.lien-icon-delete:hover { border-color: #f87171; color: #dc2626; background: #fef2f2; }
+.lien-icon-delete-danger { border-color: #fca5a5; color: #dc2626; }
 .lien-accent-success { border-left: 4px solid #4ade80; }
 .lien-accent-success .lien-compact-dot { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
 .lien-accent-warning { border-left: 4px solid #f59e0b; }

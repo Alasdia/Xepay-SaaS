@@ -204,7 +204,8 @@ def get_links(
             active=is_active,
             archived=link.archived,
             url=link.url,
-            expires_at=link.expires_at
+            expires_at=link.expires_at,
+            created_at=link.created_at
         ))
     return result
 

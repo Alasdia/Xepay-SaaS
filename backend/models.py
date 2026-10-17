@@ -82,6 +82,7 @@ class LinkDashboardResponse(BaseModel):
     archived: bool
     url: str
     expires_at: datetime
+    created_at: datetime
 
 
     class Config:

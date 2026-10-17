@@ -193,9 +193,16 @@ export async function mount(container) {
         div.innerHTML = `
           <span class="lien-compact-dot"></span>
           <span class="lien-compact-url">${lien.url}</span>
+          <div class="lien-compact-actions">${renderQuickActions(lien)}</div>
           <i class="fa-solid fa-chevron-right lien-compact-chevron"></i>
         `;
         div.addEventListener("click", () => showLienDetails(lien));
+        const copyIcon = div.querySelector('[data-action="copy"]');
+        if (copyIcon) copyIcon.addEventListener("click", (event) => { event.stopPropagation(); copier(lien.url); });
+        const archiveIcon = div.querySelector('[data-action="archive"]');
+        if (archiveIcon) archiveIcon.addEventListener("click", (event) => { event.stopPropagation(); archiverLien(lien.id); });
+        const deleteIcon = div.querySelector('[data-action="delete"]');
+        if (deleteIcon) deleteIcon.addEventListener("click", (event) => { event.stopPropagation(); supprimer(lien.id); });
         listeLiens.appendChild(div);
       });
     isLoading = false;
@@ -209,6 +216,18 @@ export async function mount(container) {
       return { key: "expired", label: "Expiré", badge: "status-danger", accent: "lien-accent-danger", legacy: "status-expired" };
     }
     return { key: "pending", label: "En attente", badge: "status-warning", accent: "lien-accent-warning", legacy: "status-pending" };
+  }
+
+  function renderQuickActions(lien) {
+    const copyIcon =
+      lien.status === "pending"
+        ? `<button type="button" class="lien-icon-btn lien-icon-copy" data-action="copy" title="Copier"><i class="fa-solid fa-copy"></i></button>`
+        : "";
+    const secondaryIcon =
+      lien.status === "paid"
+        ? `<button type="button" class="lien-icon-btn lien-icon-archive" data-action="archive" title="Archiver"><i class="fa-solid fa-box-archive"></i></button>`
+        : `<button type="button" class="lien-icon-btn lien-icon-delete${lien.status === "expired" ? " lien-icon-delete-danger" : ""}" data-action="delete" title="Supprimer"><i class="fa-solid fa-trash"></i></button>`;
+    return `${copyIcon}${secondaryIcon}`;
   }
 
   function showLienDetails(lien) {
@@ -259,32 +278,7 @@ export async function mount(container) {
         </div>
       </div>
       <div class="lien-url ${info.legacy}">${lien.url}</div>
-      <div class="actions">
-        ${lien.status === "pending" ? `<button class="btn-copy-actif" id="lien-details-copy">Copier</button>` : ""}
-        ${
-          lien.status === "paid"
-            ? `<button class="btn-delete-neutral" id="lien-details-archive">Archiver</button>`
-            : `<button class="${lien.status === "expired" ? "btn-delete-actif" : "btn-delete-neutral"}" id="lien-details-delete">Supprimer</button>`
-        }
-      </div>
     `;
-
-    const copyBtn = container.querySelector("#lien-details-copy");
-    if (copyBtn) copyBtn.addEventListener("click", () => copier(lien.url));
-    const archiveBtn = container.querySelector("#lien-details-archive");
-    if (archiveBtn) {
-      archiveBtn.addEventListener("click", async () => {
-        detailsModal.classList.remove("open");
-        await archiverLien(lien.id);
-      });
-    }
-    const deleteBtn = container.querySelector("#lien-details-delete");
-    if (deleteBtn) {
-      deleteBtn.addEventListener("click", async () => {
-        detailsModal.classList.remove("open");
-        await supprimer(lien.id);
-      });
-    }
 
     detailsModal.classList.add("open");
   }
