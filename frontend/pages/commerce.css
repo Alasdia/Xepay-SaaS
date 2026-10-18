@@ -726,7 +726,7 @@
     .customer-modal-overlay{ padding-left: 20px; padding-top: 20px; }
 }
 
-/* Modals de CRÉATION (Client/Produit/Abonnement/Facture) uniquement : 60%
+/* Modals de CRÉATION (Client/Produit/Abonnement/Facture) uniquement : 80%
    de la largeur ET de la hauteur de #main-content (la zone déjà réservée
    par le padding ci-dessus). Les modals de DÉTAILS partagent la même
    classe .customer-modal mais sont transformées en tiroir latéral par
@@ -736,10 +736,10 @@
 #create-product-modal .customer-modal,
 #create-subscription-modal .customer-modal,
 #create-invoice-modal .customer-modal {
-    width: 60%;
-    height: 60%;
-    max-width: 60%;
-    max-height: 60%;
+    width: 80%;
+    height: 80%;
+    max-width: 80%;
+    max-height: 80%;
 }
 @media (max-width: 960px) {
     #create-client-modal .customer-modal,
