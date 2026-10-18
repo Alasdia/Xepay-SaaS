@@ -751,10 +751,11 @@
     overflow: visible;
 }
 
-/* Lien, Produit, Abonnement et Facture : formulaire court → hauteur fixe à
-   80% comme la largeur, avec le contenu centré verticalement (même style
-   pour les 4) pour que le vide ne s'accumule pas seulement en bas. */
+/* Lien, Client, Produit, Abonnement et Facture : même hauteur fixe à 80%
+   comme la largeur pour les 5, afin que toutes les modals de création
+   partagent exactement la même taille/style. */
 #modalCreationLien .customer-modal,
+#create-client-modal .customer-modal,
 #create-product-modal .customer-modal,
 #create-subscription-modal .customer-modal,
 #create-invoice-modal .customer-modal {
@@ -763,11 +764,12 @@
 }
 
 /* Client seul : formulaire long (adresses de facturation/livraison, etc.)
-   → la boîte s'adapte en hauteur au contenu plutôt que d'imposer 80% fixe,
-   pour ne jamais avoir besoin de scroller. */
+   → contrairement aux autres (overflow:visible, contenu centré), celui-ci
+   défile à l'intérieur de sa propre boîte (overflow-y) plutôt que de
+   déborder visuellement, pour garder la même taille de boîte que les
+   autres modals de création. */
 #create-client-modal .customer-modal {
-    height: auto;
-    max-height: none;
+    overflow-y: auto;
 }
 
 @media (max-width: 960px) {
@@ -808,6 +810,13 @@
     max-width: 480px;
     margin-left: auto;
     margin-right: auto;
+}
+
+/* Client seul : son formulaire dépasse systématiquement la hauteur
+   disponible (voir overflow-y plus haut) — il démarre donc en haut plutôt
+   que centré, pour un défilement naturel de lecture. */
+#create-client-modal .customer-modal > form {
+    justify-content: flex-start;
 }
 
 /* Produit a plus de champs que Abonnement/Facture (nom, description, prix,
