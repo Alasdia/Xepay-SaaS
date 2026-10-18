@@ -663,20 +663,28 @@
    BOUTON CRÉER CLIENT
 ========================================================= */
 
+/* Même style que le bouton "Retirer des fonds" (.retrait-btn, voir
+   transactions.css) : bordé, neutre, pas de remplissage plein. */
 .create-client-btn {
-    border: none;
+    background: transparent;
+    border: 1px solid #d1d5db;
+    color: #374151;
     border-radius: 8px;
-    padding: 9px 14px;
-    background: #111827;
-    color: #ffffff;
-    font-size: 12px;
+    height: 32px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    transition: background .15s ease, transform .15s ease;
+    transition: .2s;
 }
 
 .create-client-btn:hover {
-    background: #1f2937;
+    background: #f9fafb;
+    border-color: #9ca3af;
+    color: #111827;
 }
 
 .create-client-btn:active {
@@ -713,9 +721,36 @@
    réserver cette marge à gauche avant centrage évite que le modal paraisse
    décalé vers la sidebar. Sans effet sur le tiroir de détails (>=1200px) :
    detailsDrawer.js remet déjà padding à 0 en !important pour ce cas. */
-.customer-modal-overlay{ padding-left: 18%; }
+.customer-modal-overlay{ padding-left: 18%; padding-top: 5%; }
 @media (max-width: 960px) {
-    .customer-modal-overlay{ padding-left: 20px; }
+    .customer-modal-overlay{ padding-left: 20px; padding-top: 20px; }
+}
+
+/* Modals de CRÉATION (Client/Produit/Abonnement/Facture) uniquement : 60%
+   de la largeur ET de la hauteur de #main-content (la zone déjà réservée
+   par le padding ci-dessus). Les modals de DÉTAILS partagent la même
+   classe .customer-modal mais sont transformées en tiroir latéral par
+   detailsDrawer.js (qui gère déjà sa propre largeur/hauteur) : on cible
+   donc explicitement les créations par l'id de leur overlay. */
+#create-client-modal .customer-modal,
+#create-product-modal .customer-modal,
+#create-subscription-modal .customer-modal,
+#create-invoice-modal .customer-modal {
+    width: 60%;
+    height: 60%;
+    max-width: 60%;
+    max-height: 60%;
+}
+@media (max-width: 960px) {
+    #create-client-modal .customer-modal,
+    #create-product-modal .customer-modal,
+    #create-subscription-modal .customer-modal,
+    #create-invoice-modal .customer-modal {
+        width: 92vw;
+        max-width: 92vw;
+        height: auto;
+        max-height: 85vh;
+    }
 }
 
 .customer-modal {
@@ -807,8 +842,12 @@
 
 .modal-submit-btn {
     border: none;
-    background: #111827;
-    color: #ffffff;
+    background: #facc15;
+    color: #111827;
+}
+
+.modal-submit-btn:hover {
+    background: #eab308;
 }
 
 
@@ -933,7 +972,7 @@
 
     .customer-modal {
         padding: 16px;
-        border-radius: 12px;
+        border-radius: 0;
     }
 
     .customer-details-grid {

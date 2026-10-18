@@ -21,7 +21,7 @@ const TEMPLATE = `
         <h4 class="fw-bold mb-1">🔗 Mes liens de paiement</h4>
         <small class="text-muted">Créez et partagez vos liens pour recevoir des paiements internationaux</small>
       </div>
-      <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalCreationLien">+ Nouveau lien</button>
+      <button class="create-client-btn" data-bs-toggle="modal" data-bs-target="#modalCreationLien">+ Nouveau lien</button>
     </div>
   </div>
   <div class="card-epay p-3 mb-4">
@@ -41,7 +41,7 @@ const TEMPLATE = `
   </div>
   <div id="aucun-lien" class="text-center py-5 d-none">
     <p class="text-muted">Aucun lien de paiement créé</p>
-    <button class="btn btn-warning fw-bold" data-bs-toggle="modal" data-bs-target="#modalCreationLien">+ Créer mon premier lien</button>
+    <button class="create-client-btn" data-bs-toggle="modal" data-bs-target="#modalCreationLien">+ Créer mon premier lien</button>
   </div>
 </div>
 <div class="customer-modal-overlay" id="lien-details-modal">

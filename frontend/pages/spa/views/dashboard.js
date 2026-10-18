@@ -146,7 +146,7 @@ const WITHDRAW_MODAL_HTML = `
       </div>
       <div class="modal-footer border-0">
         <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-        <button id="confirmWithdrawBtn" class="btn btn-success" onclick="submitWithdraw()">Confirmer</button>
+        <button id="confirmWithdrawBtn" class="btn btn-warning fw-bold" onclick="submitWithdraw()">Confirmer</button>
       </div>
     </div>
   </div>
