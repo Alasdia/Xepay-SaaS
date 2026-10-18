@@ -21,7 +21,7 @@ const TEMPLATE = `
         <h4 class="fw-bold mb-1">🔗 Mes liens de paiement</h4>
         <small class="text-muted">Créez et partagez vos liens pour recevoir des paiements internationaux</small>
       </div>
-      <button class="create-client-btn" data-bs-toggle="modal" data-bs-target="#modalCreationLien">+ Nouveau lien</button>
+      <button class="create-client-btn open-lien-modal">+ Nouveau lien</button>
     </div>
   </div>
   <div class="card-epay p-3 mb-4">
@@ -41,7 +41,7 @@ const TEMPLATE = `
   </div>
   <div id="aucun-lien" class="text-center py-5 d-none">
     <p class="text-muted">Aucun lien de paiement créé</p>
-    <button class="create-client-btn" data-bs-toggle="modal" data-bs-target="#modalCreationLien">+ Créer mon premier lien</button>
+    <button class="create-client-btn open-lien-modal">+ Créer mon premier lien</button>
   </div>
 </div>
 <div class="customer-modal-overlay" id="lien-details-modal">
@@ -54,6 +54,38 @@ const TEMPLATE = `
       <button type="button" class="customer-modal-close" id="close-lien-details">×</button>
     </div>
     <div id="lien-details-content"></div>
+  </div>
+</div>
+<div class="customer-modal-overlay" id="modalCreationLien">
+  <div class="customer-modal">
+    <div class="customer-modal-header">
+      <div>
+        <h3><i class="fa-solid fa-link"></i> Créer un lien de paiement</h3>
+      </div>
+      <button type="button" class="customer-modal-close" id="close-create-lien">×</button>
+    </div>
+    <form id="create-lien-form">
+      <div class="form-group">
+        <label for="nom-lien">Nom du lien</label>
+        <input type="text" id="nom-lien" placeholder="Ex: Freelance Design, Boutique...">
+      </div>
+      <div class="form-group">
+        <label for="montant-lien">Montant <small>(obligatoire)</small></label>
+        <div style="display:flex; gap:8px;">
+          <input type="number" id="montant-lien" placeholder="0.00" style="flex:1;">
+          <select id="devise-lien" style="max-width:120px;">
+            <option value="EUR" selected>EUR</option>
+            <option value="USD">USD</option>
+          </select>
+        </div>
+      </div>
+      <div id="success-msg" class="alert alert-success d-none"></div>
+      <div id="error-box" style="display:none; color:red;"></div>
+      <div class="customer-modal-actions">
+        <button type="button" class="modal-cancel-btn" id="cancel-create-lien">Annuler</button>
+        <button type="button" id="btn-generer-lien" class="modal-submit-btn" onclick="genererLien()">🚀 Générer le lien</button>
+      </div>
+    </form>
   </div>
 </div>
 <div class="modal fade" id="modalLienGenere" tabindex="-1">
@@ -75,53 +107,9 @@ const TEMPLATE = `
 </div>
 `;
 
-// #modalCreationLien est rendu à part, injecté dans document.body (pas dans
-// le TEMPLATE ci-dessus) : #main-content a position:relative + z-index:1
-// (sidebar.css), ce qui crée un contexte d'empilement qui enfermait le
-// z-index:1055 du modal en dessous du .modal-backdrop que Bootstrap ajoute
-// directement dans body (z-index:1050) — rendant le modal visible mais non
-// cliquable. En sortant le modal de #main-content, il rejoint le même
-// contexte d'empilement que son propre backdrop, où son z-index reprend
-// effet normalement.
-const CREATION_LIEN_MODAL_HTML = `
-<div class="modal fade" id="modalCreationLien" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content border-0 p-4">
-      <div class="modal-header border-0">
-        <h5 class="modal-title fw-bold"><i class="fa-solid fa-link"></i> Créer un lien de paiement</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="mb-3">
-          <label class="form-label">Nom du lien</label>
-          <input type="text" id="nom-lien" class="form-control bg-transparent text-muted border-secondary" placeholder="Ex: Freelance Design, Boutique...">
-        </div>
-        <div class="mb-4">
-          <label class="form-label">Montant <small class="text-muted">(obligatoire)</small></label>
-          <div class="input-group mt-2">
-            <input type="number" id="montant-lien" class="form-control bg-transparent text-muted border-secondary" placeholder="0.00">
-            <select id="devise-lien" class="form-select bg-dark text-w border-secondary" style="max-width:120px;">
-              <option value="EUR" selected>EUR</option>
-              <option value="USD">USD</option>
-            </select>
-          </div>
-        </div>
-      </div>
-      <div id="success-msg" class="alert alert-success d-none"></div>
-      <div class="modal-footer border-0">
-        <button id="btn-creer-lien" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-        <button id="btn-generer-lien" class="btn btn-warning fw-bold" onclick="genererLien()">🚀 Générer le lien</button>
-      </div>
-      <div id="error-box" style="display:none; color:red;"></div>
-    </div>
-  </div>
-</div>
-`;
-
 export async function mount(container) {
   await setViewStyles(["responsive.css", "liens.css", "commerce.css"]);
   container.innerHTML = TEMPLATE;
-  document.body.insertAdjacentHTML("beforeend", CREATION_LIEN_MODAL_HTML);
 
   let links = [];
   let offset = 0;
@@ -135,6 +123,23 @@ export async function mount(container) {
   });
   detailsModal.addEventListener("click", (event) => {
     if (event.target === detailsModal) detailsModal.classList.remove("open");
+  });
+
+  // Modal de création de lien : même style/comportement que les modals de
+  // création Client/Produit/Abonnement/Facture (commerce.js) — overlay
+  // .customer-modal-overlay avec classList "open", pas l'API Bootstrap.
+  const creationModal = container.querySelector("#modalCreationLien");
+  container.querySelectorAll(".open-lien-modal").forEach((btn) => {
+    btn.addEventListener("click", () => creationModal.classList.add("open"));
+  });
+  container.querySelector("#close-create-lien").addEventListener("click", () => {
+    creationModal.classList.remove("open");
+  });
+  container.querySelector("#cancel-create-lien").addEventListener("click", () => {
+    creationModal.classList.remove("open");
+  });
+  creationModal.addEventListener("click", (event) => {
+    if (event.target === creationModal) creationModal.classList.remove("open");
   });
 
   async function checkPlanLock() {
@@ -305,11 +310,7 @@ export async function mount(container) {
     const successBox = document.getElementById("success-msg");
     successBox.innerText = "Lien créé avec succès ✅";
     successBox.style.display = "block";
-    const modalEl = document.getElementById("modalCreationLien");
-    if (modalEl) {
-      const modal = bootstrap.Modal.getInstance(modalEl);
-      if (modal) modal.hide();
-    }
+    creationModal.classList.remove("open");
     document.getElementById("nom-lien").value = "";
     document.getElementById("montant-lien").value = "";
     errorBox.style.display = "none";
@@ -393,17 +394,10 @@ export async function mount(container) {
 
   return {
     unmount() {
-      const creationLienModalEl = document.getElementById("modalCreationLien");
-      const creationLienModalInstance = creationLienModalEl && bootstrap.Modal.getInstance(creationLienModalEl);
-      if (creationLienModalInstance) {
-        creationLienModalInstance.hide();
-        creationLienModalInstance.dispose();
-        document.body.classList.remove("modal-open");
-        document.body.style.removeProperty("overflow");
-        document.body.style.removeProperty("padding-right");
-        document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
-      }
-      creationLienModalEl?.remove();
+      // #modalCreationLien fait maintenant partie de TEMPLATE (comme les
+      // modals de création de commerce.js) : il est retiré du DOM
+      // automatiquement avec le reste de #main-content par le router,
+      // plus besoin de le gérer/disposer à part.
       document.body.classList.remove("locked-page");
       scrollBox.removeEventListener("scroll", onScroll);
       delete window.genererLien;

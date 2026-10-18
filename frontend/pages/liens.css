@@ -69,30 +69,11 @@ body {font-family: var(--font-d); background: #ffffff !important; color: #111827
 .status-paid { color: #00ff88;}
 .status-pending { color: orange;}
 .modal-upgrade { max-width: 900px; width: 95%;}
-/* Modal de création de lien : gris (pas blanc), coins carrés, box-shadow,
-   taille fixe inchangée (max-width:500px par défaut Bootstrap). Centrée sur
-   #main-content (pas sur toute la fenêtre) : #sidebar est fixe à 18% de la
-   largeur (voir sidebar.html) — réserver cette marge à gauche avant
-   centrage évite que le modal paraisse décalé vers la sidebar. */
-#modalCreationLien .modal-content{ background:#d1d5db; border-radius:0; box-shadow:0 20px 50px rgba(0,0,0,.18); }
-#modalCreationLien{ padding-left:18%; padding-top:5%; box-sizing:border-box; }
-@media (max-width: 960px) {
-  #modalCreationLien{ padding-left:0; padding-top:0; }
-}
-/* 60% de la largeur ET de la hauteur de #main-content (la zone réservée par
-   le padding ci-dessus) : .modal-dialog devient un conteneur flex plein
-   cadre qui centre .modal-content (60%/60%) dedans. */
-#modalCreationLien .modal-dialog{ display:flex; align-items:center; justify-content:center; width:100%; height:100%; max-width:100%; margin:0; }
-/* overflow:visible (pas de scrollbar sur la boîte) : le formulaire est
-   court, il tient toujours dans les 60% de hauteur ; .modal-body centre son
-   contenu pour éviter l'espace vierge en bas. */
-#modalCreationLien .modal-content{ width:60%; height:60%; max-width:60%; max-height:60%; overflow:visible; }
-#modalCreationLien .modal-body{ display:flex; flex-direction:column; justify-content:center; }
-#modalCreationLien .modal-body > *{ width:100%; max-width:420px; margin-left:auto; margin-right:auto; }
-@media (max-width: 960px) {
-  #modalCreationLien .modal-dialog{ height:auto; }
-  #modalCreationLien .modal-content{ width:92vw; height:auto; max-width:92vw; max-height:85vh; overflow-y:auto; }
-}
+/* #modalCreationLien utilise désormais le même balisage/style que les
+   modals de création de commerce.js (.customer-modal-overlay/.customer-modal) —
+   voir commerce.css, section "MODALS CLIENTS", où #modalCreationLien
+   rejoint les groupes de règles Produit/Abonnement/Facture. Rien à
+   redéfinir ici. */
 .status-active { color: #00d4ff;}
 .status-expired { color: red;}
 .btn-disabled { opacity: 0.5; cursor: not-allowed;}

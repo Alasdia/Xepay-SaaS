@@ -731,12 +731,13 @@
     .customer-modal-overlay{ padding-left: 20px; padding-top: 20px; }
 }
 
-/* Modals de CRÉATION (Client/Produit/Abonnement/Facture) uniquement : 80%
-   de la largeur de #main-content (la zone déjà réservée par le padding
+/* Modals de CRÉATION (Lien/Client/Produit/Abonnement/Facture) uniquement :
+   80% de la largeur de #main-content (la zone déjà réservée par le padding
    ci-dessus). Les modals de DÉTAILS partagent la même classe .customer-modal
    mais sont transformées en tiroir latéral par detailsDrawer.js (qui gère
    déjà sa propre largeur/hauteur) : on cible donc explicitement les
    créations par l'id de leur overlay. */
+#modalCreationLien .customer-modal,
 #create-client-modal .customer-modal,
 #create-product-modal .customer-modal,
 #create-subscription-modal .customer-modal,
@@ -750,9 +751,10 @@
     overflow: visible;
 }
 
-/* Produit, Abonnement et Facture : formulaire court → hauteur fixe à 80%
-   comme la largeur, avec le contenu centré verticalement (même style pour
-   les 3) pour que le vide ne s'accumule pas seulement en bas. */
+/* Lien, Produit, Abonnement et Facture : formulaire court → hauteur fixe à
+   80% comme la largeur, avec le contenu centré verticalement (même style
+   pour les 4) pour que le vide ne s'accumule pas seulement en bas. */
+#modalCreationLien .customer-modal,
 #create-product-modal .customer-modal,
 #create-subscription-modal .customer-modal,
 #create-invoice-modal .customer-modal {
@@ -769,6 +771,7 @@
 }
 
 @media (max-width: 960px) {
+    #modalCreationLien .customer-modal,
     #create-client-modal .customer-modal,
     #create-product-modal .customer-modal,
     #create-subscription-modal .customer-modal,
@@ -784,8 +787,9 @@
    une marge visible à gauche/droite/haut/bas plutôt qu'un vide qui ne
    s'accumule qu'en bas : la boîte devient une colonne flex (en-tête fixe en
    haut, formulaire qui se centre dans l'espace restant). Même style pour
-   Produit/Abonnement/Facture (largeur de formulaire limitée et centrée) ;
-   Client reste pleine largeur (champs en grille 2 colonnes). */
+   Lien/Produit/Abonnement/Facture (largeur de formulaire limitée et
+   centrée) ; Client reste pleine largeur (champs en grille 2 colonnes). */
+#modalCreationLien .customer-modal > form,
 #create-client-modal .customer-modal > form,
 #create-product-modal .customer-modal > form,
 #create-subscription-modal .customer-modal > form,
@@ -796,6 +800,7 @@
     justify-content: center;
     gap: 16px;
 }
+#modalCreationLien .customer-modal > form,
 #create-product-modal .customer-modal > form,
 #create-subscription-modal .customer-modal > form,
 #create-invoice-modal .customer-modal > form {
@@ -892,10 +897,11 @@
     margin-top: 20px;
 }
 
-/* Dans les 4 modals de création, l'espacement avant les boutons vient déjà
+/* Dans les 5 modals de création, l'espacement avant les boutons vient déjà
    du gap:16px posé sur le formulaire (voir plus haut) : ce margin-top de
    20px s'ajoutait par-dessus et décalait Annuler/Créer trop bas, détachés
    des champs juste au-dessus. */
+#modalCreationLien .customer-modal-actions,
 #create-client-modal .customer-modal-actions,
 #create-product-modal .customer-modal-actions,
 #create-subscription-modal .customer-modal-actions,
