@@ -49,10 +49,15 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 #createLinkModal{ padding-top:5%; }
 @media (max-width:960px){ #createLinkModal{ padding-top:0; } }
 #createLinkModal .modal-dialog{ display:flex; align-items:center; justify-content:center; width:100%; height:100%; max-width:100%; margin:0; }
-#createLinkModal .modal-content{ width:60%; height:60%; max-width:60%; max-height:60%; overflow-y:auto; }
+/* overflow:visible (pas de scrollbar sur la boîte) : le contenu de ce
+   formulaire est court, il tient toujours dans les 60% de hauteur ; voir
+   .modal-body plus bas pour le centrage qui évite l'espace vierge en bas. */
+#createLinkModal .modal-content{ width:60%; height:60%; max-width:60%; max-height:60%; overflow:visible; }
+#createLinkModal .modal-body{ display:flex; flex-direction:column; justify-content:center; }
+#createLinkModal .modal-body > *{ width:100%; max-width:420px; margin-left:auto; margin-right:auto; }
 @media (max-width:960px){
   #createLinkModal .modal-dialog{ height:auto; }
-  #createLinkModal .modal-content{ width:92vw; height:auto; max-width:92vw; max-height:85vh; }
+  #createLinkModal .modal-content{ width:92vw; height:auto; max-width:92vw; max-height:85vh; overflow-y:auto; }
 }
 #createLinkModal h5,
 #withdrawModal h5{ color:#111827 !important; }
