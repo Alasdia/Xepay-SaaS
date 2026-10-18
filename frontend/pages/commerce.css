@@ -774,14 +774,19 @@
     justify-content: center;
 }
 
-/* Client seul : formulaire long (adresses de facturation/livraison, etc.)
-   → contrairement aux autres (overflow:visible, contenu centré), celui-ci
+/* Client seul : formulaire potentiellement long (adresses de facturation/
+   livraison, etc.) → contrairement aux autres (overflow:visible), celui-ci
    défile à l'intérieur de sa propre boîte (overflow-y) plutôt que de
    déborder visuellement, pour garder la même taille de boîte que les
-   autres modals de création ; le contenu démarre en haut (pas centré). */
+   autres modals de création. "safe center" : centré au milieu de la boîte
+   quand le contenu rentre (écran haut/large) ; dès qu'il dépasse, retombe
+   automatiquement en haut (jamais de contenu caché ou de défilement vers
+   une zone vide) — contrairement à "center" seul, qui couperait le haut du
+   formulaire quand ça déborde. */
 #create-client-modal .customer-modal {
     overflow-y: auto;
-    justify-content: flex-start;
+    justify-content: center;
+    justify-content: safe center;
 }
 
 @media (max-width: 960px) {
