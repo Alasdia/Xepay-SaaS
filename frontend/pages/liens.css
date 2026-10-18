@@ -69,6 +69,17 @@ body {font-family: var(--font-d); background: #ffffff !important; color: #111827
 .status-paid { color: #00ff88;}
 .status-pending { color: orange;}
 .modal-upgrade { max-width: 900px; width: 95%;}
+/* Modal de création de lien : gris plutôt que blanc, et dimensionnée à 60%
+   de la largeur/hauteur de la vue (sidebar + #main-content), centrée avec
+   une marge de 20% de chaque côté — margin:20vh auto fait exactement ça
+   verticalement (20vh + 60vh + 20vh = 100vh). */
+#modalCreationLien .modal-content{ background:#e5e7eb; }
+#modalCreationLien .modal-dialog{ width:60vw; max-width:60vw; height:60vh; margin:20vh auto; }
+#modalCreationLien .modal-content{ height:100%; max-height:100%; overflow-y:auto; }
+@media (max-width: 768px) {
+  #modalCreationLien .modal-dialog{ width:94vw; max-width:94vw; height:auto; max-height:85vh; margin:7.5vh auto; }
+  #modalCreationLien .modal-content{ height:auto; max-height:85vh; }
+}
 .status-active { color: #00d4ff;}
 .status-expired { color: red;}
 .btn-disabled { opacity: 0.5; cursor: not-allowed;}

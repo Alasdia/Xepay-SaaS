@@ -101,8 +101,7 @@ const CREATION_LIEN_MODAL_HTML = `
           <div class="input-group mt-2">
             <input type="number" id="montant-lien" class="form-control bg-transparent text-muted border-secondary" placeholder="0.00">
             <select id="devise-lien" class="form-select bg-dark text-w border-secondary" style="max-width:120px;">
-              <option value="XOF" selected>XOF</option>
-              <option value="EUR">EUR</option>
+              <option value="EUR" selected>EUR</option>
               <option value="USD">USD</option>
             </select>
           </div>

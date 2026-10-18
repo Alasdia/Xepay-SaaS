@@ -91,5 +91,7 @@ body { font-family: var(--font-d); background: #f8fafc !important; color: #11182
 .plan-card { opacity: 1 !important; }
 .hover-underline:hover { text-decoration: underline !important;}
 @media (max-width: 992px) { #modalUpgrade .modal-dialog { width: 100%; margin: 0; max-width: 100%; } #modalUpgrade .modal-body { padding: 20px; } .plans-section { padding: 0 15px 40px; } .plans-grid { grid-template-columns: 1fr; gap: 20px; } }
+/* Modal de résiliation : gris plutôt que blanc (bootstrap par défaut). */
+#modalCancelSub .modal-content { background: #e5e7eb; }
 @media (max-width: 576px) { .plan-name { font-size: 28px; } .plan-price .amount { font-size: 40px; } .plan-features li { font-size: 12px; } }
 @media (max-width: 576px) { #modalCancelSub .modal-dialog {  display: flex !important;  align-items: center !important;  min-height: calc(100% - 1rem);  margin: 1rem auto;}}

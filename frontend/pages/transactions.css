@@ -134,7 +134,9 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
 .wallet-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 5px;}
 .wallet-label { font-size: 12px; color: rgba(255,255,255,0.5); font-weight: 600;}
 .wallet-value { font-size: 12px; color: white; text-align: right; flex: 1;}
-#withdrawModal .modal-content{ background:#ffffff !important; color:#111827 !important; border:1px solid #e5e7eb !important; border-radius:20px; }
+#withdrawModal .modal-content{ background:#e5e7eb !important; color:#111827 !important; border:1px solid #e5e7eb !important; border-radius:20px; }
+/* Modal de détails (Paiements) : gris plutôt que blanc (bootstrap par défaut). */
+#detailModal .modal-content{ background:#e5e7eb; }
 #withdrawModal .form-control,
 #withdrawModal .form-select{ background:#ffffff; border:1px solid #d1d5db; color:#111827; height:50px; }
 #withdrawModal .form-control:focus,

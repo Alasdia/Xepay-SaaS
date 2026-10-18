@@ -712,7 +712,7 @@
     max-height: 90vh;
     overflow-y: auto;
 
-    background: #ffffff;
+    background: #e5e7eb;
     border: 1px solid #e5e7eb;
     border-radius: 14px;
 
@@ -723,6 +723,35 @@
 
 .customer-details-modal {
     width: min(650px, 100%);
+}
+
+/* Modals de CRÉATION (Client/Produit/Abonnement/Facture) uniquement — les
+   modals de DÉTAILS partagent la même classe .customer-modal mais sont
+   transformés en tiroir latéral par detailsDrawer.js, qui gère déjà leur
+   propre largeur/hauteur : on les cible donc explicitement par l'id de leur
+   overlay pour ne pas interférer. 60% de la largeur/hauteur de la vue
+   (sidebar + #main-content), centrée avec 20% de marge de chaque côté —
+   .customer-modal-overlay étant déjà en flex centré sur tout le viewport,
+   fixer width/height à 60% y suffit pour obtenir ces marges de 20%. */
+#create-client-modal .customer-modal,
+#create-product-modal .customer-modal,
+#create-subscription-modal .customer-modal,
+#create-invoice-modal .customer-modal {
+    width: 60vw;
+    max-width: 60vw;
+    height: 60vh;
+    max-height: 60vh;
+}
+@media (max-width: 768px) {
+    #create-client-modal .customer-modal,
+    #create-product-modal .customer-modal,
+    #create-subscription-modal .customer-modal,
+    #create-invoice-modal .customer-modal {
+        width: 92vw;
+        max-width: 92vw;
+        height: auto;
+        max-height: 85vh;
+    }
 }
 
 .customer-modal-header {
