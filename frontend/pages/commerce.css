@@ -805,6 +805,21 @@
     margin-right: auto;
 }
 
+/* Produit a plus de champs que Abonnement/Facture (nom, description, prix,
+   devise, case "récurrent") : avec le gap ci-dessus ET la marge native de
+   chaque .form-group qui s'additionnaient, le contenu dépassait la boîte.
+   On resserre ici spécifiquement : gap réduit, pas de double espacement,
+   description plus courte. */
+#create-product-modal .customer-modal > form {
+    gap: 10px;
+}
+#create-product-modal .form-group {
+    margin-bottom: 0;
+}
+#create-product-modal .form-group textarea {
+    min-height: 54px;
+}
+
 .customer-modal {
     width: min(500px, 100%);
     max-height: 90vh;
