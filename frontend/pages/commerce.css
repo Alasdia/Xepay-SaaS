@@ -701,10 +701,21 @@
     backdrop-filter: blur(2px);
 
     padding: 20px;
+    box-sizing: border-box;
 }
 
 .customer-modal-overlay.open {
     display: flex;
+}
+
+/* Centre ces modals (création ET détails) sur #main-content, pas sur toute
+   la fenêtre : #sidebar est fixe à 18% de la largeur (voir sidebar.html) —
+   réserver cette marge à gauche avant centrage évite que le modal paraisse
+   décalé vers la sidebar. Sans effet sur le tiroir de détails (>=1200px) :
+   detailsDrawer.js remet déjà padding à 0 en !important pour ce cas. */
+.customer-modal-overlay{ padding-left: 18%; }
+@media (max-width: 960px) {
+    .customer-modal-overlay{ padding-left: 20px; }
 }
 
 .customer-modal {
@@ -712,46 +723,17 @@
     max-height: 90vh;
     overflow-y: auto;
 
-    background: #e5e7eb;
-    border: 1px solid #e5e7eb;
-    border-radius: 14px;
+    background: #d1d5db;
+    border: 1px solid #d1d5db;
+    border-radius: 0;
 
     padding: 20px;
 
-    box-shadow: 0 20px 50px rgba(0, 0, 0, .15);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, .18);
 }
 
 .customer-details-modal {
     width: min(650px, 100%);
-}
-
-/* Modals de CRÉATION (Client/Produit/Abonnement/Facture) uniquement — les
-   modals de DÉTAILS partagent la même classe .customer-modal mais sont
-   transformés en tiroir latéral par detailsDrawer.js, qui gère déjà leur
-   propre largeur/hauteur : on les cible donc explicitement par l'id de leur
-   overlay pour ne pas interférer. 60% de la largeur/hauteur de la vue
-   (sidebar + #main-content), centrée avec 20% de marge de chaque côté —
-   .customer-modal-overlay étant déjà en flex centré sur tout le viewport,
-   fixer width/height à 60% y suffit pour obtenir ces marges de 20%. */
-#create-client-modal .customer-modal,
-#create-product-modal .customer-modal,
-#create-subscription-modal .customer-modal,
-#create-invoice-modal .customer-modal {
-    width: 60vw;
-    max-width: 60vw;
-    height: 60vh;
-    max-height: 60vh;
-}
-@media (max-width: 768px) {
-    #create-client-modal .customer-modal,
-    #create-product-modal .customer-modal,
-    #create-subscription-modal .customer-modal,
-    #create-invoice-modal .customer-modal {
-        width: 92vw;
-        max-width: 92vw;
-        height: auto;
-        max-height: 85vh;
-    }
 }
 
 .customer-modal-header {

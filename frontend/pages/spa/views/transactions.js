@@ -194,7 +194,7 @@ const TEMPLATE = `
 const STRIPE_REPORT_MODAL_HTML = `
 <div class="modal fade" id="stripeReportModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content" style="background: #e5e7eb; color: #111827; border-radius: 16px; border: 1px solid #e5e7eb;">
+    <div class="modal-content" style="background: #d1d5db; color: #111827; border-radius: 0; border: 1px solid #d1d5db; box-shadow: 0 20px 50px rgba(0,0,0,.18);">
       <div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold" style="font-size: 1.25rem;">Rapport de solde Stripe</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button></div>
       <div class="modal-body px-4 py-3"><div id="stripe-balance-report" style="width: 100%;"></div></div>
     </div>

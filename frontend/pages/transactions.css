@@ -134,9 +134,22 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
 .wallet-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 5px;}
 .wallet-label { font-size: 12px; color: rgba(255,255,255,0.5); font-weight: 600;}
 .wallet-value { font-size: 12px; color: white; text-align: right; flex: 1;}
-#withdrawModal .modal-content{ background:#e5e7eb !important; color:#111827 !important; border:1px solid #e5e7eb !important; border-radius:20px; }
-/* Modal de détails (Paiements) : gris plutôt que blanc (bootstrap par défaut). */
-#detailModal .modal-content{ background:#e5e7eb; }
+#withdrawModal .modal-content{ background:#d1d5db !important; color:#111827 !important; border:1px solid #d1d5db !important; border-radius:0 !important; box-shadow:0 20px 50px rgba(0,0,0,.18) !important; }
+/* Modal de détails (Paiements) : gris plutôt que blanc (bootstrap par défaut), coins carrés, box-shadow. */
+#detailModal .modal-content{ background:#d1d5db; border-radius:0; box-shadow:0 20px 50px rgba(0,0,0,.18); }
+/* Centre ces modals sur #main-content (pas sur toute la fenêtre) : #sidebar
+   est fixe à 18% de la largeur (voir sidebar.html) — réserver cette marge à
+   gauche avant centrage évite que le modal paraisse décalé vers la sidebar.
+   Sans effet sur le tiroir "Rapport de solde Stripe" (>=1200px) :
+   detailsDrawer.js remet déjà la position à plat (position:fixed) pour ce cas. */
+#withdrawModal,
+#detailModal,
+#stripeReportModal{ padding-left:18%; box-sizing:border-box; }
+@media (max-width:960px){
+  #withdrawModal,
+  #detailModal,
+  #stripeReportModal{ padding-left:0; }
+}
 #withdrawModal .form-control,
 #withdrawModal .form-select{ background:#ffffff; border:1px solid #d1d5db; color:#111827; height:50px; }
 #withdrawModal .form-control:focus,

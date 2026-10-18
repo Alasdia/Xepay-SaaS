@@ -76,13 +76,15 @@ h3 i{ font-size:.85em; margin-right:6px; opacity:.75; }
 .url-mono { font-family: monospace; font-size: 11px; color: #6b7280; }
 .url-mono:hover { color: #facc15; }
 .event-tag { background: rgba(99,102,241,0.2); color: #a78bfa; border: 1px solid rgba(99,102,241,0.3); font-size: 10px; padding: 2px 7px; border-radius: 4px; font-family: monospace; margin-right: 4px; }
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.25s; box-sizing: border-box; }
 .modal-overlay.open { opacity: 1; pointer-events: all; }
-/* Seule modal de création de cette vue (ajout de webhook) : 60% de la
-   largeur/hauteur de la vue (sidebar + #main-content), centrée avec 20% de
-   marge de chaque côté — .modal-overlay étant déjà en flex centré sur tout
-   le viewport, fixer width/height à 60% y suffit pour ces marges de 20%. */
-.modal-box { background: #e5e7eb; border: 1px solid #e5e7eb; border-radius: 16px; padding: 28px; width: 60vw; max-width: 60vw; height: 60vh; max-height: 60vh; overflow-y: auto; color: #111827; }
+/* Centre cette modal sur #main-content (pas sur toute la fenêtre) :
+   #sidebar est fixe à 18% de la largeur (voir sidebar.html) — réserver
+   cette marge à gauche avant centrage évite que le modal paraisse décalé
+   vers la sidebar. */
+.modal-overlay{ padding-left: 18%; }
+@media (max-width: 960px) { .modal-overlay{ padding-left: 0; } }
+.modal-box { background: #d1d5db; border: 1px solid #d1d5db; border-radius: 0; padding: 28px; width: 460px; max-width: 95vw; color: #111827; box-shadow: 0 20px 50px rgba(0,0,0,.18); }
 .form-ctrl { width: 100%; padding: 10px 14px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; color: #111827; font-size: 13px; outline: none; }
 .check-label { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; border: 1px solid #e5e7eb; cursor: pointer; font-size: 13px; margin-bottom: 8px; color: #111827; background: #fafafa; }
 .check-label:hover{ border-color:#facc15; background:#fffdf5; }
@@ -276,5 +278,5 @@ pre { padding: 22px; border-radius: 16px; overflow-x: auto; font-size: 14px; lin
   .retry-table th, .retry-table td { padding: 10px 12px; font-size: 12px; }
 
   /* ---- 7. Modal ajout de webhook ---- */
-  .modal-box { padding: 20px; width: 92vw; max-width: 92vw; height: auto; max-height: 85vh; }
+  .modal-box { padding: 20px; width: 92vw; }
 }

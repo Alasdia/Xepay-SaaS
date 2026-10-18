@@ -69,16 +69,15 @@ body {font-family: var(--font-d); background: #ffffff !important; color: #111827
 .status-paid { color: #00ff88;}
 .status-pending { color: orange;}
 .modal-upgrade { max-width: 900px; width: 95%;}
-/* Modal de création de lien : gris plutôt que blanc, et dimensionnée à 60%
-   de la largeur/hauteur de la vue (sidebar + #main-content), centrée avec
-   une marge de 20% de chaque côté — margin:20vh auto fait exactement ça
-   verticalement (20vh + 60vh + 20vh = 100vh). */
-#modalCreationLien .modal-content{ background:#e5e7eb; }
-#modalCreationLien .modal-dialog{ width:60vw; max-width:60vw; height:60vh; margin:20vh auto; }
-#modalCreationLien .modal-content{ height:100%; max-height:100%; overflow-y:auto; }
-@media (max-width: 768px) {
-  #modalCreationLien .modal-dialog{ width:94vw; max-width:94vw; height:auto; max-height:85vh; margin:7.5vh auto; }
-  #modalCreationLien .modal-content{ height:auto; max-height:85vh; }
+/* Modal de création de lien : gris (pas blanc), coins carrés, box-shadow,
+   taille fixe inchangée (max-width:500px par défaut Bootstrap). Centrée sur
+   #main-content (pas sur toute la fenêtre) : #sidebar est fixe à 18% de la
+   largeur (voir sidebar.html) — réserver cette marge à gauche avant
+   centrage évite que le modal paraisse décalé vers la sidebar. */
+#modalCreationLien .modal-content{ background:#d1d5db; border-radius:0; box-shadow:0 20px 50px rgba(0,0,0,.18); }
+#modalCreationLien{ padding-left:18%; box-sizing:border-box; }
+@media (max-width: 960px) {
+  #modalCreationLien{ padding-left:0; }
 }
 .status-active { color: #00d4ff;}
 .status-expired { color: red;}
