@@ -79,7 +79,7 @@ h3 i{ font-size:.85em; margin-right:6px; opacity:.75; }
 /* overflow-y:auto en filet de sécurité : si jamais le contenu dépasse la
    hauteur disponible, c'est la fenêtre/l'overlay qui défile, jamais une
    scrollbar interne sur la boîte (.modal-box) elle-même. */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); display: flex; align-items: center; justify-content: center; overflow-y: auto; z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.25s; box-sizing: border-box; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.16); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; overflow-y: auto; z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.25s; box-sizing: border-box; }
 .modal-overlay.open { opacity: 1; pointer-events: all; }
 /* Centre cette modal sur #main-content (pas sur toute la fenêtre) :
    #sidebar est fixe à 18% de la largeur et le bandeau du haut à 5% de la

@@ -709,9 +709,9 @@
        qui défile, jamais une scrollbar interne sur la boîte elle-même. */
     overflow-y: auto;
 
-    background: rgba(17, 24, 39, 0.22);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    background: rgba(17, 24, 39, 0.12);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 
     padding: 20px;
     box-sizing: border-box;
@@ -750,20 +750,20 @@
     overflow: visible;
 }
 
-/* Abonnement et Facture : formulaire court → hauteur fixe à 80% comme la
-   largeur, avec le contenu centré verticalement (voir .customer-form-fields
-   plus bas) pour que le vide ne s'accumule pas seulement en bas. */
+/* Produit, Abonnement et Facture : formulaire court → hauteur fixe à 80%
+   comme la largeur, avec le contenu centré verticalement (même style pour
+   les 3) pour que le vide ne s'accumule pas seulement en bas. */
+#create-product-modal .customer-modal,
 #create-subscription-modal .customer-modal,
 #create-invoice-modal .customer-modal {
     height: 80%;
     max-height: 80%;
 }
 
-/* Client et Produit : formulaire potentiellement long (adresses de
-   facturation/livraison, etc.) → la boîte s'adapte en hauteur au contenu
-   plutôt que d'imposer 80% fixe, pour ne jamais avoir besoin de scroller. */
-#create-client-modal .customer-modal,
-#create-product-modal .customer-modal {
+/* Client seul : formulaire long (adresses de facturation/livraison, etc.)
+   → la boîte s'adapte en hauteur au contenu plutôt que d'imposer 80% fixe,
+   pour ne jamais avoir besoin de scroller. */
+#create-client-modal .customer-modal {
     height: auto;
     max-height: none;
 }
@@ -783,7 +783,9 @@
 /* Centre le formulaire (champs + boutons) à l'intérieur de la boîte, avec
    une marge visible à gauche/droite/haut/bas plutôt qu'un vide qui ne
    s'accumule qu'en bas : la boîte devient une colonne flex (en-tête fixe en
-   haut, formulaire qui se centre dans l'espace restant). */
+   haut, formulaire qui se centre dans l'espace restant). Même style pour
+   Produit/Abonnement/Facture (largeur de formulaire limitée et centrée) ;
+   Client reste pleine largeur (champs en grille 2 colonnes). */
 #create-client-modal .customer-modal > form,
 #create-product-modal .customer-modal > form,
 #create-subscription-modal .customer-modal > form,
@@ -794,6 +796,7 @@
     justify-content: center;
     gap: 16px;
 }
+#create-product-modal .customer-modal > form,
 #create-subscription-modal .customer-modal > form,
 #create-invoice-modal .customer-modal > form {
     width: 100%;
@@ -872,6 +875,17 @@
     gap: 8px;
 
     margin-top: 20px;
+}
+
+/* Dans les 4 modals de création, l'espacement avant les boutons vient déjà
+   du gap:16px posé sur le formulaire (voir plus haut) : ce margin-top de
+   20px s'ajoutait par-dessus et décalait Annuler/Créer trop bas, détachés
+   des champs juste au-dessus. */
+#create-client-modal .customer-modal-actions,
+#create-product-modal .customer-modal-actions,
+#create-subscription-modal .customer-modal-actions,
+#create-invoice-modal .customer-modal-actions {
+    margin-top: 0;
 }
 
 .modal-cancel-btn,
