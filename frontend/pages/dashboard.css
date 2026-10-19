@@ -21,7 +21,7 @@
   --white: #ffffff;
 }
 body {font-family: var(--font-d); background: #ffffff !important; min-height: 100vh; color: #6b7280 !important; position: static; overflow-x: hidden; }
-#main-content { background: #ffffff; position: relative; z-index: 1; margin-left: 260px; padding: 28px 40px;  width: calc(100% - 220px); }
+#main-content { background: #f3f4f6; position: relative; z-index: 1; margin-left: 260px; padding: 28px 40px;  width: calc(100% - 220px); }
 h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .toast-notif { position: fixed; top: 24px; right: 24px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; }
 .toast-notif-item { min-width: 280px; max-width: 380px; background: #ffffff; border: 1px solid #e5e7eb; border-left: 4px solid #22c55e; border-radius: 12px; padding: 14px 18px; box-shadow: 0 10px 30px rgba(0,0,0,.12); font-size: 14px; color: #111827; display: flex; align-items: flex-start; gap: 10px; opacity: 0; transform: translateX(20px); animation: toastIn 0.3s ease forwards; }
@@ -44,7 +44,7 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .period-btn:hover { color:#111827; }
 .period-btn.active { background:#ffffff; color:#111827; box-shadow:0 1px 3px rgba(0,0,0,.08); }
 .activity-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px; }
-.activity-card { background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; padding:18px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+.activity-card { background:#ffffff; border:1px solid #e5e7eb; border-radius:0; padding:18px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
 .activity-card-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
 .activity-card-icon { width:30px; height:30px; border-radius:8px; background:rgba(250,204,21,0.15); color:#b45309; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
 .activity-card-title { font-size:13px; font-weight:700; color:#374151; }
@@ -54,6 +54,7 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .activity-delta.up { color:#16a34a; background:rgba(22,163,74,0.1); }
 .activity-delta.down { color:#dc2626; background:rgba(220,38,38,0.1); }
 .activity-delta.flat { color:#6b7280; background:#f3f4f6; }
+.activity-count { font-size:12px; color:#9ca3af; margin-bottom:10px; margin-top:-6px; }
 .activity-chart-wrap { height:230px; position:relative; }
 .activity-chart-wrap canvas { width:100% !important; height:100% !important; }
 @media (max-width: 768px) {

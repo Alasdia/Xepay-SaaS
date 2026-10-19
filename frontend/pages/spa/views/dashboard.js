@@ -37,13 +37,16 @@ export async function mount(container) {
 
   const DAY_MS = 24 * 60 * 60 * 1000;
 
+  // Les axes du graphe représentent toujours (revenus générés, période) —
+  // jamais un nombre d'éléments. Le nombre reste affiché (countLabel), mais
+  // seulement en texte à côté du chiffre clé, jamais comme donnée du graphe.
   const ACTIVITY_CONFIG = [
-    { key: "clients", label: "Nouveaux clients", icon: "fa-user-plus", unit: "count" },
-    { key: "products", label: "Nouveaux produits", icon: "fa-box", unit: "count" },
-    { key: "balance", label: "Variation du solde", icon: "fa-wallet", unit: "currency" },
-    { key: "invoices", label: "Factures", icon: "fa-file-invoice", unit: "count" },
-    { key: "subscriptions", label: "Abonnements", icon: "fa-rotate", unit: "count" },
-    { key: "links", label: "Liens de paiement", icon: "fa-link", unit: "count" },
+    { key: "clients", label: "Nouveaux clients", icon: "fa-user-plus", countLabel: "nouveaux clients" },
+    { key: "products", label: "Nouveaux produits", icon: "fa-box", countLabel: "nouveaux produits" },
+    { key: "balance", label: "Variation du solde", icon: "fa-wallet", countLabel: null },
+    { key: "invoices", label: "Factures", icon: "fa-file-invoice", countLabel: "nouvelles factures" },
+    { key: "subscriptions", label: "Abonnements", icon: "fa-rotate", countLabel: "nouveaux abonnements" },
+    { key: "links", label: "Liens de paiement", icon: "fa-link", countLabel: "nouveaux liens" },
   ];
 
   let activityRaw = null;
@@ -61,6 +64,7 @@ export async function mount(container) {
           <span class="activity-value" id="activity-value-${cfg.key}">—</span>
           <span class="activity-delta" id="activity-delta-${cfg.key}"></span>
         </div>
+        ${cfg.countLabel ? `<div class="activity-count" id="activity-count-${cfg.key}"></div>` : ""}
         <div class="activity-chart-wrap">
           <canvas id="activity-chart-${cfg.key}"></canvas>
         </div>
@@ -102,12 +106,28 @@ export async function mount(container) {
     const linksData = await safeJson(linksRes);
     const walletData = await safeJson(walletRes);
 
+    // "value" = revenu généré par l'élément (jamais un simple comptage) :
+    // total dépensé par le client, prix du produit, montant de l'abonnement/
+    // de la facture/du lien. Stripe renvoie ses montants en centimes (voir
+    // le même /100 partout dans commerce.js) ; nos propres endpoints (liens,
+    // wallet) sont déjà en unité pleine (XOF).
     return {
-      clients: (customersData?.data || []).map((c) => ({ ts: toTimestamp(c.created), value: 1 })),
-      products: (productsData?.data || []).map((p) => ({ ts: toTimestamp(p.created), value: 1 })),
-      subscriptions: (subscriptionsData?.data || []).map((s) => ({ ts: toTimestamp(s.created), value: 1 })),
-      invoices: (invoicesData?.data || []).map((i) => ({ ts: toTimestamp(i.created), value: 1 })),
-      links: (Array.isArray(linksData) ? linksData : []).map((l) => ({ ts: toTimestamp(l.created_at), value: 1 })),
+      clients: (customersData?.data || []).map((c) => ({ ts: toTimestamp(c.created), value: (c.total_spent || 0) / 100 })),
+      products: (productsData?.data || []).map((p) => ({
+        ts: toTimestamp(p.created),
+        value: (p.prices?.[0]?.unit_amount || 0) / 100,
+      })),
+      subscriptions: (subscriptionsData?.data || []).map((s) => {
+        const item = s.items?.data?.[0];
+        const unitAmount = item?.price?.unit_amount || 0;
+        const quantity = item?.quantity || 1;
+        return { ts: toTimestamp(s.created), value: (unitAmount * quantity) / 100 };
+      }),
+      invoices: (invoicesData?.data || []).map((i) => ({
+        ts: toTimestamp(i.created),
+        value: (i.amount_paid || i.amount_due || 0) / 100,
+      })),
+      links: (Array.isArray(linksData) ? linksData : []).map((l) => ({ ts: toTimestamp(l.created_at), value: l.amount || 0 })),
       balance: (walletData?.transactions || []).map((t) => ({
         ts: toTimestamp(t.created_at),
         value: t.direction === "out" ? -Math.abs(t.amount) : Math.abs(t.amount),
@@ -123,6 +143,8 @@ export async function mount(container) {
     const previousDaily = new Array(days).fill(0);
     let currentTotal = 0;
     let previousTotal = 0;
+    let currentCount = 0;
+    let previousCount = 0;
 
     items.forEach(({ ts, value }) => {
       if (ts == null) return;
@@ -130,14 +152,16 @@ export async function mount(container) {
         const idx = Math.min(days - 1, Math.max(0, Math.floor((ts - currentStart) / DAY_MS)));
         currentDaily[idx] += value;
         currentTotal += value;
+        currentCount += 1;
       } else if (ts >= previousStart && ts < currentStart) {
         const idx = Math.min(days - 1, Math.max(0, Math.floor((ts - previousStart) / DAY_MS)));
         previousDaily[idx] += value;
         previousTotal += value;
+        previousCount += 1;
       }
     });
 
-    return { currentDaily, previousDaily, currentTotal, previousTotal };
+    return { currentDaily, previousDaily, currentTotal, previousTotal, currentCount, previousCount };
   }
 
   function buildActivityLabels(days) {
@@ -150,21 +174,16 @@ export async function mount(container) {
     return labels;
   }
 
-  function formatActivityValue(unit, value) {
-    if (unit === "currency") {
-      return Math.round(value).toLocaleString("fr-FR") + " XOF";
-    }
-    return Math.round(value).toLocaleString("fr-FR");
+  function formatActivityValue(value) {
+    return Math.round(value).toLocaleString("fr-FR") + " XOF";
   }
 
-  function renderActivityDelta(el, unit, currentTotal, previousTotal) {
-    if (unit === "currency") {
-      const diff = currentTotal - previousTotal;
-      const sign = diff > 0 ? "+" : "";
-      el.textContent = `${sign}${Math.round(diff).toLocaleString("fr-FR")} XOF vs précédent`;
-      el.className = "activity-delta " + (diff > 0 ? "up" : diff < 0 ? "down" : "flat");
-      return;
-    }
+  // Indicateur de pourcentage (hausse/baisse) avec code couleur, basé sur
+  // les revenus (jamais sur un nombre d'éléments) : vert = hausse, rouge =
+  // baisse, gris = stable/pas de référence. Math.abs(previousTotal) au
+  // dénominateur évite qu'un total précédent négatif (solde en baisse)
+  // n'inverse artificiellement le signe du pourcentage affiché.
+  function renderActivityDelta(el, currentTotal, previousTotal) {
     if (previousTotal === 0) {
       if (currentTotal === 0) {
         el.textContent = "—";
@@ -175,18 +194,23 @@ export async function mount(container) {
       }
       return;
     }
-    const pct = ((currentTotal - previousTotal) / previousTotal) * 100;
+    const pct = ((currentTotal - previousTotal) / Math.abs(previousTotal)) * 100;
     const sign = pct > 0 ? "+" : "";
     el.textContent = `${sign}${pct.toFixed(0)}% vs précédent`;
     el.className = "activity-delta " + (pct > 0 ? "up" : pct < 0 ? "down" : "flat");
   }
 
   function renderActivityCard(cfg, items, days) {
-    const { currentDaily, previousDaily, currentTotal, previousTotal } = computeActivityStats(items || [], days);
+    const { currentDaily, previousDaily, currentTotal, previousTotal, currentCount } = computeActivityStats(items || [], days);
     const valueEl = document.getElementById(`activity-value-${cfg.key}`);
     const deltaEl = document.getElementById(`activity-delta-${cfg.key}`);
-    if (valueEl) valueEl.textContent = formatActivityValue(cfg.unit, currentTotal);
-    if (deltaEl) renderActivityDelta(deltaEl, cfg.unit, currentTotal, previousTotal);
+    if (valueEl) valueEl.textContent = formatActivityValue(currentTotal);
+    if (deltaEl) renderActivityDelta(deltaEl, currentTotal, previousTotal);
+
+    if (cfg.countLabel) {
+      const countEl = document.getElementById(`activity-count-${cfg.key}`);
+      if (countEl) countEl.textContent = `${currentCount.toLocaleString("fr-FR")} ${cfg.countLabel}`;
+    }
 
     const canvas = document.getElementById(`activity-chart-${cfg.key}`);
     if (!canvas) return;
@@ -242,29 +266,24 @@ export async function mount(container) {
           },
           tooltip: {
             callbacks: {
-              label: (ctx) => `${ctx.dataset.label}: ${formatActivityValue(cfg.unit, ctx.parsed.y)}`,
+              label: (ctx) => `${ctx.dataset.label}: ${formatActivityValue(ctx.parsed.y)}`,
             },
           },
         },
         scales: {
           x: {
-            title: { display: true, text: "Jour", color: "#6b7280", font: { size: 11, weight: "600" } },
+            title: { display: true, text: "Période (jour)", color: "#6b7280", font: { size: 11, weight: "600" } },
             grid: { display: false },
             ticks: { color: "#9ca3af", font: { size: 10 }, maxRotation: 0, autoSkip: true },
           },
           y: {
-            title: {
-              display: true,
-              text: cfg.unit === "currency" ? "Montant (XOF)" : "Nombre",
-              color: "#6b7280",
-              font: { size: 11, weight: "600" },
-            },
+            title: { display: true, text: "Revenus générés (XOF)", color: "#6b7280", font: { size: 11, weight: "600" } },
             beginAtZero: true,
             grid: { color: "#e5e7eb" },
             ticks: {
               color: "#9ca3af",
               font: { size: 10 },
-              callback: (val) => (cfg.unit === "currency" ? Number(val).toLocaleString("fr-FR") : val),
+              callback: (val) => Number(val).toLocaleString("fr-FR"),
             },
           },
         },
