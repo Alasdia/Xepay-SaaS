@@ -40,8 +40,11 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
    ============================================ */
 /* Pas de carte/KPI ici : aucun fond, bordure ou ombre — seuls les
    libellés et les montants sont visibles, posés directement sur le fond
-   de la page. */
-.balance-bar { display:flex; align-items:center; gap:32px; }
+   de la page. Hauteur = 30% de #main-content tel qu'affiché au chargement
+   avant tout scroll, c'est-à-dire 30% de la zone visible sous le bandeau
+   du haut (5% de la hauteur, voir #top-banner) : calc((100vh - 5vh)*0.3).
+   align-items:center centre le contenu dans cet espace. */
+.balance-bar { display:flex; align-items:center; gap:32px; height:calc((100vh - 5vh) * 0.3); box-sizing:border-box; }
 .balance-bar-item { display:flex; flex-direction:column; gap:4px; }
 .balance-bar-total { margin-left:auto; text-align:right; }
 .balance-bar-label { font-size:16px; color:#6b7280; }
@@ -50,7 +53,10 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .balance-bar-value.down { color:#dc2626; }
 .balance-bar-value.flat { color:#111827; }
 @media (max-width: 576px) {
-  .balance-bar { flex-wrap:wrap; gap:16px; }
+  /* Les 3 items passent en colonne (flex-wrap) : une hauteur fixe à 30vh
+     les couperait si le texte a besoin de plus de place — min-height
+     garde la même présence visuelle sans jamais clipper le contenu. */
+  .balance-bar { flex-wrap:wrap; gap:16px; height:auto; min-height:calc((100vh - 5vh) * 0.3); }
   .balance-bar-total { margin-left:0; text-align:left; }
 }
 
