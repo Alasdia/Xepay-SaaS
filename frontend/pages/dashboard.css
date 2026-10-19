@@ -30,7 +30,10 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .toast-notif-item .icon { font-size: 16px; margin-top: 1px; }
 @keyframes toastIn { to { opacity: 1; transform: translateX(0); } }
 @keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
-#main-content, #main-content * { font-family: var(--font-d) !important; }
+/* :not(i) — sinon ça écrase aussi la police des icônes Font Awesome
+   (toujours des <i class="fa-..."> dans cette vue), les rendant invisibles
+   (glyphe manquant en DM Sans) : c'est ce qui cachait les chevrons ^. */
+#main-content, #main-content *:not(i) { font-family: var(--font-d) !important; }
 
 /* ============================================
    XEPAY — Bloc héro (vue Accueil) : espace fixe en haut de #main-content,
@@ -64,10 +67,11 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 /* Graphique héro : trait vertical en pointillés + point survolé (dessinés
    par Chart.js/heroCrosshairPlugin) et tooltip HTML personnalisé
    (hero-chart-tooltip, positionné en JS pour ne jamais sortir du cadre). */
-.hero-chart-wrap { position:relative; height:260px; margin-top:18px; }
+.hero-chart-wrap { position:relative; width:60%; height:156px; margin-top:18px; }
 .hero-chart-wrap canvas { width:100% !important; height:100% !important; }
 .hero-chart-tooltip { position:absolute; opacity:0; pointer-events:none; transition:opacity .1s ease; background:#ffffff; border:1px solid #e5e7eb; border-radius:0; box-shadow:0 10px 30px rgba(0,0,0,.12); padding:10px 12px; font-size:13px; color:#111827; white-space:nowrap; z-index:20; }
 .hero-chart-tooltip.visible { opacity:1; }
+.hero-chart-tooltip-metric { font-size:13px; font-weight:700; color:#111827; margin-bottom:6px; }
 .hero-chart-tooltip-row { display:flex; align-items:center; gap:6px; font-size:13px; color:#374151; }
 .hero-chart-tooltip-row.current .hero-chart-tooltip-dot { background:#eab308; }
 .hero-chart-tooltip-row.previous .hero-chart-tooltip-dot { background:#9ca3af; }

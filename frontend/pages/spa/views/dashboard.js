@@ -705,8 +705,10 @@ export async function mount(container) {
 
     // Dates exactes à la place de "Actuelle"/"Précédente" : chaque ligne
     // porte sa propre date + heure réelle (les 2 jours comparés ne sont
-    // pas forcément consécutifs).
+    // pas forcément consécutifs). L'élément comparé (la métrique choisie,
+    // ex: "Volume brut") est rappelé en en-tête.
     el.innerHTML = `
+      <div class="hero-chart-tooltip-metric">${HERO_METRICS[heroMetric].label}</div>
       <div class="hero-chart-tooltip-row current"><span class="hero-chart-tooltip-dot"></span>${currentDate ? formatHeroBucketDate(currentDate) : ""} : ${formatHeroValue(heroMetric, currentVal)}</div>
       <div class="hero-chart-tooltip-row previous"><span class="hero-chart-tooltip-dot"></span>${previousDate ? formatHeroBucketDate(previousDate) : ""} : ${formatHeroValue(heroMetric, previousVal)}</div>
     `;
