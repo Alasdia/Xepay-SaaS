@@ -33,31 +33,42 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 #main-content, #main-content * { font-family: var(--font-d) !important; }
 
 /* ============================================
-   XEPAY — Barre de solde (vue Accueil) : espace fixe en haut de
-   #main-content, avant tous les blocs d'activité — aujourd'hui / hier à
-   gauche, solde total poussé tout à fait à droite. Toujours en XOF, sans
-   lien avec le sélecteur de devise ni la période de la section Activité.
+   XEPAY — Bloc héro (vue Accueil) : espace fixe en haut de #main-content,
+   avant tous les blocs d'activité. Titre de granularité (ex: "Aujourd'hui")
+   sur les 10% du haut de la zone visible, trait fin gris dessous, puis
+   2 sélecteurs (activité / jour-mois-année) et le montant correspondant ;
+   le solde total est poussé dans les ~20% de largeur avant la fin de
+   #main-content, avec un lien vers la vue Solde.
    ============================================ */
-/* Pas de carte/KPI ici : aucun fond, bordure ou ombre — seuls les
-   libellés et les montants sont visibles, posés directement sur le fond
-   de la page. Hauteur = 30% de #main-content tel qu'affiché au chargement
-   avant tout scroll, c'est-à-dire 30% de la zone visible sous le bandeau
-   du haut (5% de la hauteur, voir #top-banner) : calc((100vh - 5vh)*0.3).
-   align-items:center centre le contenu dans cet espace. */
-.balance-bar { display:flex; align-items:center; gap:32px; height:calc((100vh - 5vh) * 0.3); box-sizing:border-box; }
-.balance-bar-item { display:flex; flex-direction:column; gap:4px; }
-.balance-bar-total { margin-left:auto; text-align:right; }
-.balance-bar-label { font-size:16px; color:#6b7280; }
-.balance-bar-value { font-size:20px; font-weight:800; color:#111827; }
-.balance-bar-value.up { color:#16a34a; }
-.balance-bar-value.down { color:#dc2626; }
-.balance-bar-value.flat { color:#111827; }
-@media (max-width: 576px) {
-  /* Les 3 items passent en colonne (flex-wrap) : une hauteur fixe à 30vh
-     les couperait si le texte a besoin de plus de place — min-height
-     garde la même présence visuelle sans jamais clipper le contenu. */
-  .balance-bar { flex-wrap:wrap; gap:16px; height:auto; min-height:calc((100vh - 5vh) * 0.3); }
-  .balance-bar-total { margin-left:0; text-align:left; }
+.hero-stat { position:relative; }
+/* 10% de la zone visible sous le bandeau du haut (5vh, voir #top-banner),
+   comme les 30% déjà utilisés ailleurs dans cette vue pour le même repère. */
+.hero-stat-title { min-height:calc((100vh - 5vh) * 0.1); display:flex; align-items:center; font-size:20px; font-weight:700; color:#111827; }
+.hero-stat-divider { height:1px; background:#d1d5db; margin-bottom:18px; }
+.hero-stat-row { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; }
+.hero-stat-main { flex:1 1 auto; min-width:0; }
+.hero-stat-selectors { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+.hero-selector { position:relative; }
+.hero-selector-btn { display:flex; align-items:center; gap:8px; border:1px solid #e5e7eb; background:#ffffff; border-radius:0; padding:7px 12px; font-size:13px; font-weight:600; color:#111827; cursor:pointer; }
+.hero-selector-btn i { font-size:10px; color:#9ca3af; }
+.hero-popup { position:absolute; top:calc(100% + 6px); left:0; min-width:190px; background:#ffffff; border:1px solid #e5e7eb; border-radius:0; box-shadow:0 10px 30px rgba(0,0,0,.12); z-index:20; padding:4px; }
+.hero-popup-item { display:block; width:100%; text-align:left; border:none; background:transparent; padding:8px 10px; font-size:13px; color:#374151; cursor:pointer; }
+.hero-popup-item:hover { background:#f3f4f6; }
+.hero-popup-item.active { color:#111827; font-weight:700; background:#f3f4f6; }
+.hero-stat-amount-wrap { position:relative; display:inline-block; }
+.hero-stat-amount { font-size:32px; font-weight:800; color:#111827; }
+.hero-stat-time { font-size:13px; color:#9ca3af; margin-top:4px; }
+/* Popup au survol, même esprit que les tooltips des graphiques plus bas :
+   repère rapide sur "aujourd'hui", peu importe la granularité choisie. */
+.hero-stat-hovercard { position:absolute; bottom:calc(100% + 8px); left:0; background:#ffffff; border:1px solid #e5e7eb; border-radius:0; box-shadow:0 10px 30px rgba(0,0,0,.12); padding:8px 12px; font-size:13px; font-weight:600; color:#111827; white-space:nowrap; z-index:20; }
+.hero-balance-side { flex:0 0 20%; max-width:20%; text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+.hero-balance-label { font-size:13px; color:#6b7280; }
+.hero-balance-amount { font-size:18px; font-weight:800; color:#111827; }
+.hero-balance-link { width:26px; height:26px; border-radius:0; border:1px solid #e5e7eb; display:flex; align-items:center; justify-content:center; color:#111827; font-size:11px; text-decoration:none; }
+.hero-balance-link:hover { background:#f3f4f6; }
+@media (max-width: 768px) {
+  .hero-stat-row { flex-direction:column; }
+  .hero-balance-side { flex:1 1 auto; max-width:100%; align-items:flex-start; text-align:left; margin-top:12px; }
 }
 
 /* ============================================

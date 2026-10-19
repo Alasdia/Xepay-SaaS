@@ -1,34 +1,66 @@
-// Vue "Dashboard" (accueil) — en haut, une barre de solde (aujourd'hui /
-// hier / total, tout à fait à droite) ; en dessous, la section "Activité" :
-// pour chaque catégorie (clients, produits, factures, abonnements, liens),
+// Vue "Dashboard" (accueil) — en haut, un bloc "héro" (titre de période +
+// sélecteur d'activité/de granularité + montant, et à droite le solde avec
+// lien vers la vue Solde) ; en dessous, la section "Votre aperçu" : pour
+// chaque catégorie (clients, produits, factures, abonnements, liens),
 // deux blocs côte à côte — un pour les revenus générés, un pour le nombre
 // d'éléments — chacun avec sa propre courbe (période actuelle vs
 // précédente), alignés 2 par 2. Les revenus sont affichés dans la devise
 // choisie (USD par défaut), convertis via les mêmes taux fixes que le
 // reste de l'app (voir FIXED_RATES_TO_XOF) plutôt qu'un taux de marché en
-// direct. Le solde (pas un "nombre"/"revenu" comparable aux autres
-// catégories) n'a plus de bloc dans la grille, voir la barre du haut.
+// direct.
 import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
+import { navigate } from "../core/router.js";
+import { getWorkspaceId } from "../core/state.js";
 
 const TEMPLATE = `
-<div class="balance-bar mb-4">
-  <div class="balance-bar-item">
-    <span class="balance-bar-label">Solde aujourd'hui</span>
-    <span class="balance-bar-value" id="balance-today">—</span>
-  </div>
-  <div class="balance-bar-item">
-    <span class="balance-bar-label">Solde hier</span>
-    <span class="balance-bar-value" id="balance-yesterday">—</span>
-  </div>
-  <div class="balance-bar-item balance-bar-total">
-    <span class="balance-bar-label">Solde total</span>
-    <span class="balance-bar-value" id="balance-total">—</span>
+<div class="hero-stat mb-4" id="hero-stat">
+  <div class="hero-stat-title" id="hero-stat-title">Aujourd'hui</div>
+  <div class="hero-stat-divider"></div>
+  <div class="hero-stat-row">
+    <div class="hero-stat-main">
+      <div class="hero-stat-selectors">
+        <div class="hero-selector" id="metric-selector">
+          <button type="button" class="hero-selector-btn" id="metric-selector-btn">
+            <span id="metric-selector-label">Volume brut</span>
+            <i class="fa-solid fa-chevron-down"></i>
+          </button>
+          <div class="hero-popup d-none" id="metric-popup">
+            <button type="button" class="hero-popup-item active" data-metric="gross">Volume brut</button>
+            <button type="button" class="hero-popup-item" data-metric="successful">Paiements réussis</button>
+            <button type="button" class="hero-popup-item" data-metric="net">Volume net</button>
+            <button type="button" class="hero-popup-item" data-metric="clients">Nouveaux clients</button>
+            <button type="button" class="hero-popup-item" data-metric="products">Nouveaux produits</button>
+          </div>
+        </div>
+        <div class="hero-selector" id="granularity-selector">
+          <button type="button" class="hero-selector-btn" id="granularity-selector-btn">
+            <span id="granularity-selector-label">Jour</span>
+            <i class="fa-solid fa-chevron-down"></i>
+          </button>
+          <div class="hero-popup d-none" id="granularity-popup">
+            <button type="button" class="hero-popup-item active" data-granularity="day">Jour</button>
+            <button type="button" class="hero-popup-item" data-granularity="month">Mois</button>
+            <button type="button" class="hero-popup-item" data-granularity="year">Année</button>
+          </div>
+        </div>
+      </div>
+      <div class="hero-stat-amount-wrap" id="hero-stat-amount-wrap">
+        <div class="hero-stat-amount" id="hero-stat-amount">—</div>
+        <div class="hero-stat-time" id="hero-stat-time"></div>
+        <div class="hero-stat-hovercard d-none" id="hero-stat-hovercard"></div>
+      </div>
+    </div>
+    <div class="hero-balance-side">
+      <div class="hero-balance-label">Soldes</div>
+      <div class="hero-balance-amount" id="hero-balance-amount">—</div>
+      <a href="#" class="hero-balance-link" id="hero-balance-link" title="Voir le solde"><i class="fa-solid fa-arrow-right"></i></a>
+    </div>
   </div>
 </div>
 <div class="activity-section mb-4">
   <div class="activity-section-head">
-    <h5 class="fw-bold mb-0 text-muted">📊 Activité</h5>
+    <h5 class="fw-bold mb-0 text-muted">Votre aperçu</h5>
     <div class="activity-controls">
       <select class="currency-select" id="activity-currency">
         <option value="USD" selected>USD</option>
@@ -476,10 +508,28 @@ export async function mount(container) {
     await Promise.all(ACTIVITY_CATEGORIES.map((cat) => renderCategory(cat, activityDays)));
   }
 
-  function formatSignedMoney(value) {
-    const sign = value > 0 ? "+" : "";
-    return sign + Math.round(value).toLocaleString("fr-FR") + " XOF";
-  }
+  /* =====================================================
+     BLOC "HÉRO" — titre de granularité, 2 sélecteurs (activité, période
+     jour/mois/année), montant + heure, et le solde total à droite (lien
+     vers la vue Solde). Indépendant de la devise/période de la section
+     "Votre aperçu" plus bas.
+  ===================================================== */
+
+  const HERO_METRICS = {
+    gross: { label: "Volume brut", unit: "currency" },
+    successful: { label: "Paiements réussis", unit: "count" },
+    net: { label: "Volume net", unit: "currency" },
+    clients: { label: "Nouveaux clients", unit: "count" },
+    products: { label: "Nouveaux produits", unit: "count" },
+  };
+  const HERO_GRANULARITIES = {
+    day: { label: "Jour", title: "Aujourd'hui" },
+    month: { label: "Mois", title: "Ce mois-ci" },
+    year: { label: "Année", title: "Cette année" },
+  };
+
+  let heroMetric = "gross";
+  let heroGranularity = "day";
 
   // Bornes (start inclus, end exclu) du jour calendaire "aujourd'hui moins
   // offsetDays" (0 = aujourd'hui, 1 = hier), en heure locale.
@@ -489,32 +539,111 @@ export async function mount(container) {
     return { start, end: start + DAY_MS };
   }
 
-  function sumBalanceBetween(items, start, end) {
-    return items.reduce((sum, { ts, value }) => (ts != null && ts >= start && ts < end ? sum + value : sum), 0);
+  // Bornes du jour/mois/année calendaire en cours (start inclus, "now" en
+  // borne haute).
+  function getGranularityBounds(granularity) {
+    const now = new Date();
+    let start;
+    if (granularity === "month") start = new Date(now.getFullYear(), now.getMonth(), 1);
+    else if (granularity === "year") start = new Date(now.getFullYear(), 0, 1);
+    else start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return { start: start.getTime(), end: Date.now() };
   }
 
-  // Barre de solde (aujourd'hui / hier / total) : toujours en XOF (devise
-  // réelle du wallet), indépendante du sélecteur de devise et de la
-  // période de la section Activité — ce n'est pas une catégorie
-  // comparable aux autres, juste un repère toujours visible en haut.
-  function renderBalanceBar() {
-    const items = activityRaw ? activityRaw.balance || [] : [];
-    const today = getDayBounds(0);
-    const yesterday = getDayBounds(1);
-    const todayValue = sumBalanceBetween(items, today.start, today.end);
-    const yesterdayValue = sumBalanceBetween(items, yesterday.start, yesterday.end);
+  function sumInRange(items, start, end) {
+    return (items || []).reduce((sum, { ts, value }) => (ts != null && ts >= start && ts <= end ? sum + value : sum), 0);
+  }
 
-    const todayEl = document.getElementById("balance-today");
-    if (todayEl) {
-      todayEl.textContent = formatSignedMoney(todayValue);
-      todayEl.className = "balance-bar-value " + (todayValue > 0 ? "up" : todayValue < 0 ? "down" : "flat");
+  function countInRange(items, start, end) {
+    return (items || []).filter(({ ts }) => ts != null && ts >= start && ts <= end).length;
+  }
+
+  // Valeur d'une métrique héro sur [start, end] — réutilise les mêmes
+  // données brutes que la section "Votre aperçu" (aucun appel réseau
+  // supplémentaire). "gross" = montant nominal de tous les liens créés
+  // (quel que soit leur statut) ; "successful" = nombre de liens payés.
+  function computeHeroValue(metric, start, end) {
+    if (!activityRaw) return 0;
+    if (metric === "gross") return sumInRange(activityRaw.links, start, end);
+    if (metric === "successful") return countInRange((activityRaw.links || []).filter((l) => l.status === "paid"), start, end);
+    if (metric === "net") return sumInRange(activityRaw.balance, start, end);
+    if (metric === "clients") return countInRange(activityRaw.clients, start, end);
+    if (metric === "products") return countInRange(activityRaw.products, start, end);
+    return 0;
+  }
+
+  function formatHeroValue(metric, value) {
+    return HERO_METRICS[metric].unit === "currency" ? formatMoney(value, "XOF") : formatCount(value);
+  }
+
+  function renderHeroStat() {
+    const { start, end } = getGranularityBounds(heroGranularity);
+    const value = computeHeroValue(heroMetric, start, end);
+
+    setText("hero-stat-title", HERO_GRANULARITIES[heroGranularity].title);
+    setText("metric-selector-label", HERO_METRICS[heroMetric].label);
+    setText("granularity-selector-label", HERO_GRANULARITIES[heroGranularity].label);
+    setText("hero-stat-amount", formatHeroValue(heroMetric, value));
+    setText("hero-stat-time", "Mis à jour à " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
+    setText("hero-balance-amount", Math.round(activityRaw?.totalBalance || 0).toLocaleString("fr-FR") + " XOF");
+
+    // Toujours "aujourd'hui", peu importe la granularité choisie au-dessus
+    // — sert de repère rapide au survol, comme les tooltips des graphiques.
+    const todayBounds = getDayBounds(0);
+    const todayValue = computeHeroValue(heroMetric, todayBounds.start, todayBounds.end);
+    const hovercard = document.getElementById("hero-stat-hovercard");
+    if (hovercard) hovercard.textContent = `Aujourd'hui : ${formatHeroValue(heroMetric, todayValue)}`;
+  }
+
+  function closeHeroPopups() {
+    document.getElementById("metric-popup")?.classList.add("d-none");
+    document.getElementById("granularity-popup")?.classList.add("d-none");
+  }
+
+  function initHeroStat() {
+    on(document.getElementById("metric-selector-btn"), "click", (e) => {
+      e.stopPropagation();
+      const popup = document.getElementById("metric-popup");
+      const wasOpen = !popup.classList.contains("d-none");
+      closeHeroPopups();
+      popup.classList.toggle("d-none", wasOpen);
+    });
+    on(document.getElementById("granularity-selector-btn"), "click", (e) => {
+      e.stopPropagation();
+      const popup = document.getElementById("granularity-popup");
+      const wasOpen = !popup.classList.contains("d-none");
+      closeHeroPopups();
+      popup.classList.toggle("d-none", wasOpen);
+    });
+    document.querySelectorAll("#metric-popup .hero-popup-item").forEach((btn) => {
+      on(btn, "click", () => {
+        heroMetric = btn.dataset.metric;
+        document.querySelectorAll("#metric-popup .hero-popup-item").forEach((b) => b.classList.toggle("active", b === btn));
+        closeHeroPopups();
+        renderHeroStat();
+      });
+    });
+    document.querySelectorAll("#granularity-popup .hero-popup-item").forEach((btn) => {
+      on(btn, "click", () => {
+        heroGranularity = btn.dataset.granularity;
+        document.querySelectorAll("#granularity-popup .hero-popup-item").forEach((b) => b.classList.toggle("active", b === btn));
+        closeHeroPopups();
+        renderHeroStat();
+      });
+    });
+    on(document, "click", closeHeroPopups);
+
+    const amountWrap = document.getElementById("hero-stat-amount-wrap");
+    const hovercard = document.getElementById("hero-stat-hovercard");
+    if (amountWrap && hovercard) {
+      on(amountWrap, "mouseenter", () => hovercard.classList.remove("d-none"));
+      on(amountWrap, "mouseleave", () => hovercard.classList.add("d-none"));
     }
-    const yesterdayEl = document.getElementById("balance-yesterday");
-    if (yesterdayEl) {
-      yesterdayEl.textContent = formatSignedMoney(yesterdayValue);
-      yesterdayEl.className = "balance-bar-value " + (yesterdayValue > 0 ? "up" : yesterdayValue < 0 ? "down" : "flat");
-    }
-    setText("balance-total", Math.round(activityRaw?.totalBalance || 0).toLocaleString("fr-FR") + " XOF");
+
+    on(document.getElementById("hero-balance-link"), "click", (e) => {
+      e.preventDefault();
+      navigate(`/dash/workspace/${getWorkspaceId() || "me"}/solde`);
+    });
   }
 
   async function initActivitySection() {
@@ -539,8 +668,10 @@ export async function mount(container) {
       });
     }
 
+    initHeroStat();
+
     activityRaw = await fetchActivityRawData();
-    renderBalanceBar();
+    renderHeroStat();
     renderAllActivityCards();
   }
 
