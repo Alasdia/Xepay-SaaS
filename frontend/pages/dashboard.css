@@ -58,20 +58,23 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .hero-stat-main { flex:0 0 70%; max-width:70%; min-width:0; }
 .hero-stat-selectors { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
 .hero-selector { position:relative; }
-.hero-selector-btn { display:flex; align-items:center; gap:8px; border:1px solid #e5e7eb; background:transparent; border-radius:0; padding:7px 12px; font-size:13px; font-weight:600; color:#111827; cursor:pointer; }
+/* Pas de bordure ici (ni sur le sélecteur de devise, voir plus bas) :
+   juste le libellé/chevron, sans cadre visible. */
+.hero-selector-btn { display:flex; align-items:center; gap:8px; border:none; background:transparent; border-radius:0; padding:7px 12px; font-size:13px; font-weight:600; color:#111827; cursor:pointer; }
 .hero-selector-btn i { font-size:10px; color:#9ca3af; }
+/* Sélecteur de devise : chevron seul, pas de libellé — le code devise est
+   déjà visible dans le montant lui-même (ex: "150 000 XOF"), le répéter
+   ici serait redondant. */
+.hero-chevron-only { padding:4px; }
 .hero-popup { position:absolute; top:calc(100% + 6px); left:0; min-width:190px; background:#ffffff; border:1px solid #e5e7eb; border-radius:0; box-shadow:0 10px 30px rgba(0,0,0,.12); z-index:20; padding:4px; }
 .hero-popup-item { display:block; width:100%; text-align:left; border:none; background:transparent; padding:8px 10px; font-size:13px; color:#374151; cursor:pointer; }
 .hero-popup-item:hover { background:#f3f4f6; }
 .hero-popup-item.active { color:#111827; font-weight:700; background:#f3f4f6; }
 .hero-stat-amount-wrap { position:relative; display:inline-block; }
-.hero-stat-amount-line { display:flex; align-items:center; gap:10px; }
+.hero-stat-amount-line { display:flex; align-items:center; gap:4px; }
 /* Montants à 13px partout dans ce bloc (chiffre clé, solde) — exception
    assumée au style "hero" plus imposant d'avant, sur demande explicite. */
 .hero-stat-amount { font-size:13px; font-weight:800; color:#111827; }
-/* Réutilise .currency-select (section "Votre aperçu" plus bas) mais en
-   plus compact, à côté du montant. */
-.hero-stat-amount-line .currency-select { padding:4px 8px; font-size:12px; }
 .hero-stat-time { font-size:13px; color:#9ca3af; margin-top:4px; }
 /* Graphique héro : trait vertical en pointillés + point survolé (dessinés
    par Chart.js/heroCrosshairPlugin) et tooltip HTML personnalisé
@@ -80,7 +83,7 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
    élevée (quasi plein) pour que le bloc se détache nettement de la page. */
 .hero-chart-wrap { position:relative; width:100%; height:156px; margin-top:18px; background:rgba(255,255,255,0.97); padding:12px; box-sizing:border-box; }
 .hero-chart-wrap canvas { width:100% !important; height:100% !important; }
-.hero-chart-tooltip { position:absolute; opacity:0; pointer-events:none; transition:opacity .1s ease; background:#ffffff; border:1px solid #e5e7eb; border-radius:0; box-shadow:0 10px 30px rgba(0,0,0,.12); padding:10px 12px; font-size:13px; color:#111827; white-space:nowrap; z-index:20; }
+.hero-chart-tooltip { position:absolute; opacity:0; pointer-events:none; transition:opacity .1s ease; background:#d1d5db; border:1px solid #d1d5db; border-radius:0; box-shadow:0 10px 30px rgba(0,0,0,.12); padding:10px 12px; font-size:13px; color:#111827; white-space:nowrap; z-index:20; }
 .hero-chart-tooltip.visible { opacity:1; }
 .hero-chart-tooltip-divider { height:1px; background:#e5e7eb; margin:6px 0 8px; }
 .hero-chart-tooltip-value { font-weight:700; }
@@ -110,8 +113,9 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .hero-balance-side { flex:0 1 auto; text-align:left; display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
 .hero-balance-label { font-size:13px; color:#6b7280; }
 .hero-balance-amount { font-size:13px; font-weight:800; color:#111827; }
-.hero-balance-link { width:26px; height:26px; border-radius:0; border:1px solid #e5e7eb; display:flex; align-items:center; justify-content:center; color:#111827; font-size:11px; text-decoration:none; }
-.hero-balance-link:hover { background:#f3f4f6; }
+.hero-balance-link { display:inline-flex; align-items:center; gap:6px; color:#111827; font-size:13px; font-weight:600; text-decoration:none; }
+.hero-balance-link i { font-size:10px; }
+.hero-balance-link:hover { color:#6b7280; }
 @media (max-width: 768px) {
   .hero-stat-row { flex-direction:column; }
   .hero-balance-side { flex:1 1 auto; max-width:100%; align-items:flex-start; text-align:left; margin-top:12px; }

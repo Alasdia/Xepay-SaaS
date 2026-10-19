@@ -52,11 +52,16 @@ const TEMPLATE = `
       <div class="hero-stat-amount-wrap" id="hero-stat-amount-wrap">
         <div class="hero-stat-amount-line">
           <div class="hero-stat-amount" id="hero-stat-amount">—</div>
-          <select class="currency-select" id="hero-currency">
-            <option value="XOF" selected>XOF</option>
-            <option value="USD">USD</option>
-            <option value="EUR">EUR</option>
-          </select>
+          <div class="hero-selector" id="hero-currency-selector">
+            <button type="button" class="hero-selector-btn hero-chevron-only" id="hero-currency-btn">
+              <i class="fa-solid fa-chevron-down"></i>
+            </button>
+            <div class="hero-popup d-none" id="hero-currency-popup">
+              <button type="button" class="hero-popup-item active" data-currency="XOF">XOF</button>
+              <button type="button" class="hero-popup-item" data-currency="USD">USD</button>
+              <button type="button" class="hero-popup-item" data-currency="EUR">EUR</button>
+            </div>
+          </div>
         </div>
         <div class="hero-stat-time" id="hero-stat-time"></div>
       </div>
@@ -68,7 +73,7 @@ const TEMPLATE = `
     <div class="hero-balance-side">
       <div class="hero-balance-label">Soldes</div>
       <div class="hero-balance-amount" id="hero-balance-amount">—</div>
-      <a href="#" class="hero-balance-link" id="hero-balance-link" title="Voir le solde"><i class="fa-solid fa-arrow-right"></i></a>
+      <a href="#" class="hero-balance-link" id="hero-balance-link" title="Voir le solde">Afficher plus <i class="fa-solid fa-arrow-right"></i></a>
     </div>
   </div>
 </div>
@@ -844,7 +849,7 @@ export async function mount(container) {
     setText("granularity-selector-label", formatCompareDateLabel(heroCompareDate));
     setText("hero-stat-amount", formatHeroValue(heroMetric, value));
     setText("hero-stat-time", "Mis à jour à " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
-    setText("hero-balance-amount", Math.round(activityRaw?.totalBalance || 0).toLocaleString("fr-FR") + " XOF");
+    setText("hero-balance-amount", formatMoney((activityRaw?.totalBalance || 0) * getRate("XOF", heroCurrency), heroCurrency));
 
     renderHeroChart();
   }
@@ -852,6 +857,7 @@ export async function mount(container) {
   function closeHeroPopups() {
     document.getElementById("metric-popup")?.classList.add("d-none");
     document.getElementById("granularity-popup")?.classList.add("d-none");
+    document.getElementById("hero-currency-popup")?.classList.add("d-none");
   }
 
   // Calendar Popover : grille du mois affiché (calendarViewMonth), lundi en
@@ -894,14 +900,21 @@ export async function mount(container) {
   }
 
   function initHeroStat() {
-    const heroCurrencySelect = document.getElementById("hero-currency");
-    if (heroCurrencySelect) {
-      on(heroCurrencySelect, "click", (e) => e.stopPropagation());
-      on(heroCurrencySelect, "change", () => {
-        heroCurrency = heroCurrencySelect.value;
+    on(document.getElementById("hero-currency-btn"), "click", (e) => {
+      e.stopPropagation();
+      const popup = document.getElementById("hero-currency-popup");
+      const wasOpen = !popup.classList.contains("d-none");
+      closeHeroPopups();
+      popup.classList.toggle("d-none", wasOpen);
+    });
+    document.querySelectorAll("#hero-currency-popup .hero-popup-item").forEach((btn) => {
+      on(btn, "click", () => {
+        heroCurrency = btn.dataset.currency;
+        document.querySelectorAll("#hero-currency-popup .hero-popup-item").forEach((b) => b.classList.toggle("active", b === btn));
+        closeHeroPopups();
         renderHeroStat();
       });
-    }
+    });
     on(document.getElementById("metric-selector-btn"), "click", (e) => {
       e.stopPropagation();
       const popup = document.getElementById("metric-popup");
