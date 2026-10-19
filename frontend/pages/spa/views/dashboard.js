@@ -121,7 +121,7 @@ export async function mount(container) {
   const ACTIVITY_CATEGORIES = [
     { key: "clients", label: "Nouveaux clients", icon: "fa-user-plus" },
     { key: "products", label: "Nouveaux produits", icon: "fa-box" },
-    { key: "invoices", label: "Factures", icon: "fa-file-invoice", sourceCurrency: "USD" },
+    { key: "invoices", label: "Factures", icon: "fa-file-invoice" },
     { key: "subscriptions", label: "Abonnements", icon: "fa-rotate", sourceCurrency: "USD" },
     { key: "links", label: "Liens de paiement", icon: "fa-link", sourceCurrency: "XOF" },
   ];
@@ -284,7 +284,10 @@ export async function mount(container) {
       // qu'une seule ligne.
       invoices: (invoicesData?.data || []).map((i) => ({
         ts: toTimestamp(i.created),
-        value: (i.amount_paid || i.amount_due || 0) / 100,
+        // amount_paid seul (jamais amount_due en repli) : une facture non
+        // payée ne doit contribuer aucun revenu, et le bloc "Factures —
+        // Revenus" filtre de toute façon sur status === "paid".
+        value: (i.amount_paid || 0) / 100,
         status: i.status,
         currency: (i.currency || "usd").toUpperCase(),
         customerId: i.customer || null,
@@ -416,6 +419,37 @@ export async function mount(container) {
 
   function computeProductRevenue(days) {
     return computeEntityCohortRevenue(activityRaw.products || [], "productId", days);
+  }
+
+  // Revenu réel d'une catégorie filtrée par statut ("paid" pour les
+  // factures, "active" pour les abonnements), avec conversion par devise
+  // propre à chaque élément (une facture/un abonnement peut être en USD ou
+  // EUR, voir fetchActivityRawData) — contrairement à computeActivityStats,
+  // qui applique un taux fixe par catégorie et ne filtre aucun statut.
+  function computeFilteredRevenueStats(items, days, isEligible) {
+    const now = Date.now();
+    const currentStart = now - days * DAY_MS;
+    const previousStart = now - 2 * days * DAY_MS;
+    const currentRevenueDaily = new Array(days).fill(0);
+    const previousRevenueDaily = new Array(days).fill(0);
+    let currentTotal = 0;
+    let previousTotal = 0;
+
+    items.forEach(({ ts, value, currency, status }) => {
+      if (ts == null || !isEligible(status)) return;
+      const amount = value * getRate(currency || "USD", activityCurrency);
+      if (ts >= currentStart && ts <= now) {
+        const idx = Math.min(days - 1, Math.max(0, Math.floor((ts - currentStart) / DAY_MS)));
+        currentRevenueDaily[idx] += amount;
+        currentTotal += amount;
+      } else if (ts >= previousStart && ts < currentStart) {
+        const idx = Math.min(days - 1, Math.max(0, Math.floor((ts - previousStart) / DAY_MS)));
+        previousRevenueDaily[idx] += amount;
+        previousTotal += amount;
+      }
+    });
+
+    return { currentRevenueDaily, previousRevenueDaily, currentTotal, previousTotal };
   }
 
   function buildActivityLabels(days) {
@@ -598,6 +632,12 @@ export async function mount(container) {
       prevRevenue = cohort.previousTotal;
       currentRevenueDaily = cohort.currentRevenueDaily;
       previousRevenueDaily = cohort.previousRevenueDaily;
+    } else if (cat.key === "invoices") {
+      const filtered = computeFilteredRevenueStats(items, days, (status) => status === "paid");
+      curRevenue = filtered.currentTotal;
+      prevRevenue = filtered.previousTotal;
+      currentRevenueDaily = filtered.currentRevenueDaily;
+      previousRevenueDaily = filtered.previousRevenueDaily;
     } else {
       const rate = getRate(cat.sourceCurrency, activityCurrency) || 1;
       curRevenue = stats.currentTotal * rate;
