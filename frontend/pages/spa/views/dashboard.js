@@ -351,11 +351,15 @@ export async function mount(container) {
   // période par statut (payé/en attente/expiré) — un mécanisme différent,
   // propre à ce bloc, demandé explicitement pour ne pas tout mélanger dans
   // un seul "nombre de liens".
+  // pointRadius > 0 ici (contrairement aux autres graphiques) : une
+  // courbe "En attente"/"Expirés" à 0 toute la période est une ligne
+  // plate collée à l'axe — sans point visible, elle se confond avec l'axe
+  // et paraît absente. Les points, eux, restent visibles même à 0.
   function buildLinksStatusDatasets(daily) {
     return [
-      { label: "Payés", data: daily.paid, borderColor: "#16a34a", borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false },
-      { label: "En attente", data: daily.pending, borderColor: "#eab308", borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false },
-      { label: "Expirés", data: daily.expired, borderColor: "#dc2626", borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false },
+      { label: "Payés", data: daily.paid, borderColor: "#16a34a", backgroundColor: "#16a34a", borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, tension: 0.3, fill: false },
+      { label: "En attente", data: daily.pending, borderColor: "#eab308", backgroundColor: "#eab308", borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, tension: 0.3, fill: false },
+      { label: "Expirés", data: daily.expired, borderColor: "#dc2626", backgroundColor: "#dc2626", borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, tension: 0.3, fill: false },
     ];
   }
 
@@ -403,6 +407,10 @@ export async function mount(container) {
           y: {
             title: { display: true, text: yAxisLabel, color: "#6b7280", font: { size: 13, weight: "600" } },
             beginAtZero: true,
+            // grace : marge au-dessus/en-dessous des données même à 0, pour
+            // qu'une courbe plate à 0 ne colle pas pile sur l'axe (sinon
+            // elle se confond avec le trait de l'axe et paraît invisible).
+            grace: "5%",
             grid: { color: "#e5e7eb" },
             ticks: {
               color: "#9ca3af",

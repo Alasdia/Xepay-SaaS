@@ -38,11 +38,14 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
    gauche, solde total poussé tout à fait à droite. Toujours en XOF, sans
    lien avec le sélecteur de devise ni la période de la section Activité.
    ============================================ */
-.balance-bar { display:flex; align-items:center; gap:32px; background:#ffffff; border:1px solid #e5e7eb; border-radius:0; padding:16px 22px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+/* Pas de carte/KPI ici : aucun fond, bordure ou ombre — seuls les
+   libellés et les montants sont visibles, posés directement sur le fond
+   de la page. */
+.balance-bar { display:flex; align-items:center; gap:32px; }
 .balance-bar-item { display:flex; flex-direction:column; gap:4px; }
 .balance-bar-total { margin-left:auto; text-align:right; }
-.balance-bar-label { font-size:13px; color:#6b7280; }
-.balance-bar-value { font-size:13px; font-weight:800; color:#111827; }
+.balance-bar-label { font-size:16px; color:#6b7280; }
+.balance-bar-value { font-size:20px; font-weight:800; color:#111827; }
 .balance-bar-value.up { color:#16a34a; }
 .balance-bar-value.down { color:#dc2626; }
 .balance-bar-value.flat { color:#111827; }
