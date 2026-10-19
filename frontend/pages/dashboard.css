@@ -34,11 +34,11 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 
 /* ============================================
    XEPAY — Bloc héro (vue Accueil) : espace fixe en haut de #main-content,
-   avant tous les blocs d'activité. Titre de granularité (ex: "Aujourd'hui")
-   sur les 10% du haut de la zone visible, trait fin gris dessous, puis
-   2 sélecteurs (activité / jour-mois-année) et le montant correspondant ;
-   le solde total est poussé dans les ~20% de largeur avant la fin de
-   #main-content, avec un lien vers la vue Solde.
+   avant tous les blocs d'activité. Titre "Aujourd'hui" sur les 10% du haut
+   de la zone visible, trait fin gris dessous, puis 2 sélecteurs (activité /
+   date de comparaison via Calendar Popover, défaut hier) et le montant
+   correspondant + son graphique ; le solde total est poussé dans les ~20%
+   de largeur avant la fin de #main-content, avec un lien vers la vue Solde.
    ============================================ */
 .hero-stat { position:relative; }
 /* 10% de la zone visible sous le bandeau du haut (5vh, voir #top-banner),
@@ -57,7 +57,9 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .hero-popup-item.active { color:#111827; font-weight:700; background:#f3f4f6; }
 .hero-stat-caption { font-size:13px; color:#6b7280; margin-bottom:4px; }
 .hero-stat-amount-wrap { position:relative; display:inline-block; }
-.hero-stat-amount { font-size:32px; font-weight:800; color:#111827; }
+/* Montants à 13px partout dans ce bloc (chiffre clé, solde) — exception
+   assumée au style "hero" plus imposant d'avant, sur demande explicite. */
+.hero-stat-amount { font-size:13px; font-weight:800; color:#111827; }
 .hero-stat-time { font-size:13px; color:#9ca3af; margin-top:4px; }
 /* Graphique héro : trait vertical en pointillés + point survolé (dessinés
    par Chart.js/heroCrosshairPlugin) et tooltip HTML personnalisé
@@ -66,14 +68,27 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .hero-chart-wrap canvas { width:100% !important; height:100% !important; }
 .hero-chart-tooltip { position:absolute; opacity:0; pointer-events:none; transition:opacity .1s ease; background:#ffffff; border:1px solid #e5e7eb; border-radius:0; box-shadow:0 10px 30px rgba(0,0,0,.12); padding:10px 12px; font-size:13px; color:#111827; white-space:nowrap; z-index:20; }
 .hero-chart-tooltip.visible { opacity:1; }
-.hero-chart-tooltip-date { font-size:13px; font-weight:700; color:#111827; margin-bottom:6px; }
 .hero-chart-tooltip-row { display:flex; align-items:center; gap:6px; font-size:13px; color:#374151; }
 .hero-chart-tooltip-row.current .hero-chart-tooltip-dot { background:#eab308; }
 .hero-chart-tooltip-row.previous .hero-chart-tooltip-dot { background:#9ca3af; }
 .hero-chart-tooltip-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; display:inline-block; }
+/* Calendar Popover (2e chevron) : grille du mois, lundi en 1re colonne,
+   aujourd'hui/le futur désactivés (grisés), la date choisie surlignée. */
+.hero-calendar-popup { width:260px; padding:10px; }
+.hero-calendar-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; padding:0 2px; }
+.hero-calendar-header span { font-size:13px; font-weight:700; color:#111827; text-transform:capitalize; }
+.hero-calendar-nav { border:none; background:transparent; color:#6b7280; width:24px; height:24px; cursor:pointer; }
+.hero-calendar-nav:hover { color:#111827; }
+.hero-calendar-weekdays { display:grid; grid-template-columns:repeat(7, 1fr); text-align:center; font-size:11px; color:#9ca3af; margin-bottom:4px; }
+.hero-calendar-grid { display:grid; grid-template-columns:repeat(7, 1fr); gap:2px; }
+.hero-calendar-cell { border:none; background:transparent; height:30px; font-size:13px; color:#374151; cursor:pointer; }
+.hero-calendar-cell:hover:not(:disabled) { background:#f3f4f6; }
+.hero-calendar-cell.today { font-weight:700; color:#111827; }
+.hero-calendar-cell.selected { background:#eab308; color:#111827; font-weight:700; }
+.hero-calendar-cell:disabled { color:#d1d5db; cursor:not-allowed; }
 .hero-balance-side { flex:0 0 20%; max-width:20%; text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
 .hero-balance-label { font-size:13px; color:#6b7280; }
-.hero-balance-amount { font-size:18px; font-weight:800; color:#111827; }
+.hero-balance-amount { font-size:13px; font-weight:800; color:#111827; }
 .hero-balance-link { width:26px; height:26px; border-radius:0; border:1px solid #e5e7eb; display:flex; align-items:center; justify-content:center; color:#111827; font-size:11px; text-decoration:none; }
 .hero-balance-link:hover { background:#f3f4f6; }
 @media (max-width: 768px) {

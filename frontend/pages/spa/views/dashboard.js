@@ -35,13 +35,17 @@ const TEMPLATE = `
         </div>
         <div class="hero-selector" id="granularity-selector">
           <button type="button" class="hero-selector-btn" id="granularity-selector-btn">
-            <span id="granularity-selector-label">Jour</span>
+            <span id="granularity-selector-label">Hier</span>
             <i class="fa-solid fa-chevron-down"></i>
           </button>
-          <div class="hero-popup d-none" id="granularity-popup">
-            <button type="button" class="hero-popup-item active" data-granularity="day">Jour</button>
-            <button type="button" class="hero-popup-item" data-granularity="month">Mois</button>
-            <button type="button" class="hero-popup-item" data-granularity="year">Année</button>
+          <div class="hero-popup hero-calendar-popup d-none" id="granularity-popup">
+            <div class="hero-calendar-header">
+              <button type="button" class="hero-calendar-nav" id="calendar-prev-month"><i class="fa-solid fa-chevron-left"></i></button>
+              <span id="calendar-month-label"></span>
+              <button type="button" class="hero-calendar-nav" id="calendar-next-month"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+            <div class="hero-calendar-weekdays"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
+            <div class="hero-calendar-grid" id="calendar-grid"></div>
           </div>
         </div>
       </div>
@@ -526,29 +530,35 @@ export async function mount(container) {
     clients: { label: "Nouveaux clients", unit: "count" },
     products: { label: "Nouveaux produits", unit: "count" },
   };
-  const HERO_GRANULARITIES = {
-    day: { label: "Jour", title: "Aujourd'hui" },
-    month: { label: "Mois", title: "Ce mois-ci" },
-    year: { label: "Année", title: "Cette année" },
-  };
-
   let heroMetric = "gross";
-  let heroGranularity = "day";
   let heroChart = null;
+  // Date comparée à "aujourd'hui" dans le graphique héro, choisie dans le
+  // Calendar Popover (par défaut : hier). Jamais aujourd'hui/le futur —
+  // désactivés dans le calendrier (comparer "aujourd'hui" à lui-même n'a
+  // pas de sens).
+  let heroCompareDate = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  })();
+  // Mois affiché dans le calendrier (navigation précédent/suivant),
+  // indépendant de heroCompareDate une fois le calendrier ouvert.
+  let calendarViewMonth = new Date(heroCompareDate.getFullYear(), heroCompareDate.getMonth(), 1);
   // Dates réelles de chaque bucket du graphique héro (mêmes index que les
   // datasets Chart.js) — lues par le tooltip personnalisé pour afficher la
   // date/heure exacte du point survolé.
   let heroBucketDates = { current: [], previous: [] };
 
-  // Bornes du jour/mois/année calendaire en cours (start inclus, "now" en
-  // borne haute).
-  function getGranularityBounds(granularity) {
-    const now = new Date();
-    let start;
-    if (granularity === "month") start = new Date(now.getFullYear(), now.getMonth(), 1);
-    else if (granularity === "year") start = new Date(now.getFullYear(), 0, 1);
-    else start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    return { start: start.getTime(), end: Date.now() };
+  function startOfDay(date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
+  function formatCompareDateLabel(date) {
+    const today = startOfDay(new Date()).getTime();
+    const yesterday = today - DAY_MS;
+    if (date.getTime() === yesterday) return "Hier";
+    if (date.getTime() === today) return "Aujourd'hui";
+    return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
   }
 
   function sumInRange(items, start, end) {
@@ -586,41 +596,23 @@ export async function mount(container) {
 
   /* ---------- Graphique héro : buckets, séries, tooltip personnalisé ---------- */
 
-  // Dates de début de chaque bucket (24h/jours du mois/mois de l'année),
-  // période actuelle et équivalente précédente — via l'arithmétique Date
-  // plutôt qu'une division par une durée fixe, pour gérer correctement les
-  // mois de longueur variable.
-  function buildHeroBuckets(granularity) {
-    const now = new Date();
+  // 24 buckets horaires pour "aujourd'hui" (current) et pour la date
+  // choisie dans le Calendar Popover (previous) — deux jours pas forcément
+  // consécutifs, donc calculés indépendamment l'un de l'autre.
+  function buildHeroBuckets() {
+    const todayBase = startOfDay(new Date());
+    const compareBase = startOfDay(heroCompareDate);
     const current = [];
     const previous = [];
-    if (granularity === "day") {
-      const todayBase = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      for (let h = 0; h < 24; h++) {
-        current.push(new Date(todayBase.getTime() + h * 60 * 60 * 1000));
-        previous.push(new Date(todayBase.getTime() - DAY_MS + h * 60 * 60 * 1000));
-      }
-    } else if (granularity === "month") {
-      const y = now.getFullYear();
-      const m = now.getMonth();
-      const daysInMonth = new Date(y, m + 1, 0).getDate();
-      for (let d = 0; d < daysInMonth; d++) {
-        current.push(new Date(y, m, d + 1));
-        previous.push(new Date(y, m - 1, d + 1));
-      }
-    } else {
-      const y = now.getFullYear();
-      for (let mo = 0; mo < 12; mo++) {
-        current.push(new Date(y, mo, 1));
-        previous.push(new Date(y - 1, mo, 1));
-      }
+    for (let h = 0; h < 24; h++) {
+      current.push(new Date(todayBase.getTime() + h * 60 * 60 * 1000));
+      previous.push(new Date(compareBase.getTime() + h * 60 * 60 * 1000));
     }
     return { current, previous };
   }
 
   // Index du dernier bucket dont le départ est <= ts (buckets triés par
-  // ordre croissant) — fonctionne pour des buckets de longueur variable
-  // (ex: mois), contrairement à une division par une durée fixe.
+  // ordre croissant).
   function findBucketIndex(bucketStartsMs, ts) {
     let idx = -1;
     for (let i = 0; i < bucketStartsMs.length; i++) {
@@ -630,25 +622,24 @@ export async function mount(container) {
     return idx;
   }
 
-  function computeHeroSeries(metric, granularity) {
-    const { current, previous } = buildHeroBuckets(granularity);
+  function computeHeroSeries(metric) {
+    const { current, previous } = buildHeroBuckets();
     const curMs = current.map((d) => d.getTime());
     const prevMs = previous.map((d) => d.getTime());
-    const n = curMs.length;
-    const currentData = new Array(n).fill(0);
-    const previousData = new Array(n).fill(0);
+    const currentData = new Array(24).fill(0);
+    const previousData = new Array(24).fill(0);
     const now = Date.now();
-    const currentStart = curMs[0];
-    const previousStart = prevMs[0];
+    const previousEnd = prevMs[0] + DAY_MS;
     const isCount = HERO_METRICS[metric].unit !== "currency";
 
     heroSourceItems(metric).forEach(({ ts, value }) => {
       if (ts == null) return;
       const amount = isCount ? 1 : value;
-      if (ts >= currentStart && ts <= now) {
+      if (ts >= curMs[0] && ts <= now) {
         const idx = findBucketIndex(curMs, ts);
         if (idx !== -1) currentData[idx] += amount;
-      } else if (ts >= previousStart && ts < currentStart) {
+      }
+      if (ts >= prevMs[0] && ts < previousEnd) {
         const idx = findBucketIndex(prevMs, ts);
         if (idx !== -1) previousData[idx] += amount;
       }
@@ -657,18 +648,18 @@ export async function mount(container) {
     return { current, previous, currentData, previousData };
   }
 
-  function formatHeroBucketDate(date, granularity) {
-    if (granularity === "day") {
-      return (
-        date.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "short" }) +
-        " · " +
-        date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
-      );
-    }
-    if (granularity === "month") {
-      return date.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
-    }
-    return date.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  // Date + heure exactes du bucket survolé, pour le tooltip.
+  function formatHeroBucketDate(date) {
+    return (
+      date.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "short" }) +
+      " · " +
+      date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+    );
+  }
+
+  // Date exacte (sans heure) utilisée comme libellé de légende/dataset.
+  function formatHeroDayLabel(date) {
+    return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
   }
 
   // Trait vertical en pointillés qui suit le point survolé — dessiné à
@@ -712,10 +703,12 @@ export async function mount(container) {
     const currentVal = tooltip.dataPoints.find((dp) => dp.datasetIndex === 0)?.parsed.y ?? 0;
     const previousVal = tooltip.dataPoints.find((dp) => dp.datasetIndex === 1)?.parsed.y ?? 0;
 
+    // Dates exactes à la place de "Actuelle"/"Précédente" : chaque ligne
+    // porte sa propre date + heure réelle (les 2 jours comparés ne sont
+    // pas forcément consécutifs).
     el.innerHTML = `
-      <div class="hero-chart-tooltip-date">${currentDate ? formatHeroBucketDate(currentDate, heroGranularity) : ""}</div>
-      <div class="hero-chart-tooltip-row current"><span class="hero-chart-tooltip-dot"></span>Actuelle : ${formatHeroValue(heroMetric, currentVal)}</div>
-      <div class="hero-chart-tooltip-row previous"><span class="hero-chart-tooltip-dot"></span>Précédente${previousDate ? " (" + formatHeroBucketDate(previousDate, heroGranularity) + ")" : ""} : ${formatHeroValue(heroMetric, previousVal)}</div>
+      <div class="hero-chart-tooltip-row current"><span class="hero-chart-tooltip-dot"></span>${currentDate ? formatHeroBucketDate(currentDate) : ""} : ${formatHeroValue(heroMetric, currentVal)}</div>
+      <div class="hero-chart-tooltip-row previous"><span class="hero-chart-tooltip-dot"></span>${previousDate ? formatHeroBucketDate(previousDate) : ""} : ${formatHeroValue(heroMetric, previousVal)}</div>
     `;
     el.classList.add("visible");
 
@@ -739,14 +732,20 @@ export async function mount(container) {
   function renderHeroChart() {
     const canvas = document.getElementById("hero-chart");
     if (!canvas) return;
-    const { current, previous, currentData, previousData } = computeHeroSeries(heroMetric, heroGranularity);
+    const { current, previous, currentData, previousData } = computeHeroSeries(heroMetric);
     heroBucketDates = { current, previous };
-    const labels = current.map((d) => formatHeroBucketDate(d, heroGranularity));
+    const labels = current.map((d) => formatHeroBucketDate(d));
+    // Dates exactes des 2 jours comparés, utilisées comme libellés de
+    // légende à la place de "Période actuelle"/"Période précédente".
+    const currentLabel = formatHeroDayLabel(current[0]);
+    const previousLabel = formatHeroDayLabel(previous[0]);
 
     if (heroChart) {
       heroChart.data.labels = labels;
       heroChart.data.datasets[0].data = currentData;
+      heroChart.data.datasets[0].label = currentLabel;
       heroChart.data.datasets[1].data = previousData;
+      heroChart.data.datasets[1].label = previousLabel;
       heroChart.update();
       return;
     }
@@ -758,7 +757,7 @@ export async function mount(container) {
         labels,
         datasets: [
           {
-            label: "Période actuelle",
+            label: currentLabel,
             data: currentData,
             borderColor: "#eab308",
             backgroundColor: "rgba(234,179,8,0.1)",
@@ -772,7 +771,7 @@ export async function mount(container) {
             fill: true,
           },
           {
-            label: "Période précédente",
+            label: previousLabel,
             data: previousData,
             borderColor: "#9ca3af",
             borderDash: [4, 4],
@@ -800,13 +799,14 @@ export async function mount(container) {
           tooltip: { enabled: false, external: heroTooltipHandler },
         },
         scales: {
-          x: { grid: { display: false }, ticks: { color: "#9ca3af", font: { size: 11 }, maxRotation: 0, autoSkip: true } },
-          y: {
-            beginAtZero: true,
-            grace: "5%",
-            grid: { color: "#e5e7eb" },
-            ticks: { color: "#9ca3af", font: { size: 11 }, callback: (val) => Number(val).toLocaleString("fr-FR") },
-          },
+          // Pas de libellés sous l'axe X (dates déjà portées par la
+          // légende et le tooltip) — seule la grille/l'axe reste.
+          x: { grid: { display: false }, ticks: { display: false } },
+          // Pas d'axe Y pour ce graphique : aucune grille, aucun chiffre
+          // affiché sur le côté — la valeur ne vit que dans le tooltip, à
+          // droite de la date (display:false masque tout l'axe tout en
+          // gardant l'échelle pour positionner correctement les courbes).
+          y: { display: false, beginAtZero: true, grace: "5%" },
         },
       },
     });
@@ -820,12 +820,11 @@ export async function mount(container) {
   }
 
   function renderHeroStat() {
-    const { start, end } = getGranularityBounds(heroGranularity);
-    const value = computeHeroValue(heroMetric, start, end);
+    const todayStart = startOfDay(new Date()).getTime();
+    const value = computeHeroValue(heroMetric, todayStart, Date.now());
 
-    setText("hero-stat-title", HERO_GRANULARITIES[heroGranularity].title);
     setText("metric-selector-label", HERO_METRICS[heroMetric].label);
-    setText("granularity-selector-label", HERO_GRANULARITIES[heroGranularity].label);
+    setText("granularity-selector-label", formatCompareDateLabel(heroCompareDate));
     setText("hero-stat-caption", HERO_METRICS[heroMetric].label);
     setText("hero-stat-amount", formatHeroValue(heroMetric, value));
     setText("hero-stat-time", "Mis à jour à " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
@@ -837,6 +836,45 @@ export async function mount(container) {
   function closeHeroPopups() {
     document.getElementById("metric-popup")?.classList.add("d-none");
     document.getElementById("granularity-popup")?.classList.add("d-none");
+  }
+
+  // Calendar Popover : grille du mois affiché (calendarViewMonth), lundi en
+  // première colonne. Aujourd'hui et le futur sont désactivés (comparer
+  // "aujourd'hui" à lui-même ou à une date qui n'a pas encore de données
+  // n'a pas de sens) ; la date choisie (heroCompareDate) reste surlignée.
+  function renderCalendarGrid() {
+    const gridEl = document.getElementById("calendar-grid");
+    if (!gridEl) return;
+    const year = calendarViewMonth.getFullYear();
+    const month = calendarViewMonth.getMonth();
+    setText("calendar-month-label", calendarViewMonth.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }));
+
+    const firstDay = new Date(year, month, 1);
+    const startOffset = (firstDay.getDay() + 6) % 7; // 0 = lundi
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const todayMs = startOfDay(new Date()).getTime();
+    const selectedMs = startOfDay(heroCompareDate).getTime();
+
+    let html = "";
+    for (let i = 0; i < startOffset; i++) html += `<span class="hero-calendar-cell empty"></span>`;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const cellMs = new Date(year, month, d).getTime();
+      const disabled = cellMs >= todayMs;
+      const classes = ["hero-calendar-cell"];
+      if (cellMs === todayMs) classes.push("today");
+      if (cellMs === selectedMs) classes.push("selected");
+      html += `<button type="button" class="${classes.join(" ")}" ${disabled ? "disabled" : ""} data-date="${cellMs}">${d}</button>`;
+    }
+    gridEl.innerHTML = html;
+
+    gridEl.querySelectorAll(".hero-calendar-cell:not(.empty)").forEach((cell) => {
+      on(cell, "click", (e) => {
+        e.stopPropagation();
+        heroCompareDate = new Date(Number(cell.dataset.date));
+        closeHeroPopups();
+        renderHeroStat();
+      });
+    });
   }
 
   function initHeroStat() {
@@ -852,7 +890,10 @@ export async function mount(container) {
       const popup = document.getElementById("granularity-popup");
       const wasOpen = !popup.classList.contains("d-none");
       closeHeroPopups();
-      popup.classList.toggle("d-none", wasOpen);
+      if (wasOpen) return;
+      calendarViewMonth = new Date(heroCompareDate.getFullYear(), heroCompareDate.getMonth(), 1);
+      renderCalendarGrid();
+      popup.classList.remove("d-none");
     });
     document.querySelectorAll("#metric-popup .hero-popup-item").forEach((btn) => {
       on(btn, "click", () => {
@@ -862,13 +903,15 @@ export async function mount(container) {
         renderHeroStat();
       });
     });
-    document.querySelectorAll("#granularity-popup .hero-popup-item").forEach((btn) => {
-      on(btn, "click", () => {
-        heroGranularity = btn.dataset.granularity;
-        document.querySelectorAll("#granularity-popup .hero-popup-item").forEach((b) => b.classList.toggle("active", b === btn));
-        closeHeroPopups();
-        renderHeroStat();
-      });
+    on(document.getElementById("calendar-prev-month"), "click", (e) => {
+      e.stopPropagation();
+      calendarViewMonth = new Date(calendarViewMonth.getFullYear(), calendarViewMonth.getMonth() - 1, 1);
+      renderCalendarGrid();
+    });
+    on(document.getElementById("calendar-next-month"), "click", (e) => {
+      e.stopPropagation();
+      calendarViewMonth = new Date(calendarViewMonth.getFullYear(), calendarViewMonth.getMonth() + 1, 1);
+      renderCalendarGrid();
     });
     on(document, "click", closeHeroPopups);
 
