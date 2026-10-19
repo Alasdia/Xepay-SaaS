@@ -108,12 +108,12 @@ export async function mount(container) {
   }
 
   /* =====================================================
-     SECTION "ACTIVITÉ" — 6 catégories × 2 blocs (revenus, nombre),
+     SECTION "ACTIVITÉ" — 5 catégories × 2 blocs (revenus, nombre),
      comparant la période choisie (7/30/90 jours) à la période
-     équivalente précédente. sourceCurrency = devise dans laquelle le
-     montant brut de la catégorie est exprimé avant conversion :
-     Stripe (clients/produits/abonnements/factures) renvoie en USD sur ce
-     compte ; nos propres endpoints (liens, wallet) sont en XOF.
+     équivalente précédente. Chaque bloc "Revenus" ne compte que l'argent
+     réellement encaissé (filtré par statut) et convertit chaque élément
+     depuis sa propre devise Stripe/lien (jamais un taux fixe par
+     catégorie) — voir renderCategory.
   ===================================================== */
 
   const DAY_MS = 24 * 60 * 60 * 1000;
@@ -123,7 +123,7 @@ export async function mount(container) {
     { key: "products", label: "Nouveaux produits", icon: "fa-box" },
     { key: "invoices", label: "Factures", icon: "fa-file-invoice" },
     { key: "subscriptions", label: "Abonnements", icon: "fa-rotate" },
-    { key: "links", label: "Liens de paiement", icon: "fa-link", sourceCurrency: "XOF" },
+    { key: "links", label: "Liens de paiement", icon: "fa-link" },
   ];
 
   let activityRaw = null;
@@ -243,14 +243,15 @@ export async function mount(container) {
     const walletData = await safeJson(walletRes);
     const walletMeData = await safeJson(walletMeRes);
 
-    // "value" = revenu généré par l'élément, dans sa sourceCurrency (jamais
-    // un simple comptage, qui est dérivé séparément à l'affichage) : prix du
-    // produit, montant de l'abonnement/de la facture/du lien. Stripe renvoie
-    // ses montants en centimes (voir le même /100 partout dans commerce.js) ;
-    // nos propres endpoints (liens, wallet) sont déjà en unité pleine (XOF).
-    // "clients" n'a pas de "value" propre : son revenu ne vient pas d'un
-    // champ Stripe (voir computeClientCohortRevenue) mais des factures/
-    // abonnements rattachés via customerId, croisés au rendu.
+    // "value" = montant brut de l'élément, dans sa propre devise (jamais un
+    // simple comptage, qui est dérivé séparément à l'affichage) : montant de
+    // l'abonnement/de la facture/du lien. Stripe renvoie ses montants en
+    // centimes (voir le même /100 partout dans commerce.js) ; nos propres
+    // endpoints (liens, wallet) sont déjà en unité pleine.
+    // "clients"/"products" n'ont pas de "value" propre : leur revenu ne
+    // vient pas d'un champ Stripe de l'entité elle-même mais des factures
+    // payées rattachées via customerId/productId (voir
+    // computeEntityCohortRevenue plus bas), croisées au rendu.
     return {
       clients: (customersData?.data || []).map((c) => ({ id: c.id, ts: toTimestamp(c.created) })),
       // id seul (pas de "value") : comme pour les clients, le revenu d'un
@@ -660,11 +661,14 @@ export async function mount(container) {
       currentRevenueDaily = filtered.currentRevenueDaily;
       previousRevenueDaily = filtered.previousRevenueDaily;
     } else {
-      const rate = getRate(cat.sourceCurrency, activityCurrency) || 1;
-      curRevenue = stats.currentTotal * rate;
-      prevRevenue = stats.previousTotal * rate;
-      currentRevenueDaily = stats.currentRevenueDaily.map((v) => v * rate);
-      previousRevenueDaily = stats.previousRevenueDaily.map((v) => v * rate);
+      // "links" : un lien en attente/expiré n'est pas un revenu, et chaque
+      // lien a sa propre devise (USD/EUR, jamais XOF — voir
+      // fetchActivityRawData) plutôt qu'un taux fixe par catégorie.
+      const filtered = computeFilteredRevenueStats(items, days, (status) => status === "paid");
+      curRevenue = filtered.currentTotal;
+      prevRevenue = filtered.previousTotal;
+      currentRevenueDaily = filtered.currentRevenueDaily;
+      previousRevenueDaily = filtered.previousRevenueDaily;
     }
 
     const revId = activityCardId(cat, "revenue");
