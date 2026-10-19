@@ -282,6 +282,12 @@ export async function mount(container) {
       // regarde que la première ligne (comme pour les abonnements) : avec
       // seulement 2 produits dans ce compte, les factures n'ont en pratique
       // qu'une seule ligne.
+      // Stripe facture un abonnement via une Invoice à chaque cycle de
+      // renouvellement : les paiements d'abonnement sont donc déjà présents
+      // ici (subscriptionId renseigné), on n'a pas besoin de les recompter
+      // depuis l'objet subscription lui-même (voir computeEntityCohortRevenue
+      // et heroSourceItems, qui ignorent désormais la "value" nominale d'un
+      // abonnement : c'est la facture réellement payée qui fait foi).
       invoices: (invoicesData?.data || []).map((i) => ({
         ts: toTimestamp(i.created),
         // amount_paid seul (jamais amount_due en repli) : une facture non
@@ -292,6 +298,7 @@ export async function mount(container) {
         currency: (i.currency || "usd").toUpperCase(),
         customerId: i.customer || null,
         productId: i.lines?.data?.[0]?.price?.product || null,
+        subscriptionId: i.subscription || null,
       })),
       // status conservé ici (utilisé par le bloc "Nombre" des liens pour
       // les distinguer payé/en attente/expiré, et par le bloc héro pour
@@ -364,8 +371,11 @@ export async function mount(container) {
   // cohortes les plus anciennes dans la comparaison actuel/précédent. Les
   // liens de paiement ne sont rattachés ni à un client ni à un produit
   // Stripe (voir fetchActivityRawData) : ils sont donc exclus de ce calcul,
-  // qui ne porte que sur factures payées + abonnements actifs, croisés par
-  // customerId ou productId selon l'entité.
+  // qui ne porte que sur les factures payées, croisées par customerId ou
+  // productId selon l'entité. Pas d'abonnements ici non plus : un abonnement
+  // se règle via une Invoice à chaque cycle (déjà comptée ci-dessus), sa
+  // "value" nominale ne représente aucun paiement réel — l'ajouter en plus
+  // compterait ce revenu deux fois.
   function computeEntityCohortRevenue(entities, paymentKeyField, days) {
     const now = Date.now();
     const currentStart = now - days * DAY_MS;
@@ -381,7 +391,6 @@ export async function mount(container) {
       });
     };
     addPayments(activityRaw.invoices, (status) => status === "paid");
-    addPayments(activityRaw.subscriptions, (status) => status === "active");
 
     function revenueForWindow(entitiesInWindow, windowStart) {
       const daily = new Array(days).fill(0);
@@ -632,9 +641,20 @@ export async function mount(container) {
       prevRevenue = cohort.previousTotal;
       currentRevenueDaily = cohort.currentRevenueDaily;
       previousRevenueDaily = cohort.previousRevenueDaily;
-    } else if (cat.key === "invoices" || cat.key === "subscriptions") {
-      const isEligible = cat.key === "invoices" ? (status) => status === "paid" : (status) => status === "active";
-      const filtered = computeFilteredRevenueStats(items, days, isEligible);
+    } else if (cat.key === "invoices") {
+      const filtered = computeFilteredRevenueStats(items, days, (status) => status === "paid");
+      curRevenue = filtered.currentTotal;
+      prevRevenue = filtered.previousTotal;
+      currentRevenueDaily = filtered.currentRevenueDaily;
+      previousRevenueDaily = filtered.previousRevenueDaily;
+    } else if (cat.key === "subscriptions") {
+      // La "value" nominale d'un abonnement n'est pas un paiement réel : on
+      // somme plutôt les factures de renouvellement effectivement payées,
+      // rattachées via subscriptionId (voir fetchActivityRawData) — datées
+      // par leur propre date de règlement, pas la date de création de
+      // l'abonnement.
+      const subscriptionInvoices = (activityRaw.invoices || []).filter((i) => i.subscriptionId != null);
+      const filtered = computeFilteredRevenueStats(subscriptionInvoices, days, (status) => status === "paid");
       curRevenue = filtered.currentTotal;
       prevRevenue = filtered.previousTotal;
       currentRevenueDaily = filtered.currentRevenueDaily;
@@ -737,19 +757,19 @@ export async function mount(container) {
     return source === "link" ? 0.94 : 0.99;
   }
 
-  // Données brutes derrière chaque métrique héro : liens + factures payés,
-  // abonnements actifs (paiement effectif) — toutes des sources de revenu
-  // réelles, contrairement à un lien en attente/expiré ou un abonnement
-  // jamais payé. "source" distingue le taux de commission (heroNetMultiplier).
+  // Données brutes derrière chaque métrique héro : liens payés + factures
+  // payées — toutes des sources de revenu réelles, contrairement à un lien
+  // en attente/expiré ou une facture jamais payée. Pas de source "abonnement"
+  // séparée : un abonnement se règle via une Invoice à chaque cycle, donc son
+  // paiement réel est déjà dans paidInvoices (ajouter en plus la valeur
+  // nominale de l'abonnement compterait ce revenu deux fois). "source"
+  // distingue le taux de commission (heroNetMultiplier).
   function heroSourceItems(metric) {
     if (!activityRaw) return [];
     if (metric === "gross" || metric === "successful" || metric === "net") {
       const paidLinks = (activityRaw.links || []).filter((l) => l.status === "paid").map((l) => ({ ...l, source: "link" }));
       const paidInvoices = (activityRaw.invoices || []).filter((i) => i.status === "paid").map((i) => ({ ...i, source: "invoice" }));
-      const activeSubscriptions = (activityRaw.subscriptions || [])
-        .filter((s) => s.status === "active")
-        .map((s) => ({ ...s, source: "subscription" }));
-      return [...paidLinks, ...paidInvoices, ...activeSubscriptions];
+      return [...paidLinks, ...paidInvoices];
     }
     if (metric === "clients") return activityRaw.clients || [];
     if (metric === "products") return activityRaw.products || [];
