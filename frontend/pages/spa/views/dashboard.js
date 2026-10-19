@@ -122,7 +122,7 @@ export async function mount(container) {
     { key: "clients", label: "Nouveaux clients", icon: "fa-user-plus" },
     { key: "products", label: "Nouveaux produits", icon: "fa-box" },
     { key: "invoices", label: "Factures", icon: "fa-file-invoice" },
-    { key: "subscriptions", label: "Abonnements", icon: "fa-rotate", sourceCurrency: "USD" },
+    { key: "subscriptions", label: "Abonnements", icon: "fa-rotate" },
     { key: "links", label: "Liens de paiement", icon: "fa-link", sourceCurrency: "XOF" },
   ];
 
@@ -632,8 +632,9 @@ export async function mount(container) {
       prevRevenue = cohort.previousTotal;
       currentRevenueDaily = cohort.currentRevenueDaily;
       previousRevenueDaily = cohort.previousRevenueDaily;
-    } else if (cat.key === "invoices") {
-      const filtered = computeFilteredRevenueStats(items, days, (status) => status === "paid");
+    } else if (cat.key === "invoices" || cat.key === "subscriptions") {
+      const isEligible = cat.key === "invoices" ? (status) => status === "paid" : (status) => status === "active";
+      const filtered = computeFilteredRevenueStats(items, days, isEligible);
       curRevenue = filtered.currentTotal;
       prevRevenue = filtered.previousTotal;
       currentRevenueDaily = filtered.currentRevenueDaily;
