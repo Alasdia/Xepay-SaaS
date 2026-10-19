@@ -1,7 +1,9 @@
-// Vue "Dashboard" (accueil) — ne garde plus que la section "Activité" :
-// l'ancien contenu (solde, retrait, création de lien, liste des liens,
-// bannières upgrade) a été retiré à la demande, cette vue n'affiche plus
-// que les 6 blocs d'activité comparant une période à la précédente.
+// Vue "Dashboard" (accueil) — section "Activité" uniquement : pour chaque
+// catégorie (clients, produits, solde, factures, abonnements, liens), deux
+// blocs côte à côte — un pour les revenus générés, un pour le nombre
+// d'éléments — chacun avec sa propre courbe (période actuelle vs
+// précédente), alignés 2 par 2. Les revenus sont affichés dans la devise
+// choisie (USD par défaut), convertis à la volée via /rates.
 import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 
@@ -9,10 +11,17 @@ const TEMPLATE = `
 <div class="activity-section mb-4">
   <div class="activity-section-head">
     <h5 class="fw-bold mb-0 text-muted">📊 Activité</h5>
-    <div class="period-selector" id="period-selector">
-      <button type="button" class="period-btn" data-period="7">7 jours</button>
-      <button type="button" class="period-btn active" data-period="30">30 jours</button>
-      <button type="button" class="period-btn" data-period="90">90 jours</button>
+    <div class="activity-controls">
+      <select class="currency-select" id="activity-currency">
+        <option value="USD" selected>USD</option>
+        <option value="EUR">EUR</option>
+        <option value="XOF">XOF</option>
+      </select>
+      <div class="period-selector" id="period-selector">
+        <button type="button" class="period-btn" data-period="7">7 jours</button>
+        <button type="button" class="period-btn active" data-period="30">30 jours</button>
+        <button type="button" class="period-btn" data-period="90">90 jours</button>
+      </div>
     </div>
   </div>
   <div class="activity-grid" id="activity-grid"></div>
@@ -30,43 +39,50 @@ export async function mount(container) {
   }
 
   /* =====================================================
-     SECTION "ACTIVITÉ" — 6 blocs (clients, produits, solde,
-     factures, abonnements, liens), comparant la période choisie
-     (7/30/90 jours) à la période équivalente précédente.
+     SECTION "ACTIVITÉ" — 6 catégories × 2 blocs (revenus, nombre),
+     comparant la période choisie (7/30/90 jours) à la période
+     équivalente précédente. sourceCurrency = devise dans laquelle le
+     montant brut de la catégorie est exprimé avant conversion :
+     Stripe (clients/produits/abonnements/factures) renvoie en USD sur ce
+     compte ; nos propres endpoints (liens, wallet) sont en XOF.
   ===================================================== */
 
   const DAY_MS = 24 * 60 * 60 * 1000;
 
-  // Les axes du graphe représentent toujours (revenus générés, période) —
-  // jamais un nombre d'éléments. Le nombre reste affiché (countLabel), mais
-  // seulement en texte à côté du chiffre clé, jamais comme donnée du graphe.
-  const ACTIVITY_CONFIG = [
-    { key: "clients", label: "Nouveaux clients", icon: "fa-user-plus", countLabel: "nouveaux clients" },
-    { key: "products", label: "Nouveaux produits", icon: "fa-box", countLabel: "nouveaux produits" },
-    { key: "balance", label: "Variation du solde", icon: "fa-wallet", countLabel: null },
-    { key: "invoices", label: "Factures", icon: "fa-file-invoice", countLabel: "nouvelles factures" },
-    { key: "subscriptions", label: "Abonnements", icon: "fa-rotate", countLabel: "nouveaux abonnements" },
-    { key: "links", label: "Liens de paiement", icon: "fa-link", countLabel: "nouveaux liens" },
+  const ACTIVITY_CATEGORIES = [
+    { key: "clients", label: "Nouveaux clients", icon: "fa-user-plus", sourceCurrency: "USD" },
+    { key: "products", label: "Nouveaux produits", icon: "fa-box", sourceCurrency: "USD" },
+    { key: "balance", label: "Variation du solde", icon: "fa-wallet", sourceCurrency: "XOF" },
+    { key: "invoices", label: "Factures", icon: "fa-file-invoice", sourceCurrency: "USD" },
+    { key: "subscriptions", label: "Abonnements", icon: "fa-rotate", sourceCurrency: "USD" },
+    { key: "links", label: "Liens de paiement", icon: "fa-link", sourceCurrency: "XOF" },
   ];
 
   let activityRaw = null;
   let activityDays = 30;
+  let activityCurrency = "USD";
   const activityCharts = {};
+  const rateCache = {};
 
-  function activityCardHTML(cfg) {
+  function activityCardId(cat, kind) {
+    return `${cat.key}-${kind}`;
+  }
+
+  function activityCardHTML(cat, kind) {
+    const id = activityCardId(cat, kind);
+    const title = kind === "revenue" ? `${cat.label} — Revenus` : `${cat.label} — Nombre`;
     return `
-      <div class="activity-card" data-key="${cfg.key}">
+      <div class="activity-card" data-key="${id}">
         <div class="activity-card-head">
-          <span class="activity-card-icon"><i class="fa-solid ${cfg.icon}"></i></span>
-          <span class="activity-card-title">${cfg.label}</span>
+          <span class="activity-card-icon"><i class="fa-solid ${cat.icon}"></i></span>
+          <span class="activity-card-title">${title}</span>
         </div>
         <div class="activity-card-metric">
-          <span class="activity-value" id="activity-value-${cfg.key}">—</span>
-          <span class="activity-delta" id="activity-delta-${cfg.key}"></span>
+          <span class="activity-value" id="activity-value-${id}">—</span>
+          <span class="activity-delta" id="activity-delta-${id}"></span>
         </div>
-        ${cfg.countLabel ? `<div class="activity-count" id="activity-count-${cfg.key}"></div>` : ""}
         <div class="activity-chart-wrap">
-          <canvas id="activity-chart-${cfg.key}"></canvas>
+          <canvas id="activity-chart-${id}"></canvas>
         </div>
       </div>
     `;
@@ -106,11 +122,12 @@ export async function mount(container) {
     const linksData = await safeJson(linksRes);
     const walletData = await safeJson(walletRes);
 
-    // "value" = revenu généré par l'élément (jamais un simple comptage) :
-    // total dépensé par le client, prix du produit, montant de l'abonnement/
-    // de la facture/du lien. Stripe renvoie ses montants en centimes (voir
-    // le même /100 partout dans commerce.js) ; nos propres endpoints (liens,
-    // wallet) sont déjà en unité pleine (XOF).
+    // "value" = revenu généré par l'élément, dans sa sourceCurrency (jamais
+    // un simple comptage, qui est dérivé séparément à l'affichage) : total
+    // dépensé par le client, prix du produit, montant de l'abonnement/de la
+    // facture/du lien. Stripe renvoie ses montants en centimes (voir le même
+    // /100 partout dans commerce.js) ; nos propres endpoints (liens, wallet)
+    // sont déjà en unité pleine (XOF).
     return {
       clients: (customersData?.data || []).map((c) => ({ ts: toTimestamp(c.created), value: (c.total_spent || 0) / 100 })),
       products: (productsData?.data || []).map((p) => ({
@@ -135,12 +152,33 @@ export async function mount(container) {
     };
   }
 
+  // Taux de change avec cache mémoire (le choix de devise ne redéclenche
+  // que 2 appels réseau max — une sourceCurrency par Stripe/nos endpoints —
+  // jamais un appel par catégorie). Repli sur 1 (pas de conversion) si le
+  // taux est indisponible, pour ne jamais casser l'affichage.
+  async function getRate(from, to) {
+    if (from === to) return 1;
+    const cacheKey = `${from}_${to}`;
+    if (rateCache[cacheKey] != null) return rateCache[cacheKey];
+    try {
+      const res = await apiFetch(`/rates?from_currency=${from}&to_currency=${to}`);
+      if (!res.ok) return 1;
+      const data = await res.json();
+      rateCache[cacheKey] = data.rate;
+      return data.rate;
+    } catch {
+      return 1;
+    }
+  }
+
   function computeActivityStats(items, days) {
     const now = Date.now();
     const currentStart = now - days * DAY_MS;
     const previousStart = now - 2 * days * DAY_MS;
-    const currentDaily = new Array(days).fill(0);
-    const previousDaily = new Array(days).fill(0);
+    const currentRevenueDaily = new Array(days).fill(0);
+    const previousRevenueDaily = new Array(days).fill(0);
+    const currentCountDaily = new Array(days).fill(0);
+    const previousCountDaily = new Array(days).fill(0);
     let currentTotal = 0;
     let previousTotal = 0;
     let currentCount = 0;
@@ -150,18 +188,29 @@ export async function mount(container) {
       if (ts == null) return;
       if (ts >= currentStart && ts <= now) {
         const idx = Math.min(days - 1, Math.max(0, Math.floor((ts - currentStart) / DAY_MS)));
-        currentDaily[idx] += value;
+        currentRevenueDaily[idx] += value;
+        currentCountDaily[idx] += 1;
         currentTotal += value;
         currentCount += 1;
       } else if (ts >= previousStart && ts < currentStart) {
         const idx = Math.min(days - 1, Math.max(0, Math.floor((ts - previousStart) / DAY_MS)));
-        previousDaily[idx] += value;
+        previousRevenueDaily[idx] += value;
+        previousCountDaily[idx] += 1;
         previousTotal += value;
         previousCount += 1;
       }
     });
 
-    return { currentDaily, previousDaily, currentTotal, previousTotal, currentCount, previousCount };
+    return {
+      currentRevenueDaily,
+      previousRevenueDaily,
+      currentCountDaily,
+      previousCountDaily,
+      currentTotal,
+      previousTotal,
+      currentCount,
+      previousCount,
+    };
   }
 
   function buildActivityLabels(days) {
@@ -174,18 +223,28 @@ export async function mount(container) {
     return labels;
   }
 
-  function formatActivityValue(value) {
-    return Math.round(value).toLocaleString("fr-FR") + " XOF";
+  function formatMoney(value, currency) {
+    return Math.round(value).toLocaleString("fr-FR") + " " + currency;
   }
 
-  // Indicateur de pourcentage (hausse/baisse) avec code couleur, basé sur
-  // les revenus (jamais sur un nombre d'éléments) : vert = hausse, rouge =
-  // baisse, gris = stable/pas de référence. Math.abs(previousTotal) au
-  // dénominateur évite qu'un total précédent négatif (solde en baisse)
-  // n'inverse artificiellement le signe du pourcentage affiché.
-  function renderActivityDelta(el, currentTotal, previousTotal) {
-    if (previousTotal === 0) {
-      if (currentTotal === 0) {
+  function formatCount(value) {
+    return Math.round(value).toLocaleString("fr-FR");
+  }
+
+  function setText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
+
+  // Indicateur de pourcentage (hausse/baisse) avec code couleur : vert =
+  // hausse, rouge = baisse, gris = stable/pas de référence. Math.abs(previous)
+  // au dénominateur évite qu'une valeur précédente négative (solde en
+  // baisse) n'inverse artificiellement le signe du pourcentage affiché.
+  function setDelta(id, current, previous) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (previous === 0) {
+      if (current === 0) {
         el.textContent = "—";
         el.className = "activity-delta flat";
       } else {
@@ -194,45 +253,35 @@ export async function mount(container) {
       }
       return;
     }
-    const pct = ((currentTotal - previousTotal) / Math.abs(previousTotal)) * 100;
+    const pct = ((current - previous) / Math.abs(previous)) * 100;
     const sign = pct > 0 ? "+" : "";
     el.textContent = `${sign}${pct.toFixed(0)}% vs précédent`;
     el.className = "activity-delta " + (pct > 0 ? "up" : pct < 0 ? "down" : "flat");
   }
 
-  function renderActivityCard(cfg, items, days) {
-    const { currentDaily, previousDaily, currentTotal, previousTotal, currentCount } = computeActivityStats(items || [], days);
-    const valueEl = document.getElementById(`activity-value-${cfg.key}`);
-    const deltaEl = document.getElementById(`activity-delta-${cfg.key}`);
-    if (valueEl) valueEl.textContent = formatActivityValue(currentTotal);
-    if (deltaEl) renderActivityDelta(deltaEl, currentTotal, previousTotal);
-
-    if (cfg.countLabel) {
-      const countEl = document.getElementById(`activity-count-${cfg.key}`);
-      if (countEl) countEl.textContent = `${currentCount.toLocaleString("fr-FR")} ${cfg.countLabel}`;
-    }
-
-    const canvas = document.getElementById(`activity-chart-${cfg.key}`);
+  function renderOrUpdateChart(id, labels, currentData, previousData, valueFormatter, yAxisLabel) {
+    const canvas = document.getElementById(`activity-chart-${id}`);
     if (!canvas) return;
-    const labels = buildActivityLabels(days);
 
-    if (activityCharts[cfg.key]) {
-      const chart = activityCharts[cfg.key];
+    if (activityCharts[id]) {
+      const chart = activityCharts[id];
       chart.data.labels = labels;
-      chart.data.datasets[0].data = currentDaily;
-      chart.data.datasets[1].data = previousDaily;
+      chart.data.datasets[0].data = currentData;
+      chart.data.datasets[1].data = previousData;
+      chart.options.scales.y.title.text = yAxisLabel;
+      chart.options.plugins.tooltip.callbacks.label = (ctx) => `${ctx.dataset.label}: ${valueFormatter(ctx.parsed.y)}`;
       chart.update();
       return;
     }
 
-    activityCharts[cfg.key] = new Chart(canvas.getContext("2d"), {
+    activityCharts[id] = new Chart(canvas.getContext("2d"), {
       type: "line",
       data: {
         labels,
         datasets: [
           {
             label: "Période actuelle",
-            data: currentDaily,
+            data: currentData,
             borderColor: "#eab308",
             backgroundColor: "rgba(234,179,8,0.1)",
             borderWidth: 2,
@@ -243,7 +292,7 @@ export async function mount(container) {
           },
           {
             label: "Période précédente",
-            data: previousDaily,
+            data: previousData,
             borderColor: "#9ca3af",
             borderDash: [4, 4],
             borderWidth: 2,
@@ -266,7 +315,7 @@ export async function mount(container) {
           },
           tooltip: {
             callbacks: {
-              label: (ctx) => `${ctx.dataset.label}: ${formatActivityValue(ctx.parsed.y)}`,
+              label: (ctx) => `${ctx.dataset.label}: ${valueFormatter(ctx.parsed.y)}`,
             },
           },
         },
@@ -277,7 +326,7 @@ export async function mount(container) {
             ticks: { color: "#9ca3af", font: { size: 10 }, maxRotation: 0, autoSkip: true },
           },
           y: {
-            title: { display: true, text: "Revenus générés (XOF)", color: "#6b7280", font: { size: 11, weight: "600" } },
+            title: { display: true, text: yAxisLabel, color: "#6b7280", font: { size: 11, weight: "600" } },
             beginAtZero: true,
             grid: { color: "#e5e7eb" },
             ticks: {
@@ -291,15 +340,41 @@ export async function mount(container) {
     });
   }
 
-  function renderAllActivityCards() {
+  async function renderCategory(cat, days) {
+    const items = activityRaw ? activityRaw[cat.key] || [] : [];
+    const stats = computeActivityStats(items, days);
+    const rate = (await getRate(cat.sourceCurrency, activityCurrency)) || 1;
+    const labels = buildActivityLabels(days);
+
+    const revId = activityCardId(cat, "revenue");
+    const curRevenue = stats.currentTotal * rate;
+    const prevRevenue = stats.previousTotal * rate;
+    setText(`activity-value-${revId}`, formatMoney(curRevenue, activityCurrency));
+    setDelta(`activity-delta-${revId}`, curRevenue, prevRevenue);
+    renderOrUpdateChart(
+      revId,
+      labels,
+      stats.currentRevenueDaily.map((v) => v * rate),
+      stats.previousRevenueDaily.map((v) => v * rate),
+      (v) => formatMoney(v, activityCurrency),
+      `Revenus générés (${activityCurrency})`
+    );
+
+    const countId = activityCardId(cat, "count");
+    setText(`activity-value-${countId}`, formatCount(stats.currentCount));
+    setDelta(`activity-delta-${countId}`, stats.currentCount, stats.previousCount);
+    renderOrUpdateChart(countId, labels, stats.currentCountDaily, stats.previousCountDaily, formatCount, "Nombre");
+  }
+
+  async function renderAllActivityCards() {
     if (!activityRaw) return;
-    ACTIVITY_CONFIG.forEach((cfg) => renderActivityCard(cfg, activityRaw[cfg.key], activityDays));
+    await Promise.all(ACTIVITY_CATEGORIES.map((cat) => renderCategory(cat, activityDays)));
   }
 
   async function initActivitySection() {
     const grid = document.getElementById("activity-grid");
     if (!grid) return;
-    grid.innerHTML = ACTIVITY_CONFIG.map(activityCardHTML).join("");
+    grid.innerHTML = ACTIVITY_CATEGORIES.flatMap((cat) => [activityCardHTML(cat, "revenue"), activityCardHTML(cat, "count")]).join("");
 
     document.querySelectorAll(".period-btn").forEach((btn) => {
       on(btn, "click", () => {
@@ -309,6 +384,14 @@ export async function mount(container) {
         renderAllActivityCards();
       });
     });
+
+    const currencySelect = document.getElementById("activity-currency");
+    if (currencySelect) {
+      on(currencySelect, "change", () => {
+        activityCurrency = currencySelect.value;
+        renderAllActivityCards();
+      });
+    }
 
     activityRaw = await fetchActivityRawData();
     renderAllActivityCards();
