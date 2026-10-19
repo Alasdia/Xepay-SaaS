@@ -45,10 +45,14 @@ const TEMPLATE = `
           </div>
         </div>
       </div>
+      <div class="hero-stat-caption" id="hero-stat-caption">Volume brut</div>
       <div class="hero-stat-amount-wrap" id="hero-stat-amount-wrap">
         <div class="hero-stat-amount" id="hero-stat-amount">—</div>
         <div class="hero-stat-time" id="hero-stat-time"></div>
-        <div class="hero-stat-hovercard d-none" id="hero-stat-hovercard"></div>
+      </div>
+      <div class="hero-chart-wrap" id="hero-chart-wrap">
+        <canvas id="hero-chart"></canvas>
+        <div class="hero-chart-tooltip" id="hero-chart-tooltip"></div>
       </div>
     </div>
     <div class="hero-balance-side">
@@ -530,14 +534,11 @@ export async function mount(container) {
 
   let heroMetric = "gross";
   let heroGranularity = "day";
-
-  // Bornes (start inclus, end exclu) du jour calendaire "aujourd'hui moins
-  // offsetDays" (0 = aujourd'hui, 1 = hier), en heure locale.
-  function getDayBounds(offsetDays) {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - offsetDays, 0, 0, 0, 0).getTime();
-    return { start, end: start + DAY_MS };
-  }
+  let heroChart = null;
+  // Dates réelles de chaque bucket du graphique héro (mêmes index que les
+  // datasets Chart.js) — lues par le tooltip personnalisé pour afficher la
+  // date/heure exacte du point survolé.
+  let heroBucketDates = { current: [], previous: [] };
 
   // Bornes du jour/mois/année calendaire en cours (start inclus, "now" en
   // borne haute).
@@ -558,22 +559,264 @@ export async function mount(container) {
     return (items || []).filter(({ ts }) => ts != null && ts >= start && ts <= end).length;
   }
 
-  // Valeur d'une métrique héro sur [start, end] — réutilise les mêmes
-  // données brutes que la section "Votre aperçu" (aucun appel réseau
-  // supplémentaire). "gross" = montant nominal de tous les liens créés
-  // (quel que soit leur statut) ; "successful" = nombre de liens payés.
+  // Données brutes derrière chaque métrique héro — mêmes données que la
+  // section "Votre aperçu" (aucun appel réseau supplémentaire). "gross" =
+  // montant nominal de tous les liens créés (quel que soit leur statut) ;
+  // "successful" = liens payés uniquement.
+  function heroSourceItems(metric) {
+    if (!activityRaw) return [];
+    if (metric === "gross") return activityRaw.links || [];
+    if (metric === "successful") return (activityRaw.links || []).filter((l) => l.status === "paid");
+    if (metric === "net") return activityRaw.balance || [];
+    if (metric === "clients") return activityRaw.clients || [];
+    if (metric === "products") return activityRaw.products || [];
+    return [];
+  }
+
+  // Valeur d'une métrique héro sur [start, end] : somme (montants) ou
+  // comptage selon l'unité de la métrique (voir HERO_METRICS).
   function computeHeroValue(metric, start, end) {
-    if (!activityRaw) return 0;
-    if (metric === "gross") return sumInRange(activityRaw.links, start, end);
-    if (metric === "successful") return countInRange((activityRaw.links || []).filter((l) => l.status === "paid"), start, end);
-    if (metric === "net") return sumInRange(activityRaw.balance, start, end);
-    if (metric === "clients") return countInRange(activityRaw.clients, start, end);
-    if (metric === "products") return countInRange(activityRaw.products, start, end);
-    return 0;
+    const items = heroSourceItems(metric);
+    return HERO_METRICS[metric].unit === "currency" ? sumInRange(items, start, end) : countInRange(items, start, end);
   }
 
   function formatHeroValue(metric, value) {
     return HERO_METRICS[metric].unit === "currency" ? formatMoney(value, "XOF") : formatCount(value);
+  }
+
+  /* ---------- Graphique héro : buckets, séries, tooltip personnalisé ---------- */
+
+  // Dates de début de chaque bucket (24h/jours du mois/mois de l'année),
+  // période actuelle et équivalente précédente — via l'arithmétique Date
+  // plutôt qu'une division par une durée fixe, pour gérer correctement les
+  // mois de longueur variable.
+  function buildHeroBuckets(granularity) {
+    const now = new Date();
+    const current = [];
+    const previous = [];
+    if (granularity === "day") {
+      const todayBase = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      for (let h = 0; h < 24; h++) {
+        current.push(new Date(todayBase.getTime() + h * 60 * 60 * 1000));
+        previous.push(new Date(todayBase.getTime() - DAY_MS + h * 60 * 60 * 1000));
+      }
+    } else if (granularity === "month") {
+      const y = now.getFullYear();
+      const m = now.getMonth();
+      const daysInMonth = new Date(y, m + 1, 0).getDate();
+      for (let d = 0; d < daysInMonth; d++) {
+        current.push(new Date(y, m, d + 1));
+        previous.push(new Date(y, m - 1, d + 1));
+      }
+    } else {
+      const y = now.getFullYear();
+      for (let mo = 0; mo < 12; mo++) {
+        current.push(new Date(y, mo, 1));
+        previous.push(new Date(y - 1, mo, 1));
+      }
+    }
+    return { current, previous };
+  }
+
+  // Index du dernier bucket dont le départ est <= ts (buckets triés par
+  // ordre croissant) — fonctionne pour des buckets de longueur variable
+  // (ex: mois), contrairement à une division par une durée fixe.
+  function findBucketIndex(bucketStartsMs, ts) {
+    let idx = -1;
+    for (let i = 0; i < bucketStartsMs.length; i++) {
+      if (ts >= bucketStartsMs[i]) idx = i;
+      else break;
+    }
+    return idx;
+  }
+
+  function computeHeroSeries(metric, granularity) {
+    const { current, previous } = buildHeroBuckets(granularity);
+    const curMs = current.map((d) => d.getTime());
+    const prevMs = previous.map((d) => d.getTime());
+    const n = curMs.length;
+    const currentData = new Array(n).fill(0);
+    const previousData = new Array(n).fill(0);
+    const now = Date.now();
+    const currentStart = curMs[0];
+    const previousStart = prevMs[0];
+    const isCount = HERO_METRICS[metric].unit !== "currency";
+
+    heroSourceItems(metric).forEach(({ ts, value }) => {
+      if (ts == null) return;
+      const amount = isCount ? 1 : value;
+      if (ts >= currentStart && ts <= now) {
+        const idx = findBucketIndex(curMs, ts);
+        if (idx !== -1) currentData[idx] += amount;
+      } else if (ts >= previousStart && ts < currentStart) {
+        const idx = findBucketIndex(prevMs, ts);
+        if (idx !== -1) previousData[idx] += amount;
+      }
+    });
+
+    return { current, previous, currentData, previousData };
+  }
+
+  function formatHeroBucketDate(date, granularity) {
+    if (granularity === "day") {
+      return (
+        date.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "short" }) +
+        " · " +
+        date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+      );
+    }
+    if (granularity === "month") {
+      return date.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
+    }
+    return date.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  }
+
+  // Trait vertical en pointillés qui suit le point survolé — dessiné à
+  // partir des éléments actifs du tooltip Chart.js, donc déjà synchronisé
+  // avec le curseur et masqué quand celui-ci quitte le graphique.
+  const heroCrosshairPlugin = {
+    id: "heroCrosshair",
+    afterDatasetsDraw(chart) {
+      const active = chart.getActiveElements ? chart.getActiveElements() : [];
+      if (!active || !active.length) return;
+      const { top, bottom } = chart.chartArea;
+      const x = active[0].element.x;
+      const ctx = chart.ctx;
+      ctx.save();
+      ctx.beginPath();
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "#9ca3af";
+      ctx.moveTo(x, top);
+      ctx.lineTo(x, bottom);
+      ctx.stroke();
+      ctx.restore();
+    },
+  };
+
+  // Tooltip HTML personnalisé (Chart.js tooltip.external) : date/heure
+  // réelle du bucket + valeur période actuelle/précédente en couleurs
+  // distinctes, repositionné pour ne jamais sortir du graphique.
+  function heroTooltipHandler(context) {
+    const { chart, tooltip } = context;
+    const el = document.getElementById("hero-chart-tooltip");
+    if (!el) return;
+    if (!tooltip || tooltip.opacity === 0 || !tooltip.dataPoints || !tooltip.dataPoints.length) {
+      el.classList.remove("visible");
+      return;
+    }
+
+    const idx = tooltip.dataPoints[0].dataIndex;
+    const currentDate = heroBucketDates.current[idx];
+    const previousDate = heroBucketDates.previous[idx];
+    const currentVal = tooltip.dataPoints.find((dp) => dp.datasetIndex === 0)?.parsed.y ?? 0;
+    const previousVal = tooltip.dataPoints.find((dp) => dp.datasetIndex === 1)?.parsed.y ?? 0;
+
+    el.innerHTML = `
+      <div class="hero-chart-tooltip-date">${currentDate ? formatHeroBucketDate(currentDate, heroGranularity) : ""}</div>
+      <div class="hero-chart-tooltip-row current"><span class="hero-chart-tooltip-dot"></span>Actuelle : ${formatHeroValue(heroMetric, currentVal)}</div>
+      <div class="hero-chart-tooltip-row previous"><span class="hero-chart-tooltip-dot"></span>Précédente${previousDate ? " (" + formatHeroBucketDate(previousDate, heroGranularity) + ")" : ""} : ${formatHeroValue(heroMetric, previousVal)}</div>
+    `;
+    el.classList.add("visible");
+
+    // Repositionnement dans les limites du graphique : à droite du point
+    // par défaut, bascule à gauche si ça dépasserait le bord droit ; au-
+    // dessus du point, bascule en-dessous si ça dépasserait le bord haut.
+    const chartWidth = chart.width;
+    const chartHeight = chart.height;
+    const tooltipWidth = el.offsetWidth;
+    const tooltipHeight = el.offsetHeight;
+    let left = tooltip.caretX + 14;
+    if (left + tooltipWidth > chartWidth) left = tooltip.caretX - tooltipWidth - 14;
+    if (left < 0) left = 4;
+    let top = tooltip.caretY - tooltipHeight - 12;
+    if (top < 0) top = tooltip.caretY + 12;
+    if (top + tooltipHeight > chartHeight) top = chartHeight - tooltipHeight - 4;
+    el.style.left = left + "px";
+    el.style.top = top + "px";
+  }
+
+  function renderHeroChart() {
+    const canvas = document.getElementById("hero-chart");
+    if (!canvas) return;
+    const { current, previous, currentData, previousData } = computeHeroSeries(heroMetric, heroGranularity);
+    heroBucketDates = { current, previous };
+    const labels = current.map((d) => formatHeroBucketDate(d, heroGranularity));
+
+    if (heroChart) {
+      heroChart.data.labels = labels;
+      heroChart.data.datasets[0].data = currentData;
+      heroChart.data.datasets[1].data = previousData;
+      heroChart.update();
+      return;
+    }
+
+    heroChart = new Chart(canvas.getContext("2d"), {
+      type: "line",
+      plugins: [heroCrosshairPlugin],
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "Période actuelle",
+            data: currentData,
+            borderColor: "#eab308",
+            backgroundColor: "rgba(234,179,8,0.1)",
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointHoverBackgroundColor: "#eab308",
+            pointHoverBorderColor: "#ffffff",
+            pointHoverBorderWidth: 2,
+            tension: 0.3,
+            fill: true,
+          },
+          {
+            label: "Période précédente",
+            data: previousData,
+            borderColor: "#9ca3af",
+            borderDash: [4, 4],
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointHoverBackgroundColor: "#9ca3af",
+            pointHoverBorderColor: "#ffffff",
+            pointHoverBorderWidth: 2,
+            tension: 0.3,
+            fill: false,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: {
+            position: "top",
+            align: "end",
+            labels: { boxWidth: 12, boxHeight: 2, color: "#6b7280", font: { size: 13 } },
+          },
+          tooltip: { enabled: false, external: heroTooltipHandler },
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: "#9ca3af", font: { size: 11 }, maxRotation: 0, autoSkip: true } },
+          y: {
+            beginAtZero: true,
+            grace: "5%",
+            grid: { color: "#e5e7eb" },
+            ticks: { color: "#9ca3af", font: { size: 11 }, callback: (val) => Number(val).toLocaleString("fr-FR") },
+          },
+        },
+      },
+    });
+
+    // Masque le tooltip + le trait vertical dès que le curseur quitte la
+    // zone du graphique (évite qu'ils restent affichés "collés").
+    on(canvas, "mouseleave", () => {
+      document.getElementById("hero-chart-tooltip")?.classList.remove("visible");
+      heroChart?.update();
+    });
   }
 
   function renderHeroStat() {
@@ -583,16 +826,12 @@ export async function mount(container) {
     setText("hero-stat-title", HERO_GRANULARITIES[heroGranularity].title);
     setText("metric-selector-label", HERO_METRICS[heroMetric].label);
     setText("granularity-selector-label", HERO_GRANULARITIES[heroGranularity].label);
+    setText("hero-stat-caption", HERO_METRICS[heroMetric].label);
     setText("hero-stat-amount", formatHeroValue(heroMetric, value));
     setText("hero-stat-time", "Mis à jour à " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
     setText("hero-balance-amount", Math.round(activityRaw?.totalBalance || 0).toLocaleString("fr-FR") + " XOF");
 
-    // Toujours "aujourd'hui", peu importe la granularité choisie au-dessus
-    // — sert de repère rapide au survol, comme les tooltips des graphiques.
-    const todayBounds = getDayBounds(0);
-    const todayValue = computeHeroValue(heroMetric, todayBounds.start, todayBounds.end);
-    const hovercard = document.getElementById("hero-stat-hovercard");
-    if (hovercard) hovercard.textContent = `Aujourd'hui : ${formatHeroValue(heroMetric, todayValue)}`;
+    renderHeroChart();
   }
 
   function closeHeroPopups() {
@@ -632,13 +871,6 @@ export async function mount(container) {
       });
     });
     on(document, "click", closeHeroPopups);
-
-    const amountWrap = document.getElementById("hero-stat-amount-wrap");
-    const hovercard = document.getElementById("hero-stat-hovercard");
-    if (amountWrap && hovercard) {
-      on(amountWrap, "mouseenter", () => hovercard.classList.remove("d-none"));
-      on(amountWrap, "mouseleave", () => hovercard.classList.add("d-none"));
-    }
 
     on(document.getElementById("hero-balance-link"), "click", (e) => {
       e.preventDefault();
@@ -680,6 +912,7 @@ export async function mount(container) {
   return {
     unmount() {
       Object.values(activityCharts).forEach((chart) => chart.destroy());
+      heroChart?.destroy();
       boundListeners.forEach(({ target, type, fn }) => target.removeEventListener(type, fn));
     },
   };
