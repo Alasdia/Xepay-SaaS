@@ -49,9 +49,15 @@ const TEMPLATE = `
           </div>
         </div>
       </div>
-      <div class="hero-stat-caption" id="hero-stat-caption">Volume brut</div>
       <div class="hero-stat-amount-wrap" id="hero-stat-amount-wrap">
-        <div class="hero-stat-amount" id="hero-stat-amount">—</div>
+        <div class="hero-stat-amount-line">
+          <div class="hero-stat-amount" id="hero-stat-amount">—</div>
+          <select class="currency-select" id="hero-currency">
+            <option value="XOF" selected>XOF</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+          </select>
+        </div>
         <div class="hero-stat-time" id="hero-stat-time"></div>
       </div>
       <div class="hero-chart-wrap" id="hero-chart-wrap">
@@ -531,6 +537,11 @@ export async function mount(container) {
     products: { label: "Nouveaux produits", unit: "count" },
   };
   let heroMetric = "gross";
+  // Devise d'affichage du montant héro et du graphique (sélecteur à côté
+  // du montant) — "gross"/"net" sont tirés de nos propres données (liens,
+  // wallet), déjà en XOF ; conversion via getRate (mêmes taux fixes que
+  // la section "Votre aperçu").
+  let heroCurrency = "XOF";
   let heroChart = null;
   // Date comparée à "aujourd'hui" dans le graphique héro, choisie dans le
   // Calendar Popover (par défaut : hier). Jamais aujourd'hui/le futur —
@@ -583,15 +594,16 @@ export async function mount(container) {
     return [];
   }
 
-  // Valeur d'une métrique héro sur [start, end] : somme (montants) ou
-  // comptage selon l'unité de la métrique (voir HERO_METRICS).
+  // Valeur d'une métrique héro sur [start, end] : somme (montants, déjà
+  // convertis vers heroCurrency) ou comptage selon l'unité (HERO_METRICS).
   function computeHeroValue(metric, start, end) {
     const items = heroSourceItems(metric);
-    return HERO_METRICS[metric].unit === "currency" ? sumInRange(items, start, end) : countInRange(items, start, end);
+    if (HERO_METRICS[metric].unit !== "currency") return countInRange(items, start, end);
+    return sumInRange(items, start, end) * getRate("XOF", heroCurrency);
   }
 
   function formatHeroValue(metric, value) {
-    return HERO_METRICS[metric].unit === "currency" ? formatMoney(value, "XOF") : formatCount(value);
+    return HERO_METRICS[metric].unit === "currency" ? formatMoney(value, heroCurrency) : formatCount(value);
   }
 
   /* ---------- Graphique héro : buckets, séries, tooltip personnalisé ---------- */
@@ -631,10 +643,11 @@ export async function mount(container) {
     const now = Date.now();
     const previousEnd = prevMs[0] + DAY_MS;
     const isCount = HERO_METRICS[metric].unit !== "currency";
+    const rate = isCount ? 1 : getRate("XOF", heroCurrency);
 
     heroSourceItems(metric).forEach(({ ts, value }) => {
       if (ts == null) return;
-      const amount = isCount ? 1 : value;
+      const amount = isCount ? 1 : value * rate;
       if (ts >= curMs[0] && ts <= now) {
         const idx = findBucketIndex(curMs, ts);
         if (idx !== -1) currentData[idx] += amount;
@@ -706,11 +719,13 @@ export async function mount(container) {
     // Dates exactes à la place de "Actuelle"/"Précédente" : chaque ligne
     // porte sa propre date + heure réelle (les 2 jours comparés ne sont
     // pas forcément consécutifs). L'élément comparé (la métrique choisie,
-    // ex: "Volume brut") est rappelé en en-tête.
+    // ex: "Volume brut") est rappelé en en-tête, séparé des 2 lignes par
+    // un trait fin ; les montants sont en gras.
     el.innerHTML = `
       <div class="hero-chart-tooltip-metric">${HERO_METRICS[heroMetric].label}</div>
-      <div class="hero-chart-tooltip-row current"><span class="hero-chart-tooltip-dot"></span>${currentDate ? formatHeroBucketDate(currentDate) : ""} : ${formatHeroValue(heroMetric, currentVal)}</div>
-      <div class="hero-chart-tooltip-row previous"><span class="hero-chart-tooltip-dot"></span>${previousDate ? formatHeroBucketDate(previousDate) : ""} : ${formatHeroValue(heroMetric, previousVal)}</div>
+      <div class="hero-chart-tooltip-divider"></div>
+      <div class="hero-chart-tooltip-row current"><span class="hero-chart-tooltip-dot"></span>${currentDate ? formatHeroBucketDate(currentDate) : ""} : <strong class="hero-chart-tooltip-value">${formatHeroValue(heroMetric, currentVal)}</strong></div>
+      <div class="hero-chart-tooltip-row previous"><span class="hero-chart-tooltip-dot"></span>${previousDate ? formatHeroBucketDate(previousDate) : ""} : <strong class="hero-chart-tooltip-value">${formatHeroValue(heroMetric, previousVal)}</strong></div>
     `;
     el.classList.add("visible");
 
@@ -827,7 +842,6 @@ export async function mount(container) {
 
     setText("metric-selector-label", HERO_METRICS[heroMetric].label);
     setText("granularity-selector-label", formatCompareDateLabel(heroCompareDate));
-    setText("hero-stat-caption", HERO_METRICS[heroMetric].label);
     setText("hero-stat-amount", formatHeroValue(heroMetric, value));
     setText("hero-stat-time", "Mis à jour à " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
     setText("hero-balance-amount", Math.round(activityRaw?.totalBalance || 0).toLocaleString("fr-FR") + " XOF");
@@ -880,6 +894,14 @@ export async function mount(container) {
   }
 
   function initHeroStat() {
+    const heroCurrencySelect = document.getElementById("hero-currency");
+    if (heroCurrencySelect) {
+      on(heroCurrencySelect, "click", (e) => e.stopPropagation());
+      on(heroCurrencySelect, "change", () => {
+        heroCurrency = heroCurrencySelect.value;
+        renderHeroStat();
+      });
+    }
     on(document.getElementById("metric-selector-btn"), "click", (e) => {
       e.stopPropagation();
       const popup = document.getElementById("metric-popup");
