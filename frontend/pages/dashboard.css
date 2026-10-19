@@ -38,11 +38,15 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
    contenu de cette vue — tout l'ancien visuel (solde, retrait, création de
    lien, liste des liens, bannières upgrade) a été retiré.
    ============================================ */
+/* Taille de police fixe à 13px partout dans cette vue, y compris (et
+   surtout) les chiffres clés : aucun élément de texte de la section
+   Activité ne doit dépasser ou être inférieur à 13px. */
+.activity-section-head h5 { font-size:13px; }
 .activity-section-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px; }
 .activity-controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-.currency-select { border:1px solid #e5e7eb; border-radius:0; background:#ffffff; color:#111827; font-size:12px; font-weight:700; padding:7px 12px; cursor:pointer; }
+.currency-select { border:1px solid #e5e7eb; border-radius:0; background:#ffffff; color:#111827; font-size:13px; font-weight:700; padding:7px 12px; cursor:pointer; }
 .period-selector { display:inline-flex; background:#f3f4f6; border-radius:10px; padding:3px; gap:2px; }
-.period-btn { border:none; background:transparent; color:#6b7280; font-size:12px; font-weight:600; padding:6px 14px; border-radius:8px; cursor:pointer; transition:.15s; }
+.period-btn { border:none; background:transparent; color:#6b7280; font-size:13px; font-weight:600; padding:6px 14px; border-radius:8px; cursor:pointer; transition:.15s; }
 .period-btn:hover { color:#111827; }
 .period-btn.active { background:#ffffff; color:#111827; box-shadow:0 1px 3px rgba(0,0,0,.08); }
 /* 2 blocs par catégorie (revenus, nombre) alignés côte à côte : 2 colonnes
@@ -51,11 +55,11 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .activity-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:20px; }
 .activity-card { background:#ffffff; border:1px solid #e5e7eb; border-radius:0; padding:22px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
 .activity-card-head { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
-.activity-card-icon { width:32px; height:32px; border-radius:8px; background:rgba(250,204,21,0.15); color:#b45309; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
-.activity-card-title { font-size:14px; font-weight:700; color:#374151; }
+.activity-card-icon { width:32px; height:32px; border-radius:8px; background:rgba(250,204,21,0.15); color:#b45309; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
+.activity-card-title { font-size:13px; font-weight:700; color:#374151; }
 .activity-card-metric { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
-.activity-value { font-size:28px; font-weight:800; color:#111827; }
-.activity-delta { font-size:12px; font-weight:600; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+.activity-value { font-size:13px; font-weight:800; color:#111827; }
+.activity-delta { font-size:13px; font-weight:600; padding:2px 8px; border-radius:999px; white-space:nowrap; }
 .activity-delta.up { color:#16a34a; background:rgba(22,163,74,0.1); }
 .activity-delta.down { color:#dc2626; background:rgba(220,38,38,0.1); }
 .activity-delta.flat { color:#6b7280; background:#f3f4f6; }

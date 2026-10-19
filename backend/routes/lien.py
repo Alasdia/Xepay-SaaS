@@ -19,7 +19,6 @@ from backend.middleware.authorization import require_admin, require_owner, requi
 from backend.models import Link, WorkspaceUser, generate_prefixed_id
 from backend.services.stripe_service import create_checkout_session
 from backend.models import Payment
-from backend.services.rates import get_live_rate
 from backend.models import UserDB
 from fastapi import HTTPException
 from backend.auth import get_current_user
@@ -149,21 +148,6 @@ def get_dashboard_links(
             "status": status
         })
     return {"links": result, "paid_this_month": paid_links_count}
-
-@router.get("/rates")
-def get_exchange_rate(
-    from_currency: str,
-    to_currency: str,
-    user: UserDB = Depends(get_current_user),
-):
-    from_c = from_currency.upper()
-    to_c = to_currency.upper()
-    if from_c == to_c:
-        return {"from": from_c, "to": to_c, "rate": 1.0}
-    rate = get_live_rate(from_c, to_c)
-    if rate is None:
-        raise HTTPException(status_code=502, detail="Taux de change indisponible")
-    return {"from": from_c, "to": to_c, "rate": rate}
 
 @router.get("/links", response_model=list[LinkDashboardResponse])
 def get_links(

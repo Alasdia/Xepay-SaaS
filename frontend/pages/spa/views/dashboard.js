@@ -3,7 +3,9 @@
 // blocs côte à côte — un pour les revenus générés, un pour le nombre
 // d'éléments — chacun avec sa propre courbe (période actuelle vs
 // précédente), alignés 2 par 2. Les revenus sont affichés dans la devise
-// choisie (USD par défaut), convertis à la volée via /rates.
+// choisie (USD par défaut), convertis via les mêmes taux fixes que le
+// reste de l'app (voir FIXED_RATES_TO_XOF) plutôt qu'un taux de marché en
+// direct.
 import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 
@@ -62,7 +64,19 @@ export async function mount(container) {
   let activityDays = 30;
   let activityCurrency = "USD";
   const activityCharts = {};
-  const rateCache = {};
+
+  // Taux fixes vers XOF, alignés sur ceux déjà utilisés ailleurs dans
+  // l'app (ex: USD_RATE dans backend/routes/payout.py) plutôt qu'un taux
+  // de marché en direct. EUR/XOF = parité officielle UEMOA/CEMAC.
+  const FIXED_RATES_TO_XOF = { XOF: 1, USD: 577.325, EUR: 655.957 };
+
+  function getRate(from, to) {
+    if (from === to) return 1;
+    const fromToXof = FIXED_RATES_TO_XOF[from];
+    const toToXof = FIXED_RATES_TO_XOF[to];
+    if (!fromToXof || !toToXof) return 1;
+    return fromToXof / toToXof;
+  }
 
   function activityCardId(cat, kind) {
     return `${cat.key}-${kind}`;
@@ -150,25 +164,6 @@ export async function mount(container) {
         value: t.direction === "out" ? -Math.abs(t.amount) : Math.abs(t.amount),
       })),
     };
-  }
-
-  // Taux de change avec cache mémoire (le choix de devise ne redéclenche
-  // que 2 appels réseau max — une sourceCurrency par Stripe/nos endpoints —
-  // jamais un appel par catégorie). Repli sur 1 (pas de conversion) si le
-  // taux est indisponible, pour ne jamais casser l'affichage.
-  async function getRate(from, to) {
-    if (from === to) return 1;
-    const cacheKey = `${from}_${to}`;
-    if (rateCache[cacheKey] != null) return rateCache[cacheKey];
-    try {
-      const res = await apiFetch(`/rates?from_currency=${from}&to_currency=${to}`);
-      if (!res.ok) return 1;
-      const data = await res.json();
-      rateCache[cacheKey] = data.rate;
-      return data.rate;
-    } catch {
-      return 1;
-    }
   }
 
   function computeActivityStats(items, days) {
@@ -311,9 +306,11 @@ export async function mount(container) {
           legend: {
             position: "top",
             align: "end",
-            labels: { boxWidth: 12, boxHeight: 2, color: "#6b7280", font: { size: 11 } },
+            labels: { boxWidth: 12, boxHeight: 2, color: "#6b7280", font: { size: 13 } },
           },
           tooltip: {
+            titleFont: { size: 13 },
+            bodyFont: { size: 13 },
             callbacks: {
               label: (ctx) => `${ctx.dataset.label}: ${valueFormatter(ctx.parsed.y)}`,
             },
@@ -321,17 +318,17 @@ export async function mount(container) {
         },
         scales: {
           x: {
-            title: { display: true, text: "Période (jour)", color: "#6b7280", font: { size: 11, weight: "600" } },
+            title: { display: true, text: "Période (jour)", color: "#6b7280", font: { size: 13, weight: "600" } },
             grid: { display: false },
-            ticks: { color: "#9ca3af", font: { size: 10 }, maxRotation: 0, autoSkip: true },
+            ticks: { color: "#9ca3af", font: { size: 13 }, maxRotation: 0, autoSkip: true },
           },
           y: {
-            title: { display: true, text: yAxisLabel, color: "#6b7280", font: { size: 11, weight: "600" } },
+            title: { display: true, text: yAxisLabel, color: "#6b7280", font: { size: 13, weight: "600" } },
             beginAtZero: true,
             grid: { color: "#e5e7eb" },
             ticks: {
               color: "#9ca3af",
-              font: { size: 10 },
+              font: { size: 13 },
               callback: (val) => Number(val).toLocaleString("fr-FR"),
             },
           },
@@ -343,7 +340,7 @@ export async function mount(container) {
   async function renderCategory(cat, days) {
     const items = activityRaw ? activityRaw[cat.key] || [] : [];
     const stats = computeActivityStats(items, days);
-    const rate = (await getRate(cat.sourceCurrency, activityCurrency)) || 1;
+    const rate = getRate(cat.sourceCurrency, activityCurrency) || 1;
     const labels = buildActivityLabels(days);
 
     const revId = activityCardId(cat, "revenue");
