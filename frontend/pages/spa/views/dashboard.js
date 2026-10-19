@@ -61,6 +61,17 @@ const TEMPLATE = `
     </div>
   </div>
 </div>
+<div class="activity-section mb-4">
+  <div class="activity-section-head">
+    <h5 class="fw-bold mb-0 text-muted">📊 Activité</h5>
+    <div class="period-selector" id="period-selector">
+      <button type="button" class="period-btn" data-period="7">7 jours</button>
+      <button type="button" class="period-btn active" data-period="30">30 jours</button>
+      <button type="button" class="period-btn" data-period="90">90 jours</button>
+    </div>
+  </div>
+  <div class="activity-grid" id="activity-grid"></div>
+</div>
 <div class="card-epay p-3 mb-4">
   <div class="d-flex justify-content-between mb-2">
     <span>Transactions ce mois</span>
@@ -164,6 +175,272 @@ export async function mount(container) {
   function on(target, type, fn) {
     target.addEventListener(type, fn);
     boundListeners.push({ target, type, fn });
+  }
+
+  /* =====================================================
+     SECTION "ACTIVITÉ" — 6 blocs (clients, produits, solde,
+     factures, abonnements, liens), comparant la période choisie
+     (7/30/90 jours) à la période équivalente précédente.
+  ===================================================== */
+
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  const ACTIVITY_CONFIG = [
+    { key: "clients", label: "Nouveaux clients", icon: "fa-user-plus", unit: "count" },
+    { key: "products", label: "Nouveaux produits", icon: "fa-box", unit: "count" },
+    { key: "balance", label: "Variation du solde", icon: "fa-wallet", unit: "currency" },
+    { key: "invoices", label: "Factures", icon: "fa-file-invoice", unit: "count" },
+    { key: "subscriptions", label: "Abonnements", icon: "fa-rotate", unit: "count" },
+    { key: "links", label: "Liens de paiement", icon: "fa-link", unit: "count" },
+  ];
+
+  let activityRaw = null;
+  let activityDays = 30;
+  const activityCharts = {};
+
+  function activityCardHTML(cfg) {
+    return `
+      <div class="activity-card" data-key="${cfg.key}">
+        <div class="activity-card-head">
+          <span class="activity-card-icon"><i class="fa-solid ${cfg.icon}"></i></span>
+          <span class="activity-card-title">${cfg.label}</span>
+        </div>
+        <div class="activity-card-metric">
+          <span class="activity-value" id="activity-value-${cfg.key}">—</span>
+          <span class="activity-delta" id="activity-delta-${cfg.key}"></span>
+        </div>
+        <div class="activity-chart-wrap">
+          <canvas id="activity-chart-${cfg.key}"></canvas>
+        </div>
+      </div>
+    `;
+  }
+
+  // Unix (secondes, objets Stripe) ou ISO (nos propres endpoints) -> ms.
+  function toTimestamp(raw) {
+    if (raw == null) return null;
+    if (typeof raw === "number") return raw * 1000;
+    const t = new Date(raw).getTime();
+    return Number.isNaN(t) ? null : t;
+  }
+
+  async function safeJson(settled) {
+    if (settled.status !== "fulfilled" || !settled.value.ok) return null;
+    try {
+      return await settled.value.json();
+    } catch {
+      return null;
+    }
+  }
+
+  async function fetchActivityRawData() {
+    const [customersRes, productsRes, subscriptionsRes, invoicesRes, linksRes, walletRes] = await Promise.allSettled([
+      apiFetch("/stripe/connect/customers"),
+      apiFetch("/stripe/connect/products"),
+      apiFetch("/stripe/connect/subscriptions"),
+      apiFetch("/stripe/connect/invoices"),
+      apiFetch("/links?limit=200&offset=0"),
+      apiFetch("/wallet/history?limit=300"),
+    ]);
+
+    const customersData = await safeJson(customersRes);
+    const productsData = await safeJson(productsRes);
+    const subscriptionsData = await safeJson(subscriptionsRes);
+    const invoicesData = await safeJson(invoicesRes);
+    const linksData = await safeJson(linksRes);
+    const walletData = await safeJson(walletRes);
+
+    return {
+      clients: (customersData?.data || []).map((c) => ({ ts: toTimestamp(c.created), value: 1 })),
+      products: (productsData?.data || []).map((p) => ({ ts: toTimestamp(p.created), value: 1 })),
+      subscriptions: (subscriptionsData?.data || []).map((s) => ({ ts: toTimestamp(s.created), value: 1 })),
+      invoices: (invoicesData?.data || []).map((i) => ({ ts: toTimestamp(i.created), value: 1 })),
+      links: (Array.isArray(linksData) ? linksData : []).map((l) => ({ ts: toTimestamp(l.created_at), value: 1 })),
+      balance: (walletData?.transactions || []).map((t) => ({
+        ts: toTimestamp(t.created_at),
+        value: t.direction === "out" ? -Math.abs(t.amount) : Math.abs(t.amount),
+      })),
+    };
+  }
+
+  function computeActivityStats(items, days) {
+    const now = Date.now();
+    const currentStart = now - days * DAY_MS;
+    const previousStart = now - 2 * days * DAY_MS;
+    const currentDaily = new Array(days).fill(0);
+    const previousDaily = new Array(days).fill(0);
+    let currentTotal = 0;
+    let previousTotal = 0;
+
+    items.forEach(({ ts, value }) => {
+      if (ts == null) return;
+      if (ts >= currentStart && ts <= now) {
+        const idx = Math.min(days - 1, Math.max(0, Math.floor((ts - currentStart) / DAY_MS)));
+        currentDaily[idx] += value;
+        currentTotal += value;
+      } else if (ts >= previousStart && ts < currentStart) {
+        const idx = Math.min(days - 1, Math.max(0, Math.floor((ts - previousStart) / DAY_MS)));
+        previousDaily[idx] += value;
+        previousTotal += value;
+      }
+    });
+
+    return { currentDaily, previousDaily, currentTotal, previousTotal };
+  }
+
+  function buildActivityLabels(days) {
+    const now = new Date();
+    const labels = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * DAY_MS);
+      labels.push(d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }));
+    }
+    return labels;
+  }
+
+  function formatActivityValue(unit, value) {
+    if (unit === "currency") {
+      return Math.round(value).toLocaleString("fr-FR") + " XOF";
+    }
+    return Math.round(value).toLocaleString("fr-FR");
+  }
+
+  function renderActivityDelta(el, unit, currentTotal, previousTotal) {
+    if (unit === "currency") {
+      const diff = currentTotal - previousTotal;
+      const sign = diff > 0 ? "+" : "";
+      el.textContent = `${sign}${Math.round(diff).toLocaleString("fr-FR")} XOF vs précédent`;
+      el.className = "activity-delta " + (diff > 0 ? "up" : diff < 0 ? "down" : "flat");
+      return;
+    }
+    if (previousTotal === 0) {
+      if (currentTotal === 0) {
+        el.textContent = "—";
+        el.className = "activity-delta flat";
+      } else {
+        el.textContent = "Nouveau";
+        el.className = "activity-delta up";
+      }
+      return;
+    }
+    const pct = ((currentTotal - previousTotal) / previousTotal) * 100;
+    const sign = pct > 0 ? "+" : "";
+    el.textContent = `${sign}${pct.toFixed(0)}% vs précédent`;
+    el.className = "activity-delta " + (pct > 0 ? "up" : pct < 0 ? "down" : "flat");
+  }
+
+  function renderActivityCard(cfg, items, days) {
+    const { currentDaily, previousDaily, currentTotal, previousTotal } = computeActivityStats(items || [], days);
+    const valueEl = document.getElementById(`activity-value-${cfg.key}`);
+    const deltaEl = document.getElementById(`activity-delta-${cfg.key}`);
+    if (valueEl) valueEl.textContent = formatActivityValue(cfg.unit, currentTotal);
+    if (deltaEl) renderActivityDelta(deltaEl, cfg.unit, currentTotal, previousTotal);
+
+    const canvas = document.getElementById(`activity-chart-${cfg.key}`);
+    if (!canvas) return;
+    const labels = buildActivityLabels(days);
+
+    if (activityCharts[cfg.key]) {
+      const chart = activityCharts[cfg.key];
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = currentDaily;
+      chart.data.datasets[1].data = previousDaily;
+      chart.update();
+      return;
+    }
+
+    activityCharts[cfg.key] = new Chart(canvas.getContext("2d"), {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "Période actuelle",
+            data: currentDaily,
+            borderColor: "#eab308",
+            backgroundColor: "rgba(234,179,8,0.1)",
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            tension: 0.3,
+            fill: true,
+          },
+          {
+            label: "Période précédente",
+            data: previousDaily,
+            borderColor: "#9ca3af",
+            borderDash: [4, 4],
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            tension: 0.3,
+            fill: false,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: {
+            position: "top",
+            align: "end",
+            labels: { boxWidth: 12, boxHeight: 2, color: "#6b7280", font: { size: 11 } },
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label}: ${formatActivityValue(cfg.unit, ctx.parsed.y)}`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            title: { display: true, text: "Jour", color: "#6b7280", font: { size: 11, weight: "600" } },
+            grid: { display: false },
+            ticks: { color: "#9ca3af", font: { size: 10 }, maxRotation: 0, autoSkip: true },
+          },
+          y: {
+            title: {
+              display: true,
+              text: cfg.unit === "currency" ? "Montant (XOF)" : "Nombre",
+              color: "#6b7280",
+              font: { size: 11, weight: "600" },
+            },
+            beginAtZero: true,
+            grid: { color: "#e5e7eb" },
+            ticks: {
+              color: "#9ca3af",
+              font: { size: 10 },
+              callback: (val) => (cfg.unit === "currency" ? Number(val).toLocaleString("fr-FR") : val),
+            },
+          },
+        },
+      },
+    });
+  }
+
+  function renderAllActivityCards() {
+    if (!activityRaw) return;
+    ACTIVITY_CONFIG.forEach((cfg) => renderActivityCard(cfg, activityRaw[cfg.key], activityDays));
+  }
+
+  async function initActivitySection() {
+    const grid = document.getElementById("activity-grid");
+    if (!grid) return;
+    grid.innerHTML = ACTIVITY_CONFIG.map(activityCardHTML).join("");
+
+    document.querySelectorAll(".period-btn").forEach((btn) => {
+      on(btn, "click", () => {
+        document.querySelectorAll(".period-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        activityDays = Number(btn.dataset.period);
+        renderAllActivityCards();
+      });
+    });
+
+    activityRaw = await fetchActivityRawData();
+    renderAllActivityCards();
   }
 
   async function loadProfileHeader() {
@@ -507,6 +784,7 @@ export async function mount(container) {
   chargerWallet();
   loadLinks();
   loadWorkspaces();
+  initActivitySection();
 
   const params = new URLSearchParams(window.location.search);
   if (params.get("upgrade") === "1") upgrade("pro");
@@ -535,6 +813,7 @@ export async function mount(container) {
         document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
       }
       withdrawModalEl?.remove();
+      Object.values(activityCharts).forEach((chart) => chart.destroy());
       if (lockedCountdownTimer) clearInterval(lockedCountdownTimer);
       boundListeners.forEach(({ target, type, fn }) => target.removeEventListener(type, fn));
       mq.removeEventListener("change", placeButton);
