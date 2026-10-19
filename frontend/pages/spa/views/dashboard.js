@@ -119,7 +119,7 @@ export async function mount(container) {
   const DAY_MS = 24 * 60 * 60 * 1000;
 
   const ACTIVITY_CATEGORIES = [
-    { key: "clients", label: "Nouveaux clients", icon: "fa-user-plus", sourceCurrency: "USD" },
+    { key: "clients", label: "Nouveaux clients", icon: "fa-user-plus" },
     { key: "products", label: "Nouveaux produits", icon: "fa-box", sourceCurrency: "USD" },
     { key: "invoices", label: "Factures", icon: "fa-file-invoice", sourceCurrency: "USD" },
     { key: "subscriptions", label: "Abonnements", icon: "fa-rotate", sourceCurrency: "USD" },
@@ -244,13 +244,15 @@ export async function mount(container) {
     const walletMeData = await safeJson(walletMeRes);
 
     // "value" = revenu généré par l'élément, dans sa sourceCurrency (jamais
-    // un simple comptage, qui est dérivé séparément à l'affichage) : total
-    // dépensé par le client, prix du produit, montant de l'abonnement/de la
-    // facture/du lien. Stripe renvoie ses montants en centimes (voir le même
-    // /100 partout dans commerce.js) ; nos propres endpoints (liens, wallet)
-    // sont déjà en unité pleine (XOF).
+    // un simple comptage, qui est dérivé séparément à l'affichage) : prix du
+    // produit, montant de l'abonnement/de la facture/du lien. Stripe renvoie
+    // ses montants en centimes (voir le même /100 partout dans commerce.js) ;
+    // nos propres endpoints (liens, wallet) sont déjà en unité pleine (XOF).
+    // "clients" n'a pas de "value" propre : son revenu ne vient pas d'un
+    // champ Stripe (voir computeClientCohortRevenue) mais des factures/
+    // abonnements rattachés via customerId, croisés au rendu.
     return {
-      clients: (customersData?.data || []).map((c) => ({ ts: toTimestamp(c.created), value: (c.total_spent || 0) / 100 })),
+      clients: (customersData?.data || []).map((c) => ({ id: c.id, ts: toTimestamp(c.created) })),
       products: (productsData?.data || []).map((p) => ({
         ts: toTimestamp(p.created),
         value: (p.prices?.[0]?.unit_amount || 0) / 100,
@@ -258,6 +260,8 @@ export async function mount(container) {
       // status + currency conservés ici aussi : utilisés par le bloc héro
       // pour ne garder que les abonnements actifs (paiement effectif) et
       // convertir depuis leur vraie devise (Stripe, pas forcément XOF).
+      // customerId : utilisé par computeClientCohortRevenue pour rattacher
+      // ce paiement au client Stripe qui l'a généré.
       subscriptions: (subscriptionsData?.data || []).map((s) => {
         const item = s.items?.data?.[0];
         const unitAmount = item?.price?.unit_amount || 0;
@@ -267,15 +271,18 @@ export async function mount(container) {
           value: (unitAmount * quantity) / 100,
           status: s.status,
           currency: (item?.price?.currency || "usd").toUpperCase(),
+          customerId: s.customer || null,
         };
       }),
       // status + currency : le bloc héro ne garde que les factures payées
-      // ("paid"), converties depuis leur vraie devise.
+      // ("paid"), converties depuis leur vraie devise. customerId : idem
+      // abonnements, pour le rattachement au bon client.
       invoices: (invoicesData?.data || []).map((i) => ({
         ts: toTimestamp(i.created),
         value: (i.amount_paid || i.amount_due || 0) / 100,
         status: i.status,
         currency: (i.currency || "usd").toUpperCase(),
+        customerId: i.customer || null,
       })),
       // status conservé ici (utilisé par le bloc "Nombre" des liens pour
       // les distinguer payé/en attente/expiré, et par le bloc héro pour
@@ -336,6 +343,61 @@ export async function mount(container) {
       previousTotal,
       currentCount,
       previousCount,
+    };
+  }
+
+  // "Nouveaux clients — Revenus" représente l'argent réellement encaissé
+  // auprès des clients acquis pendant la période, et seulement pendant
+  // cette même période — pas le total_spent cumulatif de Stripe, qui
+  // grossit indéfiniment et biaise la comparaison en faveur des cohortes
+  // les plus anciennes (plus de temps pour dépenser). Les liens de paiement
+  // ne sont pas rattachés à un client Stripe (voir fetchActivityRawData) :
+  // ils sont donc exclus de ce calcul, qui ne porte que sur factures payées
+  // + abonnements actifs, croisés par customerId.
+  function computeClientCohortRevenue(days) {
+    const now = Date.now();
+    const currentStart = now - days * DAY_MS;
+    const previousStart = now - 2 * days * DAY_MS;
+
+    const paymentsByCustomer = new Map();
+    const addPayments = (list, isEligible) => {
+      (list || []).forEach((p) => {
+        if (!p.customerId || p.ts == null || !isEligible(p.status)) return;
+        if (!paymentsByCustomer.has(p.customerId)) paymentsByCustomer.set(p.customerId, []);
+        paymentsByCustomer.get(p.customerId).push(p);
+      });
+    };
+    addPayments(activityRaw.invoices, (status) => status === "paid");
+    addPayments(activityRaw.subscriptions, (status) => status === "active");
+
+    function revenueForWindow(clientsInWindow, windowStart) {
+      const daily = new Array(days).fill(0);
+      let total = 0;
+      clientsInWindow.forEach((c) => {
+        const payments = paymentsByCustomer.get(c.id) || [];
+        const idx = Math.min(days - 1, Math.max(0, Math.floor((c.ts - windowStart) / DAY_MS)));
+        payments.forEach((p) => {
+          if (p.ts < windowStart || p.ts >= windowStart + days * DAY_MS) return;
+          const amount = p.value * getRate(p.currency || "USD", activityCurrency);
+          daily[idx] += amount;
+          total += amount;
+        });
+      });
+      return { daily, total };
+    }
+
+    const clients = activityRaw.clients || [];
+    const currentClients = clients.filter((c) => c.ts != null && c.ts >= currentStart && c.ts <= now);
+    const previousClients = clients.filter((c) => c.ts != null && c.ts >= previousStart && c.ts < currentStart);
+
+    const current = revenueForWindow(currentClients, currentStart);
+    const previous = revenueForWindow(previousClients, previousStart);
+
+    return {
+      currentRevenueDaily: current.daily,
+      previousRevenueDaily: previous.daily,
+      currentTotal: current.total,
+      previousTotal: previous.total,
     };
   }
 
@@ -510,21 +572,30 @@ export async function mount(container) {
   async function renderCategory(cat, days) {
     const items = activityRaw ? activityRaw[cat.key] || [] : [];
     const stats = computeActivityStats(items, days);
-    const rate = getRate(cat.sourceCurrency, activityCurrency) || 1;
     const labels = buildActivityLabels(days);
 
+    let curRevenue, prevRevenue, currentRevenueDaily, previousRevenueDaily;
+    if (cat.key === "clients") {
+      const cohort = computeClientCohortRevenue(days);
+      curRevenue = cohort.currentTotal;
+      prevRevenue = cohort.previousTotal;
+      currentRevenueDaily = cohort.currentRevenueDaily;
+      previousRevenueDaily = cohort.previousRevenueDaily;
+    } else {
+      const rate = getRate(cat.sourceCurrency, activityCurrency) || 1;
+      curRevenue = stats.currentTotal * rate;
+      prevRevenue = stats.previousTotal * rate;
+      currentRevenueDaily = stats.currentRevenueDaily.map((v) => v * rate);
+      previousRevenueDaily = stats.previousRevenueDaily.map((v) => v * rate);
+    }
+
     const revId = activityCardId(cat, "revenue");
-    const curRevenue = stats.currentTotal * rate;
-    const prevRevenue = stats.previousTotal * rate;
     setText(`activity-value-${revId}`, formatMoney(curRevenue, activityCurrency));
     setDelta(`activity-delta-${revId}`, curRevenue, prevRevenue);
     renderOrUpdateChart(
       revId,
       labels,
-      buildComparisonDatasets(
-        stats.currentRevenueDaily.map((v) => v * rate),
-        stats.previousRevenueDaily.map((v) => v * rate)
-      ),
+      buildComparisonDatasets(currentRevenueDaily, previousRevenueDaily),
       (v) => formatMoney(v, activityCurrency),
       `Revenus générés (${activityCurrency})`
     );
