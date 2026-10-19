@@ -70,20 +70,23 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .hero-popup-item { display:block; width:100%; text-align:left; border:none; background:transparent; padding:8px 10px; font-size:13px; color:#374151; cursor:pointer; }
 .hero-popup-item:hover { background:#f3f4f6; }
 .hero-popup-item.active { color:#111827; font-weight:700; background:#f3f4f6; }
-.hero-stat-amount-wrap { position:relative; display:inline-block; }
+/* padding-left aligné sur celui de .hero-selector-btn (12px) : le texte du
+   montant démarre ainsi exactement sous le texte de la métrique choisie
+   (ex: "Volume brut"), pas sous le bord du bouton. */
+.hero-stat-amount-wrap { position:relative; display:inline-block; padding-left:12px; box-sizing:border-box; }
 .hero-stat-amount-line { display:flex; align-items:center; gap:4px; }
-/* Montants à 13px partout dans ce bloc (chiffre clé, solde) — exception
-   assumée au style "hero" plus imposant d'avant, sur demande explicite. */
-.hero-stat-amount { font-size:13px; font-weight:800; color:#111827; }
+/* Même taille que "Aujourd'hui" (.hero-stat-title) pour tous les montants
+   clés de la page — ici et dans "Votre aperçu" (.activity-value). */
+.hero-stat-amount { font-size:20px; font-weight:800; color:#111827; }
 .hero-stat-time { font-size:13px; color:#9ca3af; margin-top:4px; }
 /* Graphique héro : trait vertical en pointillés + point survolé (dessinés
    par Chart.js/heroCrosshairPlugin) et tooltip HTML personnalisé
-   (hero-chart-tooltip, positionné en JS pour ne jamais sortir du cadre).
-   100% de .hero-stat-main, qui fait déjà 70% de la ligne. Fond à opacité
-   élevée (quasi plein) pour que le bloc se détache nettement de la page. */
-.hero-chart-wrap { position:relative; width:100%; height:156px; margin-top:18px; background:rgba(255,255,255,0.97); padding:12px; box-sizing:border-box; }
+   (hero-chart-tooltip, positionné en JS sous l'axe X, jamais sur le
+   graphe). 100% de .hero-stat-main, qui fait déjà 70% de la ligne. Pas de
+   fond : le graphique reste posé sur la page, comme le reste du bloc. */
+.hero-chart-wrap { position:relative; width:100%; height:156px; margin-top:18px; }
 .hero-chart-wrap canvas { width:100% !important; height:100% !important; }
-.hero-chart-tooltip { position:absolute; opacity:0; pointer-events:none; transition:opacity .1s ease; background:#d1d5db; border:1px solid #d1d5db; border-radius:0; box-shadow:0 10px 30px rgba(0,0,0,.12); padding:10px 12px; font-size:13px; color:#111827; white-space:nowrap; z-index:20; }
+.hero-chart-tooltip { position:absolute; opacity:0; pointer-events:none; transition:opacity .1s ease; background:#ffffff; border:1px solid #e5e7eb; border-radius:0; box-shadow:0 10px 30px rgba(0,0,0,.12); padding:10px 12px; font-size:13px; color:#111827; white-space:nowrap; z-index:20; }
 .hero-chart-tooltip.visible { opacity:1; }
 .hero-chart-tooltip-divider { height:1px; background:#e5e7eb; margin:6px 0 8px; }
 .hero-chart-tooltip-value { font-weight:700; }
@@ -112,7 +115,7 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
    contrainte de 20%. */
 .hero-balance-side { flex:0 1 auto; text-align:left; display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
 .hero-balance-label { font-size:13px; color:#6b7280; }
-.hero-balance-amount { font-size:13px; font-weight:800; color:#111827; }
+.hero-balance-amount { font-size:20px; font-weight:800; color:#111827; }
 .hero-balance-link { display:inline-flex; align-items:center; gap:6px; color:#111827; font-size:13px; font-weight:600; text-decoration:none; }
 .hero-balance-link i { font-size:10px; }
 .hero-balance-link:hover { color:#6b7280; }
@@ -127,9 +130,10 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
    contenu de cette vue — tout l'ancien visuel (solde, retrait, création de
    lien, liste des liens, bannières upgrade) a été retiré.
    ============================================ */
-/* Taille de police fixe à 13px partout dans cette vue, y compris (et
-   surtout) les chiffres clés : aucun élément de texte de la section
-   Activité ne doit dépasser ou être inférieur à 13px. */
+/* Taille de police fixe à 13px partout dans cette vue — sauf les chiffres
+   clés (.activity-value), qui reprennent la taille de "Aujourd'hui" du
+   bloc héro (20px, voir .hero-stat-title) pour rester cohérents avec les
+   montants de ce bloc. */
 .activity-section-head h5 { font-size:13px; }
 .activity-section-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px; }
 .activity-controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
@@ -147,7 +151,7 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .activity-card-icon { width:32px; height:32px; border-radius:8px; background:rgba(250,204,21,0.15); color:#b45309; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
 .activity-card-title { font-size:13px; font-weight:700; color:#374151; }
 .activity-card-metric { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
-.activity-value { font-size:13px; font-weight:800; color:#111827; }
+.activity-value { font-size:20px; font-weight:800; color:#111827; }
 .activity-delta { font-size:13px; font-weight:600; padding:2px 8px; border-radius:999px; white-space:nowrap; }
 .activity-delta.up { color:#16a34a; background:rgba(22,163,74,0.1); }
 .activity-delta.down { color:#dc2626; background:rgba(220,38,38,0.1); }

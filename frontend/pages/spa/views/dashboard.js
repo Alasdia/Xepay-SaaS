@@ -734,21 +734,17 @@ export async function mount(container) {
     `;
     el.classList.add("visible");
 
-    // Repositionnement dans les limites du graphique : à droite du point
-    // par défaut, bascule à gauche si ça dépasserait le bord droit ; au-
-    // dessus du point, bascule en-dessous si ça dépasserait le bord haut.
+    // Toujours sous l'axe X (jamais dans/sur le graphe) : position
+    // verticale fixe, juste sous la zone de tracé — seule la position
+    // horizontale suit le point survolé, bornée pour ne pas sortir du
+    // cadre du graphique.
     const chartWidth = chart.width;
-    const chartHeight = chart.height;
     const tooltipWidth = el.offsetWidth;
-    const tooltipHeight = el.offsetHeight;
-    let left = tooltip.caretX + 14;
-    if (left + tooltipWidth > chartWidth) left = tooltip.caretX - tooltipWidth - 14;
+    let left = tooltip.caretX - tooltipWidth / 2;
     if (left < 0) left = 4;
-    let top = tooltip.caretY - tooltipHeight - 12;
-    if (top < 0) top = tooltip.caretY + 12;
-    if (top + tooltipHeight > chartHeight) top = chartHeight - tooltipHeight - 4;
+    if (left + tooltipWidth > chartWidth) left = chartWidth - tooltipWidth - 4;
     el.style.left = left + "px";
-    el.style.top = top + "px";
+    el.style.top = chart.chartArea.bottom + 8 + "px";
   }
 
   function renderHeroChart() {
