@@ -57,9 +57,9 @@ const TEMPLATE = `
               <i class="fa-solid fa-chevron-down"></i>
             </button>
             <div class="hero-popup d-none" id="hero-currency-popup">
-              <button type="button" class="hero-popup-item active" data-currency="XOF">XOF</button>
-              <button type="button" class="hero-popup-item" data-currency="USD">USD</button>
+              <button type="button" class="hero-popup-item active" data-currency="USD">USD</button>
               <button type="button" class="hero-popup-item" data-currency="EUR">EUR</button>
+              <button type="button" class="hero-popup-item" data-currency="XOF">XOF</button>
             </div>
           </div>
         </div>
@@ -255,22 +255,39 @@ export async function mount(container) {
         ts: toTimestamp(p.created),
         value: (p.prices?.[0]?.unit_amount || 0) / 100,
       })),
+      // status + currency conservés ici aussi : utilisés par le bloc héro
+      // pour ne garder que les abonnements actifs (paiement effectif) et
+      // convertir depuis leur vraie devise (Stripe, pas forcément XOF).
       subscriptions: (subscriptionsData?.data || []).map((s) => {
         const item = s.items?.data?.[0];
         const unitAmount = item?.price?.unit_amount || 0;
         const quantity = item?.quantity || 1;
-        return { ts: toTimestamp(s.created), value: (unitAmount * quantity) / 100 };
+        return {
+          ts: toTimestamp(s.created),
+          value: (unitAmount * quantity) / 100,
+          status: s.status,
+          currency: (item?.price?.currency || "usd").toUpperCase(),
+        };
       }),
+      // status + currency : le bloc héro ne garde que les factures payées
+      // ("paid"), converties depuis leur vraie devise.
       invoices: (invoicesData?.data || []).map((i) => ({
         ts: toTimestamp(i.created),
         value: (i.amount_paid || i.amount_due || 0) / 100,
+        status: i.status,
+        currency: (i.currency || "usd").toUpperCase(),
       })),
-      // status conservé ici (utilisé uniquement par le bloc "Nombre" des
-      // liens, pour les distinguer payé/en attente/expiré).
+      // status conservé ici (utilisé par le bloc "Nombre" des liens pour
+      // les distinguer payé/en attente/expiré, et par le bloc héro pour
+      // ne garder que les liens payés). currency conservée aussi : un
+      // lien est créé en USD ou EUR (voir le sélecteur de devise de la
+      // vue Liens), jamais en XOF — indispensable pour convertir
+      // correctement vers la devise choisie dans le bloc héro.
       links: (Array.isArray(linksData) ? linksData : []).map((l) => ({
         ts: toTimestamp(l.created_at),
         value: l.amount || 0,
         status: l.status,
+        currency: (l.currency || "USD").toUpperCase(),
       })),
       balance: (walletData?.transactions || []).map((t) => ({
         ts: toTimestamp(t.created_at),
@@ -543,10 +560,11 @@ export async function mount(container) {
   };
   let heroMetric = "gross";
   // Devise d'affichage du montant héro et du graphique (sélecteur à côté
-  // du montant) — "gross"/"net" sont tirés de nos propres données (liens,
-  // wallet), déjà en XOF ; conversion via getRate (mêmes taux fixes que
-  // la section "Votre aperçu").
-  let heroCurrency = "XOF";
+  // du montant). USD par défaut : "gross"/"net" viennent des liens, créés
+  // en USD ou EUR (jamais en XOF, voir le sélecteur de devise de la vue
+  // Liens) — chaque lien est converti depuis SA PROPRE devise (item.currency)
+  // vers heroCurrency via getRate (mêmes taux fixes que "Votre aperçu").
+  let heroCurrency = "USD";
   let heroChart = null;
   // Date comparée à "aujourd'hui" dans le graphique héro, choisie dans le
   // Calendar Popover (par défaut : hier). Jamais aujourd'hui/le futur —
@@ -577,34 +595,49 @@ export async function mount(container) {
     return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
   }
 
-  function sumInRange(items, start, end) {
-    return (items || []).reduce((sum, { ts, value }) => (ts != null && ts >= start && ts <= end ? sum + value : sum), 0);
-  }
-
   function countInRange(items, start, end) {
     return (items || []).filter(({ ts }) => ts != null && ts >= start && ts <= end).length;
   }
 
-  // Données brutes derrière chaque métrique héro — mêmes données que la
-  // section "Votre aperçu" (aucun appel réseau supplémentaire). "gross" =
-  // montant nominal de tous les liens créés (quel que soit leur statut) ;
-  // "successful" = liens payés uniquement.
+  // "Volume net" = montant payé moins la commission Xepay — 6% sur les
+  // liens (voir le 0.94 déjà appliqué côté backend, routes/payments.py),
+  // 1% sur les factures/abonnements (application_fee_percent/amount dans
+  // routes/webhook/stripe.py) : le taux dépend de la source de l'item,
+  // pas de la métrique elle-même.
+  function heroNetMultiplier(source) {
+    return source === "link" ? 0.94 : 0.99;
+  }
+
+  // Données brutes derrière chaque métrique héro : liens + factures payés,
+  // abonnements actifs (paiement effectif) — toutes des sources de revenu
+  // réelles, contrairement à un lien en attente/expiré ou un abonnement
+  // jamais payé. "source" distingue le taux de commission (heroNetMultiplier).
   function heroSourceItems(metric) {
     if (!activityRaw) return [];
-    if (metric === "gross") return activityRaw.links || [];
-    if (metric === "successful") return (activityRaw.links || []).filter((l) => l.status === "paid");
-    if (metric === "net") return activityRaw.balance || [];
+    if (metric === "gross" || metric === "successful" || metric === "net") {
+      const paidLinks = (activityRaw.links || []).filter((l) => l.status === "paid").map((l) => ({ ...l, source: "link" }));
+      const paidInvoices = (activityRaw.invoices || []).filter((i) => i.status === "paid").map((i) => ({ ...i, source: "invoice" }));
+      const activeSubscriptions = (activityRaw.subscriptions || [])
+        .filter((s) => s.status === "active")
+        .map((s) => ({ ...s, source: "subscription" }));
+      return [...paidLinks, ...paidInvoices, ...activeSubscriptions];
+    }
     if (metric === "clients") return activityRaw.clients || [];
     if (metric === "products") return activityRaw.products || [];
     return [];
   }
 
-  // Valeur d'une métrique héro sur [start, end] : somme (montants, déjà
-  // convertis vers heroCurrency) ou comptage selon l'unité (HERO_METRICS).
+  // Valeur d'une métrique héro sur [start, end] : somme (montants, chacun
+  // converti depuis SA PROPRE devise vers heroCurrency) ou comptage selon
+  // l'unité (HERO_METRICS).
   function computeHeroValue(metric, start, end) {
     const items = heroSourceItems(metric);
     if (HERO_METRICS[metric].unit !== "currency") return countInRange(items, start, end);
-    return sumInRange(items, start, end) * getRate("XOF", heroCurrency);
+    return items.reduce((sum, { ts, value, currency, source }) => {
+      if (ts == null || ts < start || ts > end) return sum;
+      const multiplier = metric === "net" ? heroNetMultiplier(source) : 1;
+      return sum + value * multiplier * getRate(currency || "USD", heroCurrency);
+    }, 0);
   }
 
   function formatHeroValue(metric, value) {
@@ -648,11 +681,11 @@ export async function mount(container) {
     const now = Date.now();
     const previousEnd = prevMs[0] + DAY_MS;
     const isCount = HERO_METRICS[metric].unit !== "currency";
-    const rate = isCount ? 1 : getRate("XOF", heroCurrency);
 
-    heroSourceItems(metric).forEach(({ ts, value }) => {
+    heroSourceItems(metric).forEach(({ ts, value, currency, source }) => {
       if (ts == null) return;
-      const amount = isCount ? 1 : value * rate;
+      const multiplier = metric === "net" ? heroNetMultiplier(source) : 1;
+      const amount = isCount ? 1 : value * multiplier * getRate(currency || "USD", heroCurrency);
       if (ts >= curMs[0] && ts <= now) {
         const idx = findBucketIndex(curMs, ts);
         if (idx !== -1) currentData[idx] += amount;
