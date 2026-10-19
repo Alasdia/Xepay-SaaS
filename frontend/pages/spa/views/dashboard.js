@@ -120,7 +120,7 @@ export async function mount(container) {
 
   const ACTIVITY_CATEGORIES = [
     { key: "clients", label: "Nouveaux clients", icon: "fa-user-plus" },
-    { key: "products", label: "Nouveaux produits", icon: "fa-box", sourceCurrency: "USD" },
+    { key: "products", label: "Nouveaux produits", icon: "fa-box" },
     { key: "invoices", label: "Factures", icon: "fa-file-invoice", sourceCurrency: "USD" },
     { key: "subscriptions", label: "Abonnements", icon: "fa-rotate", sourceCurrency: "USD" },
     { key: "links", label: "Liens de paiement", icon: "fa-link", sourceCurrency: "XOF" },
@@ -253,15 +253,16 @@ export async function mount(container) {
     // abonnements rattachés via customerId, croisés au rendu.
     return {
       clients: (customersData?.data || []).map((c) => ({ id: c.id, ts: toTimestamp(c.created) })),
-      products: (productsData?.data || []).map((p) => ({
-        ts: toTimestamp(p.created),
-        value: (p.prices?.[0]?.unit_amount || 0) / 100,
-      })),
+      // id seul (pas de "value") : comme pour les clients, le revenu d'un
+      // produit ne vient pas d'un champ Stripe du produit lui-même (son prix
+      // catalogue existe dès sa création, qu'il soit vendu ou non) mais des
+      // factures/abonnements qui le référencent — voir computeProductRevenue.
+      products: (productsData?.data || []).map((p) => ({ id: p.id, ts: toTimestamp(p.created) })),
       // status + currency conservés ici aussi : utilisés par le bloc héro
       // pour ne garder que les abonnements actifs (paiement effectif) et
       // convertir depuis leur vraie devise (Stripe, pas forcément XOF).
-      // customerId : utilisé par computeClientCohortRevenue pour rattacher
-      // ce paiement au client Stripe qui l'a généré.
+      // customerId/productId : utilisés par computeEntityCohortRevenue pour
+      // rattacher ce paiement au client et au produit Stripe concernés.
       subscriptions: (subscriptionsData?.data || []).map((s) => {
         const item = s.items?.data?.[0];
         const unitAmount = item?.price?.unit_amount || 0;
@@ -272,17 +273,22 @@ export async function mount(container) {
           status: s.status,
           currency: (item?.price?.currency || "usd").toUpperCase(),
           customerId: s.customer || null,
+          productId: item?.price?.product || null,
         };
       }),
       // status + currency : le bloc héro ne garde que les factures payées
-      // ("paid"), converties depuis leur vraie devise. customerId : idem
-      // abonnements, pour le rattachement au bon client.
+      // ("paid"), converties depuis leur vraie devise. customerId/productId :
+      // idem abonnements, pour le rattachement au bon client/produit. On ne
+      // regarde que la première ligne (comme pour les abonnements) : avec
+      // seulement 2 produits dans ce compte, les factures n'ont en pratique
+      // qu'une seule ligne.
       invoices: (invoicesData?.data || []).map((i) => ({
         ts: toTimestamp(i.created),
         value: (i.amount_paid || i.amount_due || 0) / 100,
         status: i.status,
         currency: (i.currency || "usd").toUpperCase(),
         customerId: i.customer || null,
+        productId: i.lines?.data?.[0]?.price?.product || null,
       })),
       // status conservé ici (utilisé par le bloc "Nombre" des liens pour
       // les distinguer payé/en attente/expiré, et par le bloc héro pour
@@ -346,36 +352,40 @@ export async function mount(container) {
     };
   }
 
-  // "Nouveaux clients — Revenus" représente l'argent réellement encaissé
-  // auprès des clients acquis pendant la période, et seulement pendant
-  // cette même période — pas le total_spent cumulatif de Stripe, qui
-  // grossit indéfiniment et biaise la comparaison en faveur des cohortes
-  // les plus anciennes (plus de temps pour dépenser). Les liens de paiement
-  // ne sont pas rattachés à un client Stripe (voir fetchActivityRawData) :
-  // ils sont donc exclus de ce calcul, qui ne porte que sur factures payées
-  // + abonnements actifs, croisés par customerId.
-  function computeClientCohortRevenue(days) {
+  // "Nouveaux clients — Revenus" et "Nouveaux produits — Revenus"
+  // représentent l'argent réellement encaissé grâce à cette entité, acquise/
+  // créée pendant la période — et seulement pendant cette même fenêtre —
+  // plutôt qu'un champ Stripe cumulatif ou statique (total_spent du client,
+  // prix catalogue du produit) qui grossit indéfiniment ou existe dès la
+  // création, indépendamment de toute vente : ces deux biais favorisent les
+  // cohortes les plus anciennes dans la comparaison actuel/précédent. Les
+  // liens de paiement ne sont rattachés ni à un client ni à un produit
+  // Stripe (voir fetchActivityRawData) : ils sont donc exclus de ce calcul,
+  // qui ne porte que sur factures payées + abonnements actifs, croisés par
+  // customerId ou productId selon l'entité.
+  function computeEntityCohortRevenue(entities, paymentKeyField, days) {
     const now = Date.now();
     const currentStart = now - days * DAY_MS;
     const previousStart = now - 2 * days * DAY_MS;
 
-    const paymentsByCustomer = new Map();
+    const paymentsByKey = new Map();
     const addPayments = (list, isEligible) => {
       (list || []).forEach((p) => {
-        if (!p.customerId || p.ts == null || !isEligible(p.status)) return;
-        if (!paymentsByCustomer.has(p.customerId)) paymentsByCustomer.set(p.customerId, []);
-        paymentsByCustomer.get(p.customerId).push(p);
+        const key = p[paymentKeyField];
+        if (!key || p.ts == null || !isEligible(p.status)) return;
+        if (!paymentsByKey.has(key)) paymentsByKey.set(key, []);
+        paymentsByKey.get(key).push(p);
       });
     };
     addPayments(activityRaw.invoices, (status) => status === "paid");
     addPayments(activityRaw.subscriptions, (status) => status === "active");
 
-    function revenueForWindow(clientsInWindow, windowStart) {
+    function revenueForWindow(entitiesInWindow, windowStart) {
       const daily = new Array(days).fill(0);
       let total = 0;
-      clientsInWindow.forEach((c) => {
-        const payments = paymentsByCustomer.get(c.id) || [];
-        const idx = Math.min(days - 1, Math.max(0, Math.floor((c.ts - windowStart) / DAY_MS)));
+      entitiesInWindow.forEach((e) => {
+        const payments = paymentsByKey.get(e.id) || [];
+        const idx = Math.min(days - 1, Math.max(0, Math.floor((e.ts - windowStart) / DAY_MS)));
         payments.forEach((p) => {
           if (p.ts < windowStart || p.ts >= windowStart + days * DAY_MS) return;
           const amount = p.value * getRate(p.currency || "USD", activityCurrency);
@@ -386,12 +396,11 @@ export async function mount(container) {
       return { daily, total };
     }
 
-    const clients = activityRaw.clients || [];
-    const currentClients = clients.filter((c) => c.ts != null && c.ts >= currentStart && c.ts <= now);
-    const previousClients = clients.filter((c) => c.ts != null && c.ts >= previousStart && c.ts < currentStart);
+    const currentEntities = entities.filter((e) => e.ts != null && e.ts >= currentStart && e.ts <= now);
+    const previousEntities = entities.filter((e) => e.ts != null && e.ts >= previousStart && e.ts < currentStart);
 
-    const current = revenueForWindow(currentClients, currentStart);
-    const previous = revenueForWindow(previousClients, previousStart);
+    const current = revenueForWindow(currentEntities, currentStart);
+    const previous = revenueForWindow(previousEntities, previousStart);
 
     return {
       currentRevenueDaily: current.daily,
@@ -399,6 +408,14 @@ export async function mount(container) {
       currentTotal: current.total,
       previousTotal: previous.total,
     };
+  }
+
+  function computeClientCohortRevenue(days) {
+    return computeEntityCohortRevenue(activityRaw.clients || [], "customerId", days);
+  }
+
+  function computeProductRevenue(days) {
+    return computeEntityCohortRevenue(activityRaw.products || [], "productId", days);
   }
 
   function buildActivityLabels(days) {
@@ -575,8 +592,8 @@ export async function mount(container) {
     const labels = buildActivityLabels(days);
 
     let curRevenue, prevRevenue, currentRevenueDaily, previousRevenueDaily;
-    if (cat.key === "clients") {
-      const cohort = computeClientCohortRevenue(days);
+    if (cat.key === "clients" || cat.key === "products") {
+      const cohort = cat.key === "clients" ? computeClientCohortRevenue(days) : computeProductRevenue(days);
       curRevenue = cohort.currentTotal;
       prevRevenue = cohort.previousTotal;
       currentRevenueDaily = cohort.currentRevenueDaily;
