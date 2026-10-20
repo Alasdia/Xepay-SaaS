@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException
-import stripe
-from backend.models import Payment, PaymentUpdate, Withdrawal, Profile
+from backend.models import Payment, PaymentUpdate, Withdrawal
 from backend.database import engine, get_db
 from datetime import datetime, timezone
 from sqlalchemy import text
@@ -20,8 +19,6 @@ from fastapi import Header
 import os
 from typing import Optional
 from sqlalchemy.orm import joinedload
-
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 router = APIRouter()
 
@@ -313,87 +310,6 @@ def get_activity(
         it["date"] = it["date"].isoformat() if it["date"] else None
 
     return paged
-
-@router.get("/payments/live")
-def get_payments_live(
-    limit: int = 20,
-    db: Session = Depends(get_db),
-    user: UserDB = Depends(get_current_user),
-    workspace_id: str = Header(None, alias="X-Workspace-Id"),
-):
-    """Lit directement les Charge Stripe (destination charges, voir
-    routes/webhook/paiement.py) au lieu de la table `payments` - prototype
-    pour explorer le fait de ne plus stocker les paiements du tout.
-
-    Un seul appel Stripe par page : expand=["data.balance_transaction"]
-    évite un aller-retour séparé pour le frais Stripe (contrairement à
-    l'ancien webhook, qui faisait un stripe.ApplicationFee.retrieve +
-    stripe.Transfer.retrieve en plus). charge.application_fee_amount est
-    un champ direct de la charge (pas besoin d'expand ni d'appel
-    supplémentaire pour la commission Xepay) :
-    - commission_xepay = charge.application_fee_amount (la commission
-      demandée à la création, intégralement collectée - voir l'échange
-      précédent sur ApplicationFee.amount).
-    - stripe_fee = la balance_transaction DE LA CHARGE elle-même (celle
-      associée au règlement du paiement carte, pas celle de
-      l'ApplicationFee) - c'est elle qui porte le vrai frais de
-      traitement Stripe, confirmé sur de vrais paiements EUR.
-    - amount_net_merchant = montant brut - commission_xepay - stripe_fee.
-    """
-    owner_id = get_workspace_owner_id(user, workspace_id, db)
-    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
-    if not profile or not profile.stripe_account_id:
-        raise HTTPException(status_code=404, detail="Compte Stripe introuvable")
-
-    try:
-        charges = stripe.Charge.list(limit=limit, expand=["data.balance_transaction"])
-    except stripe.error.StripeError as e:
-        raise HTTPException(status_code=400, detail=e.user_message or str(e))
-
-    results = []
-    for charge in charges.auto_paging_iter():
-        transfer_data = charge.get("transfer_data") or {}
-        destination = transfer_data.get("destination")
-        # Ne garder que les charges de ce marchand (destination charge liée
-        # à son compte Stripe connecté) - Charge.list ne filtre pas par
-        # destination/on_behalf_of côté Stripe, donc filtré ici.
-        if destination != profile.stripe_account_id and charge.get("on_behalf_of") != profile.stripe_account_id:
-            continue
-
-        amount_gross = (charge.get("amount") or 0) / 100
-        currency_gross = (charge.get("currency") or "usd").upper()
-        fee_cents = charge.get("application_fee_amount")
-        commission_xepay = (fee_cents / 100) if fee_cents is not None else None
-
-        balance_tx = charge.get("balance_transaction")
-        stripe_fee = (balance_tx.get("fee") / 100) if balance_tx else None
-
-        amount_net_merchant = (
-            amount_gross - commission_xepay - stripe_fee
-            if commission_xepay is not None and stripe_fee is not None
-            else None
-        )
-
-        payment_method_details = charge.get("payment_method_details") or {}
-        card_info = payment_method_details.get("card") or {}
-        billing_details = charge.get("billing_details") or {}
-
-        results.append({
-            "charge_id": charge.get("id"),
-            "payment_intent_id": charge.get("payment_intent"),
-            "amount_gross": amount_gross,
-            "currency_gross": currency_gross,
-            "commission_xepay": commission_xepay,
-            "stripe_fee": stripe_fee,
-            "amount_net_merchant": amount_net_merchant,
-            "client_email": billing_details.get("email") or charge.get("receipt_email"),
-            "payment_method_type": card_info.get("brand") or payment_method_details.get("type"),
-            "card_last4": card_info.get("last4"),
-            "status": charge.get("status"),
-            "created_at": datetime.fromtimestamp(charge.get("created"), tz=timezone.utc).isoformat(),
-        })
-
-    return results
 
 @router.get("/payments-summary")
 def get_payments_summary(
