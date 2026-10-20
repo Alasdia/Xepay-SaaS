@@ -331,6 +331,7 @@ export async function mount(container) {
       }
       if (res.ok) {
         showToast(data.message || "Abonnement résilié avec succès.", "warning");
+        await loadPlanStatus();
       } else {
         showToast(data.detail || "Échec de l'annulation", "error");
       }

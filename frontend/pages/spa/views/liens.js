@@ -357,6 +357,10 @@ export async function mount(container) {
         });
         setTimeout(() => carte.remove(), 250);
       }
+      // Même mécanisme que supprimer() : charge la page suivante pour
+      // compenser la carte retirée (chargerLiens ajoute à la suite sans
+      // réinitialiser offset, donc pas de doublon).
+      await chargerLiens();
     } catch (error) {
       if (carte) {
         carte.style.opacity = "1";

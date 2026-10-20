@@ -374,6 +374,8 @@ export async function mount(container) {
     await apiFetch(`/webhooks-api/${id}`, { method: "DELETE" });
     btn.closest("tr").remove();
     showToast("🗑 Supprimé", "#ff4757");
+    await loadWebhooks();
+    await loadStats();
   }
 
   async function testWebhook(id) {
