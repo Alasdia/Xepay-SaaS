@@ -161,6 +161,14 @@ export async function refreshPlanBadge() {
 async function loadUser() {
   try {
     const res = await apiFetch("/me/user-plan");
+    if (!res.ok) {
+      // apiFetch ne transforme que les 401 (refresh) : un 403/404/500 ici
+      // (ex: X-Workspace-Id pointant vers le mauvais workspace) renvoie un
+      // corps d'erreur ({"detail": ...}), pas un vrai user - ne jamais le
+      // traiter comme tel (plan.toUpperCase() plantait sur plan undefined).
+      console.error("ERREUR loadUser (sidebar): /me/user-plan a répondu", res.status);
+      return;
+    }
     const user = await res.json();
     window.GLOBAL_PLAN = user;
     setPlan(user.plan);
@@ -172,7 +180,7 @@ async function loadUser() {
 
 function updatePlanUI(plan) {
   const badge = document.getElementById("badge-plan");
-  if (!badge) return;
+  if (!badge || !plan) return;
   badge.className = "badge " + plan;
   badge.textContent = plan.toUpperCase();
 }

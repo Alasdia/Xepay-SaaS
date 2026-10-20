@@ -1224,6 +1224,14 @@ def get_my_workspaces(
     memberships = db.query(WorkspaceUser).filter(
         WorkspaceUser.user_id == current_user.id
     ).all()
+    # Le propre workspace de l'utilisateur (workspace_id == son propre id,
+    # où il est "owner") doit toujours arriver en premier : sans ce tri, un
+    # utilisateur invité comme membre/lecteur ailleurs pouvait voir CE
+    # workspace-là listé en premier, et le frontend (multiUsers.js,
+    # sélection automatique si workspace_id sauvegardé est invalide)
+    # persistait alors silencieusement le mauvais workspace_id — perte du
+    # rôle owner sur tous les appels suivants.
+    memberships.sort(key=lambda m: m.workspace_id != current_user.id)
 
     workspace_ids = [m.workspace_id for m in memberships]
     owners_by_id = {

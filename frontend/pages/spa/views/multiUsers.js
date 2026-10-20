@@ -276,8 +276,14 @@ export async function mount(container) {
       if (savedWorkspace && workspaces.some((w) => String(w.id) === savedWorkspace)) {
         select.value = savedWorkspace;
       } else if (workspaces.length > 0) {
-        select.value = workspaces[0].id;
-        setWorkspaceId(workspaces[0].id);
+        // Jamais workspaces[0] à l'aveugle : si le workspace_id sauvegardé
+        // est invalide/absent, revenir sur SON PROPRE workspace (role
+        // "owner") plutôt que sur le premier de la liste, qui pourrait être
+        // un workspace où l'utilisateur n'est que membre/lecteur selon
+        // l'ordre renvoyé par /workspaces/me.
+        const ownWorkspace = workspaces.find((w) => w.role === "owner") || workspaces[0];
+        select.value = ownWorkspace.id;
+        setWorkspaceId(ownWorkspace.id);
         await loadUsers();
       }
       on(select, "change", async () => {

@@ -21,6 +21,10 @@ async function loadUser() {
     const res = await fetch("https://api.alasdia.com/me/user-plan", {
       headers: { Authorization: "Bearer " + token, "X-Workspace-Id": localStorage.getItem("workspace_id") }
     });
+    if (!res.ok) {
+      console.error("ERREUR loadUser (sidebar): /me/user-plan a répondu", res.status);
+      return;
+    }
     const user = await res.json();
     window.GLOBAL_PLAN = user;
     localStorage.setItem("plan", user.plan);
@@ -31,7 +35,7 @@ async function loadUser() {
 }
 function updatePlanUI(plan) {
   const badge = document.getElementById("badge-plan");
-  if (!badge) return;
+  if (!badge || !plan) return;
   badge.className = "badge " + plan;
   badge.textContent = plan.toUpperCase();
 }
