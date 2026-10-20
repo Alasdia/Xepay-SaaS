@@ -1310,17 +1310,6 @@ export async function mount(container) {
   function rebuildActivityGrid() {
     const grid = document.getElementById("activity-grid");
     if (!grid) return;
-    // La grille entière est régénérée (innerHTML) : tous les <canvas>
-    // actuels sont détachés. Sans détruire leurs instances Chart.js ici,
-    // activityCharts[id] reste défini pour renderOrUpdateChart, qui prend
-    // alors la branche "mettre à jour" et appelle chart.update() sur un
-    // canvas fantôme (aucun effet visible) au lieu de recréer un graphe
-    // sur le nouveau <canvas> — c'est ce qui donnait l'impression qu'un
-    // ajout/retrait de bloc exigeait un rechargement complet de la page.
-    Object.keys(activityCharts).forEach((key) => {
-      activityCharts[key].destroy();
-      delete activityCharts[key];
-    });
     grid.innerHTML = buildActivityGridHTML();
     if (activityEditMode) {
       grid.querySelectorAll(".activity-card-remove").forEach((btn) => btn.classList.remove("d-none"));
