@@ -157,9 +157,11 @@ def get_activity(
             # application_fee_requested, avec repli sur fee_amount pour les
             # paiements de factures/abonnements (qui ne renseignent pas ce
             # nouveau champ) et les paiements de liens antérieurs à ce fix.
-            # Pas de "frais Stripe" isolé : aucun champ Stripe n'en expose
-            # un sur ce compte Connect (confirmé) - stripe_fee_amount reste
-            # None pour tout nouveau paiement par lien.
+            # stripe_fee_amount = application_fee_requested - fee_amount
+            # (calculé à la création du Payment, voir
+            # routes/webhook/paiement.py) : aucun champ Stripe n'expose de
+            # frais de traitement isolé sur ce compte Connect, donc déduit
+            # de la différence entre commission brute et commission nette.
             commission_xepay = (
                 p.application_fee_requested
                 if p.application_fee_requested is not None

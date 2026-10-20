@@ -135,6 +135,12 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             if fee_id:
                 fee_obj = stripe.ApplicationFee.retrieve(fee_id)
                 fee_amount = fee_obj.amount / 100
+                # Frais Stripe = commission brute (devise de la charge) -
+                # commission Xepay nette (devise d'origine du lien) :
+                # différence des deux montants tels que renvoyés par
+                # Stripe, sans conversion de devise entre les deux (demandé
+                # explicitement après vérification sur de vrais paiements).
+                stripe_fee_amount = application_fee_requested - fee_amount
             if transfer_id:
                 transfer_obj = stripe.Transfer.retrieve(transfer_id)
                 transfer_amount = transfer_obj.amount / 100
@@ -146,12 +152,9 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             if balance_tx:
                 amount_usd = balance_tx.amount / 100
                 # balance_tx.fee == charge.application_fee_amount (vérifié
-                # sur de vrais paiements) : ce n'est PAS un frais Stripe
-                # isolé, juste la même commission application_fee vue sur
-                # cet objet. Aucun champ Stripe n'expose de frais de
-                # traitement séparé sur ce compte Connect (confirmé) :
-                # stripe_fee_amount reste donc None plutôt que de dupliquer
-                # application_fee_requested sous un nom trompeur.
+                # sur de vrais paiements) : stripe_fee_amount est déjà
+                # calculé plus haut (application_fee_requested - fee_amount),
+                # pas depuis balance_tx.fee, qui n'apporterait rien de plus.
                 available_on = balance_tx.available_on
                 available_at = datetime.fromtimestamp(available_on, tz=timezone.utc)
 
