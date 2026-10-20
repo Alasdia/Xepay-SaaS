@@ -163,15 +163,9 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .activity-filter-label { color:#6b7280; }
 .activity-filter-value { color:#111827; font-weight:700; }
 .activity-filter-popup { position:absolute; top:calc(100% + 6px); left:0; min-width:170px; background:#ffffff; border:1px solid #e5e7eb; border-radius:0; box-shadow:0 10px 30px rgba(0,0,0,.12); z-index:20; padding:4px; }
-/* Le popup "+ Ajouter" peut contenir jusqu'à 15 entrées (10 par défaut + 5
-   du catalogue) : largeur un peu plus généreuse que les popups de filtre,
-   qui n'ont que 2-4 options courtes. */
-#activity-add-popup { right:0; left:auto; min-width:260px; }
 .activity-filter-item { display:block; width:100%; text-align:left; border:none; background:transparent; padding:8px 10px; font-size:13px; color:#374151; cursor:pointer; }
 .activity-filter-item:hover { background:#f3f4f6; }
 .activity-filter-item.active { color:#111827; font-weight:700; background:#f3f4f6; }
-.activity-filter-item-empty { color:#9ca3af; cursor:default; }
-.activity-filter-item-empty:hover { background:transparent; }
 /* Une ligne (.activity-row) par catégorie, empilées verticalement. */
 .activity-grid { display:flex; flex-direction:column; gap:20px; }
 /* auto-fit : 2 blocs par défaut tiennent sur 2 colonnes : l'ajout d'un 3e
@@ -199,6 +193,27 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .activity-top-entity { padding-top:8px; }
 .activity-top-entity-name { font-size:16px; font-weight:700; color:#111827; margin-bottom:6px; }
 .activity-top-entity-amount { font-size:20px; font-weight:800; color:#111827; }
+/* Modal "+ Ajouter" — mêmes valeurs que les modals de création déjà
+   établies ailleurs dans l'app (commerce.css : fond gris, pas de coins
+   arrondis, ombre portée, centré sur #main-content avec la marge sidebar). */
+.activity-add-modal-overlay { position:fixed; inset:0; z-index:9999; display:none; align-items:flex-start; justify-content:center; overflow-y:auto; background:rgba(17,24,39,0.12); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); padding:5% 20px; padding-left:calc(18% + 20px); box-sizing:border-box; }
+.activity-add-modal-overlay.open { display:flex; }
+@media (max-width: 960px) {
+  .activity-add-modal-overlay { padding-left:20px; }
+}
+.activity-add-modal { width:min(1100px, 100%); max-height:90vh; overflow-y:auto; background:#d1d5db; border:1px solid #d1d5db; border-radius:0; padding:24px; box-shadow:0 20px 50px rgba(0,0,0,.18); }
+.activity-add-modal-header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:20px; }
+.activity-add-modal-header h3 { margin:0 0 4px; font-size:16px; font-weight:700; color:#111827; }
+.activity-add-modal-header p { margin:0; font-size:13px; color:#374151; }
+.activity-add-modal-close { flex-shrink:0; width:30px; height:30px; border:none; border-radius:7px; background:#f3f4f6; color:#374151; font-size:20px; line-height:1; cursor:pointer; }
+.activity-add-modal-close:hover { background:#e5e7eb; }
+.activity-add-modal-body { display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:20px; }
+.activity-add-modal-empty { grid-column:1 / -1; text-align:center; color:#6b7280; font-size:13px; padding:30px 0; }
+/* L'aperçu réutilise .activity-card tel quel (voir activityCardShellHTML,
+   removable=false) : seul le bouton d'ajout est propre au modal. */
+.activity-add-preview { display:flex; flex-direction:column; gap:10px; }
+.activity-add-preview-btn { display:flex; align-items:center; justify-content:center; gap:8px; border:none; border-radius:0; background:#eab308; color:#111827; font-size:13px; font-weight:700; padding:9px 14px; cursor:pointer; }
+.activity-add-preview-btn:hover { background:#ca8a04; }
 @media (max-width: 768px) {
   .activity-filters { flex-wrap:wrap; }
 }

@@ -111,13 +111,10 @@ const TEMPLATE = `
       </div>
     </div>
       <div class="activity-block-actions">
-        <div class="activity-filter" id="activity-add-filter">
-          <button type="button" class="activity-filter-btn" id="activity-add-btn">
-            <i class="fa-solid fa-plus"></i>
-            <span>Ajouter</span>
-          </button>
-          <div class="activity-filter-popup d-none" id="activity-add-popup"></div>
-        </div>
+        <button type="button" class="activity-filter-btn" id="activity-add-btn">
+          <i class="fa-solid fa-plus"></i>
+          <span>Ajouter</span>
+        </button>
         <button type="button" class="activity-filter-btn" id="activity-edit-btn">
           <span id="activity-edit-label">Modifier</span>
         </button>
@@ -125,6 +122,18 @@ const TEMPLATE = `
     </div>
   </div>
   <div class="activity-grid" id="activity-grid"></div>
+</div>
+<div class="activity-add-modal-overlay" id="activity-add-modal-overlay">
+  <div class="activity-add-modal">
+    <div class="activity-add-modal-header">
+      <div>
+        <h3>Ajouter un bloc</h3>
+        <p>L'aperçu de chaque bloc ci-dessous est identique à ce qu'il affichera une fois ajouté.</p>
+      </div>
+      <button type="button" class="activity-add-modal-close" id="activity-add-modal-close">&times;</button>
+    </div>
+    <div class="activity-add-modal-body" id="activity-add-modal-body"></div>
+  </div>
 </div>
 `;
 
@@ -162,8 +171,8 @@ export async function mount(container) {
   // à l'ouverture de la vue — "retirables" comme n'importe quel bloc via le
   // bouton Modifier.
   const DEFAULT_BLOCKS = ACTIVITY_CATEGORIES.flatMap((cat) => [
-    { id: `${cat.key}-revenue`, row: cat.key, label: `${cat.label} — Revenus` },
-    { id: `${cat.key}-count`, row: cat.key, label: `${cat.label} — Nombre` },
+    { id: `${cat.key}-revenue`, row: cat.key, icon: cat.icon, kind: "revenue", label: `${cat.label} — Revenus` },
+    { id: `${cat.key}-count`, row: cat.key, icon: cat.icon, kind: "count", label: `${cat.label} — Nombre` },
   ]);
   const DEFAULT_BLOCK_IDS = DEFAULT_BLOCKS.map((b) => b.id);
 
@@ -245,10 +254,13 @@ export async function mount(container) {
   // Coquille commune à tous les blocs (par défaut ou catalogue) : icône +
   // titre, le bouton de retrait (visible seulement en mode édition, voir
   // toggleActivityEditMode) et un corps qui varie selon le type de bloc.
-  function activityCardShellHTML(id, icon, title, bodyHtml) {
+  // removable=false pour les aperçus du modal "+ Ajouter" (renderBlockPreview) :
+  // ce ne sont pas des blocs de la grille réelle, le bouton de retrait n'a
+  // pas de sens là-bas.
+  function activityCardShellHTML(id, icon, title, bodyHtml, removable = true) {
     return `
       <div class="activity-card" data-key="${id}">
-        <button type="button" class="activity-card-remove d-none" data-remove="${id}" title="Retirer ce bloc"><i class="fa-solid fa-xmark"></i></button>
+        ${removable ? `<button type="button" class="activity-card-remove d-none" data-remove="${id}" title="Retirer ce bloc"><i class="fa-solid fa-xmark"></i></button>` : ""}
         <div class="activity-card-head">
           <span class="activity-card-icon"><i class="fa-solid ${icon}"></i></span>
           <span class="activity-card-title">${title}</span>
@@ -978,55 +990,52 @@ export async function mount(container) {
     return daily;
   }
 
-  async function renderCategory(cat, days) {
+  // Items bruts d'une catégorie, filtrés une fois pour toutes : une facture
+  // de renouvellement d'abonnement (subscriptionId non nul) appartient
+  // entièrement à "Abonnements", jamais à "Factures" — ni son nombre, ni
+  // son revenu (les deux catégories représentent deux fonctionnalités
+  // métier distinctes). Partagé par renderCategory et renderBlockPreview.
+  function getCategoryItems(cat) {
     let items = activityRaw ? activityRaw[cat.key] || [] : [];
-    // Une facture de renouvellement d'abonnement (subscriptionId non nul)
-    // appartient entièrement à "Abonnements", jamais à "Factures" — ni son
-    // nombre, ni son revenu. Les deux catégories représentent deux
-    // fonctionnalités métier distinctes (facturation ponctuelle vs
-    // abonnement récurrent) : filtré ici, en amont, pour que "Nombre" et
-    // "Revenus" comptent exactement la même population de factures.
     if (cat.key === "invoices") {
       items = items.filter((i) => i.subscriptionId == null);
     }
-    const stats = computeActivityStats(items, days);
-    const labels = buildActivityLabels(days);
+    return items;
+  }
 
-    let curRevenue, prevRevenue, currentRevenueDaily, previousRevenueDaily;
+  // Revenu d'une catégorie (pas le nombre), selon la méthode propre à
+  // chacune — voir les commentaires déjà posés sur chaque branche au fil
+  // des corrections de cette vue. Partagé par renderCategory et
+  // renderBlockPreview, pour que l'aperçu du modal "+ Ajouter" et le bloc
+  // réel une fois ajouté soient calculés exactement de la même façon.
+  function computeCategoryRevenue(cat, items, days) {
     if (cat.key === "clients" || cat.key === "products") {
-      const cohort = cat.key === "clients" ? computeClientCohortRevenue(days) : computeProductRevenue(days);
-      curRevenue = cohort.currentTotal;
-      prevRevenue = cohort.previousTotal;
-      currentRevenueDaily = cohort.currentRevenueDaily;
-      previousRevenueDaily = cohort.previousRevenueDaily;
-    } else if (cat.key === "invoices") {
-      const filtered = computeFilteredRevenueStats(items, days, (status) => status === "paid", "invoice");
-      curRevenue = filtered.currentTotal;
-      prevRevenue = filtered.previousTotal;
-      currentRevenueDaily = filtered.currentRevenueDaily;
-      previousRevenueDaily = filtered.previousRevenueDaily;
-    } else if (cat.key === "subscriptions") {
+      return cat.key === "clients" ? computeClientCohortRevenue(days) : computeProductRevenue(days);
+    }
+    if (cat.key === "invoices") {
+      return computeFilteredRevenueStats(items, days, (status) => status === "paid", "invoice");
+    }
+    if (cat.key === "subscriptions") {
       // La "value" nominale d'un abonnement n'est pas un paiement réel : on
       // somme plutôt les factures de renouvellement effectivement payées,
       // rattachées via subscriptionId (voir fetchActivityRawData) — datées
       // par leur propre date de règlement, pas la date de création de
       // l'abonnement.
       const subscriptionInvoices = (activityRaw.invoices || []).filter((i) => i.subscriptionId != null);
-      const filtered = computeFilteredRevenueStats(subscriptionInvoices, days, (status) => status === "paid", "invoice");
-      curRevenue = filtered.currentTotal;
-      prevRevenue = filtered.previousTotal;
-      currentRevenueDaily = filtered.currentRevenueDaily;
-      previousRevenueDaily = filtered.previousRevenueDaily;
-    } else {
-      // "links" : un lien en attente/expiré n'est pas un revenu, et chaque
-      // lien a sa propre devise (USD/EUR, jamais XOF — voir
-      // fetchActivityRawData) plutôt qu'un taux fixe par catégorie.
-      const filtered = computeFilteredRevenueStats(items, days, (status) => status === "paid", "link");
-      curRevenue = filtered.currentTotal;
-      prevRevenue = filtered.previousTotal;
-      currentRevenueDaily = filtered.currentRevenueDaily;
-      previousRevenueDaily = filtered.previousRevenueDaily;
+      return computeFilteredRevenueStats(subscriptionInvoices, days, (status) => status === "paid", "invoice");
     }
+    // "links" : un lien en attente/expiré n'est pas un revenu, et chaque
+    // lien a sa propre devise (USD/EUR, jamais XOF — voir
+    // fetchActivityRawData) plutôt qu'un taux fixe par catégorie.
+    return computeFilteredRevenueStats(items, days, (status) => status === "paid", "link");
+  }
+
+  async function renderCategory(cat, days) {
+    const items = getCategoryItems(cat);
+    const stats = computeActivityStats(items, days);
+    const labels = buildActivityLabels(days);
+
+    const { currentTotal: curRevenue, previousTotal: prevRevenue, currentRevenueDaily, previousRevenueDaily } = computeCategoryRevenue(cat, items, days);
 
     const dateForPoint = buildComparisonDateResolver(days);
 
@@ -1088,6 +1097,81 @@ export async function mount(container) {
         `Remboursements (${activityCurrency})`,
         dateForPoint
       );
+    }
+  }
+
+  // Retrouve, à partir d'un id de bloc, de quelle catégorie/quel genre de
+  // contenu il s'agit — utilisé par le modal "+ Ajouter" (renderBlockPreview)
+  // pour savoir quoi calculer/dessiner pour un bloc qui n'est pas encore
+  // affiché dans la grille réelle.
+  function describeBlock(id) {
+    const defaultMatch = DEFAULT_BLOCKS.find((b) => b.id === id);
+    if (defaultMatch) return defaultMatch;
+    return BLOCK_CATALOG.find((b) => b.id === id) || null;
+  }
+
+  // Rend l'aperçu d'un bloc pas encore affiché (modal "+ Ajouter"), avec
+  // exactement le même calcul que le bloc réel une fois ajouté (voir
+  // computeCategoryRevenue/renderCatalogCards) — seul le préfixe "preview-"
+  // de l'id change, pour cibler les éléments du modal plutôt que ceux de la
+  // grille. Chart.js les traite donc comme des graphes à part entière,
+  // indépendants de ceux déjà affichés.
+  function renderBlockPreview(id, days) {
+    const desc = describeBlock(id);
+    if (!desc) return;
+    const previewId = `preview-${id}`;
+    const cat = ACTIVITY_CATEGORIES.find((c) => c.key === desc.row);
+    const labels = buildActivityLabels(days);
+    const dateForPoint = buildComparisonDateResolver(days);
+
+    if (desc.kind === "topEntity") {
+      const entities = desc.row === "clients" ? activityRaw.clients : activityRaw.products;
+      const keyField = desc.row === "clients" ? "customerId" : "productId";
+      const top = computeTopEntity(entities || [], keyField, days);
+      setText(`activity-top-name-${previewId}`, top ? top.name : "—");
+      setText(`activity-top-amount-${previewId}`, top ? formatMoney(top.amount, activityCurrency) : "—");
+      return;
+    }
+
+    if (id.endsWith("-refunds")) {
+      const sourceByCategory = { invoices: "invoice", subscriptions: "subscription", links: "payment_link" };
+      const refund = computeRefundStats(sourceByCategory[desc.row], days);
+      setText(`activity-value-${previewId}`, formatMoney(refund.currentTotal, activityCurrency));
+      setDelta(`activity-delta-${previewId}`, refund.currentTotal, refund.previousTotal);
+      renderOrUpdateChart(
+        previewId,
+        labels,
+        buildComparisonDatasets(refund.currentRevenueDaily, refund.previousRevenueDaily),
+        (v) => formatMoney(v, activityCurrency),
+        `Remboursements (${activityCurrency})`,
+        dateForPoint
+      );
+      return;
+    }
+
+    // Bloc par défaut (revenus ou nombre)
+    const items = getCategoryItems(cat);
+    if (desc.kind === "revenue") {
+      const { currentTotal, previousTotal, currentRevenueDaily, previousRevenueDaily } = computeCategoryRevenue(cat, items, days);
+      setText(`activity-value-${previewId}`, formatMoney(currentTotal, activityCurrency));
+      setDelta(`activity-delta-${previewId}`, currentTotal, previousTotal);
+      renderOrUpdateChart(
+        previewId,
+        labels,
+        buildComparisonDatasets(currentRevenueDaily, previousRevenueDaily),
+        (v) => formatMoney(v, activityCurrency),
+        `Revenus générés (${activityCurrency})`,
+        dateForPoint
+      );
+    } else {
+      const stats = computeActivityStats(items, days);
+      setText(`activity-value-${previewId}`, formatCount(stats.currentCount));
+      setDelta(`activity-delta-${previewId}`, stats.currentCount, stats.previousCount);
+      if (cat.key === "links") {
+        renderOrUpdateChart(previewId, labels, buildLinksStatusDatasets(computeLinksStatusDaily(items, days)), formatCount, "Nombre (par statut)");
+      } else {
+        renderOrUpdateChart(previewId, labels, buildComparisonDatasets(stats.currentCountDaily, stats.previousCountDaily), formatCount, "Nombre", dateForPoint);
+      }
     }
   }
 
@@ -1539,7 +1623,6 @@ export async function mount(container) {
     document.getElementById("activity-currency-popup")?.classList.add("d-none");
     document.getElementById("activity-period-popup")?.classList.add("d-none");
     document.getElementById("activity-net-popup")?.classList.add("d-none");
-    document.getElementById("activity-add-popup")?.classList.add("d-none");
   }
 
   // Les 3 filtres de "Votre aperçu" (devise, période précédente, revenus)
@@ -1569,12 +1652,65 @@ export async function mount(container) {
   // Liste, dans le popup "+ Ajouter", tout bloc (par défaut ou catalogue)
   // actuellement masqué — reconstruit à chaque ouverture, puisque la liste
   // change selon ce qui est déjà affiché.
-  function buildAddPopupHTML() {
-    const hidden = [...DEFAULT_BLOCKS, ...BLOCK_CATALOG].filter((b) => !visibleActivityBlocks.has(b.id));
+  function getHiddenActivityBlocks() {
+    return [...DEFAULT_BLOCKS, ...BLOCK_CATALOG].filter((b) => !visibleActivityBlocks.has(b.id));
+  }
+
+  // Aperçu de chaque bloc masqué : la carte réelle (activityCardShellHTML,
+  // removable=false) + un bouton d'ajout dessous — pas de texte seul, pour
+  // que ce qu'on voit ici soit pixel pour pixel ce que le bloc affichera
+  // une fois ajouté (voir renderBlockPreview pour le contenu/les valeurs).
+  function buildAddModalBodyHTML(hidden) {
     if (!hidden.length) {
-      return `<div class="activity-filter-item activity-filter-item-empty">Tous les blocs sont déjà affichés</div>`;
+      return `<div class="activity-add-modal-empty">Tous les blocs sont déjà affichés.</div>`;
     }
-    return hidden.map((b) => `<button type="button" class="activity-filter-item" data-add="${b.id}">${b.label}</button>`).join("");
+    return hidden
+      .map((b) => {
+        const previewId = `preview-${b.id}`;
+        const body = b.kind === "topEntity" ? topEntityCardBodyHTML(previewId) : metricCardBodyHTML(previewId);
+        const card = activityCardShellHTML(previewId, b.icon, b.label, body, false);
+        return `
+          <div class="activity-add-preview">
+            ${card}
+            <button type="button" class="activity-add-preview-btn" data-add="${b.id}"><i class="fa-solid fa-plus"></i> Ajouter ce bloc</button>
+          </div>
+        `;
+      })
+      .join("");
+  }
+
+  function openActivityAddModal() {
+    const hidden = getHiddenActivityBlocks();
+    const body = document.getElementById("activity-add-modal-body");
+    if (!body) return;
+    body.innerHTML = buildAddModalBodyHTML(hidden);
+    document.getElementById("activity-add-modal-overlay")?.classList.add("open");
+
+    const days = currentActivityPeriod().count;
+    hidden.forEach((b) => renderBlockPreview(b.id, days));
+
+    body.querySelectorAll("[data-add]").forEach((btn) => {
+      on(btn, "click", () => {
+        visibleActivityBlocks.add(btn.dataset.add);
+        saveVisibleBlocks();
+        closeActivityAddModal();
+        rebuildActivityGrid();
+      });
+    });
+  }
+
+  // Détruit les instances Chart.js des aperçus (préfixées "preview-", voir
+  // renderBlockPreview) à la fermeture : le modal est reconstruit à chaque
+  // ouverture (la liste des blocs masqués change), pas question de laisser
+  // d'anciens graphes orphelins dans activityCharts.
+  function closeActivityAddModal() {
+    document.getElementById("activity-add-modal-overlay")?.classList.remove("open");
+    Object.keys(activityCharts).forEach((key) => {
+      if (key.startsWith("preview-")) {
+        activityCharts[key].destroy();
+        delete activityCharts[key];
+      }
+    });
   }
 
   // Affiche/masque le bouton "x" de chaque bloc visible — n'importe quel
@@ -1605,22 +1741,10 @@ export async function mount(container) {
 
     on(document.getElementById("activity-edit-btn"), "click", toggleActivityEditMode);
 
-    on(document.getElementById("activity-add-btn"), "click", (e) => {
-      e.stopPropagation();
-      const popup = document.getElementById("activity-add-popup");
-      const wasOpen = !popup.classList.contains("d-none");
-      closeActivityPopups();
-      if (wasOpen) return;
-      popup.innerHTML = buildAddPopupHTML();
-      popup.querySelectorAll("[data-add]").forEach((item) => {
-        on(item, "click", () => {
-          visibleActivityBlocks.add(item.dataset.add);
-          saveVisibleBlocks();
-          closeActivityPopups();
-          rebuildActivityGrid();
-        });
-      });
-      popup.classList.remove("d-none");
+    on(document.getElementById("activity-add-btn"), "click", openActivityAddModal);
+    on(document.getElementById("activity-add-modal-close"), "click", closeActivityAddModal);
+    on(document.getElementById("activity-add-modal-overlay"), "click", (e) => {
+      if (e.target.id === "activity-add-modal-overlay") closeActivityAddModal();
     });
 
     wireActivityFilter("activity-currency-btn", "activity-currency-popup", (item) => {
