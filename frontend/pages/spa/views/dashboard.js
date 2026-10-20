@@ -79,17 +79,39 @@ const TEMPLATE = `
 </div>
 <div class="activity-section mb-4">
   <div class="activity-section-head">
-    <h5 class="fw-bold mb-0 text-muted">Votre aperçu</h5>
-    <div class="activity-controls">
-      <select class="currency-select" id="activity-currency">
-        <option value="USD" selected>USD</option>
-        <option value="EUR">EUR</option>
-        <option value="XOF">XOF</option>
-      </select>
-      <div class="period-selector" id="period-selector">
-        <button type="button" class="period-btn" data-period="7">7 jours</button>
-        <button type="button" class="period-btn active" data-period="30">30 jours</button>
-        <button type="button" class="period-btn" data-period="90">90 jours</button>
+    <h5 class="activity-section-title fw-bold mb-0 text-muted">Votre aperçu</h5>
+    <div class="activity-filters">
+      <div class="activity-filter" id="activity-currency-filter">
+        <button type="button" class="activity-filter-btn" id="activity-currency-btn">
+          <span id="activity-currency-label">USD</span>
+          <i class="fa-solid fa-chevron-down"></i>
+        </button>
+        <div class="activity-filter-popup d-none" id="activity-currency-popup">
+          <button type="button" class="activity-filter-item active" data-currency="USD">USD</button>
+          <button type="button" class="activity-filter-item" data-currency="EUR">EUR</button>
+          <button type="button" class="activity-filter-item" data-currency="XOF">XOF</button>
+        </div>
+      </div>
+      <div class="activity-filter" id="activity-period-filter">
+        <button type="button" class="activity-filter-btn" id="activity-period-btn">
+          <span id="activity-period-label">Mois précédent</span>
+          <i class="fa-solid fa-chevron-down"></i>
+        </button>
+        <div class="activity-filter-popup d-none" id="activity-period-popup">
+          <button type="button" class="activity-filter-item" data-period="7">Semaine précédente</button>
+          <button type="button" class="activity-filter-item active" data-period="30">Mois précédent</button>
+          <button type="button" class="activity-filter-item" data-period="365">Année précédente</button>
+        </div>
+      </div>
+      <div class="activity-filter" id="activity-net-filter">
+        <button type="button" class="activity-filter-btn" id="activity-net-btn">
+          <span id="activity-net-label">Revenu brut</span>
+          <i class="fa-solid fa-chevron-down"></i>
+        </button>
+        <div class="activity-filter-popup d-none" id="activity-net-popup">
+          <button type="button" class="activity-filter-item active" data-net="gross">Revenu brut</button>
+          <button type="button" class="activity-filter-item" data-net="net">Revenu net</button>
+        </div>
       </div>
     </div>
   </div>
@@ -129,6 +151,7 @@ export async function mount(container) {
   let activityRaw = null;
   let activityDays = 30;
   let activityCurrency = "USD";
+  let activityNetMode = "gross";
   const activityCharts = {};
 
   // Taux fixes vers XOF, alignés sur ceux déjà utilisés ailleurs dans
@@ -204,10 +227,11 @@ export async function mount(container) {
   // création du dashboard a été retiré) : /links reflète donc déjà
   // l'ensemble des liens créés par le marchand. L'endpoint est paginé
   // (limit/offset, pas de filtre de date) : on parcourt les pages jusqu'à
-  // dépasser la fenêtre la plus large utile (90 jours actuels + 90 jours
-  // précédents) plutôt que de se limiter à une seule page qui pourrait
+  // dépasser la fenêtre la plus large utile (365 jours actuels + 365 jours
+  // précédents, "Année précédente" étant la plus longue période
+  // sélectionnable) plutôt que de se limiter à une seule page qui pourrait
   // couper des liens pertinents si le marchand en a créé beaucoup.
-  const MAX_ACTIVITY_PERIOD_DAYS = 90;
+  const MAX_ACTIVITY_PERIOD_DAYS = 365;
   const LINKS_PAGE_SIZE = 200;
 
   async function fetchAllLinks() {
@@ -421,6 +445,16 @@ export async function mount(container) {
   // se règle via une Invoice à chaque cycle (déjà comptée ci-dessus), sa
   // "value" nominale ne représente aucun paiement réel — l'ajouter en plus
   // compterait ce revenu deux fois.
+  // Commission Xepay par source, appliquée quand le filtre "Revenus" de
+  // "Votre aperçu" est sur "net" : 6% sur les liens, 1% sur les factures/
+  // abonnements — mêmes taux que heroNetMultiplier (backend : routes/
+  // payments.py pour les liens, application_fee_percent dans
+  // routes/webhook/stripe.py pour les factures/abonnements).
+  function activityNetMultiplier(source) {
+    if (activityNetMode !== "net") return 1;
+    return source === "link" ? 0.94 : 0.99;
+  }
+
   function computeEntityCohortRevenue(entities, paymentKeyField, days) {
     const now = Date.now();
     const currentStart = now - days * DAY_MS;
@@ -435,7 +469,11 @@ export async function mount(container) {
         paymentsByKey.get(key).push(p);
       });
     };
+    // Toujours "invoice" comme source (jamais "link", voir plus haut) : le
+    // taux net applicable à Clients/Produits est donc toujours celui des
+    // factures/abonnements.
     addPayments(activityRaw.invoices, (status) => status === "paid");
+    const multiplier = activityNetMultiplier("invoice");
 
     function revenueForWindow(entitiesInWindow, windowStart) {
       const daily = new Array(days).fill(0);
@@ -445,7 +483,7 @@ export async function mount(container) {
         const idx = Math.min(days - 1, Math.max(0, Math.floor((e.ts - windowStart) / DAY_MS)));
         payments.forEach((p) => {
           if (p.ts < windowStart || p.ts >= windowStart + days * DAY_MS) return;
-          const amount = p.value * getRate(p.currency || "USD", activityCurrency);
+          const amount = p.value * multiplier * getRate(p.currency || "USD", activityCurrency);
           daily[idx] += amount;
           total += amount;
         });
@@ -480,7 +518,9 @@ export async function mount(container) {
   // propre à chaque élément (une facture/un abonnement peut être en USD ou
   // EUR, voir fetchActivityRawData) — contrairement à computeActivityStats,
   // qui applique un taux fixe par catégorie et ne filtre aucun statut.
-  function computeFilteredRevenueStats(items, days, isEligible) {
+  // "source" détermine le taux de commission appliqué en mode "net" (voir
+  // activityNetMultiplier) ; ignoré en mode "brut".
+  function computeFilteredRevenueStats(items, days, isEligible, source) {
     const now = Date.now();
     const currentStart = now - days * DAY_MS;
     const previousStart = now - 2 * days * DAY_MS;
@@ -488,10 +528,11 @@ export async function mount(container) {
     const previousRevenueDaily = new Array(days).fill(0);
     let currentTotal = 0;
     let previousTotal = 0;
+    const multiplier = activityNetMultiplier(source);
 
     items.forEach(({ ts, value, currency, status }) => {
       if (ts == null || !isEligible(status)) return;
-      const amount = value * getRate(currency || "USD", activityCurrency);
+      const amount = value * multiplier * getRate(currency || "USD", activityCurrency);
       if (ts >= currentStart && ts <= now) {
         const idx = Math.min(days - 1, Math.max(0, Math.floor((ts - currentStart) / DAY_MS)));
         currentRevenueDaily[idx] += amount;
@@ -696,7 +737,7 @@ export async function mount(container) {
       currentRevenueDaily = cohort.currentRevenueDaily;
       previousRevenueDaily = cohort.previousRevenueDaily;
     } else if (cat.key === "invoices") {
-      const filtered = computeFilteredRevenueStats(items, days, (status) => status === "paid");
+      const filtered = computeFilteredRevenueStats(items, days, (status) => status === "paid", "invoice");
       curRevenue = filtered.currentTotal;
       prevRevenue = filtered.previousTotal;
       currentRevenueDaily = filtered.currentRevenueDaily;
@@ -708,7 +749,7 @@ export async function mount(container) {
       // par leur propre date de règlement, pas la date de création de
       // l'abonnement.
       const subscriptionInvoices = (activityRaw.invoices || []).filter((i) => i.subscriptionId != null);
-      const filtered = computeFilteredRevenueStats(subscriptionInvoices, days, (status) => status === "paid");
+      const filtered = computeFilteredRevenueStats(subscriptionInvoices, days, (status) => status === "paid", "invoice");
       curRevenue = filtered.currentTotal;
       prevRevenue = filtered.previousTotal;
       currentRevenueDaily = filtered.currentRevenueDaily;
@@ -717,7 +758,7 @@ export async function mount(container) {
       // "links" : un lien en attente/expiré n'est pas un revenu, et chaque
       // lien a sa propre devise (USD/EUR, jamais XOF — voir
       // fetchActivityRawData) plutôt qu'un taux fixe par catégorie.
-      const filtered = computeFilteredRevenueStats(items, days, (status) => status === "paid");
+      const filtered = computeFilteredRevenueStats(items, days, (status) => status === "paid", "link");
       curRevenue = filtered.currentTotal;
       prevRevenue = filtered.previousTotal;
       currentRevenueDaily = filtered.currentRevenueDaily;
@@ -1193,27 +1234,54 @@ export async function mount(container) {
     });
   }
 
+  function closeActivityPopups() {
+    document.getElementById("activity-currency-popup")?.classList.add("d-none");
+    document.getElementById("activity-period-popup")?.classList.add("d-none");
+    document.getElementById("activity-net-popup")?.classList.add("d-none");
+  }
+
+  // Les 3 filtres de "Votre aperçu" (devise, période précédente, revenus)
+  // partagent le même mécanisme chevron -> popup -> sélection, repris du
+  // bloc héro (voir initHeroStat) : un seul wiring générique plutôt que 3
+  // blocs de click-listeners identiques.
+  function wireActivityFilter(btnId, popupId, onSelect) {
+    const btn = document.getElementById(btnId);
+    const popup = document.getElementById(popupId);
+    if (!btn || !popup) return;
+    on(btn, "click", (e) => {
+      e.stopPropagation();
+      const wasOpen = !popup.classList.contains("d-none");
+      closeActivityPopups();
+      popup.classList.toggle("d-none", wasOpen);
+    });
+    popup.querySelectorAll(".activity-filter-item").forEach((item) => {
+      on(item, "click", () => {
+        popup.querySelectorAll(".activity-filter-item").forEach((b) => b.classList.toggle("active", b === item));
+        onSelect(item);
+        closeActivityPopups();
+        renderAllActivityCards();
+      });
+    });
+  }
+
   async function initActivitySection() {
     const grid = document.getElementById("activity-grid");
     if (!grid) return;
     grid.innerHTML = ACTIVITY_CATEGORIES.flatMap((cat) => [activityCardHTML(cat, "revenue"), activityCardHTML(cat, "count")]).join("");
 
-    document.querySelectorAll(".period-btn").forEach((btn) => {
-      on(btn, "click", () => {
-        document.querySelectorAll(".period-btn").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        activityDays = Number(btn.dataset.period);
-        renderAllActivityCards();
-      });
+    wireActivityFilter("activity-currency-btn", "activity-currency-popup", (item) => {
+      activityCurrency = item.dataset.currency;
+      setText("activity-currency-label", item.dataset.currency);
     });
-
-    const currencySelect = document.getElementById("activity-currency");
-    if (currencySelect) {
-      on(currencySelect, "change", () => {
-        activityCurrency = currencySelect.value;
-        renderAllActivityCards();
-      });
-    }
+    wireActivityFilter("activity-period-btn", "activity-period-popup", (item) => {
+      activityDays = Number(item.dataset.period);
+      setText("activity-period-label", item.textContent);
+    });
+    wireActivityFilter("activity-net-btn", "activity-net-popup", (item) => {
+      activityNetMode = item.dataset.net;
+      setText("activity-net-label", item.textContent);
+    });
+    on(document, "click", closeActivityPopups);
 
     initHeroStat();
 

@@ -131,17 +131,20 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
    lien, liste des liens, bannières upgrade) a été retiré.
    ============================================ */
 /* Taille de police fixe à 13px partout dans cette vue — sauf les chiffres
-   clés (.activity-value), qui reprennent la taille de "Aujourd'hui" du
-   bloc héro (20px, voir .hero-stat-title) pour rester cohérents avec les
-   montants de ce bloc. */
-.activity-section-head h5 { font-size:13px; }
-.activity-section-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px; }
-.activity-controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-.currency-select { border:1px solid #e5e7eb; border-radius:0; background:#ffffff; color:#111827; font-size:13px; font-weight:700; padding:7px 12px; cursor:pointer; }
-.period-selector { display:inline-flex; background:#f3f4f6; border-radius:10px; padding:3px; gap:2px; }
-.period-btn { border:none; background:transparent; color:#6b7280; font-size:13px; font-weight:600; padding:6px 14px; border-radius:8px; cursor:pointer; transition:.15s; }
-.period-btn:hover { color:#111827; }
-.period-btn.active { background:#ffffff; color:#111827; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+   clés (.activity-value) et le titre de section (.activity-section-title),
+   qui reprennent la taille de "Aujourd'hui" du bloc héro (20px, voir
+   .hero-stat-title) pour rester cohérents avec ce bloc. */
+.activity-section-title { font-size:20px; }
+/* Titre en haut, filtres dessous (pas côte à côte) */
+.activity-section-head { display:flex; flex-direction:column; align-items:flex-start; gap:12px; margin-bottom:14px; }
+.activity-filters { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.activity-filter { position:relative; }
+.activity-filter-btn { display:flex; align-items:center; gap:8px; border:1px solid #d1d5db; background:transparent; border-radius:0; padding:7px 12px; font-size:13px; font-weight:600; color:#111827; cursor:pointer; }
+.activity-filter-btn i { font-size:10px; color:#9ca3af; }
+.activity-filter-popup { position:absolute; top:calc(100% + 6px); left:0; min-width:170px; background:#ffffff; border:1px solid #e5e7eb; border-radius:0; box-shadow:0 10px 30px rgba(0,0,0,.12); z-index:20; padding:4px; }
+.activity-filter-item { display:block; width:100%; text-align:left; border:none; background:transparent; padding:8px 10px; font-size:13px; color:#374151; cursor:pointer; }
+.activity-filter-item:hover { background:#f3f4f6; }
+.activity-filter-item.active { color:#111827; font-weight:700; background:#f3f4f6; }
 /* 2 blocs par catégorie (revenus, nombre) alignés côte à côte : 2 colonnes
    fixes, l'ordre de ACTIVITY_CATEGORIES place naturellement chaque paire
    l'une après l'autre. */
@@ -160,9 +163,6 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .activity-chart-wrap canvas { width:100% !important; height:100% !important; }
 @media (max-width: 992px) {
   .activity-grid { grid-template-columns:1fr; }
-}
-@media (max-width: 768px) {
-  .activity-section-head { flex-direction:column; align-items:flex-start; }
 }
 
 /* ============================================
