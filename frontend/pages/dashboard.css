@@ -147,23 +147,41 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .activity-section-title { font-size:20px; }
 /* Titre en haut, filtres dessous (pas côte à côte) */
 .activity-section-head { display:flex; flex-direction:column; align-items:flex-start; gap:12px; margin-bottom:14px; }
-.activity-filters { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+/* space-between : les 3 filtres (activity-filters-left) restent groupés à
+   gauche, Ajouter/Modifier (activity-block-actions) poussés tout à droite. */
+.activity-filters { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; }
+.activity-filters-left { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.activity-block-actions { display:flex; align-items:center; gap:10px; flex-shrink:0; }
 .activity-filter { position:relative; }
 /* Bordure arrondie (seule exception à la règle "pas de coins arrondis" du
    reste de l'app, demandée explicitement pour ces filtres) */
 .activity-filter-btn { display:flex; align-items:center; gap:6px; border:1px solid #d1d5db; background:transparent; border-radius:999px; padding:5px 9px; font-size:13px; font-weight:600; color:#111827; cursor:pointer; }
 .activity-filter-btn i { font-size:10px; color:#9ca3af; }
+/* Ajouter/Modifier réutilisent .activity-filter-btn mais l'icône (+) n'a
+   pas vocation à être atténuée comme un chevron de sélecteur. */
+#activity-add-btn i { font-size:12px; color:#111827; }
 .activity-filter-label { color:#6b7280; }
 .activity-filter-value { color:#111827; font-weight:700; }
 .activity-filter-popup { position:absolute; top:calc(100% + 6px); left:0; min-width:170px; background:#ffffff; border:1px solid #e5e7eb; border-radius:0; box-shadow:0 10px 30px rgba(0,0,0,.12); z-index:20; padding:4px; }
+/* Le popup "+ Ajouter" peut contenir jusqu'à 15 entrées (10 par défaut + 5
+   du catalogue) : largeur un peu plus généreuse que les popups de filtre,
+   qui n'ont que 2-4 options courtes. */
+#activity-add-popup { right:0; left:auto; min-width:260px; }
 .activity-filter-item { display:block; width:100%; text-align:left; border:none; background:transparent; padding:8px 10px; font-size:13px; color:#374151; cursor:pointer; }
 .activity-filter-item:hover { background:#f3f4f6; }
 .activity-filter-item.active { color:#111827; font-weight:700; background:#f3f4f6; }
-/* 2 blocs par catégorie (revenus, nombre) alignés côte à côte : 2 colonnes
-   fixes, l'ordre de ACTIVITY_CATEGORIES place naturellement chaque paire
-   l'une après l'autre. */
-.activity-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:20px; }
-.activity-card { background:#ffffff; border:1px solid #e5e7eb; border-radius:0; padding:22px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+.activity-filter-item-empty { color:#9ca3af; cursor:default; }
+.activity-filter-item-empty:hover { background:transparent; }
+/* Une ligne (.activity-row) par catégorie, empilées verticalement. */
+.activity-grid { display:flex; flex-direction:column; gap:20px; }
+/* auto-fit : 2 blocs par défaut tiennent sur 2 colonnes : l'ajout d'un 3e
+   bloc (Meilleur client/produit, Remboursements) fait automatiquement
+   passer la ligne à 3 colonnes, sans recalcul en JS. */
+.activity-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:20px; }
+.activity-card { position:relative; background:#ffffff; border:1px solid #e5e7eb; border-radius:0; padding:22px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+/* Visible seulement en mode édition (voir toggleActivityEditMode) */
+.activity-card-remove { position:absolute; top:10px; right:10px; width:22px; height:22px; border:1px solid #e5e7eb; background:#ffffff; border-radius:999px; color:#6b7280; font-size:11px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.activity-card-remove:hover { color:#dc2626; border-color:#dc2626; }
 .activity-card-head { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
 .activity-card-icon { width:32px; height:32px; border-radius:8px; background:rgba(250,204,21,0.15); color:#b45309; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
 .activity-card-title { font-size:13px; font-weight:700; color:#374151; }
@@ -175,8 +193,14 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .activity-delta.flat { color:#6b7280; background:#f3f4f6; }
 .activity-chart-wrap { height:300px; position:relative; }
 .activity-chart-wrap canvas { width:100% !important; height:100% !important; }
-@media (max-width: 992px) {
-  .activity-grid { grid-template-columns:1fr; }
+/* Bloc "classement" (Meilleur client/produit) : pas de graphe, juste un
+   nom et un montant — hauteur libre, la ligne se cale sur le plus grand
+   des blocs voisins (ceux avec graphe). */
+.activity-top-entity { padding-top:8px; }
+.activity-top-entity-name { font-size:16px; font-weight:700; color:#111827; margin-bottom:6px; }
+.activity-top-entity-amount { font-size:20px; font-weight:800; color:#111827; }
+@media (max-width: 768px) {
+  .activity-filters { flex-wrap:wrap; }
 }
 
 /* ============================================

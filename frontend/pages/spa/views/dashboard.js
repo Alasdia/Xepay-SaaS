@@ -72,6 +72,7 @@ const TEMPLATE = `
   <div class="activity-section-head">
     <h5 class="activity-section-title fw-bold mb-0 text-muted">Votre aperçu</h5>
     <div class="activity-filters">
+    <div class="activity-filters-left">
       <div class="activity-filter" id="activity-currency-filter">
         <button type="button" class="activity-filter-btn" id="activity-currency-btn">
           <span class="activity-filter-label">Devise</span>
@@ -109,6 +110,19 @@ const TEMPLATE = `
         </div>
       </div>
     </div>
+      <div class="activity-block-actions">
+        <div class="activity-filter" id="activity-add-filter">
+          <button type="button" class="activity-filter-btn" id="activity-add-btn">
+            <i class="fa-solid fa-plus"></i>
+            <span>Ajouter</span>
+          </button>
+          <div class="activity-filter-popup d-none" id="activity-add-popup"></div>
+        </div>
+        <button type="button" class="activity-filter-btn" id="activity-edit-btn">
+          <span id="activity-edit-label">Modifier</span>
+        </button>
+      </div>
+    </div>
   </div>
   <div class="activity-grid" id="activity-grid"></div>
 </div>
@@ -143,6 +157,52 @@ export async function mount(container) {
     { key: "subscriptions", label: "Abonnements", icon: "fa-rotate" },
     { key: "links", label: "Liens de paiement", icon: "fa-link" },
   ];
+
+  // Les 10 blocs par défaut (revenus+nombre × 5 catégories), déjà visibles
+  // à l'ouverture de la vue — "retirables" comme n'importe quel bloc via le
+  // bouton Modifier.
+  const DEFAULT_BLOCKS = ACTIVITY_CATEGORIES.flatMap((cat) => [
+    { id: `${cat.key}-revenue`, row: cat.key, label: `${cat.label} — Revenus` },
+    { id: `${cat.key}-count`, row: cat.key, label: `${cat.label} — Nombre` },
+  ]);
+  const DEFAULT_BLOCK_IDS = DEFAULT_BLOCKS.map((b) => b.id);
+
+  // Blocs optionnels proposés via "+ Ajouter" — masqués par défaut. "row"
+  // détermine dans quelle ligne (même grille que les blocs par défaut de
+  // cette catégorie) le bloc rejoint, avec adaptation automatique de la
+  // largeur des colonnes (voir .activity-row, grid-template-columns en
+  // auto-fit : passe de 2 à 3 colonnes sans JS de mise en page).
+  const BLOCK_CATALOG = [
+    { id: "clients-top", row: "clients", label: "Meilleur client (montant dépensé)", icon: "fa-trophy", kind: "topEntity" },
+    { id: "products-top", row: "products", label: "Meilleur produit (revenu généré)", icon: "fa-trophy", kind: "topEntity" },
+    { id: "invoices-refunds", row: "invoices", label: "Remboursements (factures)", icon: "fa-rotate-left", kind: "metric" },
+    { id: "subscriptions-refunds", row: "subscriptions", label: "Remboursements (abonnements)", icon: "fa-rotate-left", kind: "metric" },
+    { id: "links-refunds", row: "links", label: "Remboursements (liens de paiement)", icon: "fa-rotate-left", kind: "metric" },
+  ];
+
+  const ACTIVITY_BLOCKS_STORAGE_KEY = "xepay_activity_blocks_v1";
+
+  function loadVisibleBlocks() {
+    try {
+      const raw = localStorage.getItem(ACTIVITY_BLOCKS_STORAGE_KEY);
+      if (raw) return new Set(JSON.parse(raw));
+    } catch {
+      // localStorage indisponible (navigation privée, etc.) : repli sur les
+      // blocs par défaut, sans persistance.
+    }
+    return new Set(DEFAULT_BLOCK_IDS);
+  }
+
+  function saveVisibleBlocks() {
+    try {
+      localStorage.setItem(ACTIVITY_BLOCKS_STORAGE_KEY, JSON.stringify([...visibleActivityBlocks]));
+    } catch {
+      // Pas grave : la personnalisation ne survivra juste pas au rechargement.
+    }
+  }
+
+  let visibleActivityBlocks = loadVisibleBlocks();
+  let activityEditMode = false;
 
   // Chaque option = un nombre de "buckets" (count) de taille bucketMs : les
   // fonctions de calcul (computeActivityStats, etc.) sont génériques sur
@@ -182,25 +242,71 @@ export async function mount(container) {
     return `${cat.key}-${kind}`;
   }
 
+  // Coquille commune à tous les blocs (par défaut ou catalogue) : icône +
+  // titre, le bouton de retrait (visible seulement en mode édition, voir
+  // toggleActivityEditMode) et un corps qui varie selon le type de bloc.
+  function activityCardShellHTML(id, icon, title, bodyHtml) {
+    return `
+      <div class="activity-card" data-key="${id}">
+        <button type="button" class="activity-card-remove d-none" data-remove="${id}" title="Retirer ce bloc"><i class="fa-solid fa-xmark"></i></button>
+        <div class="activity-card-head">
+          <span class="activity-card-icon"><i class="fa-solid ${icon}"></i></span>
+          <span class="activity-card-title">${title}</span>
+        </div>
+        ${bodyHtml}
+      </div>
+    `;
+  }
+
+  // Corps "métrique + graphe comparatif" : tous les blocs par défaut
+  // (revenus/nombre) et les remboursements du catalogue.
+  function metricCardBodyHTML(id) {
+    return `
+      <div class="activity-card-metric">
+        <span class="activity-value" id="activity-value-${id}">—</span>
+        <span class="activity-delta" id="activity-delta-${id}"></span>
+      </div>
+      <div class="activity-chart-wrap">
+        <canvas id="activity-chart-${id}"></canvas>
+        <div class="hero-chart-tooltip" id="activity-chart-tooltip-${id}"></div>
+      </div>
+    `;
+  }
+
+  // Corps "classement" (pas de graphe, pas de comparaison) : Meilleur
+  // client/produit — voir computeTopEntity.
+  function topEntityCardBodyHTML(id) {
+    return `
+      <div class="activity-top-entity">
+        <div class="activity-top-entity-name" id="activity-top-name-${id}">—</div>
+        <div class="activity-top-entity-amount" id="activity-top-amount-${id}">—</div>
+      </div>
+    `;
+  }
+
   function activityCardHTML(cat, kind) {
     const id = activityCardId(cat, kind);
     const title = kind === "revenue" ? `${cat.label} — Revenus` : `${cat.label} — Nombre`;
-    return `
-      <div class="activity-card" data-key="${id}">
-        <div class="activity-card-head">
-          <span class="activity-card-icon"><i class="fa-solid ${cat.icon}"></i></span>
-          <span class="activity-card-title">${title}</span>
-        </div>
-        <div class="activity-card-metric">
-          <span class="activity-value" id="activity-value-${id}">—</span>
-          <span class="activity-delta" id="activity-delta-${id}"></span>
-        </div>
-        <div class="activity-chart-wrap">
-          <canvas id="activity-chart-${id}"></canvas>
-          <div class="hero-chart-tooltip" id="activity-chart-tooltip-${id}"></div>
-        </div>
-      </div>
-    `;
+    return activityCardShellHTML(id, cat.icon, title, metricCardBodyHTML(id));
+  }
+
+  // Une ligne (.activity-row) par catégorie, contenant uniquement les blocs
+  // actuellement visibles (visibleActivityBlocks) : par défaut (revenus/
+  // nombre) puis, dans l'ordre du catalogue, ceux qui ont été ajoutés pour
+  // cette catégorie. grid-template-columns en auto-fit (voir CSS) adapte
+  // automatiquement le nombre de colonnes de 2 à 3 sans calcul en JS.
+  function buildActivityGridHTML() {
+    return ACTIVITY_CATEGORIES.map((cat) => {
+      const cards = [];
+      if (visibleActivityBlocks.has(activityCardId(cat, "revenue"))) cards.push(activityCardHTML(cat, "revenue"));
+      if (visibleActivityBlocks.has(activityCardId(cat, "count"))) cards.push(activityCardHTML(cat, "count"));
+      BLOCK_CATALOG.filter((b) => b.row === cat.key && visibleActivityBlocks.has(b.id)).forEach((b) => {
+        const body = b.kind === "topEntity" ? topEntityCardBodyHTML(b.id) : metricCardBodyHTML(b.id);
+        cards.push(activityCardShellHTML(b.id, b.icon, b.label, body));
+      });
+      if (!cards.length) return "";
+      return `<div class="activity-row">${cards.join("")}</div>`;
+    }).join("");
   }
 
   // Unix (secondes, objets Stripe) ou ISO (nos propres endpoints) -> ms.
@@ -333,12 +439,14 @@ export async function mount(container) {
     }
 
     return {
-      clients: (customersData?.data || []).map((c) => ({ id: c.id, ts: toTimestamp(c.created) })),
+      // name : utilisé par le bloc "Meilleur client" (voir computeTopEntity).
+      clients: (customersData?.data || []).map((c) => ({ id: c.id, ts: toTimestamp(c.created), name: c.name || c.email || "Client" })),
       // id seul (pas de "value") : comme pour les clients, le revenu d'un
       // produit ne vient pas d'un champ Stripe du produit lui-même (son prix
       // catalogue existe dès sa création, qu'il soit vendu ou non) mais des
       // factures/abonnements qui le référencent — voir computeProductRevenue.
-      products: (productsData?.data || []).map((p) => ({ id: p.id, ts: toTimestamp(p.created) })),
+      // name : utilisé par le bloc "Meilleur produit".
+      products: (productsData?.data || []).map((p) => ({ id: p.id, ts: toTimestamp(p.created), name: p.name || "Produit" })),
       // status + currency conservés ici aussi : utilisés par le bloc héro
       // pour ne garder que les abonnements actifs (paiement effectif) et
       // convertir depuis leur vraie devise (Stripe, pas forcément XOF).
@@ -393,9 +501,16 @@ export async function mount(container) {
         status: l.status,
         currency: (l.currency || "USD").toUpperCase(),
       })),
+      // status/source : utilisés par les blocs "Remboursements" (voir
+      // computeRefundStats) — un remboursement n'est pas une transaction
+      // séparée côté WalletTransaction, c'est le dépôt d'origine dont le
+      // statut passe à "refunded" (routes/payout.py, refund_payment). source
+      // distingue l'origine : "payment_link"/"invoice"/"subscription".
       balance: (walletData?.transactions || []).map((t) => ({
         ts: toTimestamp(t.created_at),
         value: t.direction === "out" ? -Math.abs(t.amount) : Math.abs(t.amount),
+        status: t.status,
+        source: t.source,
       })),
       totalBalance: Number(walletMeData?.available || 0),
     };
@@ -528,6 +643,67 @@ export async function mount(container) {
 
   function computeProductRevenue(days) {
     return computeEntityCohortRevenue(activityRaw.products || [], "productId", days);
+  }
+
+  // Classement (pas de comparaison actuel/précédent ici) : parmi TOUTES les
+  // entités (pas seulement celles créées dans la période, contrairement à
+  // computeEntityCohortRevenue), celle qui a généré le plus de revenu via
+  // des factures payées dans la période en cours. Utilisé par les blocs
+  // "Meilleur client"/"Meilleur produit".
+  function computeTopEntity(entities, paymentKeyField, count) {
+    const bucketMs = currentActivityPeriod().bucketMs;
+    const now = Date.now();
+    const currentStart = now - count * bucketMs;
+    const multiplier = activityNetMultiplier("invoice");
+    const totals = new Map();
+    (activityRaw.invoices || []).forEach((p) => {
+      const key = p[paymentKeyField];
+      if (!key || p.status !== "paid" || p.ts == null || p.ts < currentStart || p.ts > now) return;
+      const amount = p.value * multiplier * getRate(p.currency || "USD", activityCurrency);
+      totals.set(key, (totals.get(key) || 0) + amount);
+    });
+    let topKey = null;
+    let topAmount = -Infinity;
+    totals.forEach((amount, key) => {
+      if (amount > topAmount) {
+        topAmount = amount;
+        topKey = key;
+      }
+    });
+    if (topKey == null) return null;
+    const entity = entities.find((e) => e.id === topKey);
+    return { name: entity?.name || "—", amount: topAmount };
+  }
+
+  // Un remboursement n'a pas de notion de "brut"/"net" propre : le montant
+  // WalletTransaction était déjà net de commission au moment du crédit
+  // (voir fetchActivityRawData) — activityNetMode ne s'applique donc pas
+  // ici, contrairement aux autres blocs de revenus.
+  function computeRefundStats(source, count) {
+    const bucketMs = currentActivityPeriod().bucketMs;
+    const now = Date.now();
+    const currentStart = now - count * bucketMs;
+    const previousStart = now - 2 * count * bucketMs;
+    const currentRevenueDaily = new Array(count).fill(0);
+    const previousRevenueDaily = new Array(count).fill(0);
+    let currentTotal = 0;
+    let previousTotal = 0;
+
+    (activityRaw.balance || []).forEach((t) => {
+      if (t.ts == null || t.status !== "refunded" || t.source !== source) return;
+      const amount = Math.abs(t.value) * getRate("XOF", activityCurrency);
+      if (t.ts >= currentStart && t.ts <= now) {
+        const idx = Math.min(count - 1, Math.max(0, Math.floor((t.ts - currentStart) / bucketMs)));
+        currentRevenueDaily[idx] += amount;
+        currentTotal += amount;
+      } else if (t.ts >= previousStart && t.ts < currentStart) {
+        const idx = Math.min(count - 1, Math.max(0, Math.floor((t.ts - previousStart) / bucketMs)));
+        previousRevenueDaily[idx] += amount;
+        previousTotal += amount;
+      }
+    });
+
+    return { currentRevenueDaily, previousRevenueDaily, currentTotal, previousTotal };
   }
 
   // Revenu réel d'une catégorie filtrée par statut ("paid" pour les
@@ -855,30 +1031,79 @@ export async function mount(container) {
     const dateForPoint = buildComparisonDateResolver(days);
 
     const revId = activityCardId(cat, "revenue");
-    setText(`activity-value-${revId}`, formatMoney(curRevenue, activityCurrency));
-    setDelta(`activity-delta-${revId}`, curRevenue, prevRevenue);
-    renderOrUpdateChart(
-      revId,
-      labels,
-      buildComparisonDatasets(currentRevenueDaily, previousRevenueDaily),
-      (v) => formatMoney(v, activityCurrency),
-      `Revenus générés (${activityCurrency})`,
-      dateForPoint
-    );
+    if (visibleActivityBlocks.has(revId)) {
+      setText(`activity-value-${revId}`, formatMoney(curRevenue, activityCurrency));
+      setDelta(`activity-delta-${revId}`, curRevenue, prevRevenue);
+      renderOrUpdateChart(
+        revId,
+        labels,
+        buildComparisonDatasets(currentRevenueDaily, previousRevenueDaily),
+        (v) => formatMoney(v, activityCurrency),
+        `Revenus générés (${activityCurrency})`,
+        dateForPoint
+      );
+    }
 
     const countId = activityCardId(cat, "count");
-    setText(`activity-value-${countId}`, formatCount(stats.currentCount));
-    setDelta(`activity-delta-${countId}`, stats.currentCount, stats.previousCount);
-    if (cat.key === "links") {
-      renderOrUpdateChart(countId, labels, buildLinksStatusDatasets(computeLinksStatusDaily(items, days)), formatCount, "Nombre (par statut)");
-    } else {
-      renderOrUpdateChart(countId, labels, buildComparisonDatasets(stats.currentCountDaily, stats.previousCountDaily), formatCount, "Nombre", dateForPoint);
+    if (visibleActivityBlocks.has(countId)) {
+      setText(`activity-value-${countId}`, formatCount(stats.currentCount));
+      setDelta(`activity-delta-${countId}`, stats.currentCount, stats.previousCount);
+      if (cat.key === "links") {
+        renderOrUpdateChart(countId, labels, buildLinksStatusDatasets(computeLinksStatusDaily(items, days)), formatCount, "Nombre (par statut)");
+      } else {
+        renderOrUpdateChart(countId, labels, buildComparisonDatasets(stats.currentCountDaily, stats.previousCountDaily), formatCount, "Nombre", dateForPoint);
+      }
+    }
+
+    renderCatalogCards(cat, days, labels, dateForPoint);
+  }
+
+  // Blocs ajoutés via "+ Ajouter" pour cette catégorie (Meilleur client/
+  // produit, Remboursements) — voir BLOCK_CATALOG.
+  function renderCatalogCards(cat, days, labels, dateForPoint) {
+    const refundSourceByCategory = { invoices: "invoice", subscriptions: "subscription", links: "payment_link" };
+
+    if (cat.key === "clients" && visibleActivityBlocks.has("clients-top")) {
+      const top = computeTopEntity(activityRaw.clients || [], "customerId", days);
+      setText("activity-top-name-clients-top", top ? top.name : "—");
+      setText("activity-top-amount-clients-top", top ? formatMoney(top.amount, activityCurrency) : "—");
+    }
+    if (cat.key === "products" && visibleActivityBlocks.has("products-top")) {
+      const top = computeTopEntity(activityRaw.products || [], "productId", days);
+      setText("activity-top-name-products-top", top ? top.name : "—");
+      setText("activity-top-amount-products-top", top ? formatMoney(top.amount, activityCurrency) : "—");
+    }
+
+    const refundId = `${cat.key}-refunds`;
+    const refundSource = refundSourceByCategory[cat.key];
+    if (refundSource && visibleActivityBlocks.has(refundId)) {
+      const refund = computeRefundStats(refundSource, days);
+      setText(`activity-value-${refundId}`, formatMoney(refund.currentTotal, activityCurrency));
+      setDelta(`activity-delta-${refundId}`, refund.currentTotal, refund.previousTotal);
+      renderOrUpdateChart(
+        refundId,
+        labels,
+        buildComparisonDatasets(refund.currentRevenueDaily, refund.previousRevenueDaily),
+        (v) => formatMoney(v, activityCurrency),
+        `Remboursements (${activityCurrency})`,
+        dateForPoint
+      );
     }
   }
 
   async function renderAllActivityCards() {
     if (!activityRaw) return;
     await Promise.all(ACTIVITY_CATEGORIES.map((cat) => renderCategory(cat, currentActivityPeriod().count)));
+  }
+
+  function rebuildActivityGrid() {
+    const grid = document.getElementById("activity-grid");
+    if (!grid) return;
+    grid.innerHTML = buildActivityGridHTML();
+    if (activityEditMode) {
+      grid.querySelectorAll(".activity-card-remove").forEach((btn) => btn.classList.remove("d-none"));
+    }
+    renderAllActivityCards();
   }
 
   /* =====================================================
@@ -1314,6 +1539,7 @@ export async function mount(container) {
     document.getElementById("activity-currency-popup")?.classList.add("d-none");
     document.getElementById("activity-period-popup")?.classList.add("d-none");
     document.getElementById("activity-net-popup")?.classList.add("d-none");
+    document.getElementById("activity-add-popup")?.classList.add("d-none");
   }
 
   // Les 3 filtres de "Votre aperçu" (devise, période précédente, revenus)
@@ -1340,10 +1566,62 @@ export async function mount(container) {
     });
   }
 
+  // Liste, dans le popup "+ Ajouter", tout bloc (par défaut ou catalogue)
+  // actuellement masqué — reconstruit à chaque ouverture, puisque la liste
+  // change selon ce qui est déjà affiché.
+  function buildAddPopupHTML() {
+    const hidden = [...DEFAULT_BLOCKS, ...BLOCK_CATALOG].filter((b) => !visibleActivityBlocks.has(b.id));
+    if (!hidden.length) {
+      return `<div class="activity-filter-item activity-filter-item-empty">Tous les blocs sont déjà affichés</div>`;
+    }
+    return hidden.map((b) => `<button type="button" class="activity-filter-item" data-add="${b.id}">${b.label}</button>`).join("");
+  }
+
+  // Affiche/masque le bouton "x" de chaque bloc visible — n'importe quel
+  // bloc (par défaut ou ajouté) est retirable, pas seulement ceux du
+  // catalogue, voir la demande initiale ("ajouter/retirer... selon son bon
+  // vouloir").
+  function toggleActivityEditMode() {
+    activityEditMode = !activityEditMode;
+    document.querySelectorAll(".activity-card-remove").forEach((btn) => btn.classList.toggle("d-none", !activityEditMode));
+    setText("activity-edit-label", activityEditMode ? "Terminé" : "Modifier");
+  }
+
   async function initActivitySection() {
     const grid = document.getElementById("activity-grid");
     if (!grid) return;
-    grid.innerHTML = ACTIVITY_CATEGORIES.flatMap((cat) => [activityCardHTML(cat, "revenue"), activityCardHTML(cat, "count")]).join("");
+    grid.innerHTML = buildActivityGridHTML();
+
+    // Délégué sur la grille entière (pas sur chaque bouton) : elle est
+    // reconstruite (innerHTML) à chaque ajout/retrait de bloc, un listener
+    // par carte serait perdu à la reconstruction suivante.
+    on(grid, "click", (e) => {
+      const removeBtn = e.target.closest(".activity-card-remove");
+      if (!removeBtn) return;
+      visibleActivityBlocks.delete(removeBtn.dataset.remove);
+      saveVisibleBlocks();
+      rebuildActivityGrid();
+    });
+
+    on(document.getElementById("activity-edit-btn"), "click", toggleActivityEditMode);
+
+    on(document.getElementById("activity-add-btn"), "click", (e) => {
+      e.stopPropagation();
+      const popup = document.getElementById("activity-add-popup");
+      const wasOpen = !popup.classList.contains("d-none");
+      closeActivityPopups();
+      if (wasOpen) return;
+      popup.innerHTML = buildAddPopupHTML();
+      popup.querySelectorAll("[data-add]").forEach((item) => {
+        on(item, "click", () => {
+          visibleActivityBlocks.add(item.dataset.add);
+          saveVisibleBlocks();
+          closeActivityPopups();
+          rebuildActivityGrid();
+        });
+      });
+      popup.classList.remove("d-none");
+    });
 
     wireActivityFilter("activity-currency-btn", "activity-currency-popup", (item) => {
       activityCurrency = item.dataset.currency;
