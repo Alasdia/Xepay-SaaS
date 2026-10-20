@@ -197,6 +197,7 @@ export async function mount(container) {
         </div>
         <div class="activity-chart-wrap">
           <canvas id="activity-chart-${id}"></canvas>
+          <div class="hero-chart-tooltip" id="activity-chart-tooltip-${id}"></div>
         </div>
       </div>
     `;
@@ -686,13 +687,48 @@ export async function mount(container) {
   // d'utiliser dataset.label dans le tooltip — voir buildComparisonDateResolver.
   // Omis pour le graphe "Liens — Nombre par statut", dont les labels
   // ("Payés"/"En attente"/"Expirés") sont déjà ce qu'on veut afficher.
+  // Tooltip HTML personnalisé réutilisant exactement le style du bloc héro
+  // (.hero-chart-tooltip et consorts, voir heroTooltipHandler) au lieu du
+  // tooltip Chart.js par défaut — un titre (yAxisLabel), un trait fin, puis
+  // une ligne par dataset avec un point de la couleur de sa courbe et sa
+  // valeur en gras. Toujours sous l'axe X, jamais sur le graphe.
+  function activityTooltipHandler(context, tooltipId, dateForPoint, valueFormatter, title) {
+    const { chart, tooltip } = context;
+    const el = document.getElementById(tooltipId);
+    if (!el) return;
+    if (!tooltip || tooltip.opacity === 0 || !tooltip.dataPoints || !tooltip.dataPoints.length) {
+      el.classList.remove("visible");
+      return;
+    }
+
+    const rows = tooltip.dataPoints
+      .map((dp) => {
+        const dataset = chart.data.datasets[dp.datasetIndex];
+        const label = dateForPoint ? dateForPoint(dp.datasetIndex, dp.dataIndex) : dataset.label;
+        return `<div class="hero-chart-tooltip-row"><span class="hero-chart-tooltip-dot" style="background:${dataset.borderColor}"></span>${label} : <strong class="hero-chart-tooltip-value">${valueFormatter(dp.parsed.y)}</strong></div>`;
+      })
+      .join("");
+    el.innerHTML = `
+      <div class="hero-chart-tooltip-metric">${title}</div>
+      <div class="hero-chart-tooltip-divider"></div>
+      ${rows}
+    `;
+    el.classList.add("visible");
+
+    const chartWidth = chart.width;
+    const tooltipWidth = el.offsetWidth;
+    let left = tooltip.caretX - tooltipWidth / 2;
+    if (left < 0) left = 4;
+    if (left + tooltipWidth > chartWidth) left = chartWidth - tooltipWidth - 4;
+    el.style.left = left + "px";
+    el.style.top = chart.chartArea.bottom + 8 + "px";
+  }
+
   function renderOrUpdateChart(id, labels, datasets, valueFormatter, yAxisLabel, dateForPoint) {
     const canvas = document.getElementById(`activity-chart-${id}`);
     if (!canvas) return;
-    const tooltipLabel = (ctx) => {
-      const prefix = dateForPoint ? dateForPoint(ctx.datasetIndex, ctx.dataIndex) : ctx.dataset.label;
-      return `${prefix}: ${valueFormatter(ctx.parsed.y)}`;
-    };
+    const tooltipId = `activity-chart-tooltip-${id}`;
+    const external = (context) => activityTooltipHandler(context, tooltipId, dateForPoint, valueFormatter, yAxisLabel);
     const xAxisTitle = `Période (${currentActivityPeriod().bucketMs === HOUR_MS ? "heure" : "jour"})`;
 
     if (activityCharts[id]) {
@@ -701,7 +737,7 @@ export async function mount(container) {
       chart.data.datasets = datasets;
       chart.options.scales.x.title.text = xAxisTitle;
       chart.options.scales.y.title.text = yAxisLabel;
-      chart.options.plugins.tooltip.callbacks.label = tooltipLabel;
+      chart.options.plugins.tooltip.external = external;
       chart.update();
       return;
     }
@@ -720,11 +756,8 @@ export async function mount(container) {
             labels: { boxWidth: 12, boxHeight: 2, color: "#6b7280", font: { size: 13 } },
           },
           tooltip: {
-            titleFont: { size: 13 },
-            bodyFont: { size: 13 },
-            callbacks: {
-              label: tooltipLabel,
-            },
+            enabled: false,
+            external,
           },
         },
         scales: {

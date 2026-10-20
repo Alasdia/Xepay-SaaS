@@ -91,6 +91,9 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
    fond : le graphique reste posé sur la page, comme le reste du bloc. */
 .hero-chart-wrap { position:relative; width:100%; height:156px; margin-top:18px; }
 .hero-chart-wrap canvas { width:100% !important; height:100% !important; }
+/* Classes génériques (pas liées à l'ID #hero-chart) : réutilisées telles
+   quelles pour les tooltips des graphes de "Votre aperçu"
+   (activityTooltipHandler), même style que le bloc héro. */
 .hero-chart-tooltip { position:absolute; opacity:0; pointer-events:none; transition:opacity .1s ease; background:#ffffff; border:1px solid #e5e7eb; border-radius:0; box-shadow:0 10px 30px rgba(0,0,0,.12); padding:10px 12px; font-size:13px; color:#111827; white-space:nowrap; z-index:20; }
 .hero-chart-tooltip.visible { opacity:1; }
 .hero-chart-tooltip-divider { height:1px; background:#e5e7eb; margin:6px 0 8px; }
