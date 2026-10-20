@@ -47,10 +47,20 @@ MAX_SETTLEMENT_ATTEMPTS = len(SETTLEMENT_RETRY_DELAYS_SECONDS) + 1
 def _fetch_settled_charge_data(charge_id):
     """Relit le Charge et sa BalanceTransaction jusqu'à ce que les deux
     soient disponibles (balance_transaction est strictement requis, le
-    calcul du montant en dépend) et, si possible, jusqu'à ce que
-    application_fee/transfer le soient aussi (sinon le paiement est quand
-    même conservé, avec fee_amount/transfer_amount à None en dernier
-    recours — jamais perdu pour cette seule raison)."""
+    calcul du montant/commission/frais Stripe en dépend tous les trois -
+    voir process_checkout_session_payment).
+
+    Ne bloque plus en plus sur application_fee/transfer une fois
+    balance_tx trouvée : ces deux-là ne servent plus qu'à des champs
+    secondaires (fee_id/fee_amount/transfer_amount, gardés à titre
+    indicatif), la commission Xepay venant désormais directement de
+    charge.application_fee_amount (toujours disponible immédiatement,
+    sans délai de propagation). S'ils sont déjà là, tant mieux ; sinon
+    le paiement est créé sans eux plutôt que d'attendre inutilement -
+    le handler charge.updated (voir stripe_payment_webhook) corrige de
+    toute façon stripe_fee_amount/balance_transaction_net/available_at
+    dès que Stripe a fini de régler la balance_transaction, sans
+    sondage, dès qu'elle devient disponible."""
     charge_dict = None
     balance_tx = None
     for attempt in range(MAX_SETTLEMENT_ATTEMPTS):
@@ -59,8 +69,7 @@ def _fetch_settled_charge_data(charge_id):
         balance_txs = stripe.BalanceTransaction.list(source=charge_id, limit=1)
         if balance_txs.data:
             balance_tx = balance_txs.data[0]
-            if charge_dict.get("application_fee") and charge_dict.get("transfer"):
-                break
+            break
         if attempt < len(SETTLEMENT_RETRY_DELAYS_SECONDS):
             time.sleep(SETTLEMENT_RETRY_DELAYS_SECONDS[attempt])
     return charge_dict, balance_tx
@@ -429,6 +438,41 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
                         "amount": tx.amount,
                         "status": "refunded"
                     })
+            return {"status": "ok"}
+        elif event_type == "charge.updated":
+            # Stripe crée la balance_transaction de façon asynchrone après
+            # le succès du paiement (automatic_async) : charge.updated est
+            # l'événement dédié qui signale qu'elle est enfin prête - un
+            # seul appel direct ici, jamais de sondage (contrairement à
+            # _fetch_settled_charge_data, nécessaire uniquement à
+            # checkout.session.completed, qui arrive souvent avant que la
+            # balance_transaction existe). Corrige/complète un Payment déjà
+            # créé plutôt que d'en créer un nouveau - traité en synchrone
+            # (un seul appel Stripe rapide, pas besoin de tâche de fond).
+            balance_transaction_id = object_data.get("balance_transaction")
+            if not balance_transaction_id:
+                return {"status": "ignored"}
+            pi_id = object_data.get("payment_intent")
+            payment = (
+                db.query(Payment)
+                .filter(Payment.stripe_payment_intent_id == pi_id)
+                .first()
+            )
+            if not payment:
+                return {"status": "ignored"}
+            try:
+                balance_tx = stripe.BalanceTransaction.retrieve(balance_transaction_id)
+            except stripe.error.StripeError as e:
+                print(f"⚠️ BalanceTransaction.retrieve a échoué pour {balance_transaction_id} (pi={pi_id}): {e}")
+                return {"status": "ok"}
+            amount_usd = balance_tx.amount / 100
+            application_fee_requested = (object_data.get("application_fee_amount") or 0) / 100
+            stripe_fee_amount = balance_tx.fee / 100
+            payment.application_fee_requested = application_fee_requested
+            payment.stripe_fee_amount = stripe_fee_amount
+            payment.balance_transaction_net = round(amount_usd - application_fee_requested - stripe_fee_amount, 2)
+            payment.available_at = datetime.fromtimestamp(balance_tx.available_on, tz=timezone.utc)
+            db.commit()
             return {"status": "ok"}
         if event_type == "checkout.session.completed":
             print("STRIPE EVENT:", event_type)
