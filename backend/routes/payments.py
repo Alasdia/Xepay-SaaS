@@ -352,14 +352,6 @@ def get_payments_live(
 
     results = []
     for charge in charges.auto_paging_iter():
-        # Sans ce garde-fou, auto_paging_iter() continue de charger toutes
-        # les pages suivantes depuis Stripe (limit ne borne que la taille
-        # d'une page, pas le nombre de pages parcourues) : sur une
-        # plateforme avec plusieurs marchands, ça peut scanner tout
-        # l'historique de charges, de tous les marchands, juste pour en
-        # trouver "limit" appartenant à celui-ci.
-        if len(results) >= limit:
-            break
         transfer_data = charge.get("transfer_data") or {}
         destination = transfer_data.get("destination")
         # Ne garder que les charges de ce marchand (destination charge liée
