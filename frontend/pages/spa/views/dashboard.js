@@ -83,7 +83,8 @@ const TEMPLATE = `
     <div class="activity-filters">
       <div class="activity-filter" id="activity-currency-filter">
         <button type="button" class="activity-filter-btn" id="activity-currency-btn">
-          <span id="activity-currency-label">USD</span>
+          <span class="activity-filter-label">Devise</span>
+          <span class="activity-filter-value" id="activity-currency-label">USD</span>
           <i class="fa-solid fa-chevron-down"></i>
         </button>
         <div class="activity-filter-popup d-none" id="activity-currency-popup">
@@ -94,7 +95,8 @@ const TEMPLATE = `
       </div>
       <div class="activity-filter" id="activity-period-filter">
         <button type="button" class="activity-filter-btn" id="activity-period-btn">
-          <span id="activity-period-label">Mois précédent</span>
+          <span class="activity-filter-label">Période précédente</span>
+          <span class="activity-filter-value" id="activity-period-label">Mois précédent</span>
           <i class="fa-solid fa-chevron-down"></i>
         </button>
         <div class="activity-filter-popup d-none" id="activity-period-popup">
@@ -105,7 +107,8 @@ const TEMPLATE = `
       </div>
       <div class="activity-filter" id="activity-net-filter">
         <button type="button" class="activity-filter-btn" id="activity-net-btn">
-          <span id="activity-net-label">Revenu brut</span>
+          <span class="activity-filter-label">Revenus</span>
+          <span class="activity-filter-value" id="activity-net-label">Revenu brut</span>
           <i class="fa-solid fa-chevron-down"></i>
         </button>
         <div class="activity-filter-popup d-none" id="activity-net-popup">
@@ -557,6 +560,22 @@ export async function mount(container) {
     return labels;
   }
 
+  // Résout, pour un point d'un graphe "comparaison" (buildComparisonDatasets,
+  // datasetIndex 0 = actuelle, 1 = précédente), sa date calendaire exacte au
+  // lieu du texte générique "Période actuelle"/"Période précédente" dans le
+  // tooltip. Le point précédent à l'index i correspond exactement à "days"
+  // jours avant le point actuel au même index (mêmes bornes que
+  // computeActivityStats : previousStart = now - 2*days, currentStart =
+  // now - days).
+  function buildComparisonDateResolver(days) {
+    const now = Date.now();
+    return (datasetIndex, dataIndex) => {
+      const daysAgo = days - 1 - dataIndex + (datasetIndex === 1 ? days : 0);
+      const d = new Date(now - daysAgo * DAY_MS);
+      return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+    };
+  }
+
   function formatMoney(value, currency) {
     return value.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " " + currency;
   }
@@ -639,16 +658,24 @@ export async function mount(container) {
     ];
   }
 
-  function renderOrUpdateChart(id, labels, datasets, valueFormatter, yAxisLabel) {
+  // dateForPoint (optionnel) : résout la date exacte d'un point au lieu
+  // d'utiliser dataset.label dans le tooltip — voir buildComparisonDateResolver.
+  // Omis pour le graphe "Liens — Nombre par statut", dont les labels
+  // ("Payés"/"En attente"/"Expirés") sont déjà ce qu'on veut afficher.
+  function renderOrUpdateChart(id, labels, datasets, valueFormatter, yAxisLabel, dateForPoint) {
     const canvas = document.getElementById(`activity-chart-${id}`);
     if (!canvas) return;
+    const tooltipLabel = (ctx) => {
+      const prefix = dateForPoint ? dateForPoint(ctx.datasetIndex, ctx.dataIndex) : ctx.dataset.label;
+      return `${prefix}: ${valueFormatter(ctx.parsed.y)}`;
+    };
 
     if (activityCharts[id]) {
       const chart = activityCharts[id];
       chart.data.labels = labels;
       chart.data.datasets = datasets;
       chart.options.scales.y.title.text = yAxisLabel;
-      chart.options.plugins.tooltip.callbacks.label = (ctx) => `${ctx.dataset.label}: ${valueFormatter(ctx.parsed.y)}`;
+      chart.options.plugins.tooltip.callbacks.label = tooltipLabel;
       chart.update();
       return;
     }
@@ -670,7 +697,7 @@ export async function mount(container) {
             titleFont: { size: 13 },
             bodyFont: { size: 13 },
             callbacks: {
-              label: (ctx) => `${ctx.dataset.label}: ${valueFormatter(ctx.parsed.y)}`,
+              label: tooltipLabel,
             },
           },
         },
@@ -765,6 +792,8 @@ export async function mount(container) {
       previousRevenueDaily = filtered.previousRevenueDaily;
     }
 
+    const dateForPoint = buildComparisonDateResolver(days);
+
     const revId = activityCardId(cat, "revenue");
     setText(`activity-value-${revId}`, formatMoney(curRevenue, activityCurrency));
     setDelta(`activity-delta-${revId}`, curRevenue, prevRevenue);
@@ -773,7 +802,8 @@ export async function mount(container) {
       labels,
       buildComparisonDatasets(currentRevenueDaily, previousRevenueDaily),
       (v) => formatMoney(v, activityCurrency),
-      `Revenus générés (${activityCurrency})`
+      `Revenus générés (${activityCurrency})`,
+      dateForPoint
     );
 
     const countId = activityCardId(cat, "count");
@@ -782,7 +812,7 @@ export async function mount(container) {
     if (cat.key === "links") {
       renderOrUpdateChart(countId, labels, buildLinksStatusDatasets(computeLinksStatusDaily(items, days)), formatCount, "Nombre (par statut)");
     } else {
-      renderOrUpdateChart(countId, labels, buildComparisonDatasets(stats.currentCountDaily, stats.previousCountDaily), formatCount, "Nombre");
+      renderOrUpdateChart(countId, labels, buildComparisonDatasets(stats.currentCountDaily, stats.previousCountDaily), formatCount, "Nombre", dateForPoint);
     }
   }
 
