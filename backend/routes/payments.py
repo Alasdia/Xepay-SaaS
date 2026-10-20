@@ -314,9 +314,63 @@ def get_activity(
 
     return paged
 
+STRIPE_PAGE_SIZE = 100  # maximum autorisé par Stripe
+
+def _charge_belongs_to_merchant(charge, stripe_account_id):
+    transfer_data = charge.get("transfer_data") or {}
+    return (
+        transfer_data.get("destination") == stripe_account_id
+        or charge.get("on_behalf_of") == stripe_account_id
+    )
+
+def _build_live_payment(charge):
+    amount_gross = (charge.get("amount") or 0) / 100
+    currency_gross = (charge.get("currency") or "usd").upper()
+    fee_cents = charge.get("application_fee_amount")
+    commission_xepay = (fee_cents / 100) if fee_cents is not None else None
+
+    balance_tx = charge.get("balance_transaction")
+    stripe_fee = (balance_tx.get("fee") / 100) if balance_tx else None
+
+    amount_net_merchant = (
+        amount_gross - commission_xepay - stripe_fee
+        if commission_xepay is not None and stripe_fee is not None
+        else None
+    )
+
+    payment_method_details = charge.get("payment_method_details") or {}
+    card_info = payment_method_details.get("card") or {}
+    billing_details = charge.get("billing_details") or {}
+
+    # payment_id = l'id de la Charge Stripe (ch_...), PAS un Payment.id
+    # Xepay (pay_...) : le bouton "Rembourser" envoie ce payment_id à
+    # POST /payments/{payment_id}/refund, qui cherche aujourd'hui un
+    # Payment EN BASE par cet id - à adapter séparément pour accepter un
+    # charge_id directement, sinon le remboursement depuis ce tableau ne
+    # trouvera jamais la ligne correspondante.
+    return {
+        "payment_id": charge.get("id"),
+        "charge_id": charge.get("id"),
+        "payment_intent_id": charge.get("payment_intent"),
+        "amount_gross": amount_gross,
+        "currency_gross": currency_gross,
+        "commission_xepay": commission_xepay,
+        "stripe_fee": stripe_fee,
+        "amount_net_merchant": amount_net_merchant,
+        "client_email": billing_details.get("email") or charge.get("receipt_email"),
+        "status": charge.get("status"),
+        "date": datetime.fromtimestamp(charge.get("created"), tz=timezone.utc).isoformat(),
+        "details": {
+            "payment_method_type": card_info.get("brand") or payment_method_details.get("type"),
+            "card_brand": card_info.get("brand"),
+            "card_last4": card_info.get("last4"),
+        },
+    }
+
 @router.get("/payments/live")
 def get_payments_live(
     limit: int = 20,
+    starting_after: Optional[str] = None,
     db: Session = Depends(get_db),
     user: UserDB = Depends(get_current_user),
     workspace_id: str = Header(None, alias="X-Workspace-Id"),
@@ -325,96 +379,71 @@ def get_payments_live(
     routes/webhook/paiement.py) au lieu de la table `payments` - prototype
     pour explorer le fait de ne plus stocker les paiements du tout.
 
-    Un seul appel Stripe par page : expand=["data.balance_transaction"]
-    évite un aller-retour séparé pour le frais Stripe (contrairement à
-    l'ancien webhook, qui faisait un stripe.ApplicationFee.retrieve +
-    stripe.Transfer.retrieve en plus). charge.application_fee_amount est
-    un champ direct de la charge (pas besoin d'expand ni d'appel
-    supplémentaire pour la commission Xepay) :
-    - commission_xepay = charge.application_fee_amount (la commission
-      demandée à la création, intégralement collectée - voir l'échange
-      précédent sur ApplicationFee.amount).
+    Pagination par curseur (starting_after, comme Stripe lui-même) plutôt
+    que par offset : Stripe ne filtre pas Charge.list par marchand
+    (destination/on_behalf_of), donc le filtre se fait ici, côté Python -
+    starting_after permet de reprendre exactement où la page précédente
+    s'est arrêtée (y compris au milieu d'une page Stripe) sans jamais
+    rescanner ce qui a déjà été vu. STRIPE_PAGE_SIZE (le maximum Stripe)
+    minimise le nombre d'appels nécessaires pour accumuler "limit"
+    résultats appartenant à ce marchand.
+
+    expand=["data.balance_transaction"] évite un aller-retour séparé pour
+    le frais Stripe (contrairement à l'ancien webhook, qui faisait un
+    stripe.ApplicationFee.retrieve + stripe.Transfer.retrieve en plus) :
+    - commission_xepay = charge.application_fee_amount (champ direct,
+      intégralement collecté - voir l'échange précédent sur
+      ApplicationFee.amount).
     - stripe_fee = la balance_transaction DE LA CHARGE elle-même (celle
-      associée au règlement du paiement carte, pas celle de
-      l'ApplicationFee) - c'est elle qui porte le vrai frais de
-      traitement Stripe, confirmé sur de vrais paiements EUR.
+      du règlement carte, pas celle de l'ApplicationFee) - c'est elle qui
+      porte le vrai frais de traitement Stripe, confirmé sur de vrais
+      paiements EUR.
     - amount_net_merchant = montant brut - commission_xepay - stripe_fee.
+
+    Retourne {"results": [...], "next_cursor": ..., "has_more": bool} -
+    passer next_cursor en starting_after pour la page suivante.
     """
     owner_id = get_workspace_owner_id(user, workspace_id, db)
     profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
     if not profile or not profile.stripe_account_id:
         raise HTTPException(status_code=404, detail="Compte Stripe introuvable")
 
-    try:
-        charges = stripe.Charge.list(limit=limit, expand=["data.balance_transaction"])
-    except stripe.error.StripeError as e:
-        raise HTTPException(status_code=400, detail=e.user_message or str(e))
-
     results = []
-    for charge in charges.auto_paging_iter():
-        # Sans ce garde-fou, auto_paging_iter() continue de charger toutes
-        # les pages suivantes depuis Stripe (limit ne borne que la taille
-        # d'une page, pas le nombre de pages parcourues) : sur une
-        # plateforme avec plusieurs marchands, ça peut scanner tout
-        # l'historique de charges, de tous les marchands, juste pour en
-        # trouver "limit" appartenant à celui-ci.
-        if len(results) >= limit:
-            break
-        transfer_data = charge.get("transfer_data") or {}
-        destination = transfer_data.get("destination")
-        # Ne garder que les charges de ce marchand (destination charge liée
-        # à son compte Stripe connecté) - Charge.list ne filtre pas par
-        # destination/on_behalf_of côté Stripe, donc filtré ici.
-        if destination != profile.stripe_account_id and charge.get("on_behalf_of") != profile.stripe_account_id:
-            continue
+    cursor = starting_after
+    stripe_has_more = True
+    hit_limit = False
 
-        amount_gross = (charge.get("amount") or 0) / 100
-        currency_gross = (charge.get("currency") or "usd").upper()
-        fee_cents = charge.get("application_fee_amount")
-        commission_xepay = (fee_cents / 100) if fee_cents is not None else None
+    while len(results) < limit and stripe_has_more:
+        try:
+            page = stripe.Charge.list(
+                limit=STRIPE_PAGE_SIZE,
+                starting_after=cursor,
+                expand=["data.balance_transaction"],
+            )
+        except stripe.error.StripeError as e:
+            raise HTTPException(status_code=400, detail=e.user_message or str(e))
 
-        balance_tx = charge.get("balance_transaction")
-        stripe_fee = (balance_tx.get("fee") / 100) if balance_tx else None
+        for charge in page.data:
+            # Avance le curseur sur CHAQUE charge examinée (qu'elle
+            # corresponde ou non à ce marchand) : la page suivante doit
+            # reprendre après elle, jamais la réexaminer.
+            cursor = charge.get("id")
+            if not _charge_belongs_to_merchant(charge, profile.stripe_account_id):
+                continue
+            results.append(_build_live_payment(charge))
+            if len(results) >= limit:
+                hit_limit = True
+                break
 
-        amount_net_merchant = (
-            amount_gross - commission_xepay - stripe_fee
-            if commission_xepay is not None and stripe_fee is not None
-            else None
-        )
+        stripe_has_more = page.has_more
 
-        payment_method_details = charge.get("payment_method_details") or {}
-        card_info = payment_method_details.get("card") or {}
-        billing_details = charge.get("billing_details") or {}
+    next_cursor = cursor if (hit_limit or stripe_has_more) else None
 
-        # Noms de champs alignés sur ceux déjà attendus par
-        # frontend/pages/spa/views/transactions.js (renderPaymentRow) pour
-        # brancher cet endpoint sans réécrire l'affichage du tableau.
-        # payment_id = l'id de la Charge Stripe (ch_...), PAS un
-        # Payment.id Xepay (pay_...) : le bouton "Rembourser" envoie ce
-        # payment_id à POST /payments/{payment_id}/refund, qui cherche
-        # aujourd'hui un Payment EN BASE par cet id - à adapter séparément
-        # pour accepter un charge_id directement, sinon le remboursement
-        # depuis ce tableau ne trouvera jamais la ligne correspondante.
-        results.append({
-            "payment_id": charge.get("id"),
-            "charge_id": charge.get("id"),
-            "payment_intent_id": charge.get("payment_intent"),
-            "amount_gross": amount_gross,
-            "currency_gross": currency_gross,
-            "commission_xepay": commission_xepay,
-            "stripe_fee": stripe_fee,
-            "amount_net_merchant": amount_net_merchant,
-            "client_email": billing_details.get("email") or charge.get("receipt_email"),
-            "status": charge.get("status"),
-            "date": datetime.fromtimestamp(charge.get("created"), tz=timezone.utc).isoformat(),
-            "details": {
-                "payment_method_type": card_info.get("brand") or payment_method_details.get("type"),
-                "card_brand": card_info.get("brand"),
-                "card_last4": card_info.get("last4"),
-            },
-        })
-
-    return results
+    return {
+        "results": results,
+        "next_cursor": next_cursor,
+        "has_more": next_cursor is not None,
+    }
 
 @router.get("/payments-summary")
 def get_payments_summary(
