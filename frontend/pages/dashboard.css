@@ -193,6 +193,23 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .activity-top-entity { padding-top:8px; }
 .activity-top-entity-name { font-size:16px; font-weight:700; color:#111827; margin-bottom:6px; }
 .activity-top-entity-amount { font-size:20px; font-weight:800; color:#111827; }
+/* "Paiements reçus" (voir BLOCK_CATALOG, row:"standalone") : seul dans sa
+   propre ligne (1 colonne pleine largeur, jamais 2/3 comme les autres),
+   avec plus d'espace pour son détail par source (général -> avancé). */
+.activity-row-full { grid-template-columns:1fr; }
+.activity-card-payments { padding:28px; }
+.activity-card-payments .activity-chart-wrap { height:340px; margin-bottom:26px; }
+.activity-payments-breakdown { border-top:1px solid #e5e7eb; padding-top:20px; }
+.activity-payments-breakdown-title { font-size:13px; font-weight:700; color:#6b7280; margin-bottom:16px; }
+.activity-payments-breakdown-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:20px; }
+.activity-payments-breakdown-item { display:flex; flex-direction:column; gap:8px; }
+.activity-payments-breakdown-label { display:flex; align-items:center; gap:8px; font-size:13px; color:#6b7280; }
+.activity-payments-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; display:inline-block; }
+.activity-payments-breakdown-value { font-size:18px; font-weight:700; color:#111827; }
+/* Dans le modal "+ Ajouter" (grille en colonnes de 320px), un aperçu
+   "standalone" doit occuper toute la largeur du modal, pas une colonne
+   étroite — sinon l'aperçu ne ressemble pas au rendu réel. */
+.activity-add-preview-full { grid-column:1 / -1; }
 /* Modal "+ Ajouter" — mêmes valeurs que les modals de création déjà
    établies ailleurs dans l'app (commerce.css : fond gris, pas de coins
    arrondis, ombre portée, centré sur #main-content avec la marge sidebar). */

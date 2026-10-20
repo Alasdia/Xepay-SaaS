@@ -187,6 +187,11 @@ export async function mount(container) {
     { id: "invoices-refunds", row: "invoices", label: "Remboursements (factures)", icon: "fa-rotate-left", kind: "metric" },
     { id: "subscriptions-refunds", row: "subscriptions", label: "Remboursements (abonnements)", icon: "fa-rotate-left", kind: "metric" },
     { id: "links-refunds", row: "links", label: "Remboursements (liens de paiement)", icon: "fa-rotate-left", kind: "metric" },
+    // row:"standalone" : ne rejoint aucune des 5 lignes par catégorie —
+    // seul dans sa propre ligne pleine largeur (voir buildActivityGridHTML),
+    // puisqu'il centralise 3 sources de revenu à la fois (liens/factures/
+    // abonnements) et a besoin d'espace pour son détail par source.
+    { id: "payments-received", row: "standalone", label: "Paiements reçus (toutes sources)", icon: "fa-sack-dollar", kind: "payments" },
   ];
 
   const ACTIVITY_BLOCKS_STORAGE_KEY = "xepay_activity_blocks_v1";
@@ -257,9 +262,9 @@ export async function mount(container) {
   // removable=false pour les aperçus du modal "+ Ajouter" (renderBlockPreview) :
   // ce ne sont pas des blocs de la grille réelle, le bouton de retrait n'a
   // pas de sens là-bas.
-  function activityCardShellHTML(id, icon, title, bodyHtml, removable = true) {
+  function activityCardShellHTML(id, icon, title, bodyHtml, removable = true, extraClass = "") {
     return `
-      <div class="activity-card" data-key="${id}">
+      <div class="activity-card ${extraClass}" data-key="${id}">
         ${removable ? `<button type="button" class="activity-card-remove d-none" data-remove="${id}" title="Retirer ce bloc"><i class="fa-solid fa-xmark"></i></button>` : ""}
         <div class="activity-card-head">
           <span class="activity-card-icon"><i class="fa-solid ${icon}"></i></span>
@@ -296,6 +301,39 @@ export async function mount(container) {
     `;
   }
 
+  // "Paiements reçus" : le total général (métrique + graphe, comme un
+  // bloc normal) suivi d'un détail "avancé" par source, séparé par une
+  // ligne fine — la progression général -> avancé demandée.
+  function paymentsReceivedBodyHTML(id) {
+    return `
+      <div class="activity-card-metric">
+        <span class="activity-value" id="activity-value-${id}">—</span>
+        <span class="activity-delta" id="activity-delta-${id}"></span>
+      </div>
+      <div class="activity-chart-wrap">
+        <canvas id="activity-chart-${id}"></canvas>
+        <div class="hero-chart-tooltip" id="activity-chart-tooltip-${id}"></div>
+      </div>
+      <div class="activity-payments-breakdown">
+        <div class="activity-payments-breakdown-title">Détail par source</div>
+        <div class="activity-payments-breakdown-grid">
+          <div class="activity-payments-breakdown-item">
+            <span class="activity-payments-breakdown-label"><span class="activity-payments-dot" style="background:#eab308"></span>Liens de paiement</span>
+            <span class="activity-payments-breakdown-value" id="activity-breakdown-links-${id}">—</span>
+          </div>
+          <div class="activity-payments-breakdown-item">
+            <span class="activity-payments-breakdown-label"><span class="activity-payments-dot" style="background:#3b82f6"></span>Factures</span>
+            <span class="activity-payments-breakdown-value" id="activity-breakdown-invoices-${id}">—</span>
+          </div>
+          <div class="activity-payments-breakdown-item">
+            <span class="activity-payments-breakdown-label"><span class="activity-payments-dot" style="background:#8b5cf6"></span>Abonnements</span>
+            <span class="activity-payments-breakdown-value" id="activity-breakdown-subscriptions-${id}">—</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   function activityCardHTML(cat, kind) {
     const id = activityCardId(cat, kind);
     const title = kind === "revenue" ? `${cat.label} — Revenus` : `${cat.label} — Nombre`;
@@ -307,18 +345,31 @@ export async function mount(container) {
   // nombre) puis, dans l'ordre du catalogue, ceux qui ont été ajoutés pour
   // cette catégorie. grid-template-columns en auto-fit (voir CSS) adapte
   // automatiquement le nombre de colonnes de 2 à 3 sans calcul en JS.
+  function catalogCardBodyHTML(b, id) {
+    if (b.kind === "topEntity") return topEntityCardBodyHTML(id);
+    if (b.kind === "payments") return paymentsReceivedBodyHTML(id);
+    return metricCardBodyHTML(id);
+  }
+
   function buildActivityGridHTML() {
-    return ACTIVITY_CATEGORIES.map((cat) => {
+    const categoryRows = ACTIVITY_CATEGORIES.map((cat) => {
       const cards = [];
       if (visibleActivityBlocks.has(activityCardId(cat, "revenue"))) cards.push(activityCardHTML(cat, "revenue"));
       if (visibleActivityBlocks.has(activityCardId(cat, "count"))) cards.push(activityCardHTML(cat, "count"));
       BLOCK_CATALOG.filter((b) => b.row === cat.key && visibleActivityBlocks.has(b.id)).forEach((b) => {
-        const body = b.kind === "topEntity" ? topEntityCardBodyHTML(b.id) : metricCardBodyHTML(b.id);
-        cards.push(activityCardShellHTML(b.id, b.icon, b.label, body));
+        cards.push(activityCardShellHTML(b.id, b.icon, b.label, catalogCardBodyHTML(b, b.id)));
       });
       if (!cards.length) return "";
       return `<div class="activity-row">${cards.join("")}</div>`;
     }).join("");
+
+    // Blocs "standalone" (ex: Paiements reçus) : jamais mêlés à une ligne
+    // de catégorie, chacun seul dans sa propre ligne pleine largeur.
+    const standaloneRows = BLOCK_CATALOG.filter((b) => b.row === "standalone" && visibleActivityBlocks.has(b.id))
+      .map((b) => `<div class="activity-row activity-row-full">${activityCardShellHTML(b.id, b.icon, b.label, catalogCardBodyHTML(b, b.id), true, "activity-card-payments")}</div>`)
+      .join("");
+
+    return categoryRows + standaloneRows;
   }
 
   // Unix (secondes, objets Stripe) ou ISO (nos propres endpoints) -> ms.
@@ -716,6 +767,72 @@ export async function mount(container) {
     });
 
     return { currentRevenueDaily, previousRevenueDaily, currentTotal, previousTotal };
+  }
+
+  // "Paiements reçus" centralise les 3 sources de revenu réelles de l'app
+  // (liens payés, factures one-off payées, factures de renouvellement
+  // d'abonnement payées) en un seul total + un détail par source — même
+  // principe que heroSourceItems, mais piloté par les filtres de "Votre
+  // aperçu" (devise/période/brut-net) plutôt que ceux du bloc héro.
+  function computePaymentsReceivedStats(count) {
+    const bucketMs = currentActivityPeriod().bucketMs;
+    const now = Date.now();
+    const currentStart = now - count * bucketMs;
+    const previousStart = now - 2 * count * bucketMs;
+    const currentRevenueDaily = new Array(count).fill(0);
+    const previousRevenueDaily = new Array(count).fill(0);
+    let currentTotal = 0;
+    let previousTotal = 0;
+    const breakdown = { links: 0, invoices: 0, subscriptions: 0 };
+
+    function addItem(ts, value, currency, source, breakdownKey) {
+      if (ts == null) return;
+      const multiplier = activityNetMultiplier(source);
+      const amount = value * multiplier * getRate(currency || "USD", activityCurrency);
+      if (ts >= currentStart && ts <= now) {
+        const idx = Math.min(count - 1, Math.max(0, Math.floor((ts - currentStart) / bucketMs)));
+        currentRevenueDaily[idx] += amount;
+        currentTotal += amount;
+        breakdown[breakdownKey] += amount;
+      } else if (ts >= previousStart && ts < currentStart) {
+        const idx = Math.min(count - 1, Math.max(0, Math.floor((ts - previousStart) / bucketMs)));
+        previousRevenueDaily[idx] += amount;
+        previousTotal += amount;
+      }
+    }
+
+    (activityRaw.links || []).forEach((l) => {
+      if (l.status !== "paid") return;
+      addItem(l.ts, l.value, l.currency, "link", "links");
+    });
+    (activityRaw.invoices || []).forEach((i) => {
+      if (i.status !== "paid") return;
+      addItem(i.ts, i.value, i.currency, "invoice", i.subscriptionId != null ? "subscriptions" : "invoices");
+    });
+
+    return { currentRevenueDaily, previousRevenueDaily, currentTotal, previousTotal, breakdown };
+  }
+
+  // Calcule et affiche "Paiements reçus" — partagé par le bloc réel
+  // (targetId="payments-received") et son aperçu dans le modal "+ Ajouter"
+  // (targetId="preview-payments-received"), pour un rendu identique.
+  function setPaymentsReceivedCard(targetId, days) {
+    const stats = computePaymentsReceivedStats(days);
+    const labels = buildActivityLabels(days);
+    const dateForPoint = buildComparisonDateResolver(days);
+    setText(`activity-value-${targetId}`, formatMoney(stats.currentTotal, activityCurrency));
+    setDelta(`activity-delta-${targetId}`, stats.currentTotal, stats.previousTotal);
+    renderOrUpdateChart(
+      targetId,
+      labels,
+      buildComparisonDatasets(stats.currentRevenueDaily, stats.previousRevenueDaily),
+      (v) => formatMoney(v, activityCurrency),
+      `Paiements reçus (${activityCurrency})`,
+      dateForPoint
+    );
+    setText(`activity-breakdown-links-${targetId}`, formatMoney(stats.breakdown.links, activityCurrency));
+    setText(`activity-breakdown-invoices-${targetId}`, formatMoney(stats.breakdown.invoices, activityCurrency));
+    setText(`activity-breakdown-subscriptions-${targetId}`, formatMoney(stats.breakdown.subscriptions, activityCurrency));
   }
 
   // Revenu réel d'une catégorie filtrée par statut ("paid" pour les
@@ -1149,6 +1266,11 @@ export async function mount(container) {
       return;
     }
 
+    if (desc.kind === "payments") {
+      setPaymentsReceivedCard(previewId, days);
+      return;
+    }
+
     // Bloc par défaut (revenus ou nombre)
     const items = getCategoryItems(cat);
     if (desc.kind === "revenue") {
@@ -1178,6 +1300,11 @@ export async function mount(container) {
   async function renderAllActivityCards() {
     if (!activityRaw) return;
     await Promise.all(ACTIVITY_CATEGORIES.map((cat) => renderCategory(cat, currentActivityPeriod().count)));
+    // "Paiements reçus" n'appartient à aucune catégorie : rendu à part,
+    // une seule fois (pas par catégorie comme renderCategory).
+    if (visibleActivityBlocks.has("payments-received")) {
+      setPaymentsReceivedCard("payments-received", currentActivityPeriod().count);
+    }
   }
 
   function rebuildActivityGrid() {
@@ -1667,10 +1794,15 @@ export async function mount(container) {
     return hidden
       .map((b) => {
         const previewId = `preview-${b.id}`;
-        const body = b.kind === "topEntity" ? topEntityCardBodyHTML(previewId) : metricCardBodyHTML(previewId);
-        const card = activityCardShellHTML(previewId, b.icon, b.label, body, false);
+        const extraClass = b.row === "standalone" ? "activity-card-payments" : "";
+        const card = activityCardShellHTML(previewId, b.icon, b.label, catalogCardBodyHTML(b, previewId), false, extraClass);
+        // Même largeur pleine que dans la grille réelle (voir
+        // .activity-row-full) : un bloc "standalone" ne doit pas paraître
+        // à l'étroit dans une colonne de 320px alors qu'il occupera toute
+        // la largeur une fois ajouté.
+        const wrapperClass = b.row === "standalone" ? "activity-add-preview activity-add-preview-full" : "activity-add-preview";
         return `
-          <div class="activity-add-preview">
+          <div class="${wrapperClass}">
             ${card}
             <button type="button" class="activity-add-preview-btn" data-add="${b.id}"><i class="fa-solid fa-plus"></i> Ajouter ce bloc</button>
           </div>
