@@ -167,10 +167,23 @@ def get_activity(
                 if p.application_fee_requested is not None
                 else p.fee_amount
             )
+            # transfer_amount (Transfer.amount, voir routes/webhook/paiement.py)
+            # est ce que Stripe a RÉELLEMENT transféré au compte connecté du
+            # marchand — contrairement à "amount - commission_xepay", qui
+            # suppose que le marchand reçoit tout sauf la commission Xepay
+            # et ignore que Stripe peut aussi prélever ses propres frais de
+            # traitement sur cette part transférée (pas sur la commission
+            # Xepay elle-même, voir l'échange avec l'utilisateur). Repli sur
+            # l'ancienne formule si transfer_amount n'est pas disponible
+            # (factures/abonnements, ou paiements antérieurs à ce fix).
             amount_net_merchant = (
-                p.amount - commission_xepay
-                if p.amount is not None and commission_xepay is not None
-                else None
+                p.transfer_amount
+                if p.transfer_amount is not None
+                else (
+                    p.amount - commission_xepay
+                    if p.amount is not None and commission_xepay is not None
+                    else None
+                )
             )
             items.append({
                 "type": "payment",
@@ -337,10 +350,21 @@ def get_payments_summary(
         if commission_for(p) is not None
     )
     stripe_fee = sum(p.stripe_fee_amount for p in payments if p.stripe_fee_amount is not None)
+
+    # transfer_amount en priorité (voir le commentaire équivalent dans
+    # /activity) : ce que Stripe a réellement transféré au marchand, pas
+    # une soustraction qui ignore les frais Stripe prélevés sur ce transfert.
+    def net_for(p):
+        if p.transfer_amount is not None:
+            return p.transfer_amount
+        if p.amount is not None and commission_for(p) is not None:
+            return p.amount - commission_for(p)
+        return None
+
     amount_net_merchant = sum(
-        p.amount - commission_for(p)
+        net_for(p)
         for p in payments
-        if p.amount is not None and commission_for(p) is not None
+        if net_for(p) is not None
     )
 
     return {
