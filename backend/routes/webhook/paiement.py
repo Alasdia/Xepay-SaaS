@@ -143,6 +143,7 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
         if currency == "XOF":
             amount_local = amount_usd
             rate_used = 1
+            payment_currency = "XOF"
         else:
             row = db.execute(text("""
                 SELECT rate FROM exchange_rates
@@ -152,6 +153,13 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             total_fee = amount_usd * 0.06
             merchant_amount = amount_usd - total_fee
             amount_local = int(float(merchant_amount) * float(rate_used))
+            # Un lien en EUR (ou toute devise non-XOF) est converti par
+            # Stripe en USD au règlement : amount_usd est donc déjà en USD,
+            # jamais dans la devise d'origine du lien (currency ci-dessus).
+            # L'étiquetait avec "currency" (EUR par ex.) faisait mentir
+            # Payment.currency sur ce que Payment.amount représente
+            # vraiment.
+            payment_currency = "USD"
         customer_details = session_dict.get("customer_details")
         email_client = customer_details.get("email") if customer_details else None
         user = db.query(UserDB).filter(UserDB.id == user_id).first()
@@ -165,7 +173,7 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             user_id=user_id,
             client_email=email_client,
             amount=amount_usd,
-            currency=currency,
+            currency=payment_currency,
             amount_local=amount_local,
             currency_local="XOF",
             rate_used=rate_used,
