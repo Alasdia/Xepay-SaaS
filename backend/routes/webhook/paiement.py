@@ -98,6 +98,7 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
         fee_id = transfer_id = payment_method_id = payment_method_type = None
         fee_amount = transfer_amount = stripe_fee_amount = None
         application_fee_requested = None
+        balance_transaction_net = None
         transfer_destination = transfer_reversed = transfer_created_at = None
         transfer_amount_reversed = None
         amount_usd = None
@@ -139,6 +140,10 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
                 application_fee_requested = balance_tx.fee / 100
                 if fee_amount is not None:
                     stripe_fee_amount = application_fee_requested - fee_amount
+                # balance_tx.net = balance_tx.amount - balance_tx.fee,
+                # calculé par Stripe lui-même - stocké tel quel, jamais
+                # redérivé côté Xepay.
+                balance_transaction_net = balance_tx.net / 100
                 available_on = balance_tx.available_on
                 available_at = datetime.fromtimestamp(available_on, tz=timezone.utc)
 
@@ -194,6 +199,7 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             fee_amount=fee_amount,
             application_fee_requested=application_fee_requested,
             stripe_fee_amount=stripe_fee_amount,
+            balance_transaction_net=balance_transaction_net,
             transfer_id=transfer_id,
             transfer_amount=transfer_amount,
             transfer_destination=transfer_destination,
