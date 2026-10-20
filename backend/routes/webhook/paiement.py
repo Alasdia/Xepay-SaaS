@@ -449,7 +449,7 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
             # balance_transaction existe). Corrige/complète un Payment déjà
             # créé plutôt que d'en créer un nouveau - traité en synchrone
             # (un seul appel Stripe rapide, pas besoin de tâche de fond).
-            balance_transaction_id = object_data.get("balance_transaction")
+            balance_transaction_id = object_data.balance_transaction
             if not balance_transaction_id:
                 return {"status": "ignored"}
             pi_id = object_data.get("payment_intent")
