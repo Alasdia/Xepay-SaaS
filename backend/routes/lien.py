@@ -182,8 +182,16 @@ def get_links(
     for link in links:
         payment = payments_by_link.get(link.id)
         if payment:
-            amount = payment.amount_local
-            currency = payment.currency_local
+            # amount/currency (jamais amount_local/currency_local) : le montant
+            # brut réellement payé par le client, dans sa devise d'origine —
+            # amount_local/currency_local sont le montant déjà net de la
+            # commission Xepay et déjà converti en XOF pour le crédit wallet
+            # (voir routes/webhook/paiement.py), pas ce qu'affiche ce champ
+            # pour un lien pending/expired (link.amount/link.currency, bruts
+            # aussi) : les utiliser ici produisait une incohérence de devise
+            # et un montant ~6% trop bas selon le statut du lien.
+            amount = payment.amount
+            currency = payment.currency
             status = "paid"
         elif link.expires_at < now:
             amount = link.amount
@@ -315,8 +323,10 @@ def get_link_detail(
     payment = db.query(Payment).filter(Payment.link_id == link.id).first()
     now = datetime.now(timezone.utc)
     if payment:
-        amount = payment.amount_local
-        currency = payment.currency_local
+        # Voir get_links ci-dessus : amount/currency (montant brut, devise
+        # d'origine), jamais amount_local/currency_local (net XOF).
+        amount = payment.amount
+        currency = payment.currency
         status = "paid"
     elif link.expires_at < now:
         amount = link.amount
