@@ -323,6 +323,23 @@ def _charge_belongs_to_merchant(charge, stripe_account_id):
         or charge.get("on_behalf_of") == stripe_account_id
     )
 
+def _live_status(charge):
+    # charge.status Stripe ("succeeded"/"pending"/"failed") ne correspond à
+    # aucune valeur attendue par le frontend (statusMap/statusBadgeClass
+    # dans transactions.js, calées sur nos propres statuts Payment :
+    # "paid"/"pending"/"expired"/"refunded"/"partially_refunded") - sans
+    # cette correspondance, le badge de statut s'affichait en rouge pour
+    # un paiement réussi, et "Rembourser" ne s'affichait jamais
+    # (canRefund compare à "paid" littéralement). Un remboursement ne
+    # change pas charge.status (qui reste "succeeded") : vérifié via
+    # refunded/amount_refunded en premier.
+    if charge.get("refunded"):
+        return "refunded"
+    if (charge.get("amount_refunded") or 0) > 0:
+        return "partially_refunded"
+    stripe_status = charge.get("status")
+    return {"succeeded": "paid", "pending": "pending", "failed": "expired"}.get(stripe_status, stripe_status)
+
 def _build_live_payment(charge):
     amount_gross = (charge.get("amount") or 0) / 100
     currency_gross = (charge.get("currency") or "usd").upper()
@@ -358,7 +375,7 @@ def _build_live_payment(charge):
         "stripe_fee": stripe_fee,
         "amount_net_merchant": amount_net_merchant,
         "client_email": billing_details.get("email") or charge.get("receipt_email"),
-        "status": charge.get("status"),
+        "status": _live_status(charge),
         "date": datetime.fromtimestamp(charge.get("created"), tz=timezone.utc).isoformat(),
         "details": {
             "payment_method_type": card_info.get("brand") or payment_method_details.get("type"),
