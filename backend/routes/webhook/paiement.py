@@ -120,11 +120,17 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             fee_id = charge_dict.get("application_fee")
             transfer_id = charge_dict.get("transfer")
             payment_method_id = charge_dict.get("payment_method")
-            # Commission brute demandée à la création de la charge (ex: 6%
-            # du montant brut) — toujours >= fee_amount (ApplicationFee.
-            # amount ci-dessous), qui est net des frais Stripe prélevés
-            # dessus (voir le commentaire sur Payment.application_fee_requested
-            # dans models.py).
+            # Même commission (6% du montant brut), vue depuis deux objets
+            # Stripe différents : charge.application_fee_amount est dans la
+            # devise de la charge (celle de Payment.amount/currency, voir
+            # plus bas), ApplicationFee.amount est dans la devise d'ORIGINE
+            # du lien (EUR pour un lien en EUR, confirmé en comparant les
+            # deux sur de vrais paiements) — jamais la même devise que
+            # Payment.currency dès que le lien n'est pas en USD. On utilise
+            # donc application_fee_requested (toujours cohérent avec
+            # Payment.currency) comme commission Xepay ; fee_amount est
+            # gardé à titre indicatif seulement (devise d'origine du lien,
+            # jamais utilisé dans les calculs affichés).
             application_fee_requested = (charge_dict.get("application_fee_amount") or 0) / 100
             if fee_id:
                 fee_obj = stripe.ApplicationFee.retrieve(fee_id)
@@ -139,7 +145,13 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
 
             if balance_tx:
                 amount_usd = balance_tx.amount / 100
-                stripe_fee_amount = balance_tx.fee / 100
+                # balance_tx.fee == charge.application_fee_amount (vérifié
+                # sur de vrais paiements) : ce n'est PAS un frais Stripe
+                # isolé, juste la même commission application_fee vue sur
+                # cet objet. Aucun champ Stripe n'expose de frais de
+                # traitement séparé sur ce compte Connect (confirmé) :
+                # stripe_fee_amount reste donc None plutôt que de dupliquer
+                # application_fee_requested sous un nom trompeur.
                 available_on = balance_tx.available_on
                 available_at = datetime.fromtimestamp(available_on, tz=timezone.utc)
 

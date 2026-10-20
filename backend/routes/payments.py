@@ -149,17 +149,25 @@ def get_activity(
         if end_date:
             q = q.filter(Payment.created_at <= datetime.fromisoformat(end_date) + timedelta(days=1))
         for p in q.all():
-            # fee_amount (ApplicationFee.amount) est DÉJÀ net des frais
-            # Stripe prélevés sur la commission Xepay (confirmé en
-            # comparant charge.application_fee_amount, la commission brute
-            # demandée, à application_fee.amount, ce que Xepay reçoit
-            # réellement une fois Stripe payé) — le soustraire une seconde
-            # fois ici comptait les frais Stripe deux fois et pouvait
-            # rendre commission_xepay négative sur les petites transactions.
-            commission_xepay = p.fee_amount
+            # application_fee_requested (charge.application_fee_amount) est
+            # toujours dans la même devise que Payment.amount/currency ;
+            # fee_amount (ApplicationFee.amount) ne l'est PAS (devise
+            # d'origine du lien, ex: EUR alors que Payment.currency vaut
+            # "USD") - voir routes/webhook/paiement.py. On privilégie donc
+            # application_fee_requested, avec repli sur fee_amount pour les
+            # paiements de factures/abonnements (qui ne renseignent pas ce
+            # nouveau champ) et les paiements de liens antérieurs à ce fix.
+            # Pas de "frais Stripe" isolé : aucun champ Stripe n'en expose
+            # un sur ce compte Connect (confirmé) - stripe_fee_amount reste
+            # None pour tout nouveau paiement par lien.
+            commission_xepay = (
+                p.application_fee_requested
+                if p.application_fee_requested is not None
+                else p.fee_amount
+            )
             amount_net_merchant = (
-                p.amount - p.fee_amount
-                if p.amount is not None and p.fee_amount is not None
+                p.amount - commission_xepay
+                if p.amount is not None and commission_xepay is not None
                 else None
             )
             items.append({
@@ -174,7 +182,6 @@ def get_activity(
                 "amount_gross": p.amount,
                 "currency_gross": p.currency,
                 "commission_xepay": commission_xepay,
-                "commission_totale_demandee": p.application_fee_requested,
                 "stripe_fee": p.stripe_fee_amount,
                 "amount_net_merchant": amount_net_merchant,
                 "payment_method_type": p.payment_method_type,
@@ -316,28 +323,26 @@ def get_payments_summary(
     owner_id = get_workspace_owner_id(user, workspace_id, db)
     payments = db.query(Payment).filter(Payment.user_id == owner_id).all()
 
-    # fee_amount est déjà net des frais Stripe prélevés sur la commission
-    # Xepay — voir le commentaire équivalent dans /activity ci-dessus.
+    # application_fee_requested en priorité (même devise que p.amount),
+    # repli sur fee_amount (factures/abonnements, ou liens antérieurs à ce
+    # fix) — voir le commentaire équivalent dans /activity ci-dessus.
+    def commission_for(p):
+        return p.application_fee_requested if p.application_fee_requested is not None else p.fee_amount
+
     commission_xepay = sum(
-        p.fee_amount
+        commission_for(p)
         for p in payments
-        if p.fee_amount is not None
-    )
-    commission_totale_demandee = sum(
-        p.application_fee_requested
-        for p in payments
-        if p.application_fee_requested is not None
+        if commission_for(p) is not None
     )
     stripe_fee = sum(p.stripe_fee_amount for p in payments if p.stripe_fee_amount is not None)
     amount_net_merchant = sum(
-        p.amount - p.fee_amount
+        p.amount - commission_for(p)
         for p in payments
-        if p.amount is not None and p.fee_amount is not None
+        if p.amount is not None and commission_for(p) is not None
     )
 
     return {
         "commission_xepay": commission_xepay,
-        "commission_totale_demandee": commission_totale_demandee,
         "stripe_fee": stripe_fee,
         "amount_net_merchant": amount_net_merchant,
         "currency": payments[0].currency if payments else "USD"
