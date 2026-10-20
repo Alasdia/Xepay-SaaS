@@ -97,6 +97,7 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
         card_brand = card_last4 = card_exp_month = card_exp_year = None
         fee_id = transfer_id = payment_method_id = payment_method_type = None
         fee_amount = transfer_amount = stripe_fee_amount = None
+        application_fee_requested = None
         transfer_destination = transfer_reversed = transfer_created_at = None
         transfer_amount_reversed = None
         amount_usd = None
@@ -119,6 +120,12 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             fee_id = charge_dict.get("application_fee")
             transfer_id = charge_dict.get("transfer")
             payment_method_id = charge_dict.get("payment_method")
+            # Commission brute demandée à la création de la charge (ex: 6%
+            # du montant brut) — toujours >= fee_amount (ApplicationFee.
+            # amount ci-dessous), qui est net des frais Stripe prélevés
+            # dessus (voir le commentaire sur Payment.application_fee_requested
+            # dans models.py).
+            application_fee_requested = (charge_dict.get("application_fee_amount") or 0) / 100
             if fee_id:
                 fee_obj = stripe.ApplicationFee.retrieve(fee_id)
                 fee_amount = fee_obj.amount / 100
@@ -186,6 +193,7 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             payment_method_type=payment_method_type,
             fee_id=fee_id,
             fee_amount=fee_amount,
+            application_fee_requested=application_fee_requested,
             stripe_fee_amount=stripe_fee_amount,
             transfer_id=transfer_id,
             transfer_amount=transfer_amount,

@@ -149,16 +149,14 @@ def get_activity(
         if end_date:
             q = q.filter(Payment.created_at <= datetime.fromisoformat(end_date) + timedelta(days=1))
         for p in q.all():
-            # stripe_fee_amount est None pour les factures/abonnements (ce
-            # compte Connect n'a pas de frais Stripe distinct sur ces direct
-            # charges, confirmé sur de vrais paiements test) — traité comme
-            # 0 plutôt que de faire disparaître commission_xepay, qui reste
-            # alors fee_amount en entier (rien à soustraire).
-            commission_xepay = (
-                p.fee_amount - (p.stripe_fee_amount or 0)
-                if p.fee_amount is not None
-                else None
-            )
+            # fee_amount (ApplicationFee.amount) est DÉJÀ net des frais
+            # Stripe prélevés sur la commission Xepay (confirmé en
+            # comparant charge.application_fee_amount, la commission brute
+            # demandée, à application_fee.amount, ce que Xepay reçoit
+            # réellement une fois Stripe payé) — le soustraire une seconde
+            # fois ici comptait les frais Stripe deux fois et pouvait
+            # rendre commission_xepay négative sur les petites transactions.
+            commission_xepay = p.fee_amount
             amount_net_merchant = (
                 p.amount - p.fee_amount
                 if p.amount is not None and p.fee_amount is not None
@@ -176,6 +174,7 @@ def get_activity(
                 "amount_gross": p.amount,
                 "currency_gross": p.currency,
                 "commission_xepay": commission_xepay,
+                "commission_totale_demandee": p.application_fee_requested,
                 "stripe_fee": p.stripe_fee_amount,
                 "amount_net_merchant": amount_net_merchant,
                 "payment_method_type": p.payment_method_type,
@@ -317,13 +316,17 @@ def get_payments_summary(
     owner_id = get_workspace_owner_id(user, workspace_id, db)
     payments = db.query(Payment).filter(Payment.user_id == owner_id).all()
 
-    # stripe_fee_amount est None pour les factures/abonnements (pas de frais
-    # Stripe distinct sur ce compte Connect pour ces direct charges) — idem
-    # ci-dessus, traité comme 0 plutôt que d'exclure ces paiements du total.
+    # fee_amount est déjà net des frais Stripe prélevés sur la commission
+    # Xepay — voir le commentaire équivalent dans /activity ci-dessus.
     commission_xepay = sum(
-        p.fee_amount - (p.stripe_fee_amount or 0)
+        p.fee_amount
         for p in payments
         if p.fee_amount is not None
+    )
+    commission_totale_demandee = sum(
+        p.application_fee_requested
+        for p in payments
+        if p.application_fee_requested is not None
     )
     stripe_fee = sum(p.stripe_fee_amount for p in payments if p.stripe_fee_amount is not None)
     amount_net_merchant = sum(
@@ -334,6 +337,7 @@ def get_payments_summary(
 
     return {
         "commission_xepay": commission_xepay,
+        "commission_totale_demandee": commission_totale_demandee,
         "stripe_fee": stripe_fee,
         "amount_net_merchant": amount_net_merchant,
         "currency": payments[0].currency if payments else "USD"

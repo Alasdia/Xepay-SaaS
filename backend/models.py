@@ -376,6 +376,13 @@ class Payment(Base):
     stripe_payment_intent_id = Column(String, nullable=True, index=True)
     fee_id = Column(String, nullable=True)
     fee_amount = Column(Float, nullable=True)
+    # Commission brute demandée à la création de la charge (charge.
+    # application_fee_amount, ex: 6% du montant brut) - toujours >=
+    # fee_amount (ApplicationFee.amount, ce que Xepay reçoit réellement une
+    # fois les frais Stripe prélevés dessus). Distinct de fee_amount : sert
+    # à afficher la commission "brute" demandée séparément de la commission
+    # nette effectivement perçue.
+    application_fee_requested = Column(Float, nullable=True)
     stripe_fee_amount = Column(Float, nullable=True)
     transfer_id = Column(String, nullable=True)
     transfer_amount = Column(Float, nullable=True)
