@@ -120,9 +120,27 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             fee_id = charge_dict.get("application_fee")
             transfer_id = charge_dict.get("transfer")
             payment_method_id = charge_dict.get("payment_method")
+            # Même commission (6% du montant brut), vue depuis deux objets
+            # Stripe différents : charge.application_fee_amount est dans la
+            # devise de la charge (celle de Payment.amount/currency, voir
+            # plus bas), ApplicationFee.amount est dans la devise d'ORIGINE
+            # du lien (EUR pour un lien en EUR, confirmé en comparant les
+            # deux sur de vrais paiements) — jamais la même devise que
+            # Payment.currency dès que le lien n'est pas en USD. On utilise
+            # donc application_fee_requested (toujours cohérent avec
+            # Payment.currency) comme commission Xepay ; fee_amount est
+            # gardé à titre indicatif seulement (devise d'origine du lien,
+            # jamais utilisé dans les calculs affichés).
+            application_fee_requested = (charge_dict.get("application_fee_amount") or 0) / 100
             if fee_id:
                 fee_obj = stripe.ApplicationFee.retrieve(fee_id)
                 fee_amount = fee_obj.amount / 100
+                # Frais Stripe = commission brute (devise de la charge) -
+                # commission Xepay nette (devise d'origine du lien) :
+                # différence des deux montants tels que renvoyés par
+                # Stripe, sans conversion de devise entre les deux (demandé
+                # explicitement après vérification sur de vrais paiements).
+                stripe_fee_amount = application_fee_requested - fee_amount
             if transfer_id:
                 transfer_obj = stripe.Transfer.retrieve(transfer_id)
                 transfer_amount = transfer_obj.amount / 100
@@ -133,19 +151,10 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
 
             if balance_tx:
                 amount_usd = balance_tx.amount / 100
-                # balance_tx.fee = la commission globale (Xepay + Stripe),
-                # dans la devise de Payment.amount/currency — confirmé sur
-                # de vrais paiements, contrairement à charge.
-                # application_fee_amount qui ne reflète pas cette valeur.
-                application_fee_requested = balance_tx.fee / 100
-                if fee_amount is not None:
-                    # Frais Stripe = commission globale - commission Xepay
-                    # nette (fee_amount, devise d'origine du lien) :
-                    # différence des deux montants tels que renvoyés par
-                    # Stripe, sans conversion de devise entre les deux
-                    # (demandé explicitement après vérification sur de
-                    # vrais paiements).
-                    stripe_fee_amount = application_fee_requested - fee_amount
+                # balance_tx.fee == charge.application_fee_amount (vérifié
+                # sur de vrais paiements) : stripe_fee_amount est déjà
+                # calculé plus haut (application_fee_requested - fee_amount),
+                # pas depuis balance_tx.fee, qui n'apporterait rien de plus.
                 available_on = balance_tx.available_on
                 available_at = datetime.fromtimestamp(available_on, tz=timezone.utc)
 
