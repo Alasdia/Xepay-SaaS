@@ -718,14 +718,6 @@ export async function mount(container, params = {}) {
         const result = await res.json();
         console.log("DATA payout: ", result)
         data = result.payouts ?? result;
-      } else if (currentType === "payment") {
-        // Lit directement les Charge Stripe (GET /payments/live) au lieu
-        // de la table payments - ne supporte pour l'instant que "limit",
-        // aucun des filtres avancés ci-dessus (statut/dates/montant/
-        // devise/moyen de paiement) ni la pagination par offset : chaque
-        // page affiche les N charges les plus récentes côté Stripe.
-        res = await apiFetch(`/payments/live?limit=${limit}`);
-        data = await res.json();
       } else {
         res = await apiFetch(`/activity?${params}`);
         data = await res.json();
