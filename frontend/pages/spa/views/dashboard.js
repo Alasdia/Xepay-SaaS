@@ -176,6 +176,21 @@ export async function mount(container) {
     return Number.isNaN(t) ? null : t;
   }
 
+  // Même logique que backend/routes/webhook/stripe.py (process_invoice_paid_event) :
+  // depuis l'API Stripe 2025-03-31.basil, invoice.subscription est retiré au
+  // profit de invoice.parent.subscription_details.subscription. Lire
+  // l'ancien champ seul classe silencieusement TOUTE facture d'abonnement
+  // comme facture "one-off" (jamais "abonnement") sur cette version d'API —
+  // l'ancien champ est gardé en repli au cas où l'API version du compte
+  // changerait.
+  function extractInvoiceSubscriptionId(invoice) {
+    const parent = invoice.parent || {};
+    if (parent.type === "subscription_details") {
+      return parent.subscription_details?.subscription || null;
+    }
+    return invoice.subscription || null;
+  }
+
   async function safeJson(settled) {
     if (settled.status !== "fulfilled" || !settled.value.ok) return null;
     try {
@@ -299,7 +314,7 @@ export async function mount(container) {
         currency: (i.currency || "usd").toUpperCase(),
         customerId: i.customer || null,
         productId: i.lines?.data?.[0]?.price?.product || null,
-        subscriptionId: i.subscription || null,
+        subscriptionId: extractInvoiceSubscriptionId(i),
       })),
       // status conservé ici (utilisé par le bloc "Nombre" des liens pour
       // les distinguer payé/en attente/expiré, et par le bloc héro pour
@@ -643,7 +658,11 @@ export async function mount(container) {
       currentRevenueDaily = cohort.currentRevenueDaily;
       previousRevenueDaily = cohort.previousRevenueDaily;
     } else if (cat.key === "invoices") {
-      const filtered = computeFilteredRevenueStats(items, days, (status) => status === "paid");
+      // Une facture de renouvellement d'abonnement (subscriptionId non nul)
+      // est exclue d'ici : elle alimente le bloc "Abonnements" ci-dessous,
+      // jamais les deux — seules les factures "one-off" comptent ici.
+      const oneOffInvoices = items.filter((i) => i.subscriptionId == null);
+      const filtered = computeFilteredRevenueStats(oneOffInvoices, days, (status) => status === "paid");
       curRevenue = filtered.currentTotal;
       prevRevenue = filtered.previousTotal;
       currentRevenueDaily = filtered.currentRevenueDaily;
