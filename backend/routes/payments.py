@@ -378,7 +378,17 @@ def get_payments_live(
         card_info = payment_method_details.get("card") or {}
         billing_details = charge.get("billing_details") or {}
 
+        # Noms de champs alignés sur ceux déjà attendus par
+        # frontend/pages/spa/views/transactions.js (renderPaymentRow) pour
+        # brancher cet endpoint sans réécrire l'affichage du tableau.
+        # payment_id = l'id de la Charge Stripe (ch_...), PAS un
+        # Payment.id Xepay (pay_...) : le bouton "Rembourser" envoie ce
+        # payment_id à POST /payments/{payment_id}/refund, qui cherche
+        # aujourd'hui un Payment EN BASE par cet id - à adapter séparément
+        # pour accepter un charge_id directement, sinon le remboursement
+        # depuis ce tableau ne trouvera jamais la ligne correspondante.
         results.append({
+            "payment_id": charge.get("id"),
             "charge_id": charge.get("id"),
             "payment_intent_id": charge.get("payment_intent"),
             "amount_gross": amount_gross,
@@ -387,10 +397,13 @@ def get_payments_live(
             "stripe_fee": stripe_fee,
             "amount_net_merchant": amount_net_merchant,
             "client_email": billing_details.get("email") or charge.get("receipt_email"),
-            "payment_method_type": card_info.get("brand") or payment_method_details.get("type"),
-            "card_last4": card_info.get("last4"),
             "status": charge.get("status"),
-            "created_at": datetime.fromtimestamp(charge.get("created"), tz=timezone.utc).isoformat(),
+            "date": datetime.fromtimestamp(charge.get("created"), tz=timezone.utc).isoformat(),
+            "details": {
+                "payment_method_type": card_info.get("brand") or payment_method_details.get("type"),
+                "card_brand": card_info.get("brand"),
+                "card_last4": card_info.get("last4"),
+            },
         })
 
     return results
