@@ -384,11 +384,12 @@ class Payment(Base):
     # nette effectivement perçue.
     application_fee_requested = Column(Float, nullable=True)
     stripe_fee_amount = Column(Float, nullable=True)
-    # balance_transaction.net (= balance_transaction.amount - .fee) : le
-    # montant net calculé PAR STRIPE lui-même, stocké tel quel - jamais
-    # redérivé côté Xepay (amount - commission_xepay ignorait les frais
-    # Stripe prélevés sur le transfert au marchand, voir l'historique de ce
-    # fichier).
+    # Montant net calculé par Xepay lui-même (amount - 6% de commission,
+    # arrondi à 2 décimales) - plus de dépendance aux valeurs de règlement
+    # Stripe (balance_transaction.net/.fee), trop incohérentes d'un
+    # paiement à l'autre pour un taux censé être fixe (voir l'historique de
+    # ce fichier). Le nom de colonne reste "balance_transaction_net" pour
+    # ne pas casser les lectures existantes.
     balance_transaction_net = Column(Float, nullable=True)
     transfer_id = Column(String, nullable=True)
     transfer_amount = Column(Float, nullable=True)

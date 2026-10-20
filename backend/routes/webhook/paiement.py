@@ -134,17 +134,19 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
 
             if balance_tx:
                 amount_usd = balance_tx.amount / 100
-                # balance_tx.net = balance_tx.amount - balance_tx.fee,
-                # calculé par Stripe lui-même - stocké tel quel, jamais
-                # redérivé côté Xepay.
-                balance_transaction_net = balance_tx.net / 100
-                # application_fee_requested = montant brut - montant net
-                # (demandé explicitement) - mathématiquement balance_tx.fee,
-                # mais calculé ici à partir des deux valeurs déjà stockées
-                # plutôt que lu directement sur balance_tx.fee.
-                application_fee_requested = amount_usd - balance_transaction_net
+                # On ne dépend plus des valeurs de règlement Stripe
+                # (balance_transaction.net/.fee) pour le montant net : trop
+                # incohérentes d'un paiement à l'autre pour un taux qui est
+                # censé être fixe et déterministe (6%). Xepay calcule donc
+                # lui-même son propre montant net à partir du montant brut.
+                balance_transaction_net = round(amount_usd - amount_usd * 0.06, 2)
+                # commission Xepay = fee_amount (ApplicationFee.amount, déjà
+                # récupéré auprès de Stripe ci-dessus) ; stripeFee = ce qui
+                # reste une fois le montant net et la commission Xepay
+                # soustraits du brut.
+                application_fee_requested = fee_amount
                 if fee_amount is not None:
-                    stripe_fee_amount = application_fee_requested - fee_amount
+                    stripe_fee_amount = round(amount_usd - balance_transaction_net - fee_amount, 2)
                 available_on = balance_tx.available_on
                 available_at = datetime.fromtimestamp(available_on, tz=timezone.utc)
 
