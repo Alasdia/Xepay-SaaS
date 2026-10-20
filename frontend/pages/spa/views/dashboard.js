@@ -53,16 +53,6 @@ const TEMPLATE = `
       <div class="hero-stat-amount-wrap" id="hero-stat-amount-wrap">
         <div class="hero-stat-amount-line">
           <div class="hero-stat-amount" id="hero-stat-amount">—</div>
-          <div class="hero-selector" id="hero-currency-selector">
-            <button type="button" class="hero-selector-btn hero-chevron-only" id="hero-currency-btn">
-              <i class="fa-solid fa-chevron-down"></i>
-            </button>
-            <div class="hero-popup d-none" id="hero-currency-popup">
-              <button type="button" class="hero-popup-item active" data-currency="USD">USD</button>
-              <button type="button" class="hero-popup-item" data-currency="EUR">EUR</button>
-              <button type="button" class="hero-popup-item" data-currency="XOF">XOF</button>
-            </div>
-          </div>
         </div>
         <div class="hero-stat-time" id="hero-stat-time"></div>
       </div>
@@ -873,12 +863,10 @@ export async function mount(container) {
     products: { label: "Nouveaux produits", unit: "count" },
   };
   let heroMetric = "gross";
-  // Devise d'affichage du montant héro et du graphique (sélecteur à côté
-  // du montant). USD par défaut : "gross"/"net" viennent des liens, créés
-  // en USD ou EUR (jamais en XOF, voir le sélecteur de devise de la vue
-  // Liens) — chaque lien est converti depuis SA PROPRE devise (item.currency)
-  // vers heroCurrency via getRate (mêmes taux fixes que "Votre aperçu").
-  let heroCurrency = "USD";
+  // Plus de sélecteur de devise propre au bloc héro : il partage désormais
+  // activityCurrency (le seul sélecteur de devise restant, dans les
+  // filtres de "Votre aperçu"), pour n'avoir qu'une seule source de
+  // vérité sur toute la vue.
   let heroChart = null;
   // Date comparée à "aujourd'hui" dans le graphique héro, choisie dans le
   // Calendar Popover (par défaut : hier). Jamais aujourd'hui/le futur —
@@ -942,20 +930,20 @@ export async function mount(container) {
   }
 
   // Valeur d'une métrique héro sur [start, end] : somme (montants, chacun
-  // converti depuis SA PROPRE devise vers heroCurrency) ou comptage selon
-  // l'unité (HERO_METRICS).
+  // converti depuis SA PROPRE devise vers activityCurrency) ou comptage
+  // selon l'unité (HERO_METRICS).
   function computeHeroValue(metric, start, end) {
     const items = heroSourceItems(metric);
     if (HERO_METRICS[metric].unit !== "currency") return countInRange(items, start, end);
     return items.reduce((sum, { ts, value, currency, source }) => {
       if (ts == null || ts < start || ts > end) return sum;
       const multiplier = metric === "net" ? heroNetMultiplier(source) : 1;
-      return sum + value * multiplier * getRate(currency || "USD", heroCurrency);
+      return sum + value * multiplier * getRate(currency || "USD", activityCurrency);
     }, 0);
   }
 
   function formatHeroValue(metric, value) {
-    return HERO_METRICS[metric].unit === "currency" ? formatMoney(value, heroCurrency) : formatCount(value);
+    return HERO_METRICS[metric].unit === "currency" ? formatMoney(value, activityCurrency) : formatCount(value);
   }
 
   /* ---------- Graphique héro : buckets, séries, tooltip personnalisé ---------- */
@@ -999,7 +987,7 @@ export async function mount(container) {
     heroSourceItems(metric).forEach(({ ts, value, currency, source }) => {
       if (ts == null) return;
       const multiplier = metric === "net" ? heroNetMultiplier(source) : 1;
-      const amount = isCount ? 1 : value * multiplier * getRate(currency || "USD", heroCurrency);
+      const amount = isCount ? 1 : value * multiplier * getRate(currency || "USD", activityCurrency);
       if (ts >= curMs[0] && ts <= now) {
         const idx = findBucketIndex(curMs, ts);
         if (idx !== -1) currentData[idx] += amount;
@@ -1196,7 +1184,7 @@ export async function mount(container) {
     setText("granularity-selector-amount", formatHeroValue(heroMetric, compareValue));
     setText("hero-stat-amount", formatHeroValue(heroMetric, value));
     setText("hero-stat-time", "Mis à jour à " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
-    setText("hero-balance-amount", formatMoney((activityRaw?.totalBalance || 0) * getRate("XOF", heroCurrency), heroCurrency));
+    setText("hero-balance-amount", formatMoney((activityRaw?.totalBalance || 0) * getRate("XOF", activityCurrency), activityCurrency));
 
     renderHeroChart();
   }
@@ -1204,7 +1192,6 @@ export async function mount(container) {
   function closeHeroPopups() {
     document.getElementById("metric-popup")?.classList.add("d-none");
     document.getElementById("granularity-popup")?.classList.add("d-none");
-    document.getElementById("hero-currency-popup")?.classList.add("d-none");
   }
 
   // Calendar Popover : grille du mois affiché (calendarViewMonth), lundi en
@@ -1247,21 +1234,6 @@ export async function mount(container) {
   }
 
   function initHeroStat() {
-    on(document.getElementById("hero-currency-btn"), "click", (e) => {
-      e.stopPropagation();
-      const popup = document.getElementById("hero-currency-popup");
-      const wasOpen = !popup.classList.contains("d-none");
-      closeHeroPopups();
-      popup.classList.toggle("d-none", wasOpen);
-    });
-    document.querySelectorAll("#hero-currency-popup .hero-popup-item").forEach((btn) => {
-      on(btn, "click", () => {
-        heroCurrency = btn.dataset.currency;
-        document.querySelectorAll("#hero-currency-popup .hero-popup-item").forEach((b) => b.classList.toggle("active", b === btn));
-        closeHeroPopups();
-        renderHeroStat();
-      });
-    });
     on(document.getElementById("metric-selector-btn"), "click", (e) => {
       e.stopPropagation();
       const popup = document.getElementById("metric-popup");
@@ -1343,6 +1315,9 @@ export async function mount(container) {
     wireActivityFilter("activity-currency-btn", "activity-currency-popup", (item) => {
       activityCurrency = item.dataset.currency;
       setText("activity-currency-label", item.dataset.currency);
+      // Seul sélecteur de devise restant (le bloc héro n'a plus le sien) :
+      // le rafraîchir aussi ici.
+      renderHeroStat();
     });
     wireActivityFilter("activity-period-btn", "activity-period-popup", (item) => {
       activityPeriodKey = item.dataset.period;

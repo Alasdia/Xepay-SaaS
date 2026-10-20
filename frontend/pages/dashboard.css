@@ -66,10 +66,6 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
    juste le libellé/chevron, sans cadre visible. */
 .hero-selector-btn { display:flex; align-items:center; gap:8px; border:none; background:transparent; border-radius:0; padding:7px 12px; font-size:13px; font-weight:600; color:#111827; cursor:pointer; }
 .hero-selector-btn i { font-size:10px; color:#9ca3af; }
-/* Sélecteur de devise : chevron seul, pas de libellé — le code devise est
-   déjà visible dans le montant lui-même (ex: "150 000 XOF"), le répéter
-   ici serait redondant. */
-.hero-chevron-only { padding:4px; }
 .hero-popup { position:absolute; top:calc(100% + 6px); left:0; min-width:190px; background:#ffffff; border:1px solid #e5e7eb; border-radius:0; box-shadow:0 10px 30px rgba(0,0,0,.12); z-index:20; padding:4px; }
 .hero-popup-item { display:block; width:100%; text-align:left; border:none; background:transparent; padding:8px 10px; font-size:13px; color:#374151; cursor:pointer; }
 .hero-popup-item:hover { background:#f3f4f6; }
