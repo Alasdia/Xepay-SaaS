@@ -646,7 +646,16 @@ export async function mount(container) {
   }
 
   async function renderCategory(cat, days) {
-    const items = activityRaw ? activityRaw[cat.key] || [] : [];
+    let items = activityRaw ? activityRaw[cat.key] || [] : [];
+    // Une facture de renouvellement d'abonnement (subscriptionId non nul)
+    // appartient entièrement à "Abonnements", jamais à "Factures" — ni son
+    // nombre, ni son revenu. Les deux catégories représentent deux
+    // fonctionnalités métier distinctes (facturation ponctuelle vs
+    // abonnement récurrent) : filtré ici, en amont, pour que "Nombre" et
+    // "Revenus" comptent exactement la même population de factures.
+    if (cat.key === "invoices") {
+      items = items.filter((i) => i.subscriptionId == null);
+    }
     const stats = computeActivityStats(items, days);
     const labels = buildActivityLabels(days);
 
@@ -658,11 +667,7 @@ export async function mount(container) {
       currentRevenueDaily = cohort.currentRevenueDaily;
       previousRevenueDaily = cohort.previousRevenueDaily;
     } else if (cat.key === "invoices") {
-      // Une facture de renouvellement d'abonnement (subscriptionId non nul)
-      // est exclue d'ici : elle alimente le bloc "Abonnements" ci-dessous,
-      // jamais les deux — seules les factures "one-off" comptent ici.
-      const oneOffInvoices = items.filter((i) => i.subscriptionId == null);
-      const filtered = computeFilteredRevenueStats(oneOffInvoices, days, (status) => status === "paid");
+      const filtered = computeFilteredRevenueStats(items, days, (status) => status === "paid");
       curRevenue = filtered.currentTotal;
       prevRevenue = filtered.previousTotal;
       currentRevenueDaily = filtered.currentRevenueDaily;
