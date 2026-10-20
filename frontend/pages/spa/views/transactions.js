@@ -229,13 +229,6 @@ export async function mount(container, params = {}) {
   let isLoading = false;
   let hasNextPage = true;
   let pageNumber = 1;
-  // Pagination par curseur de /payments/live (onglet Paiements) : Stripe
-  // pagine par starting_after, pas par offset. paymentCursors[i] = le
-  // curseur utilisé pour obtenir la page i+1 (paymentCursors[0] = null,
-  // la 1re page part du début) ; "suivant" ajoute le next_cursor reçu,
-  // "précédent" revient simplement à l'entrée précédente de ce tableau -
-  // jamais besoin d'interroger Stripe en sens inverse.
-  let paymentCursors = [null];
   let currentType = fixedType || "";
   // Statut sélectionné via les KPI Paiements (Tous/Réussis/Remboursés/
   // Contestés/En échec/Non capturés) — prioritaire sur le select
@@ -665,7 +658,6 @@ export async function mount(container, params = {}) {
           offset = 0;
           pageNumber = 1;
           hasNextPage = true;
-          paymentCursors = [null];
           transactions = [];
           updatePagination();
           chargerTransactions();
@@ -721,7 +713,6 @@ export async function mount(container, params = {}) {
       }
       let res;
       let data;
-      let paymentNextCursor = null;
       if (currentType === "withdraw") {
         res = await apiFetch("/withdrawals");
         const result = await res.json();
@@ -729,20 +720,12 @@ export async function mount(container, params = {}) {
         data = result.payouts ?? result;
       } else if (currentType === "payment") {
         // Lit directement les Charge Stripe (GET /payments/live) au lieu
-        // de la table payments - ne supporte pour l'instant aucun des
-        // filtres avancés ci-dessus (statut/dates/montant/devise/moyen de
-        // paiement). Pagination par curseur (voir paymentCursors) : le
-        // curseur de la page courante a été mémorisé en quittant la page
-        // précédente, jamais recalculé depuis le début.
-        const cursor = paymentCursors[pageNumber - 1];
-        const url = cursor
-          ? `/payments/live?limit=${limit}&starting_after=${encodeURIComponent(cursor)}`
-          : `/payments/live?limit=${limit}`;
-        res = await apiFetch(url);
-        const result = await res.json();
-        data = result.results ?? [];
-        paymentNextCursor = result.next_cursor ?? null;
-        paymentCursors[pageNumber] = paymentNextCursor;
+        // de la table payments - ne supporte pour l'instant que "limit",
+        // aucun des filtres avancés ci-dessus (statut/dates/montant/
+        // devise/moyen de paiement) ni la pagination par offset : chaque
+        // page affiche les N charges les plus récentes côté Stripe.
+        res = await apiFetch(`/payments/live?limit=${limit}`);
+        data = await res.json();
       } else {
         res = await apiFetch(`/activity?${params}`);
         data = await res.json();
@@ -755,7 +738,7 @@ export async function mount(container, params = {}) {
       }
       transactions = data;
       afficherTransactions(transactions);
-      hasNextPage = currentType === "payment" ? Boolean(paymentNextCursor) : data.length === limit;
+      hasNextPage = data.length === limit;
       updatePagination();
     } catch (err) {
       console.error("Erreur activity:", err);
@@ -865,7 +848,6 @@ export async function mount(container, params = {}) {
     offset = 0;
     pageNumber = 1;
     hasNextPage = true;
-    paymentCursors = [null];
     transactions = [];
     updatePagination();
     chargerTransactions();
@@ -1054,7 +1036,6 @@ export async function mount(container, params = {}) {
     offset = 0;
     pageNumber = 1;
     hasNextPage = true;
-    paymentCursors = [null];
     transactions = [];
     updatePagination();
     chargerTransactions();
@@ -1076,7 +1057,6 @@ export async function mount(container, params = {}) {
     offset = 0;
     pageNumber = 1;
     hasNextPage = true;
-    paymentCursors = [null];
     transactions = [];
     updatePagination();
     chargerTransactions();
