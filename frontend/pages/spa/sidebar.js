@@ -6,7 +6,7 @@
 // schéma /dash/workspace/{workspace_id}/....
 
 import { apiFetch } from "./core/apiClient.js";
-import { getWorkspaceId, clearSession, setPlan } from "./core/state.js";
+import { getWorkspaceId, setWorkspaceId, clearSession, setPlan } from "./core/state.js";
 import { navigate } from "./core/router.js";
 import { showUpgradeModal } from "./shared/modalUpgrade.js";
 
@@ -105,6 +105,7 @@ export async function initSidebar() {
     });
   });
 
+  await ensureValidWorkspace();
   await loadUser();
 
   container.querySelectorAll(".upgrade-btn").forEach((btn) =>
@@ -156,6 +157,33 @@ export function setActiveRoute(routeName) {
 // vit physiquement dans le fragment sidebar.html).
 export async function refreshPlanBadge() {
   return loadUser();
+}
+
+// Auto-corrige un workspace_id absent/invalide en localStorage AVANT tout
+// autre appel (loadUser, puis chaque vue) - jusqu'ici, seule la page
+// Multi-users validait/corrigeait ce choix (loadWorkspaces), donc un
+// workspace_id erroné persisté ailleurs ne se corrigeait jamais tout seul
+// sans revisiter cette page précise. initSidebar() tourne une fois par
+// session (jamais démontée), donc cette vérification couvre maintenant
+// chaque chargement de l'app, pas seulement Multi-users.
+async function ensureValidWorkspace() {
+  try {
+    const res = await apiFetch("/workspaces/me");
+    if (!res.ok) return;
+    const workspaces = await res.json();
+    if (!Array.isArray(workspaces) || !workspaces.length) return;
+
+    const current = getWorkspaceId();
+    if (current && workspaces.some((w) => String(w.id) === current)) return;
+
+    // Jamais workspaces[0] à l'aveugle : son propre workspace (role
+    // "owner") avant tout, même si l'ordre backend changeait un jour.
+    const ownWorkspace = workspaces.find((w) => w.role === "owner") || workspaces[0];
+    setWorkspaceId(ownWorkspace.id);
+  } catch {
+    // Best-effort : si /workspaces/me échoue aussi, on laisse loadUser
+    // gérer l'échec normalement plutôt que de bloquer le reste du montage.
+  }
 }
 
 async function loadUser() {
