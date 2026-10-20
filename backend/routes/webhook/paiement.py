@@ -139,31 +139,6 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
         if not balance_tx:
             raise Exception("balance_transaction_not_available_yet")
 
-        # Montant/devise RÉELLEMENT facturés au client (charge_dict, pas
-        # balance_tx/amount_usd) : avec on_behalf_of (destination charge),
-        # Stripe règle la BalanceTransaction dans la devise de règlement du
-        # compte marchand, potentiellement convertie depuis celle de la
-        # charge d'origine (ex: un lien à 87 EUR réglé en ~97,52 USD côté
-        # balance_tx) — balance_tx.currency n'était jamais lu, donc jamais
-        # comparé à la devise de la charge, d'où un Payment.amount dans une
-        # devise différente de celle affichée (Payment.currency). amount_usd
-        # reste nécessaire ci-dessous pour amount_local (crédit du wallet,
-        # qui doit refléter ce qui atterrit réellement sur le solde Stripe
-        # du marchand) mais ne doit plus jamais être confondu avec le
-        # montant brut affiché au client.
-        charge_amount = (charge_dict.get("amount") or 0) / 100
-        charge_currency = (charge_dict.get("currency") or "usd").upper()
-        # stripe_fee_amount hérite de la devise de règlement de balance_tx,
-        # pas de celle de la charge : ramené dans la devise de la charge via
-        # le taux de règlement implicite, pour rester comparable à
-        # fee_amount (resté dans la devise de la charge, lui) - voir
-        # routes/payments.py qui calcule commission_xepay = fee_amount -
-        # stripe_fee_amount et amount_net_merchant = amount - fee_amount.
-        if amount_usd and charge_amount and stripe_fee_amount is not None:
-            settlement_rate = amount_usd / charge_amount
-            if settlement_rate:
-                stripe_fee_amount = stripe_fee_amount / settlement_rate
-
         currency = session_dict.get("currency", "USD").upper()
         if currency == "XOF":
             amount_local = amount_usd
@@ -189,8 +164,8 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
         payment = Payment(
             user_id=user_id,
             client_email=email_client,
-            amount=charge_amount,
-            currency=charge_currency,
+            amount=amount_usd,
+            currency=currency,
             amount_local=amount_local,
             currency_local="XOF",
             rate_used=rate_used,
