@@ -134,16 +134,17 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
 
             if balance_tx:
                 amount_usd = balance_tx.amount / 100
-                # application_fee_requested vient de balance_tx.fee (devise
-                # de Payment.amount/currency), pas de charge.
-                # application_fee_amount - demandé explicitement.
-                application_fee_requested = balance_tx.fee / 100
-                if fee_amount is not None:
-                    stripe_fee_amount = application_fee_requested - fee_amount
                 # balance_tx.net = balance_tx.amount - balance_tx.fee,
                 # calculé par Stripe lui-même - stocké tel quel, jamais
                 # redérivé côté Xepay.
                 balance_transaction_net = balance_tx.net / 100
+                # application_fee_requested = montant brut - montant net
+                # (demandé explicitement) - mathématiquement balance_tx.fee,
+                # mais calculé ici à partir des deux valeurs déjà stockées
+                # plutôt que lu directement sur balance_tx.fee.
+                application_fee_requested = amount_usd - balance_transaction_net
+                if fee_amount is not None:
+                    stripe_fee_amount = application_fee_requested - fee_amount
                 available_on = balance_tx.available_on
                 available_at = datetime.fromtimestamp(available_on, tz=timezone.utc)
 
