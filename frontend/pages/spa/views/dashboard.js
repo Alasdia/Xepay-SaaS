@@ -488,7 +488,7 @@ export async function mount(container) {
   }
 
   function formatMoney(value, currency) {
-    return Math.round(value).toLocaleString("fr-FR") + " " + currency;
+    return value.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " " + currency;
   }
 
   function formatCount(value) {
