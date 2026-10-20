@@ -267,6 +267,35 @@ export async function mount(container) {
     // vient pas d'un champ Stripe de l'entité elle-même mais des factures
     // payées rattachées via customerId/productId (voir
     // computeEntityCohortRevenue plus bas), croisées au rendu.
+    //
+    // Depuis l'API Stripe 2025-03-31.basil, une ligne de facture n'a plus de
+    // champ "price" (objet, avec .product) : il faut lire
+    // line.pricing.price_details.price (un ID de Price, pas un objet) après
+    // avoir vérifié pricing.type === "price_details", puis retrouver le
+    // produit correspondant soi-même — Stripe ne renvoie plus cette relation
+    // "gratuitement" sur la ligne. On construit cette correspondance ici
+    // depuis /stripe/connect/products, qui renvoie déjà chaque Price complet
+    // (avec son id) sous product.prices.
+    const priceToProduct = new Map();
+    (productsData?.data || []).forEach((p) => {
+      (p.prices || []).forEach((price) => {
+        if (price?.id) priceToProduct.set(price.id, p.id);
+      });
+    });
+    function extractLineProductId(line) {
+      if (!line) return null;
+      let priceId = null;
+      if (line.pricing?.type === "price_details") {
+        priceId = line.pricing.price_details?.price || null;
+      } else if (line.price) {
+        // Repli pour une version d'API antérieure à basil, où price était
+        // encore un objet expandable portant directement .product.
+        priceId = typeof line.price === "string" ? line.price : line.price.id || null;
+        if (line.price?.product) return line.price.product;
+      }
+      return priceId ? priceToProduct.get(priceId) || null : null;
+    }
+
     return {
       clients: (customersData?.data || []).map((c) => ({ id: c.id, ts: toTimestamp(c.created) })),
       // id seul (pas de "value") : comme pour les clients, le revenu d'un
@@ -313,7 +342,7 @@ export async function mount(container) {
         status: i.status,
         currency: (i.currency || "usd").toUpperCase(),
         customerId: i.customer || null,
-        productId: i.lines?.data?.[0]?.price?.product || null,
+        productId: extractLineProductId(i.lines?.data?.[0]),
         subscriptionId: extractInvoiceSubscriptionId(i),
       })),
       // status conservé ici (utilisé par le bloc "Nombre" des liens pour
