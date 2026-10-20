@@ -96,13 +96,14 @@ const TEMPLATE = `
       <div class="activity-filter" id="activity-period-filter">
         <button type="button" class="activity-filter-btn" id="activity-period-btn">
           <span class="activity-filter-label">Période précédente</span>
-          <span class="activity-filter-value" id="activity-period-label">Mois précédent</span>
+          <span class="activity-filter-value" id="activity-period-label">Mois</span>
           <i class="fa-solid fa-chevron-down"></i>
         </button>
         <div class="activity-filter-popup d-none" id="activity-period-popup">
-          <button type="button" class="activity-filter-item" data-period="7">Semaine précédente</button>
-          <button type="button" class="activity-filter-item active" data-period="30">Mois précédent</button>
-          <button type="button" class="activity-filter-item" data-period="365">Année précédente</button>
+          <button type="button" class="activity-filter-item" data-period="hour">Jour</button>
+          <button type="button" class="activity-filter-item" data-period="week">Semaine</button>
+          <button type="button" class="activity-filter-item active" data-period="month">Mois</button>
+          <button type="button" class="activity-filter-item" data-period="year">Année</button>
         </div>
       </div>
       <div class="activity-filter" id="activity-net-filter">
@@ -142,6 +143,7 @@ export async function mount(container) {
   ===================================================== */
 
   const DAY_MS = 24 * 60 * 60 * 1000;
+  const HOUR_MS = 60 * 60 * 1000;
 
   const ACTIVITY_CATEGORIES = [
     { key: "clients", label: "Nouveaux clients", icon: "fa-user-plus" },
@@ -151,10 +153,25 @@ export async function mount(container) {
     { key: "links", label: "Liens de paiement", icon: "fa-link" },
   ];
 
+  // Chaque option = un nombre de "buckets" (count) de taille bucketMs : les
+  // fonctions de calcul (computeActivityStats, etc.) sont génériques sur
+  // cette taille, donc "Jour" (buckets horaires) réutilise exactement la
+  // même logique que "Semaine"/"Mois"/"Année" (buckets journaliers).
+  const ACTIVITY_PERIODS = {
+    hour: { label: "Jour", count: 24, bucketMs: HOUR_MS },
+    week: { label: "Semaine", count: 7, bucketMs: DAY_MS },
+    month: { label: "Mois", count: 30, bucketMs: DAY_MS },
+    year: { label: "Année", count: 365, bucketMs: DAY_MS },
+  };
+
   let activityRaw = null;
-  let activityDays = 30;
+  let activityPeriodKey = "month";
   let activityCurrency = "USD";
   let activityNetMode = "gross";
+
+  function currentActivityPeriod() {
+    return ACTIVITY_PERIODS[activityPeriodKey];
+  }
   const activityCharts = {};
 
   // Taux fixes vers XOF, alignés sur ceux déjà utilisés ailleurs dans
@@ -392,14 +409,18 @@ export async function mount(container) {
     };
   }
 
-  function computeActivityStats(items, days) {
+  // "count" = nombre de buckets (24 pour "Jour", 7/30/365 pour semaine/mois/
+  // année) ; bucketMs (heure ou jour, voir currentActivityPeriod) donne leur
+  // taille — même logique de fenêtre quelle que soit la granularité.
+  function computeActivityStats(items, count) {
+    const bucketMs = currentActivityPeriod().bucketMs;
     const now = Date.now();
-    const currentStart = now - days * DAY_MS;
-    const previousStart = now - 2 * days * DAY_MS;
-    const currentRevenueDaily = new Array(days).fill(0);
-    const previousRevenueDaily = new Array(days).fill(0);
-    const currentCountDaily = new Array(days).fill(0);
-    const previousCountDaily = new Array(days).fill(0);
+    const currentStart = now - count * bucketMs;
+    const previousStart = now - 2 * count * bucketMs;
+    const currentRevenueDaily = new Array(count).fill(0);
+    const previousRevenueDaily = new Array(count).fill(0);
+    const currentCountDaily = new Array(count).fill(0);
+    const previousCountDaily = new Array(count).fill(0);
     let currentTotal = 0;
     let previousTotal = 0;
     let currentCount = 0;
@@ -408,13 +429,13 @@ export async function mount(container) {
     items.forEach(({ ts, value }) => {
       if (ts == null) return;
       if (ts >= currentStart && ts <= now) {
-        const idx = Math.min(days - 1, Math.max(0, Math.floor((ts - currentStart) / DAY_MS)));
+        const idx = Math.min(count - 1, Math.max(0, Math.floor((ts - currentStart) / bucketMs)));
         currentRevenueDaily[idx] += value;
         currentCountDaily[idx] += 1;
         currentTotal += value;
         currentCount += 1;
       } else if (ts >= previousStart && ts < currentStart) {
-        const idx = Math.min(days - 1, Math.max(0, Math.floor((ts - previousStart) / DAY_MS)));
+        const idx = Math.min(count - 1, Math.max(0, Math.floor((ts - previousStart) / bucketMs)));
         previousRevenueDaily[idx] += value;
         previousCountDaily[idx] += 1;
         previousTotal += value;
@@ -458,10 +479,11 @@ export async function mount(container) {
     return source === "link" ? 0.94 : 0.99;
   }
 
-  function computeEntityCohortRevenue(entities, paymentKeyField, days) {
+  function computeEntityCohortRevenue(entities, paymentKeyField, count) {
+    const bucketMs = currentActivityPeriod().bucketMs;
     const now = Date.now();
-    const currentStart = now - days * DAY_MS;
-    const previousStart = now - 2 * days * DAY_MS;
+    const currentStart = now - count * bucketMs;
+    const previousStart = now - 2 * count * bucketMs;
 
     const paymentsByKey = new Map();
     const addPayments = (list, isEligible) => {
@@ -479,13 +501,13 @@ export async function mount(container) {
     const multiplier = activityNetMultiplier("invoice");
 
     function revenueForWindow(entitiesInWindow, windowStart) {
-      const daily = new Array(days).fill(0);
+      const daily = new Array(count).fill(0);
       let total = 0;
       entitiesInWindow.forEach((e) => {
         const payments = paymentsByKey.get(e.id) || [];
-        const idx = Math.min(days - 1, Math.max(0, Math.floor((e.ts - windowStart) / DAY_MS)));
+        const idx = Math.min(count - 1, Math.max(0, Math.floor((e.ts - windowStart) / bucketMs)));
         payments.forEach((p) => {
-          if (p.ts < windowStart || p.ts >= windowStart + days * DAY_MS) return;
+          if (p.ts < windowStart || p.ts >= windowStart + count * bucketMs) return;
           const amount = p.value * multiplier * getRate(p.currency || "USD", activityCurrency);
           daily[idx] += amount;
           total += amount;
@@ -523,12 +545,13 @@ export async function mount(container) {
   // qui applique un taux fixe par catégorie et ne filtre aucun statut.
   // "source" détermine le taux de commission appliqué en mode "net" (voir
   // activityNetMultiplier) ; ignoré en mode "brut".
-  function computeFilteredRevenueStats(items, days, isEligible, source) {
+  function computeFilteredRevenueStats(items, count, isEligible, source) {
+    const bucketMs = currentActivityPeriod().bucketMs;
     const now = Date.now();
-    const currentStart = now - days * DAY_MS;
-    const previousStart = now - 2 * days * DAY_MS;
-    const currentRevenueDaily = new Array(days).fill(0);
-    const previousRevenueDaily = new Array(days).fill(0);
+    const currentStart = now - count * bucketMs;
+    const previousStart = now - 2 * count * bucketMs;
+    const currentRevenueDaily = new Array(count).fill(0);
+    const previousRevenueDaily = new Array(count).fill(0);
     let currentTotal = 0;
     let previousTotal = 0;
     const multiplier = activityNetMultiplier(source);
@@ -537,11 +560,11 @@ export async function mount(container) {
       if (ts == null || !isEligible(status)) return;
       const amount = value * multiplier * getRate(currency || "USD", activityCurrency);
       if (ts >= currentStart && ts <= now) {
-        const idx = Math.min(days - 1, Math.max(0, Math.floor((ts - currentStart) / DAY_MS)));
+        const idx = Math.min(count - 1, Math.max(0, Math.floor((ts - currentStart) / bucketMs)));
         currentRevenueDaily[idx] += amount;
         currentTotal += amount;
       } else if (ts >= previousStart && ts < currentStart) {
-        const idx = Math.min(days - 1, Math.max(0, Math.floor((ts - previousStart) / DAY_MS)));
+        const idx = Math.min(count - 1, Math.max(0, Math.floor((ts - previousStart) / bucketMs)));
         previousRevenueDaily[idx] += amount;
         previousTotal += amount;
       }
@@ -550,12 +573,18 @@ export async function mount(container) {
     return { currentRevenueDaily, previousRevenueDaily, currentTotal, previousTotal };
   }
 
-  function buildActivityLabels(days) {
+  function buildActivityLabels(count) {
+    const { bucketMs } = currentActivityPeriod();
+    const isHourly = bucketMs === HOUR_MS;
     const now = new Date();
     const labels = [];
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(now.getTime() - i * DAY_MS);
-      labels.push(d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }));
+    for (let i = count - 1; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * bucketMs);
+      labels.push(
+        isHourly
+          ? d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+          : d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })
+      );
     }
     return labels;
   }
@@ -567,12 +596,16 @@ export async function mount(container) {
   // jours avant le point actuel au même index (mêmes bornes que
   // computeActivityStats : previousStart = now - 2*days, currentStart =
   // now - days).
-  function buildComparisonDateResolver(days) {
+  function buildComparisonDateResolver(count) {
+    const { bucketMs } = currentActivityPeriod();
+    const isHourly = bucketMs === HOUR_MS;
     const now = Date.now();
     return (datasetIndex, dataIndex) => {
-      const daysAgo = days - 1 - dataIndex + (datasetIndex === 1 ? days : 0);
-      const d = new Date(now - daysAgo * DAY_MS);
-      return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+      const bucketsAgo = count - 1 - dataIndex + (datasetIndex === 1 ? count : 0);
+      const d = new Date(now - bucketsAgo * bucketMs);
+      return isHourly
+        ? d.toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+        : d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
     };
   }
 
@@ -645,16 +678,16 @@ export async function mount(container) {
   // période actuelle à la précédente, distingue les liens créés dans la
   // période par statut (payé/en attente/expiré) — un mécanisme différent,
   // propre à ce bloc, demandé explicitement pour ne pas tout mélanger dans
-  // un seul "nombre de liens".
-  // pointRadius > 0 ici (contrairement aux autres graphiques) : une
-  // courbe "En attente"/"Expirés" à 0 toute la période est une ligne
-  // plate collée à l'axe — sans point visible, elle se confond avec l'axe
-  // et paraît absente. Les points, eux, restent visibles même à 0.
+  // un seul "nombre de liens". Points cachés hors survol (pointRadius:0),
+  // même comportement que buildComparisonDatasets sur tous les autres
+  // blocs — demandé explicitement, malgré le fait qu'une courbe "En
+  // attente"/"Expirés" à 0 toute la période devient une ligne plate sans
+  // repère visuel distinct de l'axe.
   function buildLinksStatusDatasets(daily) {
     return [
-      { label: "Payés", data: daily.paid, borderColor: "#16a34a", backgroundColor: "#16a34a", borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, tension: 0.3, fill: false },
-      { label: "En attente", data: daily.pending, borderColor: "#eab308", backgroundColor: "#eab308", borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, tension: 0.3, fill: false },
-      { label: "Expirés", data: daily.expired, borderColor: "#dc2626", backgroundColor: "#dc2626", borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, tension: 0.3, fill: false },
+      { label: "Payés", data: daily.paid, borderColor: "#16a34a", backgroundColor: "#16a34a", borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false },
+      { label: "En attente", data: daily.pending, borderColor: "#eab308", backgroundColor: "#eab308", borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false },
+      { label: "Expirés", data: daily.expired, borderColor: "#dc2626", backgroundColor: "#dc2626", borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false },
     ];
   }
 
@@ -669,11 +702,13 @@ export async function mount(container) {
       const prefix = dateForPoint ? dateForPoint(ctx.datasetIndex, ctx.dataIndex) : ctx.dataset.label;
       return `${prefix}: ${valueFormatter(ctx.parsed.y)}`;
     };
+    const xAxisTitle = `Période (${currentActivityPeriod().bucketMs === HOUR_MS ? "heure" : "jour"})`;
 
     if (activityCharts[id]) {
       const chart = activityCharts[id];
       chart.data.labels = labels;
       chart.data.datasets = datasets;
+      chart.options.scales.x.title.text = xAxisTitle;
       chart.options.scales.y.title.text = yAxisLabel;
       chart.options.plugins.tooltip.callbacks.label = tooltipLabel;
       chart.update();
@@ -703,7 +738,7 @@ export async function mount(container) {
         },
         scales: {
           x: {
-            title: { display: true, text: "Période (jour)", color: "#6b7280", font: { size: 13, weight: "600" } },
+            title: { display: true, text: xAxisTitle, color: "#6b7280", font: { size: 13, weight: "600" } },
             grid: { display: false },
             ticks: { color: "#9ca3af", font: { size: 13 }, maxRotation: 0, autoSkip: true },
           },
@@ -728,14 +763,15 @@ export async function mount(container) {
 
   // Nombre de liens par statut (payé/en attente/expiré), jour par jour,
   // sur la période actuelle uniquement — voir buildLinksStatusDatasets.
-  function computeLinksStatusDaily(items, days) {
+  function computeLinksStatusDaily(items, count) {
+    const bucketMs = currentActivityPeriod().bucketMs;
     const now = Date.now();
-    const currentStart = now - days * DAY_MS;
-    const daily = { paid: new Array(days).fill(0), pending: new Array(days).fill(0), expired: new Array(days).fill(0) };
+    const currentStart = now - count * bucketMs;
+    const daily = { paid: new Array(count).fill(0), pending: new Array(count).fill(0), expired: new Array(count).fill(0) };
 
     items.forEach(({ ts, status }) => {
       if (ts == null || ts < currentStart || ts > now || !daily[status]) return;
-      const idx = Math.min(days - 1, Math.max(0, Math.floor((ts - currentStart) / DAY_MS)));
+      const idx = Math.min(count - 1, Math.max(0, Math.floor((ts - currentStart) / bucketMs)));
       daily[status][idx] += 1;
     });
 
@@ -818,7 +854,7 @@ export async function mount(container) {
 
   async function renderAllActivityCards() {
     if (!activityRaw) return;
-    await Promise.all(ACTIVITY_CATEGORIES.map((cat) => renderCategory(cat, activityDays)));
+    await Promise.all(ACTIVITY_CATEGORIES.map((cat) => renderCategory(cat, currentActivityPeriod().count)));
   }
 
   /* =====================================================
@@ -1304,7 +1340,7 @@ export async function mount(container) {
       setText("activity-currency-label", item.dataset.currency);
     });
     wireActivityFilter("activity-period-btn", "activity-period-popup", (item) => {
-      activityDays = Number(item.dataset.period);
+      activityPeriodKey = item.dataset.period;
       setText("activity-period-label", item.textContent);
     });
     wireActivityFilter("activity-net-btn", "activity-net-popup", (item) => {

@@ -141,7 +141,7 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .activity-filter { position:relative; }
 /* Bordure arrondie (seule exception à la règle "pas de coins arrondis" du
    reste de l'app, demandée explicitement pour ces filtres) */
-.activity-filter-btn { display:flex; align-items:center; gap:8px; border:1px solid #d1d5db; background:transparent; border-radius:999px; padding:7px 14px; font-size:13px; font-weight:600; color:#111827; cursor:pointer; }
+.activity-filter-btn { display:flex; align-items:center; gap:6px; border:1px solid #d1d5db; background:transparent; border-radius:999px; padding:5px 9px; font-size:13px; font-weight:600; color:#111827; cursor:pointer; }
 .activity-filter-btn i { font-size:10px; color:#9ca3af; }
 .activity-filter-label { color:#6b7280; }
 .activity-filter-value { color:#111827; font-weight:700; }
