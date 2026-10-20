@@ -33,12 +33,11 @@ const TEMPLATE = `
             <button type="button" class="hero-popup-item" data-metric="products">Nouveaux produits</button>
           </div>
         </div>
-        <div class="hero-selector hero-selector-shifted" id="granularity-selector">
+        <div class="hero-selector" id="granularity-selector">
           <button type="button" class="hero-selector-btn" id="granularity-selector-btn">
             <span id="granularity-selector-label">Hier</span>
             <i class="fa-solid fa-chevron-down"></i>
           </button>
-          <span class="hero-granularity-amount" id="granularity-selector-amount">—</span>
           <div class="hero-popup hero-calendar-popup d-none" id="granularity-popup">
             <div class="hero-calendar-header">
               <button type="button" class="hero-calendar-nav" id="calendar-prev-month"><i class="fa-solid fa-chevron-left"></i></button>
@@ -1188,12 +1187,8 @@ export async function mount(container) {
     const todayStart = startOfDay(new Date()).getTime();
     const value = computeHeroValue(heroMetric, todayStart, Date.now());
 
-    const compareStart = startOfDay(heroCompareDate).getTime();
-    const compareValue = computeHeroValue(heroMetric, compareStart, compareStart + DAY_MS - 1);
-
     setText("metric-selector-label", HERO_METRICS[heroMetric].label);
     setText("granularity-selector-label", formatCompareDateLabel(heroCompareDate));
-    setText("granularity-selector-amount", formatHeroValue(heroMetric, compareValue));
     setText("hero-stat-amount", formatHeroValue(heroMetric, value));
     setText("hero-stat-time", "Mis à jour à " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
     setText("hero-balance-amount", formatMoney((activityRaw?.totalBalance || 0) * getRate("XOF", heroCurrency), heroCurrency));
