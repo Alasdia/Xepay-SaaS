@@ -195,6 +195,7 @@ def get_activity(
                     "stripe_payment_intent_id": p.stripe_payment_intent_id,
                     "link_id": p.link_id,
                     "fee_amount": p.fee_amount,
+                    "available_at": p.available_at.isoformat() if p.available_at else None,
                     "transfer_amount": p.transfer_amount,
                     "payment_method_id": p.payment_method_id,
                     "payment_method_type": p.payment_method_type,

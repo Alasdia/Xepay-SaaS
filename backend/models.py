@@ -384,13 +384,14 @@ class Payment(Base):
     # nette effectivement perçue.
     application_fee_requested = Column(Float, nullable=True)
     stripe_fee_amount = Column(Float, nullable=True)
-    # Montant net calculé par Xepay lui-même (amount - 6% de commission,
-    # arrondi à 2 décimales) - plus de dépendance aux valeurs de règlement
-    # Stripe (balance_transaction.net/.fee), trop incohérentes d'un
-    # paiement à l'autre pour un taux censé être fixe (voir l'historique de
-    # ce fichier). Le nom de colonne reste "balance_transaction_net" pour
-    # ne pas casser les lectures existantes.
+    # amount - application_fee_requested - stripe_fee_amount (voir
+    # routes/webhook/paiement.py pour la provenance exacte, confirmée sur
+    # de vrais paiements EUR/USD, de chacun des deux champs soustraits).
     balance_transaction_net = Column(Float, nullable=True)
+    # balance_transaction.available_on de la charge - quand les fonds
+    # deviennent disponibles côté Stripe. Déjà calculé pour
+    # WalletTransaction.available_at ; manquait sur Payment.
+    available_at = Column(DateTime(timezone=True), nullable=True)
     transfer_id = Column(String, nullable=True)
     transfer_amount = Column(Float, nullable=True)
     transfer_destination = Column(String, nullable=True)

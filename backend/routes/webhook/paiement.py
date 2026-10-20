@@ -134,19 +134,21 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
 
             if balance_tx:
                 amount_usd = balance_tx.amount / 100
-                # On ne dépend plus des valeurs de règlement Stripe
-                # (balance_transaction.net/.fee) pour le montant net : trop
-                # incohérentes d'un paiement à l'autre pour un taux qui est
-                # censé être fixe et déterministe (6%). Xepay calcule donc
-                # lui-même son propre montant net à partir du montant brut.
-                balance_transaction_net = round(amount_usd - amount_usd * 0.06, 2)
-                # commission Xepay = fee_amount (ApplicationFee.amount, déjà
-                # récupéré auprès de Stripe ci-dessus) ; stripeFee = ce qui
-                # reste une fois le montant net et la commission Xepay
-                # soustraits du brut.
-                application_fee_requested = fee_amount
-                if fee_amount is not None:
-                    stripe_fee_amount = round(amount_usd - balance_transaction_net - fee_amount, 2)
+                # Champs Stripe confirmés sur de vrais paiements (EUR et
+                # USD) - plus aucune dérivation/hypothèse de taux fixe :
+                # - commission Xepay = charge.application_fee_amount, un
+                #   champ direct de la charge, dans la même devise que
+                #   Payment.amount/currency (contrairement à
+                #   ApplicationFee.amount/fee_amount, resté dans la devise
+                #   d'origine du lien).
+                # - frais Stripe = balance_tx.fee, celle DE LA CHARGE
+                #   elle-même (_fetch_settled_charge_data la retrouve par
+                #   source=charge_id) - c'est elle qui porte le vrai frais
+                #   de traitement carte, jamais celle de l'ApplicationFee.
+                # - net marchand = brut - commission Xepay - frais Stripe.
+                application_fee_requested = (charge_dict.get("application_fee_amount") or 0) / 100
+                stripe_fee_amount = balance_tx.fee / 100
+                balance_transaction_net = round(amount_usd - application_fee_requested - stripe_fee_amount, 2)
                 available_on = balance_tx.available_on
                 available_at = datetime.fromtimestamp(available_on, tz=timezone.utc)
 
@@ -203,6 +205,7 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             application_fee_requested=application_fee_requested,
             stripe_fee_amount=stripe_fee_amount,
             balance_transaction_net=balance_transaction_net,
+            available_at=available_at,
             transfer_id=transfer_id,
             transfer_amount=transfer_amount,
             transfer_destination=transfer_destination,
