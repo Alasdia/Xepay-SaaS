@@ -180,6 +180,33 @@ const TEMPLATE = `
     <div class="modal-content"><div class="modal-header border-0"><h5 class="modal-title fw-bold">Détails</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body px-4" id="detailModalBody"></div></div>
   </div>
 </div>
+<!-- Détails d'un paiement (menu Action "..." du tableau) — même gabarit que
+     les tiroirs Clients/Produits (voir views/commerce.js) : classes
+     .customer-modal-overlay/.customer-modal partagées (commerce.css). -->
+<div class="customer-modal-overlay" id="payment-details-modal">
+  <div class="customer-modal customer-details-modal">
+    <div class="customer-modal-header">
+      <div>
+        <h3>Détails du paiement</h3>
+        <p id="payment-details-subtitle"></p>
+      </div>
+      <button type="button" class="customer-modal-close" id="close-payment-details">×</button>
+    </div>
+    <div id="payment-details-content"></div>
+  </div>
+</div>
+`;
+
+// Menu Action "..." (Rembourser / Détails du paiement) : un seul élément
+// partagé par toutes les lignes, en position fixed et attaché à <body>
+// (jamais dans #transactions-scroll-box, qui a overflow:hidden/auto et
+// couperait le menu sur les dernières lignes du tableau) — positionné via
+// getBoundingClientRect() du bouton cliqué.
+const ACTION_MENU_HTML = `
+<div id="payment-action-menu" class="action-menu-dropdown">
+  <button type="button" class="action-menu-item" data-action="refund">Rembourser</button>
+  <button type="button" class="action-menu-item" data-action="details">Détails du paiement</button>
+</div>
 `;
 
 // #stripeReportModal est rendu à part, injecté dans document.body :
@@ -203,10 +230,14 @@ const STRIPE_REPORT_MODAL_HTML = `
 `;
 
 export async function mount(container, params = {}) {
-  await setViewStyles(["transactions.css"]);
+  // commerce.css fournit les classes .customer-modal-overlay/.customer-
+  // details-grid (Clients/Produits, voir views/commerce.js) réutilisées ici
+  // pour le tiroir "Détails du paiement".
+  await setViewStyles(["transactions.css", "commerce.css"]);
   ensureCommerceKpiStyles();
   container.innerHTML = TEMPLATE;
   document.body.insertAdjacentHTML("beforeend", STRIPE_REPORT_MODAL_HTML);
+  document.body.insertAdjacentHTML("beforeend", ACTION_MENU_HTML);
 
   // Rapport de solde Stripe : consultation de détails -> tiroir latéral
   // droit (voir shared/detailsDrawer.js). #withdrawModal (création d'un
@@ -216,6 +247,9 @@ export async function mount(container, params = {}) {
     document.querySelector("#stripeReportModal .modal-content"),
     { width: 560, instant: true }
   );
+
+  const paymentDetailsModal = document.getElementById("payment-details-modal");
+  initDetailsDrawer(paymentDetailsModal, paymentDetailsModal.querySelector(".customer-modal"));
 
   // Pages dédiées (/transactions/paiements|retraits|transferts, voir
   // app.js) : type verrouillé dès le montage, pas de bascule entre
@@ -410,18 +444,18 @@ export async function mount(container, params = {}) {
             : "N/A"}
         </td>
         <td>
-          ${canRefund ? `
-            <button
-              type="button"
-              class="btn btn-export js-refund-payment"
-              data-payment-id="${t.payment_id}"
-              data-amount="${t.amount_gross ?? 0}"
-              data-currency="${currency}"
-              style="white-space: nowrap;"
-            >
-              Rembourser
-            </button>
-          ` : "-"}
+          <button
+            type="button"
+            class="btn btn-export action-menu-trigger js-action-menu-toggle"
+            data-index="${i}"
+            data-can-refund="${canRefund ? "1" : "0"}"
+            data-payment-id="${t.payment_id ?? ""}"
+            data-amount="${t.amount_gross ?? 0}"
+            data-currency="${currency}"
+            title="Actions"
+          >
+            <i class="bi bi-three-dots"></i>
+          </button>
         </td>
       </tr>
     `;
@@ -740,28 +774,69 @@ export async function mount(container, params = {}) {
       loader.classList.add("d-none");
     }
   }
-  on(document.getElementById("tbody-transactions"), "click", async (event) => {
-    const btn = event.target.closest(".js-refund-payment");
-    if (!btn || btn.disabled) return;
-    const paymentId = btn.dataset.paymentId;
-    if (!paymentId) {
-      showToast("Identifiant du paiement introuvable", "error");
-      return;
+  // --- Menu Action "..." (Rembourser / Détails du paiement) ---
+  const actionMenuEl = document.getElementById("payment-action-menu");
+  let actionMenuTriggerBtn = null;
+
+  function closeActionMenu() {
+    actionMenuEl.classList.remove("open");
+    actionMenuTriggerBtn = null;
+  }
+
+  function openActionMenu(triggerBtn) {
+    actionMenuTriggerBtn = triggerBtn;
+    const canRefund = triggerBtn.dataset.canRefund === "1";
+    const refundItem = actionMenuEl.querySelector('[data-action="refund"]');
+    refundItem.disabled = !canRefund;
+    refundItem.title = canRefund ? "" : "Remboursement indisponible pour ce paiement";
+    actionMenuEl.classList.add("open");
+    // Positionné en fixed sous le bouton cliqué, aligné à droite — recalculé
+    // à chaque ouverture, jamais ancré dans le DOM du tableau (voir
+    // commentaire sur ACTION_MENU_HTML : évite le clipping par
+    // #transactions-scroll-box/.table-wrap).
+    const rect = triggerBtn.getBoundingClientRect();
+    const menuRect = actionMenuEl.getBoundingClientRect();
+    let top = rect.bottom + 4;
+    if (top + menuRect.height > window.innerHeight) {
+      top = rect.top - menuRect.height - 4;
     }
-    const amount = btn.dataset.amount;
-    const currency = btn.dataset.currency || "USD";
+    let left = rect.right - menuRect.width;
+    if (left < 4) left = 4;
+    actionMenuEl.style.top = `${top}px`;
+    actionMenuEl.style.left = `${left}px`;
+  }
+
+  on(document.getElementById("tbody-transactions"), "click", (event) => {
+    const toggleBtn = event.target.closest(".js-action-menu-toggle");
+    if (toggleBtn) {
+      if (actionMenuTriggerBtn === toggleBtn) {
+        closeActionMenu();
+      } else {
+        openActionMenu(toggleBtn);
+      }
+    }
+  });
+  on(document, "click", (event) => {
+    if (!actionMenuTriggerBtn) return;
+    if (event.target.closest("#payment-action-menu") || event.target.closest(".js-action-menu-toggle")) return;
+    closeActionMenu();
+  });
+  on(window, "scroll", () => closeActionMenu());
+  on(window, "resize", () => closeActionMenu());
+  on(document, "keydown", (event) => {
+    if (event.key === "Escape") closeActionMenu();
+  });
+
+  async function refundPayment(paymentId, amount, currency) {
     if (!confirm(
       `Confirmer le remboursement du paiement de ${amount} ${currency} ?`
     )) return;
-    btn.disabled = true;
-    btn.textContent = "Traitement...";
     try {
       const res = await apiFetch(
         `/payments/${encodeURIComponent(paymentId)}/refund`,
         { method: "POST", body: {} }
       );
       const data = await res.json();
-      console.log("DATA REFUND :", data)
       if (!res.ok) {
         showToast(
           typeof data.detail === "string"
@@ -781,20 +856,87 @@ export async function mount(container, params = {}) {
       transactions = [];
       document.getElementById("tbody-transactions").innerHTML = "";
       await chargerTransactions();
-      offset = 0;
-      transactions = [];
-      document.getElementById("tbody-transactions").innerHTML = "";
-      await chargerTransactions();
       // Le remboursement change le statut du paiement (paid -> refunded) :
       // les compteurs KPI doivent refléter ce changement immédiatement.
       if (currentType === "payment") await loadPaymentsKpiSummary();
     } catch (error) {
       console.error("Erreur remboursement :", error);
       showToast("Erreur de connexion au serveur", "error");
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "Rembourser";
     }
+  }
+
+  // --- Tiroir "Détails du paiement" (même gabarit que Clients/Produits,
+  // voir views/commerce.js) : rempli directement depuis l'objet déjà en
+  // mémoire (transactions[index], issu de /activity), sans appel réseau
+  // supplémentaire. ---
+  const paymentDetailsContentEl = document.getElementById("payment-details-content");
+  const paymentDetailsSubtitleEl = document.getElementById("payment-details-subtitle");
+
+  function detailRow(label, value) {
+    return `
+      <div class="customer-detail-item">
+        <span>${label}</span>
+        <strong>${value ?? "-"}</strong>
+      </div>
+    `;
+  }
+
+  function showPaymentDetails(t) {
+    const currency = t.currency_gross ?? "USD";
+    const d = t.details || {};
+    const avatarInitial = (t.client_email || "?")[0].toUpperCase();
+    paymentDetailsSubtitleEl.textContent = t.client_email || t.payment_id || "";
+    paymentDetailsContentEl.innerHTML = `
+      <div class="customer-profile">
+        <div class="customer-profile-avatar">${avatarInitial}</div>
+        <div>
+          <h4>${t.client_email ?? "Client"}</h4>
+          <code>${t.payment_id ?? "-"}</code>
+        </div>
+      </div>
+      <div class="customer-details-grid">
+        ${detailRow("Montant brut", formatMontant(t.amount_gross, currency))}
+        ${detailRow("Commission Xepay", formatMontant(t.commission_xepay, currency))}
+        ${detailRow("Frais Stripe", formatMontant(t.stripe_fee, currency))}
+        ${detailRow("Montant net marchand", formatMontant(t.amount_net_merchant, currency))}
+        ${detailRow("Statut", statusMap[String(t.status).toLowerCase()] || t.status)}
+        ${detailRow("Date", t.date && !isNaN(new Date(t.date)) ? new Date(t.date).toLocaleString("fr-FR") : "N/A")}
+        ${detailRow("Disponible le", d.available_at ? new Date(d.available_at).toLocaleString("fr-FR") : "-")}
+        ${detailRow("Moyen de paiement", paymentMethodIcon(d.payment_method_type, d.card_brand, d.card_last4))}
+        ${detailRow("Expiration carte", d.card_exp_month && d.card_exp_year ? `${d.card_exp_month}/${d.card_exp_year}` : "-")}
+        ${detailRow("Session Stripe", d.stripe_session_id)}
+        ${detailRow("Payment Intent", d.stripe_payment_intent_id)}
+        ${detailRow("Compte Stripe", d.stripe_account_id)}
+        ${detailRow("Lien de paiement", d.link_id)}
+      </div>
+    `;
+    paymentDetailsModal.classList.add("open");
+  }
+
+  on(actionMenuEl, "click", (event) => {
+    const item = event.target.closest(".action-menu-item");
+    if (!item || item.disabled || !actionMenuTriggerBtn) return;
+    const triggerBtn = actionMenuTriggerBtn;
+    const index = Number(triggerBtn.dataset.index);
+    const t = transactions[index];
+    closeActionMenu();
+    if (item.dataset.action === "refund") {
+      const paymentId = triggerBtn.dataset.paymentId;
+      if (!paymentId) {
+        showToast("Identifiant du paiement introuvable", "error");
+        return;
+      }
+      refundPayment(paymentId, triggerBtn.dataset.amount, triggerBtn.dataset.currency || "USD");
+    } else if (item.dataset.action === "details") {
+      if (!t) return;
+      showPaymentDetails(t);
+    }
+  });
+  on(document.getElementById("close-payment-details"), "click", () => {
+    paymentDetailsModal.classList.remove("open");
+  });
+  on(paymentDetailsModal, "click", (event) => {
+    if (event.target === paymentDetailsModal) paymentDetailsModal.classList.remove("open");
   });
   async function rafraichir(btn) {
     try {
@@ -1178,6 +1320,7 @@ export async function mount(container, params = {}) {
         document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
       }
       stripeReportModalEl?.remove();
+      document.getElementById("payment-action-menu")?.remove();
       if (statusChart) statusChart.destroy();
       boundListeners.forEach(({ target, type, fn }) => target.removeEventListener(type, fn));
       document.body.classList.remove("locked-page");
