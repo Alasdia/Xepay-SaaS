@@ -56,7 +56,11 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
    remplit ensuite 100% de cette colonne) — fixe plutôt que flex:1, sinon
    le bloc Soldes serait de toute façon repoussé à l'extrémité. */
 .hero-stat-main { flex:0 0 70%; max-width:70%; min-width:0; }
-.hero-stat-selectors { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+/* align-items:flex-start (pas center) : le sélecteur de comparaison a
+   désormais un montant sous son libellé, donc une hauteur totale plus
+   grande que le sélecteur de métrique — center désalignerait les deux
+   boutons verticalement. */
+.hero-stat-selectors { display:flex; align-items:flex-start; gap:10px; margin-bottom:16px; }
 .hero-selector { position:relative; }
 /* Pas de bordure ici (ni sur le sélecteur de devise, voir plus bas) :
    juste le libellé/chevron, sans cadre visible. */
@@ -79,8 +83,10 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 .hero-stat-amount-wrap { position:relative; display:inline-block; padding-left:12px; box-sizing:border-box; }
 .hero-stat-amount-line { display:flex; align-items:center; gap:4px; }
 /* Même taille que "Aujourd'hui" (.hero-stat-title) pour tous les montants
-   clés de la page — ici et dans "Votre aperçu" (.activity-value). */
-.hero-stat-amount { font-size:20px; font-weight:800; color:#111827; }
+   clés de la page — ici et dans "Votre aperçu" (.activity-value). Même
+   style (poids, sans bordure) que .hero-granularity-amount, juste plus
+   grand : un seul traitement visuel pour tous les montants de ce bloc. */
+.hero-stat-amount { font-size:20px; font-weight:400; color:#111827; }
 .hero-stat-time { font-size:13px; color:#9ca3af; margin-top:4px; }
 /* Graphique héro : trait vertical en pointillés + point survolé (dessinés
    par Chart.js/heroCrosshairPlugin) et tooltip HTML personnalisé
@@ -118,7 +124,9 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
    contrainte de 20%. */
 .hero-balance-side { flex:0 1 auto; text-align:left; display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
 .hero-balance-label { font-size:13px; color:#6b7280; }
-.hero-balance-amount { font-size:20px; font-weight:800; color:#111827; }
+/* Même style que .hero-stat-amount/.hero-granularity-amount (sans gras,
+   sans bordure), même taille que .hero-stat-amount. */
+.hero-balance-amount { font-size:20px; font-weight:400; color:#111827; }
 .hero-balance-link { display:inline-flex; align-items:center; gap:6px; color:#111827; font-size:13px; font-weight:600; text-decoration:none; }
 .hero-balance-link i { font-size:10px; }
 .hero-balance-link:hover { color:#6b7280; }
