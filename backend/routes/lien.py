@@ -35,6 +35,12 @@ from backend.services.stripe_service import create_checkout_session
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
+# Domaine du backend tel qu'il est réellement joignable publiquement (route
+# /pay/{token} incluse) - jamais en dur, pour pouvoir basculer vers une
+# autre instance (ex: AWS pendant une panne Railway) sans recasser les
+# liens déjà générés avec l'ancien domaine à chaque changement.
+PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "https://api.alasdia.com")
+
 router = APIRouter()
 
 print(Link.__table__.columns.keys())
@@ -88,7 +94,7 @@ def create_link(
         name=data.name.strip() if data.name else "Lien de paiement",
         amount=data.amount,
         currency=data.currency,
-        url=f"https://api.alasdia.com/pay/{raw_token}",
+        url=f"{PUBLIC_API_URL}/pay/{raw_token}",
         created_at=datetime.now(timezone.utc),
         active=True,
         expires_at=expires_at,

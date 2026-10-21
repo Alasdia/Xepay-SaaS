@@ -35,6 +35,9 @@ import secrets
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
+# Voir backend/routes/lien.py pour le même principe - jamais en dur.
+PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "https://api.alasdia.com")
+
 router = APIRouter()
 
 # Rôles qu'un admin peut attribuer via PUT /users/{user_id}/role ou POST /invites.
@@ -862,7 +865,7 @@ def create_portal_session(
     try:
         session = stripe.billing_portal.Session.create(
             customer=current_user.stripe_customer_id,
-            return_url="https://api.alasdia.com/profil.html", 
+            return_url=f"{PUBLIC_API_URL}/profil.html",
         )
         return {"url": session.url}
     except Exception as e:
@@ -1004,7 +1007,7 @@ def create_invite(
     db.add(invite)
     db.commit()
 
-    invite_link = f"https://api.alasdia.com/invites/accept?token={token}"
+    invite_link = f"{PUBLIC_API_URL}/invites/accept?token={token}"
 
     send_invitation_email(
         to_email=email,
