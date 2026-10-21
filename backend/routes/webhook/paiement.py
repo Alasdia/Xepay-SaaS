@@ -112,8 +112,10 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
         transfer_destination = transfer_reversed = transfer_created_at = None
         transfer_amount_reversed = None
         amount_usd = None
+        charge_id = None
 
         if intent and intent.latest_charge:
+            charge_id = intent.latest_charge
             charge_dict, balance_tx = _fetch_settled_charge_data(intent.latest_charge)
             payment_method_details = charge_dict.get("payment_method_details", {})
             card_info = payment_method_details.get("card", {})
@@ -221,6 +223,7 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             stripe_session_id=session_dict.get("id"),
             stripe_account_id=profile.stripe_account_id,
             stripe_payment_intent_id=pi_id,
+            charge_id=charge_id,
             payment_method_id=payment_method_id,
             payment_method_type=payment_method_type,
             fee_id=fee_id,
@@ -497,36 +500,28 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
         elif event_type == "application_fee.created":
             # ApplicationFee.balance_transaction.amount = montant réellement
             # réglé sur le solde de la plateforme pour cette commission Xepay
-            # (peut différer de charge.application_fee_amount en cas de
-            # conversion de devise) - remplace charge.application_fee_amount
-            # comme source de application_fee_requested. Pas de payment_intent
-            # direct sur l'ApplicationFee : un seul appel Charge.retrieve pour
-            # le retrouver via charge.payment_intent, jamais de sondage.
+            # en USD (peut différer de charge.application_fee_amount en cas
+            # de conversion de devise) - remplace charge.application_fee_amount
+            # comme source de application_fee_requested.
+            #
+            # ApplicationFee.charge n'est PAS utilisé pour retrouver le
+            # Payment : c'est un ID au format "py_..." non reconnu par
+            # stripe.Charge.retrieve() (confirmé en prod, quel que soit le
+            # compte interrogé) - impossible d'en tirer le payment_intent via
+            # un appel Stripe. On matche donc directement sur
+            # Payment.charge_id, déjà stocké tel quel à la création du
+            # Payment (voir process_checkout_session_payment ci-dessus et
+            # routes/webhook/stripe.py) : aucun appel Stripe nécessaire pour
+            # cette étape.
             fee_balance_transaction_id = getattr(object_data, "balance_transaction", None)
             if not fee_balance_transaction_id:
                 return {"status": "ignored"}
             charge_id = getattr(object_data, "charge", None)
             if not charge_id:
                 return {"status": "ignored"}
-            # ApplicationFee.charge vit sur le compte connecté pour une
-            # charge directe (facture/abonnement) et sur la plateforme pour
-            # un paiement par lien (destination charge) - même distinction
-            # que routes/payout.py:refund_payment (payment.link_id), mais
-            # pas encore su ici (le Payment n'est retrouvé qu'après avoir lu
-            # la charge). On tente d'abord sans stripe_account (cas le plus
-            # courant) puis on retente avec event.account si Stripe répond
-            # que la charge n'existe pas côté plateforme.
-            try:
-                charge = stripe.Charge.retrieve(charge_id)
-            except stripe.error.InvalidRequestError:
-                connected_account_id = event.account
-                if not connected_account_id:
-                    raise
-                charge = stripe.Charge.retrieve(charge_id, stripe_account=connected_account_id)
-            pi_id = charge.payment_intent
             payment = (
                 db.query(Payment)
-                .filter(Payment.stripe_payment_intent_id == pi_id)
+                .filter(Payment.charge_id == charge_id)
                 .first()
             )
             if not payment:

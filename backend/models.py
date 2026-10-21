@@ -374,6 +374,14 @@ class Payment(Base):
     stripe_session_id = Column(String, nullable=True)
     stripe_account_id = Column(String, nullable=True)
     stripe_payment_intent_id = Column(String, nullable=True, index=True)
+    # ID du Charge Stripe (intent.latest_charge côté lien, latest_charge.id
+    # côté facture/abonnement) - capturé tel quel à la création du Payment.
+    # Seul moyen fiable de retrouver ce Payment depuis le webhook
+    # application_fee.created : ApplicationFee.charge n'est pas exploitable
+    # (format d'ID "py_..." non reconnu par stripe.Charge.retrieve(), voir
+    # routes/webhook/paiement.py), donc on matche directement sur cette
+    # colonne plutôt que de rappeler Stripe.
+    charge_id = Column(String, nullable=True, index=True)
     fee_id = Column(String, nullable=True)
     fee_amount = Column(Float, nullable=True)
     # Commission Xepay réelle = ApplicationFee.balance_transaction.amount
