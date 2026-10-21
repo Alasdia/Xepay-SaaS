@@ -1,28 +1,67 @@
 name: Deploy backend to AWS EC2
 
-# Déploiement automatique de l'instance EC2 Xepay_backendServer, mis en
-# place pendant la panne Railway (api.alasdia.com) - complète le
-# déploiement Railway existant (.railway/railway.ts), ne le remplace pas.
+# Déploiement automatique de l'instance EC2 Xepay_backendServer via AWS
+# Systems Manager (SSM Run Command) - aucun port SSH ouvert publiquement,
+# authentification GitHub Actions -> AWS par OIDC (pas de clé statique).
+# Complète le déploiement Railway existant (.railway/railway.ts), ne le
+# remplace pas.
 on:
   push:
     branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  INSTANCE_ID: i-09ee4fadf69bce177
+  AWS_REGION: eu-north-1
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: SSH deploy (git reset --hard + reinstall deps + restart)
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          host: 13.49.244.177
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          script: |
-            set -e
-            cd /home/ec2-user/xepay
-            git fetch origin main
-            git reset --hard origin/main
-            ./venv/bin/pip install -r requirements.txt
-            sudo systemctl restart xepay-backend
-            sleep 5
-            curl -sf http://127.0.0.1:8000/health
+          role-to-assume: arn:aws:iam::372684705781:role/GithubActions-Xepay-Deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy via SSM Run Command
+        run: |
+          cat > params.json << 'EOF'
+          {
+            "commands": [
+              "set -e",
+              "cd /home/ec2-user/xepay",
+              "git fetch origin main",
+              "git reset --hard origin/main",
+              "./venv/bin/pip install -r requirements.txt",
+              "systemctl restart xepay-backend",
+              "sleep 5",
+              "curl -sf http://127.0.0.1:8000/health"
+            ]
+          }
+          EOF
+
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --parameters file://params.json \
+            --comment "GitHub Actions deploy ${{ github.sha }}" \
+            --query "Command.CommandId" --output text)
+
+          echo "Command ID: $COMMAND_ID"
+          sleep 3
+          aws ssm wait command-executed --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" || true
+
+          aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" \
+            --query "{Status:Status,Stdout:StandardOutputContent,Stderr:StandardErrorContent}" \
+            --output json | tee invocation.json
+
+          STATUS=$(jq -r .Status invocation.json)
+          if [ "$STATUS" != "Success" ]; then
+            echo "Déploiement échoué (status=$STATUS)"
+            exit 1
+          fi
