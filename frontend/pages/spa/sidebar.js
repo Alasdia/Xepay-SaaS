@@ -17,7 +17,6 @@ const ROUTE_BY_PAGE = {
   transactions: "transactions",
   paiements: "transactions/paiements",
   retraits: "transactions/retraits",
-  transferts: "transactions/transferts",
 
   liens: "liens",
 
@@ -80,7 +79,7 @@ export async function initSidebar() {
   container.addEventListener("click", (e) => {
     const link = e.target.closest("a[data-route]");
     if (!link) return;
-    // "Transactions" : les 3 sous-vues (Paiements/Retraits/Transferts)
+    // "Transactions" : les 2 sous-vues (Paiements/Retraits)
     // couvrent désormais tout ce que cette page "Toute activité" affichait
     // seule — son clic ouvre donc le sous-menu, comme le chevron, au lieu
     // de naviguer (la route /transactions reste joignable par URL directe).
@@ -93,7 +92,7 @@ export async function initSidebar() {
     navigate(link.getAttribute("data-route"));
   });
 
-  // Sous-pages (ex: Paiements/Retraits/Transferts sous Transactions) :
+  // Sous-pages (ex: Paiements/Retraits sous Transactions) :
   // masquées par défaut, affichées uniquement au clic sur l'icône de
   // déroulement associée (bouton sans data-route, jamais intercepté par le
   // handler de navigation ci-dessus) — ou sur le lien "Transactions" lui-même.
@@ -136,10 +135,10 @@ export function setActiveRoute(routeName) {
     const mapped = a.dataset.page === "dashboard" ? "dashboard" : a.dataset.page === "profile" ? "profil" : a.dataset.page === "securité" ? "securite" : a.dataset.page;
     a.classList.toggle("active-link", mapped === effectiveRouteName);
   });
-  // Arrivée directe sur une URL dédiée (/transactions/paiements|retraits|
-  // transferts, ex: lien partagé ou favori) : déplie le sous-menu pour que
-  // le sous-lien actif ci-dessus soit visible, pas seulement surligné.
-  if (["paiements", "retraits", "transferts"].includes(effectiveRouteName)) {
+  // Arrivée directe sur une URL dédiée (/transactions/paiements|retraits,
+  // ex: lien partagé ou favori) : déplie le sous-menu pour que le
+  // sous-lien actif ci-dessus soit visible, pas seulement surligné.
+  if (["paiements", "retraits"].includes(effectiveRouteName)) {
     setSubmenuOpen("submenu-transactions", true);
   }
   // Les liens du menu doivent toujours pointer vers le workspace courant,

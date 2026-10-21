@@ -8,8 +8,7 @@ from sqlalchemy import text
 import redis as redis_lib
 from backend.routes.lien import router as lien_router
 from backend.routes.users import router as users_router
-from backend.routes.payments import router as payments_router 
-from backend.routes.transfer import router as transfer_router
+from backend.routes.payments import router as payments_router
 from backend.database import init_db
 from backend.models import Link
 from backend.database import Base, engine, SessionLocal
@@ -59,7 +58,6 @@ app.include_router(lien_router)
 app.include_router(users_router)
 app.include_router(payments_router)
 app.include_router(payout.router)
-app.include_router(transfer_router)
 app.include_router(webhook_router)
 app.include_router(paiement_webhook_router)
 app.include_router(export_router)

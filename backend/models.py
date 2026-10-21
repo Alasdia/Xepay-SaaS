@@ -118,10 +118,6 @@ class ChangePasswordRequest(BaseModel):
     new_password: str
     confirm_password: str
 
-class TransferRequest(BaseModel):
-    to_email: str
-    amount: float
-
 class WithdrawRequest(BaseModel):
     amount: float  
 

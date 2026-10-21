@@ -113,7 +113,6 @@ const TEMPLATE = `
           <button class="chip type-chip active" data-type="">Toute activité</button>
           <button class="chip type-chip" data-type="payment">Paiements</button>
           <button class="chip type-chip" data-type="withdraw">Retraits</button>
-          <button class="chip type-chip" data-type="transfer_stripe">Transferts</button>
         </div>
         <select id="filter-statut">
           <option value="">Tous les statuts</option>
@@ -121,12 +120,6 @@ const TEMPLATE = `
           <option value="pending">En attente</option>
           <option value="expired">Échoué</option>
         </select>
-      </div>
-      <div id="detail-view" class="table-wrap mt-3 text-muted" style="display:none;">
-        <button id="fermerDetailBtn" class="btn btn-sm mb-3" style="background:#f9fafb; border:1px solid #e5e7eb; color:#6b7280;"><i class="bi bi-arrow-left"></i> Retour</button>
-        <h4 id="detail-title" class="fw-bold mb-1 text-muted"></h4>
-        <div id="detail-sub" class="text-muted mb-4" style="font-size:0.85rem;"></div>
-        <div id="detail-body" class="text-muted"></div>
       </div>
       <div class="table-wrap mt-3">
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -251,10 +244,10 @@ export async function mount(container, params = {}) {
   const paymentDetailsModal = document.getElementById("payment-details-modal");
   initDetailsDrawer(paymentDetailsModal, paymentDetailsModal.querySelector(".customer-modal"));
 
-  // Pages dédiées (/transactions/paiements|retraits|transferts, voir
+  // Pages dédiées (/transactions/paiements|retraits, voir
   // app.js) : type verrouillé dès le montage, pas de bascule entre
   // catégories depuis cette page — les chips Toute activité/Paiements/
-  // Retraits/Transferts n'ont plus de raison d'être affichées.
+  // Retraits n'ont plus de raison d'être affichées.
   const fixedType = params.fixedType || null;
 
   let transactions = [];
@@ -292,7 +285,7 @@ export async function mount(container, params = {}) {
     for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % avatarPalette.length;
     return avatarPalette[h];
   }
-  const typeIcon = { payment: "bi-credit-card", withdraw: "bi-bank", transfer: "bi-arrow-left-right" };
+  const typeIcon = { payment: "bi-credit-card", withdraw: "bi-bank" };
   function statusBadgeClass(status) {
     if (["paid", "success"].includes(status)) return "badge-success";
     if (["pending", "processing"].includes(status)) return "badge-warning";
@@ -344,8 +337,6 @@ export async function mount(container, params = {}) {
     theadRow.innerHTML =
       currentType === "payment"
         ? `<th>Client</th><th>Moyen de paiement</th><th>Montant brut</th><th>Commission globale</th><th>Commission Xepay</th><th>Frais Stripe</th><th>Montant net marchand</th><th>Créé le</th><th>Disponible le</th><th>Statut</th><th>Actions</th>`
-        : currentType === "transfer_stripe"
-        ? `<th>Compte destinataire</th><th>Montant transféré</th><th>Montant reversé</th><th>Statut</th><th>Date</th>`
         : currentType === "withdraw"
         ? `<th>Référence</th><th>Méthode</th><th>Montant</th><th>Statut</th><th>Motif</th><th>Date</th>`
         : `<th>Client</th><th>Montant</th><th>Status</th><th>Date</th>`;
@@ -504,18 +495,6 @@ export async function mount(container, params = {}) {
       </tr>
     `;
   }
-  function renderTransferRow(t, i) {
-    return `
-      <tr onclick="voirDetailActivite(${i})" style="cursor:pointer;">
-        <td>${t.label ?? "-"}</td>
-        <td>${formatMontant(t.amount, t.currency ?? "USD")}</td>
-        <td>${formatMontant(t.amount_reversed, t.currency ?? "USD")}</td>
-        <td><span class="status-pill ${statusBadgeClass(t.status)}">${{ paid: "Transféré", success: "Transféré" }[String(t.status).toLowerCase()] || statusMap[String(t.status).toLowerCase()] || t.status}</span></td>
-        <td style="color: #6b7280; font-size: 0.85rem;">${t.date && !isNaN(new Date(t.date)) ? new Date(t.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "N/A"}</td>
-      </tr>
-    `;
-  }
-
   const payoutMethodLabel = { standard: "Standard", instant: "Instantané" };
 
   function renderWithdrawalRow(t, i) {
@@ -567,14 +546,14 @@ export async function mount(container, params = {}) {
   function renderGenericRow(t, i) {
     const amount = t.amount_local ?? t.amount;
     const currency = t.currency_local ?? t.currency;
-    const displayName = t.type === "payment" ? t.label || "Client" : t.label || "Transfert";
+    const displayName = t.type === "payment" ? t.label || "Client" : t.label || "Retrait";
     const color = avatarColor(displayName || "x");
     return `
       <tr onclick="voirDetailActivite(${i})" style="cursor:pointer;">
         <td>
           <div class="d-flex align-items-center gap-3">
-            <div class="avatar" style="background:${color};">${t.type === "payment" ? (displayName ? displayName[0].toUpperCase() : "?") : `<i class="bi ${typeIcon[t.type] || "bi-arrow-left-right"}"></i>`}</div>
-            <div><div class="fw-semibold">${displayName}</div><small style="color: #9ca3af; font-size:0.75rem;">${t.type === "payment" ? "Client" : t.type === "withdraw" ? "Retrait" : "Transfert"}</small></div>
+            <div class="avatar" style="background:${color};">${t.type === "payment" ? (displayName ? displayName[0].toUpperCase() : "?") : `<i class="bi ${typeIcon[t.type] || "bi-bank"}"></i>`}</div>
+            <div><div class="fw-semibold">${displayName}</div><small style="color: #9ca3af; font-size:0.75rem;">${t.type === "payment" ? "Client" : "Retrait"}</small></div>
           </div>
         </td>
         <td><span class="amount-cell">${amount.toLocaleString("fr-FR")}</span><span class="amount-currency">${currency}</span></td>
@@ -601,8 +580,6 @@ export async function mount(container, params = {}) {
       .map((t, i) =>
         currentType === "payment"
           ? renderPaymentRow(t, i)
-          : currentType === "transfer_stripe"
-          ? renderTransferRow(t, i)
           : currentType === "withdraw"
           ? renderWithdrawalRow(t, i)
           : renderGenericRow(t, i)
@@ -623,64 +600,6 @@ export async function mount(container, params = {}) {
       navigate(`/dash/workspace/${encodeURIComponent(workspaceId)}/transactions/retraits/wd/${encodeURIComponent(t.withdrawal_id)}`);
       return;
     }
-    // Transfert Stripe Connect : même ligne Payment en base (un Transfer est
-    // toujours créé 1-à-1 avec un Payment ici), on réutilise donc sa page
-    // détail existante plutôt qu'une nouvelle route.
-    if (t.type === "transfer_stripe" && t.payment_id) {
-      navigate(`/dash/workspace/${encodeURIComponent(workspaceId)}/transactions/paiements/py/${encodeURIComponent(t.payment_id)}`);
-      return;
-    }
-    // Transfert P2P interne (legacy) : hors périmètre, comportement existant inchangé (panneau inline).
-    const d = t.details || {};
-    let rows = [];
-    const displayName = t.type === "payment" ? t.label : t.label || "Transfert";
-    const amount = t.amount_local ?? t.amount;
-    const currency = t.currency_local ?? t.currency;
-    if (t.type === "payment") {
-      rows = [
-        ["Montant reçu", `${amount.toLocaleString("fr-FR")} ${currency}`],
-        ["Montant d'origine", `${d.amount_origin ?? "-"} ${d.currency_origin ?? ""}`],
-        ["Taux utilisé", d.rate_used ?? "-"],
-        ["Frais", `${d.fee_amount ?? 0}`],
-        ["Carte", `${d.card_brand ?? "-"} •••• ${d.card_last4 ?? "----"}`],
-        ["Expiration carte", d.card_exp_month && d.card_exp_year ? `${d.card_exp_month}/${d.card_exp_year}` : "-"],
-        ["Session Stripe", d.stripe_session_id ?? "-"],
-        ["Payment Intent", d.stripe_payment_intent_id ?? "-"],
-        ["Compte Stripe", d.stripe_account_id ?? "-"],
-        ["Lien de paiement", d.link_id ?? "-"],
-      ];
-    } else if (t.type === "withdraw") {
-      rows = [
-        ["Montant", `${amount.toLocaleString("fr-FR")} ${currency}`],
-        ["Référence", d.reference ?? "-"],
-        ["Payout Stripe", d.stripe_payout_id ?? "-"],
-        ["Traité le", d.processed_at ? new Date(d.processed_at).toLocaleString("fr-FR") : "-"],
-      ];
-    } else if (t.type === "transfer") {
-      rows = [
-        ["Montant", `${amount.toLocaleString("fr-FR")} ${currency}`],
-        ["Référence", d.reference ?? "-"],
-        ["Correspondant", d.counterparty_email ?? "-"],
-        ["Frais", `${d.fee_amount ?? 0} XOF`],
-        ["Note", d.description ?? "-"],
-      ];
-    }
-    document.getElementById("detail-title").innerText = displayName;
-    document.getElementById("detail-sub").innerText =
-      (t.type === "payment" ? "Paiement" : t.type === "withdraw" ? "Retrait" : "Transfert") + " · " + (statusMap[t.status] || t.status);
-    document.getElementById("detail-body").innerHTML = rows
-      .map(([label, value]) => `<div class="d-flex justify-content-between py-3 border-bottom"><span class="text-muted">${label}</span><span class="fw-semibold" style="text-align:right; max-width:60%; word-break:break-all;">${value}</span></div>`)
-      .join("");
-    document.getElementById("kpi-row").style.display = "none";
-    container.querySelector(".toolbar").style.display = "none";
-    container.querySelector(".table-wrap:not(#detail-view)").style.display = "none";
-    document.getElementById("detail-view").style.display = "block";
-  }
-  function fermerDetail() {
-    document.getElementById("kpi-row").style.display = "";
-    container.querySelector(".toolbar").style.display = "";
-    container.querySelector(".table-wrap:not(#detail-view)").style.display = "";
-    document.getElementById("detail-view").style.display = "none";
   }
   // Filtre KPI -> statut(s) réel(s) envoyé(s) à /activity (voir
   // chargerTransactions). "" = pas de filtre (Tous). "Contestés" et "Non
@@ -774,7 +693,7 @@ export async function mount(container, params = {}) {
       const effectiveStatus = kpiPaymentStatus || statut;
       if (effectiveStatus) params.append("status", effectiveStatus);
       // Filtres avancés : uniquement pertinents et envoyés sur l'onglet
-      // Paiements (jamais sur Retraits/Transferts/Tous).
+      // Paiements (jamais sur Retraits/Tous).
       if (currentType === "payment") {
         const startDate = document.getElementById("startDate").value;
         const endDate = document.getElementById("endDate").value;
@@ -1210,7 +1129,6 @@ export async function mount(container, params = {}) {
   on(document.getElementById("rafraichirBtn"), "click", function () {
     rafraichir(this);
   });
-  on(document.getElementById("fermerDetailBtn"), "click", fermerDetail);
   on(document.getElementById("filter-statut"), "change", () => {
     offset = 0;
     pageNumber = 1;
@@ -1305,23 +1223,22 @@ export async function mount(container, params = {}) {
     const typeChipGroup = document.getElementById("type-chip-group");
     if (typeChipGroup) typeChipGroup.style.display = "none";
     container.querySelector(".dashboard-layout")?.classList.add("subview-mode");
-    // KPI agrandis (15px) sur la page Paiements uniquement — Retraits/
-    // Transferts gardent le gabarit .subview-mode standard.
+    // KPI agrandis (15px) sur la page Paiements uniquement — Retraits
+    // garde le gabarit .subview-mode standard.
     if (fixedType === "payment") container.querySelector(".dashboard-layout")?.classList.add("subview-payments");
     const titleEl = container.querySelector("#transactions-normal-view .page-title");
     const subtitleEl = container.querySelector("#transactions-normal-view .page-subtitle");
-    const titleByType = { payment: ["fa-credit-card", "Paiements"], withdraw: ["fa-money-bill-transfer", "Retraits"], transfer_stripe: ["fa-right-left", "Transferts"] };
+    const titleByType = { payment: ["fa-credit-card", "Paiements"], withdraw: ["fa-money-bill-transfer", "Retraits"] };
     const subtitleByType = {
       payment: "Historique de vos paiements",
       withdraw: "Historique de vos retraits",
-      transfer_stripe: "Historique de vos transferts Stripe Connect",
     };
     const [iconClass, label] = titleByType[fixedType] || ["fa-credit-card", "Transactions"];
     if (titleEl) titleEl.innerHTML = `<i class="fa-solid ${iconClass}"></i> ${label}`;
     if (subtitleEl) subtitleEl.textContent = subtitleByType[fixedType] || "";
-    // Retraits/Transferts : uniquement le tableau d'historique — pas de
-    // KPI, pas de boutons (export/Stripe/Retirer), pas de filtres.
-    if (fixedType === "withdraw" || fixedType === "transfer_stripe") {
+    // Retraits : uniquement le tableau d'historique — pas de KPI, pas de
+    // boutons (export/Stripe/Retirer), pas de filtres.
+    if (fixedType === "withdraw") {
       const kpiRowEl = document.getElementById("kpi-row");
       const exportActionsEl2 = document.getElementById("export-actions");
       const toolbarEl = container.querySelector(".toolbar");

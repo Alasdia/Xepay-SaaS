@@ -72,17 +72,19 @@ async function init() {
 
   registerRoute("/dash/workspace/:workspaceId/", mountDashboard, { name: "dashboard" });
   registerRoute("/dash/workspace/:workspaceId/solde", mountSolde, { name: "solde" });
-  registerRoute("/dash/workspace/:workspaceId/transactions", mountTransactions, { name: "transactions" });
-  // Pages dédiées Paiements/Retraits/Transferts : même vue/layout que
+  // Pointe directement sur la vue Paiements (fixedType), comme
+  // /transactions/paiements - la vue fusionnée "Toute activité" n'a plus
+  // sa propre URL (Retraits reste accessible via /transactions/retraits).
+  registerRoute("/dash/workspace/:workspaceId/transactions", (c, p) => mountTransactions(c, { ...p, fixedType: "payment" }), { name: "transactions" });
+  // Pages dédiées Paiements/Retraits : même vue/layout que
   // "transactions" (mountTransactions), avec le type verrouillé via un
   // paramètre supplémentaire injecté ici plutôt qu'un chip cliqué en page —
   // chacune n'affiche que son propre contenu, URL directement partageable.
   // Noms de route identiques aux data-page de la sidebar (paiements/
-  // retraits/transferts, voir sidebar.js) pour que le surlignage actif
+  // retraits, voir sidebar.js) pour que le surlignage actif
   // (setActiveRoute) les reconnaisse directement, sans mapping supplémentaire.
   registerRoute("/dash/workspace/:workspaceId/transactions/paiements", (c, p) => mountTransactions(c, { ...p, fixedType: "payment" }), { name: "paiements" });
   registerRoute("/dash/workspace/:workspaceId/transactions/retraits", (c, p) => mountTransactions(c, { ...p, fixedType: "withdraw" }), { name: "retraits" });
-  registerRoute("/dash/workspace/:workspaceId/transactions/transferts", (c, p) => mountTransactions(c, { ...p, fixedType: "transfer_stripe" }), { name: "transferts" });
   registerRoute("/dash/workspace/:workspaceId/transactions/paiements/py/:paymentId", mountPaymentDetail, { name: "transaction-paiement-detail" });
   registerRoute("/dash/workspace/:workspaceId/transactions/retraits/wd/:withdrawalId", mountWithdrawalDetail, { name: "transaction-retrait-detail" });
   registerRoute("/dash/workspace/:workspaceId/liens", mountLiens, { name: "liens" });

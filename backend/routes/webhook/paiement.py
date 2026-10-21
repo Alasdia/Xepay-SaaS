@@ -29,11 +29,11 @@ router = APIRouter()
 WEBHOOK_SECRET_PAYMENT = os.getenv("WEBHOOK_SECRET_PAYMENT")
 
 # Délai de propagation Stripe observé en prod (confirmé par mesure directe,
-# IDs réels) : balance_transaction, application_fee et transfer ne sont pas
-# garantis disponibles sur le Charge au moment où checkout.session.completed
-# arrive — pas seulement sur Stripe Link (observé aussi sur carte classique),
-# et pour application_fee/transfer spécifiquement sur Link, mesuré au-delà de
-# 18s dans au moins un cas réel. Un instantané unique sans nouvelle tentative
+# IDs réels) : balance_transaction et application_fee ne sont pas garantis
+# disponibles sur le Charge au moment où checkout.session.completed arrive
+# — pas seulement sur Stripe Link (observé aussi sur carte classique), et
+# pour application_fee spécifiquement sur Link, mesuré au-delà de 18s dans
+# au moins un cas réel. Un instantané unique sans nouvelle tentative
 # perd alors le paiement (ou ses montants de frais) de façon définitive (la
 # route a déjà répondu "ok" à Stripe, qui ne retente jamais). SETTLEMENT_
 # RETRY_DELAYS_SECONDS absorbe ce délai dans la tâche de fond elle-même
@@ -50,10 +50,8 @@ def _fetch_settled_charge_data(charge_id):
     calcul du montant/commission/frais Stripe en dépend tous les trois -
     voir process_checkout_session_payment).
 
-    Ne bloque plus en plus sur application_fee/transfer une fois
-    balance_tx trouvée : transfer ne sert plus qu'à des champs secondaires
-    (transfer_amount, gardé à titre indicatif) et application_fee ne bloque
-    plus non plus (la commission Xepay venant de ApplicationFee.
+    Ne bloque plus en plus sur application_fee une fois balance_tx trouvée
+    (la commission Xepay venant de ApplicationFee.
     balance_transaction.amount - voir le bloc "if fee_id" dans
     process_checkout_session_payment). S'ils sont déjà là, tant mieux ;
     sinon le paiement est créé sans eux plutôt que d'attendre inutilement -
@@ -88,8 +86,8 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
     BalanceTransaction elle-même existe dès la création du Charge — source=
     la retrouve indépendamment de ce champ. Voir _fetch_settled_charge_data
     pour la tentative bornée qui absorbe ce même type de délai sur
-    application_fee/transfer, et sur balance_transaction lui-même si jamais
-    observé (constat confirmé aussi sur carte classique)."""
+    application_fee, et sur balance_transaction lui-même si jamais observé
+    (constat confirmé aussi sur carte classique)."""
     db = SessionLocal()
     try:
         existing_tx = db.query(WalletTransaction).filter(
@@ -105,12 +103,10 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
         balance_tx = None
         available_at = None
         card_brand = card_last4 = card_exp_month = card_exp_year = None
-        fee_id = transfer_id = payment_method_id = payment_method_type = None
-        fee_amount = transfer_amount = stripe_fee_amount = None
+        fee_id = payment_method_id = payment_method_type = None
+        fee_amount = stripe_fee_amount = None
         application_fee_requested = None
         balance_transaction_net = None
-        transfer_destination = transfer_reversed = transfer_created_at = None
-        transfer_amount_reversed = None
         amount_usd = None
         charge_id = None
 
@@ -131,7 +127,6 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             wallet_type = (card_info.get("wallet") or {}).get("type")
             payment_method_type = wallet_type or payment_method_details.get("type")
             fee_id = charge_dict.get("application_fee")
-            transfer_id = charge_dict.get("transfer")
             payment_method_id = charge_dict.get("payment_method")
             if fee_id:
                 fee_obj = stripe.ApplicationFee.retrieve(fee_id)
@@ -150,14 +145,6 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
                 if fee_obj.balance_transaction:
                     fee_balance_tx = stripe.BalanceTransaction.retrieve(fee_obj.balance_transaction)
                     application_fee_requested = fee_balance_tx.amount / 100
-            if transfer_id:
-                transfer_obj = stripe.Transfer.retrieve(transfer_id)
-                transfer_amount = transfer_obj.amount / 100
-                transfer_destination = transfer_obj.destination
-                transfer_reversed = transfer_obj.reversed
-                transfer_amount_reversed = transfer_obj.amount_reversed / 100
-                transfer_created_at = datetime.fromtimestamp(transfer_obj.created, tz=timezone.utc)
-
             if balance_tx:
                 amount_usd = balance_tx.amount / 100
                 # Champs Stripe confirmés sur de vrais paiements (EUR et
@@ -242,12 +229,6 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             stripe_fee_amount=stripe_fee_amount,
             balance_transaction_net=balance_transaction_net,
             available_at=available_at,
-            transfer_id=transfer_id,
-            transfer_amount=transfer_amount,
-            transfer_destination=transfer_destination,
-            transfer_reversed=transfer_reversed,
-            transfer_amount_reversed=transfer_amount_reversed,
-            transfer_created_at=transfer_created_at,
             card_brand=card_brand,
             card_last4=card_last4,
             card_exp_month=card_exp_month,
@@ -304,8 +285,6 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             description=tx_description,
             fee_id=fee_id,
             fee_amount=fee_amount,
-            transfer_id=transfer_id,
-            transfer_amount=transfer_amount,
             payment_method_id=payment_method_id,
             card_brand=card_brand,
             card_last4=card_last4,

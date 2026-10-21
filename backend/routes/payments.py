@@ -3,7 +3,7 @@ from backend.models import Payment, PaymentUpdate, Withdrawal
 from backend.database import engine, get_db
 from datetime import datetime, timezone
 from sqlalchemy import text
-from backend.models import PaymentCreate, PaymentResponse, Payment, Withdrawal, WalletTransaction, PaymentUpdate
+from backend.models import PaymentCreate, PaymentResponse, Payment, Withdrawal, PaymentUpdate
 from fastapi import Depends
 from sqlalchemy.orm import Session
 from backend.auth import get_current_user
@@ -14,7 +14,6 @@ from backend.middleware.authorization import require_member, require_pro_or_busi
 from backend.models import WorkspaceUser
 from datetime import timedelta
 from backend.models import Payment, Link
-from backend.models import UserDB
 from fastapi import Header
 import os
 from typing import Optional
@@ -236,80 +235,6 @@ def get_activity(
                     "processed_at": w.processed_at.isoformat() if w.processed_at else None
                 }
             })
-    # Transferts Stripe Connect (compte principal -> compte connecté du
-    # marchand) : dérivés des mêmes lignes Payment (un Transfer est toujours
-    # créé 1-à-1 avec un Payment dans ce modèle de destination charge, pas
-    # d'entité séparée). Valeur de type distincte de l'ancien "transfer"
-    # (WalletTransaction P2P, hors périmètre) pour ne rien casser côté
-    # existant : jamais inclus dans le flux fusionné "Tous" (type=None), pour
-    # ne pas afficher le même paiement deux fois.
-    if type == "transfer_stripe":
-        q = db.query(Payment).filter(
-            Payment.user_id == owner_id,
-            Payment.transfer_id.isnot(None)
-        )
-        if status: q = q.filter(Payment.status == status)
-        for p in q.all():
-            items.append({
-                "type": "transfer_stripe",
-                "transfer_id": p.transfer_id,
-                "payment_id": p.id,
-                "label": p.transfer_destination or "Transfert",
-                "amount": p.transfer_amount,
-                "currency": p.currency,
-                "status": "reversed" if p.transfer_reversed else p.status,
-                "date": p.transfer_created_at or p.created_at,
-                "amount_reversed": p.transfer_amount_reversed,
-                "details": {
-                    "transfer_destination": p.transfer_destination,
-                    "transfer_reversed": p.transfer_reversed,
-                    "transfer_amount_reversed": p.transfer_amount_reversed,
-                    "stripe_payment_intent_id": p.stripe_payment_intent_id,
-                    "stripe_account_id": p.stripe_account_id
-                }
-            })
-    if type in (None, "transfer"):
-        q = db.query(WalletTransaction).filter(
-            WalletTransaction.user_id == owner_id,
-            WalletTransaction.type == "transfer"
-        )
-        if status: q = q.filter(WalletTransaction.status == status)
-        transfers = q.all()
-        related_ids = {t.related_user_id for t in transfers if t.related_user_id}
-        counterparties_by_id = {
-            u.id: u.email
-            for u in db.query(UserDB).filter(UserDB.id.in_(related_ids)).all()
-        } if related_ids else {}
-        for t in transfers:
-            counterparty = None
-            if t.related_user_id:
-                counterparty = counterparties_by_id.get(t.related_user_id)
-
-            items.append({
-                "type": "transfer",
-                "transfer_id": t.id,
-                "label": (f"Vers {counterparty}" if t.direction == "out" else f"De {counterparty}") if counterparty else "Transfert",
-                "amount": t.amount,
-                "currency": "XOF",
-                "status": t.status,
-                "date": t.created_at,
-                "details": {
-                    "reference": t.reference,
-                    "direction": t.direction,
-                    "counterparty_email": counterparty,
-                    "fee_amount": t.fee_amount,
-                    "transfer_id": t.transfer_id,
-                    "transfer_amount": t.transfer_amount,
-                    "payment_method_id": t.payment_method_id,
-                    "card_brand": t.card_brand,
-                    "card_last4": t.card_last4,
-                    "card_exp_month": t.card_exp_month,
-                    "card_exp_year": t.card_exp_year,
-                    "description": t.description,
-                    "available_at": t.available_at.isoformat() if t.available_at else None
-                }
-            })
-
     items.sort(key=lambda x: x["date"], reverse=True)
     paged = items[offset:offset+limit]
 
