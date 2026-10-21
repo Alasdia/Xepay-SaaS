@@ -138,7 +138,7 @@ async function signup(){
   btn.innerHTML='<span class="spin"></span>Création en cours...';
   btn.disabled=true;
   try{
-    const response=await fetch('https://api.alasdia.com/signup',{
+    const response=await fetch('https://aws.api.alasdia.com/signup',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({email,password})
@@ -174,7 +174,7 @@ function loginWithGoogle(){
   btn.innerHTML='<span class="spin" style="border-color:rgba(255,255,255,.15);border-top-color:rgba(255,255,255,.7)"></span>Redirection Google...';
   showToast('info','GOOGLE AUTH','Redirection vers Google en cours...',3000);
   const clientId='366389455040-q0iie187c1ok621vbcl3vkuflib3fvgf.apps.googleusercontent.com';
-  const redirectUri='https://api.alasdia.com/auth/google/callback';
+  const redirectUri='https://aws.api.alasdia.com/auth/google/callback';
   const url=`https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid%20email%20profile`;
   setTimeout(()=>{window.location.href=url},800);
 }

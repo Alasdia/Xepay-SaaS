@@ -18,7 +18,7 @@ async function initSidebar() {
 async function loadUser() {
   const token = localStorage.getItem("token");
   try {
-    const res = await fetch("https://api.alasdia.com/me/user-plan", {
+    const res = await fetch("https://aws.api.alasdia.com/me/user-plan", {
       headers: { Authorization: "Bearer " + token, "X-Workspace-Id": localStorage.getItem("workspace_id") }
     });
     if (!res.ok) {
