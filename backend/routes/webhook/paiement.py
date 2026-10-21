@@ -517,6 +517,10 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
             if not fee_balance_transaction_id:
                 return {"status": "ignored"}
             charge_id = getattr(object_data, "charge", None)
+            print("=== DEBUG APPLICATION FEE ===")
+            print("ApplicationFee ID:", object_data.id)
+            print("Charge ID reçu:", charge_id)
+            print("Balance transaction ID:", fee_balance_transaction_id)
             if not charge_id:
                 return {"status": "ignored"}
             payment = (
@@ -524,6 +528,7 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
                 .filter(Payment.charge_id == charge_id)
                 .first()
             )
+            print("Payment trouvé:", payment.id if payment else None)
             if not payment:
                 return {"status": "ignored"}
             try:
