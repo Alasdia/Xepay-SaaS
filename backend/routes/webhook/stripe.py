@@ -339,6 +339,14 @@ def process_invoice_paid_event(
         fee_id=fee_id,
         fee_amount=float(fee_amount),
         stripe_fee_amount=stripe_fee_amount,
+        # brut - commission globale, jamais - StripeFee en plus : le
+        # StripeFee ne touche jamais le marchand sur ce flux (payé par la
+        # plateforme, voir stripe_fee_amount ci-dessus) - même principe que
+        # pour les liens de paiement, confirmé par la balance_transaction
+        # réelle du compte connecté (net = amount - fee, sans autre
+        # déduction).
+        balance_transaction_net=float(gross_amount - fee_amount),
+        available_at=available_at,
         payment_method_id=intent.payment_method,
         payment_method_type=payment_method_type,
         card_brand=card_brand,
@@ -714,7 +722,11 @@ def create_merchant_invoice(
     )
 
     amount = price.unit_amount * data.quantity
-    application_fee_amount = int(amount * 0.01)
+    # 6% comme les liens de paiement (anciennement 1%, insuffisant : le
+    # StripeFee réel dépasse souvent ce taux sur ce flux, ce qui faisait
+    # perdre de l'argent à la plateforme sur chaque facture, voir
+    # process_invoice_paid_event).
+    application_fee_amount = int(amount * 0.06)
 
     try:
         invoice = create_connect_invoice(
@@ -818,7 +830,9 @@ def create_merchant_subscription(
             ],
             metadata=metadata,
             subscription_data={
-                "application_fee_percent": 1.0,
+                # 6% comme les liens de paiement/factures (anciennement 1%,
+                # voir le commentaire équivalent dans create_merchant_invoice).
+                "application_fee_percent": 6.0,
                 "metadata": metadata,
             },
             success_url="https://alasdia.com/signup",
