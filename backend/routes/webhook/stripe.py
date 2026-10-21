@@ -725,6 +725,7 @@ def create_merchant_invoice(
         }
 
     except stripe.error.StripeError as e:
+        print(f"❌ ERREUR création facture (merchant={profile.stripe_account_id}): {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=400,
             detail=e.user_message or str(e)
