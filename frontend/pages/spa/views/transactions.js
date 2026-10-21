@@ -343,7 +343,7 @@ export async function mount(container, params = {}) {
     if (!theadRow) return;
     theadRow.innerHTML =
       currentType === "payment"
-        ? `<th>Client</th><th>Moyen de paiement</th><th>Montant brut</th><th>Commission Xepay</th><th>Frais Stripe</th><th>Montant net marchand</th><th>Statut</th><th>Date</th><th>Disponible le</th><th>Actions</th>`
+        ? `<th>Client</th><th>Moyen de paiement</th><th>Montant brut</th><th>Commission Xepay</th><th>Frais Stripe</th><th>Montant net marchand</th><th>Créé le</th><th>Disponible le</th><th>Statut</th><th>Actions</th>`
         : currentType === "transfer_stripe"
         ? `<th>Compte destinataire</th><th>Montant transféré</th><th>Montant reversé</th><th>Statut</th><th>Date</th>`
         : currentType === "withdraw"
@@ -351,7 +351,22 @@ export async function mount(container, params = {}) {
         : `<th>Client</th><th>Montant</th><th>Status</th><th>Date</th>`;
   }
 
-  const paymentMethodLabel = { card: "Carte", link: "Link" };
+  const paymentMethodLabel = {
+    card: "Carte",
+    link: "Link",
+    visa: "Visa",
+    mastercard: "Mastercard",
+    apple_pay: "Apple Pay",
+    google_pay: "Google Pay",
+    klarna: "Klarna",
+    bancontact: "Bancontact",
+    cashapp: "Cash App",
+    affirm: "Affirm",
+    blik: "BLIK",
+    eps: "EPS",
+    ideal: "iDEAL",
+    cartes_bancaires: "Cartes Bancaires",
+  };
 
   function paymentMethodIcon(method, brand, last4) {
     const icons = {
@@ -385,10 +400,16 @@ export async function mount(container, params = {}) {
       last4 && (method === "card" || method === "apple_pay" || method === "google_pay")
         ? ` ···· ${last4}`
         : "";
+    // Visa/Mastercard : logo seul, suffisamment reconnaissable - le nom
+    // n'est affiché que pour les autres moyens de paiement.
+    const nameLabel =
+      logoKey === "visa" || logoKey === "mastercard"
+        ? ""
+        : paymentMethodLabel[logoKey] ?? paymentMethodLabel[method] ?? "";
     return `
       <span style="display:flex;align-items:center;gap:8px;">
         <img src="${src}" alt="${logoKey}" style="width:42px;height:28px;object-fit:contain;">
-        ${last4Display ? `<span>${last4Display}</span>` : ""}
+        ${nameLabel || last4Display ? `<span>${nameLabel}${last4Display}</span>` : ""}
       </span>
     `;
   }
@@ -427,11 +448,6 @@ export async function mount(container, params = {}) {
         <td class="amount-cell" onclick="voirDetailActivite(${i})">
           ${formatMontant(t.amount_net_merchant, currency)}
         </td>
-        <td>
-          <span class="status-pill ${statusBadgeClass(t.status)}">
-            ${statusMap[String(t.status).toLowerCase()] || t.status}
-          </span>
-        </td>
         <td style="color:#6b7280;font-size:.85rem;">
           ${t.date && !isNaN(new Date(t.date))
             ? new Date(t.date).toLocaleDateString("fr-FR", {
@@ -453,6 +469,11 @@ export async function mount(container, params = {}) {
                 minute: "2-digit"
               })
             : "-"}
+        </td>
+        <td>
+          <span class="status-pill ${statusBadgeClass(t.status)}">
+            ${statusMap[String(t.status).toLowerCase()] || t.status}
+          </span>
         </td>
         <td>
           <button
