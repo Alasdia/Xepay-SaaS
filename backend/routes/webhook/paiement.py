@@ -452,7 +452,7 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
             balance_transaction_id = object_data.balance_transaction
             if not balance_transaction_id:
                 return {"status": "ignored"}
-            pi_id = object_data.get("payment_intent")
+            pi_id = object_data.payment_intent
             payment = (
                 db.query(Payment)
                 .filter(Payment.stripe_payment_intent_id == pi_id)
