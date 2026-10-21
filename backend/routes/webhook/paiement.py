@@ -498,21 +498,6 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
             db.commit()
             return {"status": "ok"}
         elif event_type == "application_fee.created":
-            # ApplicationFee.balance_transaction.amount = montant réellement
-            # réglé sur le solde de la plateforme pour cette commission Xepay
-            # en USD (peut différer de charge.application_fee_amount en cas
-            # de conversion de devise) - remplace charge.application_fee_amount
-            # comme source de application_fee_requested.
-            #
-            # ApplicationFee.charge n'est PAS utilisé pour retrouver le
-            # Payment : c'est un ID au format "py_..." non reconnu par
-            # stripe.Charge.retrieve() (confirmé en prod, quel que soit le
-            # compte interrogé) - impossible d'en tirer le payment_intent via
-            # un appel Stripe. On matche donc directement sur
-            # Payment.charge_id, déjà stocké tel quel à la création du
-            # Payment (voir process_checkout_session_payment ci-dessus et
-            # routes/webhook/stripe.py) : aucun appel Stripe nécessaire pour
-            # cette étape.
             fee_balance_transaction_id = getattr(object_data, "balance_transaction", None)
             if not fee_balance_transaction_id:
                 return {"status": "ignored"}
