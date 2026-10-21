@@ -162,18 +162,28 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
                 amount_usd = balance_tx.amount / 100
                 # Champs Stripe confirmés sur de vrais paiements (EUR et
                 # USD) - plus aucune dérivation/hypothèse de taux fixe :
-                # - commission Xepay = ApplicationFee.balance_transaction.
-                #   amount (voir le bloc "if fee_id" ci-dessus) - peut
-                #   encore être None ici si pas disponible à temps,
-                #   application_fee.created la corrigera alors.
+                # - application_fee_requested = ApplicationFee.
+                #   balance_transaction.amount (voir le bloc "if fee_id"
+                #   ci-dessus) est la commission GLOBALE (6%), pas la part
+                #   Xepay seule : elle contient déjà le frais Stripe dedans
+                #   (confirmé par Stripe : "The application fee amount minus
+                #   the Stripe fees remains in your platform account's
+                #   balance" - la part Xepay réelle = application_fee_
+                #   requested - stripe_fee_amount). Peut encore être None
+                #   ici si pas disponible à temps, application_fee.created
+                #   la corrigera alors.
                 # - frais Stripe = balance_tx.fee, celle DE LA CHARGE
                 #   elle-même (_fetch_settled_charge_data la retrouve par
                 #   source=charge_id) - c'est elle qui porte le vrai frais
                 #   de traitement carte, jamais celle de l'ApplicationFee.
-                # - net marchand = brut - commission Xepay - frais Stripe.
+                # - net marchand = brut - commission globale (déjà réglé
+                #   par Stripe au Connect : amount - application_fee_amount)
+                #   - PAS brut - commission globale - frais Stripe, qui
+                #   soustrairait le frais Stripe deux fois puisqu'il est
+                #   déjà inclus dans la commission globale.
                 stripe_fee_amount = balance_tx.fee / 100
                 if application_fee_requested is not None:
-                    balance_transaction_net = round(amount_usd - application_fee_requested - stripe_fee_amount, 2)
+                    balance_transaction_net = round(amount_usd - application_fee_requested, 2)
                 available_on = balance_tx.available_on
                 available_at = datetime.fromtimestamp(available_on, tz=timezone.utc)
 
@@ -490,9 +500,13 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
             # amount, voir ci-dessous) - jamais de charge.
             # application_fee_amount ici. Ne recalcule le net que si cette
             # valeur est déjà connue (sinon application_fee.created le fera).
+            # application_fee_requested est la commission GLOBALE (6%,
+            # inclut déjà stripe_fee_amount dedans) - net marchand = brut
+            # moins cette seule valeur, jamais moins stripe_fee_amount en
+            # plus (sinon double déduction du même frais).
             if payment.application_fee_requested is not None:
                 payment.balance_transaction_net = round(
-                    amount_usd - payment.application_fee_requested - stripe_fee_amount, 2
+                    amount_usd - payment.application_fee_requested, 2
                 )
             payment.available_at = datetime.fromtimestamp(balance_tx.available_on, tz=timezone.utc)
             db.commit()
@@ -501,34 +515,26 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
             fee_balance_transaction_id = getattr(object_data, "balance_transaction", None)
             if not fee_balance_transaction_id:
                 return {"status": "ignored"}
-            originating_transaction = getattr(
-                object_data, "originating_transaction", None
-            )
-            print("=== DEBUG APPLICATION FEE ===")
-            print("ApplicationFee ID:", object_data.id)
-            print("Originating transaction:", originating_transaction)
-            print("Balance transaction ID:", fee_balance_transaction_id)
+            originating_transaction = getattr(object_data, "originating_transaction", None)
             if not originating_transaction:
                 return {"status": "ignored"}
-            payment = (
-                db.query(Payment)
-                .filter(Payment.charge_id == originating_transaction)
-                .first()
-            )
-            print("Payment trouvé:", payment.id if payment else None)
+            payment = (db.query(Payment).filter(Payment.charge_id == originating_transaction).first())
             if not payment:
                 return {"status": "ignored"}
             try:
                 fee_balance_tx = stripe.BalanceTransaction.retrieve(fee_balance_transaction_id)
             except stripe.error.StripeError as e:
-                print(f"⚠️ BalanceTransaction.retrieve (application_fee) a échoué pour {fee_balance_transaction_id} (charge={charge_id}): {e}")
+                print(f"⚠️ BalanceTransaction.retrieve (application_fee) a échoué pour {fee_balance_transaction_id} (charge={originating_transaction}): {e}")
                 return {"status": "ok"}
             payment.fee_id = object_data.id
+            # application_fee_requested = commission GLOBALE (6%, voir
+            # process_checkout_session_payment) - net marchand = brut moins
+            # cette seule valeur, jamais moins stripe_fee_amount en plus
+            # (déjà inclus dedans).
             payment.application_fee_requested = fee_balance_tx.amount / 100
-            if payment.stripe_fee_amount is not None:
-                payment.balance_transaction_net = round(
-                    payment.amount - payment.application_fee_requested - payment.stripe_fee_amount, 2
-                )
+            payment.balance_transaction_net = round(
+                payment.amount - payment.application_fee_requested, 2
+            )
             db.commit()
             return {"status": "ok"}
         if event_type == "checkout.session.completed":

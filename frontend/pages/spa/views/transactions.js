@@ -343,7 +343,7 @@ export async function mount(container, params = {}) {
     if (!theadRow) return;
     theadRow.innerHTML =
       currentType === "payment"
-        ? `<th>Client</th><th>Moyen de paiement</th><th>Montant brut</th><th>Commission Xepay</th><th>Frais Stripe</th><th>Montant net marchand</th><th>Créé le</th><th>Disponible le</th><th>Statut</th><th>Actions</th>`
+        ? `<th>Client</th><th>Moyen de paiement</th><th>Montant brut</th><th>Commission globale</th><th>Frais Stripe</th><th>Montant net marchand</th><th>Créé le</th><th>Disponible le</th><th>Statut</th><th>Actions</th>`
         : currentType === "transfer_stripe"
         ? `<th>Compte destinataire</th><th>Montant transféré</th><th>Montant reversé</th><th>Statut</th><th>Date</th>`
         : currentType === "withdraw"
@@ -928,7 +928,7 @@ export async function mount(container, params = {}) {
       </div>
       <div class="customer-details-grid">
         ${detailRow("Montant brut", formatMontant(t.amount_gross, currency))}
-        ${detailRow("Commission Xepay", formatMontant(t.commission_xepay, currency))}
+        ${detailRow("Commission globale", formatMontant(t.commission_xepay, currency))}
         ${detailRow("Frais Stripe", formatMontant(t.stripe_fee, currency))}
         ${detailRow("Montant net marchand", formatMontant(t.amount_net_merchant, currency))}
         ${detailRow("Statut", statusMap[String(t.status).toLowerCase()] || t.status)}

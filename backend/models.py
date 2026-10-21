@@ -384,16 +384,23 @@ class Payment(Base):
     charge_id = Column(String, nullable=True, index=True)
     fee_id = Column(String, nullable=True)
     fee_amount = Column(Float, nullable=True)
-    # Commission Xepay réelle = ApplicationFee.balance_transaction.amount
-    # (montant effectivement réglé sur le solde de la plateforme, rempli par
-    # le webhook application_fee.created - voir routes/webhook/paiement.py),
-    # dans la même devise que amount/currency. Distinct de fee_amount
-    # (ApplicationFee.amount, qui reste dans la devise d'origine du lien).
+    # Commission GLOBALE (StripeFee + part Xepay réelle), pas la part Xepay
+    # seule : = ApplicationFee.balance_transaction.amount (montant
+    # effectivement réglé sur le solde de la plateforme, rempli par le
+    # webhook application_fee.created - voir routes/webhook/paiement.py),
+    # dans la même devise que amount/currency. Confirmé par Stripe ("The
+    # application fee amount minus the Stripe fees remains in your platform
+    # account's balance") : la part Xepay réelle = application_fee_requested
+    # - stripe_fee_amount. Distinct de fee_amount (ApplicationFee.amount,
+    # qui reste dans la devise d'origine du lien).
     application_fee_requested = Column(Float, nullable=True)
     stripe_fee_amount = Column(Float, nullable=True)
-    # amount - application_fee_requested - stripe_fee_amount (voir
-    # routes/webhook/paiement.py pour la provenance exacte, confirmée sur
-    # de vrais paiements EUR/USD, de chacun des deux champs soustraits).
+    # amount - application_fee_requested (voir routes/webhook/paiement.py) -
+    # c'est le montant réellement réglé par Stripe au compte connecté
+    # (amount - application_fee_amount). stripe_fee_amount n'est PAS
+    # soustrait en plus : il est déjà inclus dans application_fee_requested
+    # (commission globale), donc le soustraire aussi double-compterait ce
+    # même frais.
     balance_transaction_net = Column(Float, nullable=True)
     # balance_transaction.available_on de la charge - quand les fonds
     # deviennent disponibles côté Stripe. Déjà calculé pour

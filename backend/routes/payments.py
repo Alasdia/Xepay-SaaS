@@ -159,14 +159,23 @@ def get_activity(
             # application_fee_requested, avec repli sur fee_amount pour les
             # paiements de factures/abonnements (qui ne renseignent pas ce
             # nouveau champ) et les paiements de liens antérieurs à ce fix.
+            #
+            # C'est la commission GLOBALE (StripeFee + part Xepay réelle),
+            # pas la part Xepay seule - confirmé par Stripe ("The
+            # application fee amount minus the Stripe fees remains in your
+            # platform account's balance"). La part Xepay réelle =
+            # commission_xepay - p.stripe_fee_amount (non exposée comme
+            # champ séparé, calculable à l'affichage si besoin).
             commission_xepay = (
                 p.application_fee_requested
                 if p.application_fee_requested is not None
                 else p.fee_amount
             )
             # Valeur stockée telle quelle (voir routes/webhook/paiement.py :
-            # balance_transaction.net, calculé par Stripe lui-même) -
-            # jamais redérivée côté Xepay.
+            # brut - commission_xepay, càd exactement ce que Stripe règle
+            # réellement au compte connecté - stripe_fee_amount n'est PAS
+            # soustrait en plus puisqu'il est déjà inclus dans
+            # commission_xepay ci-dessus).
             amount_net_merchant = p.balance_transaction_net
             items.append({
                 "type": "payment",
@@ -335,9 +344,11 @@ def get_payments_summary(
     )
     stripe_fee = sum(p.stripe_fee_amount for p in payments if p.stripe_fee_amount is not None)
 
-    # Valeur stockée telle quelle (balance_transaction.net, calculé par
-    # Stripe lui-même) - jamais redérivée côté Xepay, voir le commentaire
-    # équivalent dans /activity.
+    # commission_xepay ci-dessus est la commission GLOBALE (StripeFee + part
+    # Xepay réelle, voir le commentaire équivalent dans /activity) - net
+    # marchand = brut - cette commission globale, jamais - stripe_fee en
+    # plus. Valeur stockée telle quelle (balance_transaction_net), jamais
+    # redérivée ici.
     amount_net_merchant = sum(
         p.balance_transaction_net
         for p in payments
