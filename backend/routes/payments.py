@@ -149,19 +149,16 @@ def get_activity(
         if end_date:
             q = q.filter(Payment.created_at <= datetime.fromisoformat(end_date) + timedelta(days=1))
         for p in q.all():
-            # application_fee_requested (charge.application_fee_amount) est
-            # toujours dans la même devise que Payment.amount/currency ;
-            # fee_amount (ApplicationFee.amount) ne l'est PAS (devise
-            # d'origine du lien, ex: EUR alors que Payment.currency vaut
-            # "USD") - voir routes/webhook/paiement.py. On privilégie donc
+            # application_fee_requested = ApplicationFee.balance_transaction.
+            # amount (montant réellement réglé sur le solde plateforme,
+            # rempli par l'event application_fee.created - voir routes/
+            # webhook/paiement.py), toujours dans la même devise que
+            # Payment.amount/currency ; fee_amount (ApplicationFee.amount)
+            # ne l'est PAS (devise d'origine du lien, ex: EUR alors que
+            # Payment.currency vaut "USD"). On privilégie donc
             # application_fee_requested, avec repli sur fee_amount pour les
             # paiements de factures/abonnements (qui ne renseignent pas ce
             # nouveau champ) et les paiements de liens antérieurs à ce fix.
-            # stripe_fee_amount = application_fee_requested - fee_amount
-            # (calculé à la création du Payment, voir
-            # routes/webhook/paiement.py) : aucun champ Stripe n'expose de
-            # frais de traitement isolé sur ce compte Connect, donc déduit
-            # de la différence entre commission brute et commission nette.
             commission_xepay = (
                 p.application_fee_requested
                 if p.application_fee_requested is not None

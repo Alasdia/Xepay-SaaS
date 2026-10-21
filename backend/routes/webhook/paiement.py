@@ -51,16 +51,17 @@ def _fetch_settled_charge_data(charge_id):
     voir process_checkout_session_payment).
 
     Ne bloque plus en plus sur application_fee/transfer une fois
-    balance_tx trouvée : ces deux-là ne servent plus qu'à des champs
-    secondaires (fee_id/fee_amount/transfer_amount, gardés à titre
-    indicatif), la commission Xepay venant désormais directement de
-    charge.application_fee_amount (toujours disponible immédiatement,
-    sans délai de propagation). S'ils sont déjà là, tant mieux ; sinon
-    le paiement est créé sans eux plutôt que d'attendre inutilement -
-    le handler charge.updated (voir stripe_payment_webhook) corrige de
-    toute façon stripe_fee_amount/balance_transaction_net/available_at
-    dès que Stripe a fini de régler la balance_transaction, sans
-    sondage, dès qu'elle devient disponible."""
+    balance_tx trouvée : transfer ne sert plus qu'à des champs secondaires
+    (transfer_amount, gardé à titre indicatif) et application_fee ne bloque
+    plus non plus (la commission Xepay venant de ApplicationFee.
+    balance_transaction.amount - voir le bloc "if fee_id" dans
+    process_checkout_session_payment). S'ils sont déjà là, tant mieux ;
+    sinon le paiement est créé sans eux plutôt que d'attendre inutilement -
+    les handlers charge.updated et application_fee.created (voir
+    stripe_payment_webhook) corrigent de toute façon respectivement
+    stripe_fee_amount/available_at et application_fee_requested dès que
+    Stripe a fini de les régler, sans sondage, et recalculent
+    balance_transaction_net dès que les deux valeurs sont connues."""
     charge_dict = None
     balance_tx = None
     for attempt in range(MAX_SETTLEMENT_ATTEMPTS):
@@ -133,6 +134,20 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             if fee_id:
                 fee_obj = stripe.ApplicationFee.retrieve(fee_id)
                 fee_amount = fee_obj.amount / 100
+                # La commission Xepay réelle = balance_transaction.amount de
+                # l'ApplicationFee elle-même (montant effectivement réglé sur
+                # le solde de la plateforme, peut différer de charge.
+                # application_fee_amount en cas de conversion de devise) -
+                # remplace charge.application_fee_amount comme source de
+                # application_fee_requested. Peut ne pas encore être
+                # disponible ici (même délai de propagation asynchrone que
+                # balance_transaction côté Charge) : l'event dédié
+                # application_fee.created (voir stripe_payment_webhook)
+                # corrige alors application_fee_requested sans sondage dès
+                # qu'elle devient disponible.
+                if fee_obj.balance_transaction:
+                    fee_balance_tx = stripe.BalanceTransaction.retrieve(fee_obj.balance_transaction)
+                    application_fee_requested = fee_balance_tx.amount / 100
             if transfer_id:
                 transfer_obj = stripe.Transfer.retrieve(transfer_id)
                 transfer_amount = transfer_obj.amount / 100
@@ -145,19 +160,18 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
                 amount_usd = balance_tx.amount / 100
                 # Champs Stripe confirmés sur de vrais paiements (EUR et
                 # USD) - plus aucune dérivation/hypothèse de taux fixe :
-                # - commission Xepay = charge.application_fee_amount, un
-                #   champ direct de la charge, dans la même devise que
-                #   Payment.amount/currency (contrairement à
-                #   ApplicationFee.amount/fee_amount, resté dans la devise
-                #   d'origine du lien).
+                # - commission Xepay = ApplicationFee.balance_transaction.
+                #   amount (voir le bloc "if fee_id" ci-dessus) - peut
+                #   encore être None ici si pas disponible à temps,
+                #   application_fee.created la corrigera alors.
                 # - frais Stripe = balance_tx.fee, celle DE LA CHARGE
                 #   elle-même (_fetch_settled_charge_data la retrouve par
                 #   source=charge_id) - c'est elle qui porte le vrai frais
                 #   de traitement carte, jamais celle de l'ApplicationFee.
                 # - net marchand = brut - commission Xepay - frais Stripe.
-                application_fee_requested = (charge_dict.get("application_fee_amount") or 0) / 100
                 stripe_fee_amount = balance_tx.fee / 100
-                balance_transaction_net = round(amount_usd - application_fee_requested - stripe_fee_amount, 2)
+                if application_fee_requested is not None:
+                    balance_transaction_net = round(amount_usd - application_fee_requested - stripe_fee_amount, 2)
                 available_on = balance_tx.available_on
                 available_at = datetime.fromtimestamp(available_on, tz=timezone.utc)
 
@@ -466,12 +480,54 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
                 print(f"⚠️ BalanceTransaction.retrieve a échoué pour {balance_transaction_id} (pi={pi_id}): {e}")
                 return {"status": "ok"}
             amount_usd = balance_tx.amount / 100
-            application_fee_requested = (getattr(object_data, "application_fee_amount", 0) or 0) / 100
             stripe_fee_amount = balance_tx.fee / 100
-            payment.application_fee_requested = application_fee_requested
             payment.stripe_fee_amount = stripe_fee_amount
-            payment.balance_transaction_net = round(amount_usd - application_fee_requested - stripe_fee_amount, 2)
+            # application_fee_requested vient désormais de l'event dédié
+            # application_fee.created (ApplicationFee.balance_transaction.
+            # amount, voir ci-dessous) - jamais de charge.
+            # application_fee_amount ici. Ne recalcule le net que si cette
+            # valeur est déjà connue (sinon application_fee.created le fera).
+            if payment.application_fee_requested is not None:
+                payment.balance_transaction_net = round(
+                    amount_usd - payment.application_fee_requested - stripe_fee_amount, 2
+                )
             payment.available_at = datetime.fromtimestamp(balance_tx.available_on, tz=timezone.utc)
+            db.commit()
+            return {"status": "ok"}
+        elif event_type == "application_fee.created":
+            # ApplicationFee.balance_transaction.amount = montant réellement
+            # réglé sur le solde de la plateforme pour cette commission Xepay
+            # (peut différer de charge.application_fee_amount en cas de
+            # conversion de devise) - remplace charge.application_fee_amount
+            # comme source de application_fee_requested. Pas de payment_intent
+            # direct sur l'ApplicationFee : un seul appel Charge.retrieve pour
+            # le retrouver via charge.payment_intent, jamais de sondage.
+            fee_balance_transaction_id = getattr(object_data, "balance_transaction", None)
+            if not fee_balance_transaction_id:
+                return {"status": "ignored"}
+            charge_id = getattr(object_data, "charge", None)
+            if not charge_id:
+                return {"status": "ignored"}
+            charge = stripe.Charge.retrieve(charge_id)
+            pi_id = charge.payment_intent
+            payment = (
+                db.query(Payment)
+                .filter(Payment.stripe_payment_intent_id == pi_id)
+                .first()
+            )
+            if not payment:
+                return {"status": "ignored"}
+            try:
+                fee_balance_tx = stripe.BalanceTransaction.retrieve(fee_balance_transaction_id)
+            except stripe.error.StripeError as e:
+                print(f"⚠️ BalanceTransaction.retrieve (application_fee) a échoué pour {fee_balance_transaction_id} (charge={charge_id}): {e}")
+                return {"status": "ok"}
+            payment.fee_id = object_data.id
+            payment.application_fee_requested = fee_balance_tx.amount / 100
+            if payment.stripe_fee_amount is not None:
+                payment.balance_transaction_net = round(
+                    payment.amount - payment.application_fee_requested - payment.stripe_fee_amount, 2
+                )
             db.commit()
             return {"status": "ok"}
         if event_type == "checkout.session.completed":
