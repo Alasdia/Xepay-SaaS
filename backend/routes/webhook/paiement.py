@@ -468,6 +468,9 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
             amount_usd = balance_tx.amount / 100
             application_fee_requested = (object_data, "application_fee_amount", None) or 0 / 100
             stripe_fee_amount = balance_tx.fee / 100
+            print(type(amount_usd), repr(amount_usd))
+            print(type(application_fee_requested), repr(application_fee_requested))
+            print(type(stripe_fee_amount), repr(stripe_fee_amount))
             payment.application_fee_requested = application_fee_requested
             payment.stripe_fee_amount = stripe_fee_amount
             payment.balance_transaction_net = round(amount_usd - application_fee_requested - stripe_fee_amount, 2)
