@@ -343,7 +343,7 @@ export async function mount(container, params = {}) {
     if (!theadRow) return;
     theadRow.innerHTML =
       currentType === "payment"
-        ? `<th>Client</th><th>Moyen de paiement</th><th>Montant brut</th><th>Commission globale</th><th>Frais Stripe</th><th>Montant net marchand</th><th>Créé le</th><th>Disponible le</th><th>Statut</th><th>Actions</th>`
+        ? `<th>Client</th><th>Moyen de paiement</th><th>Montant brut</th><th>Commission globale</th><th>Commission Xepay</th><th>Frais Stripe</th><th>Montant net marchand</th><th>Créé le</th><th>Disponible le</th><th>Statut</th><th>Actions</th>`
         : currentType === "transfer_stripe"
         ? `<th>Compte destinataire</th><th>Montant transféré</th><th>Montant reversé</th><th>Statut</th><th>Date</th>`
         : currentType === "withdraw"
@@ -420,6 +420,15 @@ export async function mount(container, params = {}) {
       : `${Number(value).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
   }
 
+  // Part Xepay réelle = commission globale (t.commission_xepay, qui inclut
+  // le StripeFee dedans) moins le StripeFee lui-même - jamais exposée comme
+  // champ séparé par le backend, donc calculée ici à l'affichage.
+  function xepayShare(t) {
+    return t.commission_xepay == null || t.stripe_fee == null
+      ? null
+      : t.commission_xepay - t.stripe_fee;
+  }
+
   
   function renderPaymentRow(t, i) {
     const currency = t.currency_gross ?? "USD";
@@ -441,6 +450,9 @@ export async function mount(container, params = {}) {
         </td>
         <td class="amount-cell" onclick="voirDetailActivite(${i})">
           ${formatMontant(t.commission_xepay, currency)}
+        </td>
+        <td class="amount-cell" onclick="voirDetailActivite(${i})">
+          ${formatMontant(xepayShare(t), currency)}
         </td>
         <td class="amount-cell" onclick="voirDetailActivite(${i})">
           ${formatMontant(t.stripe_fee, currency)}
@@ -929,6 +941,7 @@ export async function mount(container, params = {}) {
       <div class="customer-details-grid">
         ${detailRow("Montant brut", formatMontant(t.amount_gross, currency))}
         ${detailRow("Commission globale", formatMontant(t.commission_xepay, currency))}
+        ${detailRow("Commission Xepay", formatMontant(xepayShare(t), currency))}
         ${detailRow("Frais Stripe", formatMontant(t.stripe_fee, currency))}
         ${detailRow("Montant net marchand", formatMontant(t.amount_net_merchant, currency))}
         ${detailRow("Statut", statusMap[String(t.status).toLowerCase()] || t.status)}
