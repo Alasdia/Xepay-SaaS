@@ -235,18 +235,38 @@ def process_invoice_paid_event(
     )
     created_at = datetime.fromtimestamp(intent.created, tz=timezone.utc)
 
+    # StripeFee réel pour cette charge directe (fees_collector="application"
+    # sur ce compte Connect) : jamais sur la balance_transaction du compte
+    # connecté ci-dessus (son "fee" n'y est que l'Application Fee, pas de
+    # ligne fee_details de type stripe_fee), ni sur celle de l'ApplicationFee
+    # elle-même (fee=0 dessus) - c'est une BalanceTransaction séparée, de
+    # type "stripe_fee", sur le solde de la PLATEFORME elle-même (jamais de
+    # stripe_account= ici), avec pour source l'ID de cette même charge.
+    # Confirmé sur un vrai paiement test. Disponible immédiatement - pas
+    # besoin du rapport "All Fees" (mode live uniquement, délai de 96h).
+    stripe_fee_amount = None
+    if latest_charge:
+        platform_txs = stripe.BalanceTransaction.list(
+            source=latest_charge.id,
+            limit=10,
+        )
+        stripe_fee_tx = next(
+            (t for t in platform_txs.data if t.type == "stripe_fee"), None
+        )
+        if stripe_fee_tx:
+            stripe_fee_amount = float(abs(Decimal(stripe_fee_tx.amount)) / divisor)
+
     stripe_description = (
         getattr(latest_charge, "description", None) if latest_charge else None
     )
 
-    # charge.transfer (destination charges) et balance_tx.fee_details de
-    # type "stripe_fee" sont systématiquement absents sur ce flux : c'est
-    # un direct charge (stripe_account=connected_account_id partout),
-    # l'argent est déjà sur le compte connecté dès le départ (pas de
-    # Transfer), et ce compte Connect n'a pas de ligne stripe_fee distincte
-    # (confirmé sur de vrais paiements test) — seul fee_id/fee_amount
-    # (l'Application Fee) a un sens ici, donc ni transfer_* ni
-    # stripe_fee_amount ne sont renseignés sur Payment/WalletTransaction.
+    # charge.transfer (destination charges) est systématiquement absent sur
+    # ce flux : c'est un direct charge (stripe_account=connected_account_id
+    # partout), l'argent est déjà sur le compte connecté dès le départ (pas
+    # de Transfer) — transfer_* ne sont donc pas renseignés sur Payment/
+    # WalletTransaction. stripe_fee_amount, lui, EST récupéré (voir
+    # stripe_fee_amount ci-dessus) depuis le solde plateforme, pas depuis
+    # cette charge.
     fee_id = getattr(latest_charge, "application_fee", None) if latest_charge else None
 
     # status reste notre vocabulaire domaine, pas le statut brut Stripe
@@ -300,9 +320,9 @@ def process_invoice_paid_event(
     # (process_checkout_session_payment) : factures/abonnements ne
     # créditaient que WalletTransaction. Même table, même schéma, pour que
     # les deux flux soient exploitables de la même façon (ex. relevés,
-    # rapports). transfer_*/stripe_fee_amount ne sont pas renseignés ici :
-    # voir le commentaire au-dessus de fee_id (toujours absents sur ce
-    # compte Connect pour ce type de charge).
+    # rapports). transfer_* ne sont pas renseignés ici (toujours absents sur
+    # ce compte Connect pour ce type de charge, voir le commentaire
+    # au-dessus de fee_id) ; stripe_fee_amount l'est, voir plus haut.
     payment = Payment(
         user_id=merchant_id,
         client_email=invoice_data.get("customer_email"),
@@ -318,6 +338,7 @@ def process_invoice_paid_event(
         charge_id=latest_charge.id if latest_charge else None,
         fee_id=fee_id,
         fee_amount=float(fee_amount),
+        stripe_fee_amount=stripe_fee_amount,
         payment_method_id=intent.payment_method,
         payment_method_type=payment_method_type,
         card_brand=card_brand,
