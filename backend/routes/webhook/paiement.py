@@ -466,7 +466,7 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
                 print(f"⚠️ BalanceTransaction.retrieve a échoué pour {balance_transaction_id} (pi={pi_id}): {e}")
                 return {"status": "ok"}
             amount_usd = balance_tx.amount / 100
-            application_fee_requested = (object_data.get("application_fee_amount") or 0) / 100
+            application_fee_requested = (object_data, "application_fee_amount", None) or 0 / 100
             stripe_fee_amount = balance_tx.fee / 100
             payment.application_fee_requested = application_fee_requested
             payment.stripe_fee_amount = stripe_fee_amount
