@@ -343,7 +343,7 @@ export async function mount(container, params = {}) {
     if (!theadRow) return;
     theadRow.innerHTML =
       currentType === "payment"
-        ? `<th>Client</th><th>Moyen de paiement</th><th>Montant brut</th><th>Commission Xepay</th><th>Frais Stripe</th><th>Montant net marchand</th><th>Statut</th><th>Date</th><th>Actions</th>`
+        ? `<th>Client</th><th>Moyen de paiement</th><th>Montant brut</th><th>Commission Xepay</th><th>Frais Stripe</th><th>Montant net marchand</th><th>Statut</th><th>Date</th><th>Disponible le</th><th>Actions</th>`
         : currentType === "transfer_stripe"
         ? `<th>Compte destinataire</th><th>Montant transféré</th><th>Montant reversé</th><th>Statut</th><th>Date</th>`
         : currentType === "withdraw"
@@ -442,6 +442,17 @@ export async function mount(container, params = {}) {
                 minute: "2-digit"
               })
             : "N/A"}
+        </td>
+        <td style="color:#6b7280;font-size:.85rem;">
+          ${t.details?.available_at && !isNaN(new Date(t.details.available_at))
+            ? new Date(t.details.available_at).toLocaleDateString("fr-FR", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+              })
+            : "-"}
         </td>
         <td>
           <button
