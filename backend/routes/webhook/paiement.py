@@ -508,7 +508,21 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
             charge_id = getattr(object_data, "charge", None)
             if not charge_id:
                 return {"status": "ignored"}
-            charge = stripe.Charge.retrieve(charge_id)
+            # ApplicationFee.charge vit sur le compte connecté pour une
+            # charge directe (facture/abonnement) et sur la plateforme pour
+            # un paiement par lien (destination charge) - même distinction
+            # que routes/payout.py:refund_payment (payment.link_id), mais
+            # pas encore su ici (le Payment n'est retrouvé qu'après avoir lu
+            # la charge). On tente d'abord sans stripe_account (cas le plus
+            # courant) puis on retente avec event.account si Stripe répond
+            # que la charge n'existe pas côté plateforme.
+            try:
+                charge = stripe.Charge.retrieve(charge_id)
+            except stripe.error.InvalidRequestError:
+                connected_account_id = event.account
+                if not connected_account_id:
+                    raise
+                charge = stripe.Charge.retrieve(charge_id, stripe_account=connected_account_id)
             pi_id = charge.payment_intent
             payment = (
                 db.query(Payment)
