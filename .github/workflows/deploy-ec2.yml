@@ -1,0 +1,28 @@
+name: Deploy backend to AWS EC2
+
+# Déploiement automatique de l'instance EC2 Xepay_backendServer, mis en
+# place pendant la panne Railway (api.alasdia.com) - complète le
+# déploiement Railway existant (.railway/railway.ts), ne le remplace pas.
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH deploy (git reset --hard + reinstall deps + restart)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 13.49.244.177
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /home/ec2-user/xepay
+            git fetch origin main
+            git reset --hard origin/main
+            ./venv/bin/pip install -r requirements.txt
+            sudo systemctl restart xepay-backend
+            sleep 5
+            curl -sf http://127.0.0.1:8000/health
