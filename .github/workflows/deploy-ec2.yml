@@ -8,6 +8,7 @@ name: Deploy backend to AWS EC2
 on:
   push:
     branches: [main]
+  workflow_dispatch: {}
 
 permissions:
   id-token: write
