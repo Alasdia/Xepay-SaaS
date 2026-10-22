@@ -500,6 +500,26 @@ async function renderClients(container) {
     const form =
         container.querySelector("#create-client-form");
 
+    /* Ferme le menu ••• ouvert si on clique ailleurs - voir le même
+       pattern/commentaire dans renderProducts. */
+    if (container._closeRowMenusHandler) {
+        document.removeEventListener(
+            "click",
+            container._closeRowMenusHandler
+        );
+    }
+    container._closeRowMenusHandler = (event) => {
+        if (!event.target.closest(".row-menu")) {
+            container
+                .querySelectorAll(".row-menu.open")
+                .forEach(row => row.classList.remove("open"));
+        }
+    };
+    document.addEventListener(
+        "click",
+        container._closeRowMenusHandler
+    );
+
     /* =====================================================
        OUVRIR / FERMER MODAL CRÉATION
     ===================================================== */
@@ -708,13 +728,28 @@ async function renderClients(container) {
                                         </td>
 
                                         <td>
-                                            <button
-                                                type="button"
-                                                class="customer-details-btn"
+                                            <div
+                                                class="row-menu"
                                                 data-customer-id="${customer.id}"
                                             >
-                                                Détails
-                                            </button>
+                                                <button
+                                                    type="button"
+                                                    class="row-menu-trigger"
+                                                    aria-label="Actions"
+                                                    aria-haspopup="true"
+                                                >
+                                                    •••
+                                                </button>
+                                                <div class="row-menu-dropdown">
+                                                    <button
+                                                        type="button"
+                                                        class="row-menu-item"
+                                                        data-row-action="details"
+                                                    >
+                                                        Détails
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </td>
 
                                     </tr>
@@ -730,24 +765,48 @@ async function renderClients(container) {
             `;
 
             /* =================================================
-               BOUTONS DÉTAILS
+               MENU D'ACTIONS PAR LIGNE (•••)
             ================================================= */
 
             list
-                .querySelectorAll(".customer-details-btn")
-                .forEach(button => {
+                .querySelectorAll(".row-menu-trigger")
+                .forEach(trigger => {
 
-                    button.addEventListener("click", () => {
+                    trigger.addEventListener("click", (event) => {
+
+                        event.stopPropagation();
+
+                        const row = trigger.closest(".row-menu");
+                        const wasOpen = row.classList.contains("open");
+
+                        list
+                            .querySelectorAll(".row-menu.open")
+                            .forEach(open => open.classList.remove("open"));
+
+                        if (!wasOpen) row.classList.add("open");
+
+                    });
+
+                });
+
+            list
+                .querySelectorAll("[data-row-action]")
+                .forEach(item => {
+
+                    item.addEventListener("click", () => {
+
+                        const row = item.closest(".row-menu");
+                        row.classList.remove("open");
 
                         const customer = customers.find(
-                            item =>
-                                item.id ===
-                                button.dataset.customerId
+                            c => c.id === row.dataset.customerId
                         );
 
                         if (!customer) return;
 
-                        showCustomerDetails(customer);
+                        if (item.dataset.rowAction === "details") {
+                            showCustomerDetails(customer);
+                        }
                     });
                 });
 
