@@ -218,7 +218,7 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             status="paid",
             link_id=link_id,
             source="link",
-            stripe_metadata=dict(intent.metadata) if intent and intent.metadata else None,
+            stripe_metadata=intent.metadata.to_dict() if intent and intent.metadata else None,
             stripe_session_id=session_dict.get("id"),
             stripe_account_id=profile.stripe_account_id,
             stripe_payment_intent_id=pi_id,

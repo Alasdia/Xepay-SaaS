@@ -334,7 +334,7 @@ def process_invoice_paid_event(
         status=payment_status,
         created_at=created_at,
         source=source,
-        stripe_metadata=dict(intent.metadata) if intent.metadata else None,
+        stripe_metadata=intent.metadata.to_dict() if intent.metadata else None,
         stripe_account_id=connected_account_id,
         stripe_payment_intent_id=intent.id,
         charge_id=latest_charge.id if latest_charge else None,
@@ -980,7 +980,7 @@ def list_merchant_customers(
         )
 
         emails_by_id = _emails_by_user_id(
-            db, [dict(c.metadata or {}) for c in customers.data]
+            db, [c.metadata.to_dict() if c.metadata else {} for c in customers.data]
         )
 
         result = []
@@ -1106,7 +1106,10 @@ def list_merchant_customers(
                 "invoice_prefix": customer.invoice_prefix,
                 "invoice_settings": customer.invoice_settings,
 
-                "metadata": _enrich_metadata(dict(customer.metadata or {}), emails_by_id),
+                "metadata": _enrich_metadata(
+                    customer.metadata.to_dict() if customer.metadata else {},
+                    emails_by_id,
+                ),
                 "tax_exempt": customer.tax_exempt,
                 "preferred_locales": customer.preferred_locales,
 
@@ -1151,7 +1154,7 @@ def list_merchant_products(
         )
         products_list = list(products.auto_paging_iter())
         emails_by_id = _emails_by_user_id(
-            db, [dict(p.metadata or {}) for p in products_list]
+            db, [p.metadata.to_dict() if p.metadata else {} for p in products_list]
         )
         result = []
         for product in products_list:
