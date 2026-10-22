@@ -124,7 +124,79 @@ function formatDate(timestampSeconds) {
         : "—";
 }
 
+// Menu d'actions "..." partagé par Clients/Produits/Abonnements/Factures.
+// Le dropdown (.row-menu-dropdown) est réparenté dans <body> et positionné
+// en fixed via getBoundingClientRect() du bouton cliqué, car les tableaux
+// vivent dans #customers-scroll-box (overflow-x:auto) : un positionnement
+// absolute/relative à la ligne se faisait couper pour les lignes qui
+// dépassaient la zone visible du tableau (invisible, pas juste tronqué).
+// Déclaré une seule fois au niveau module (pas dans une fonction render*)
+// pour que les listeners document/window ne soient jamais dupliqués,
+// quel que soit le nombre de fois où une vue est (re)montée.
+let openRowMenuState = null;
+
+function closeRowMenu() {
+    if (!openRowMenuState) return;
+    const { dropdown, originalParent, originalNextSibling, row } = openRowMenuState;
+    dropdown.classList.remove("row-menu-dropdown-open");
+    dropdown.style.top = "";
+    dropdown.style.left = "";
+    originalParent.insertBefore(dropdown, originalNextSibling);
+    row.classList.remove("open");
+    openRowMenuState = null;
+}
+
+function openRowMenu(trigger) {
+    closeRowMenu();
+
+    const row = trigger.closest(".row-menu");
+    const dropdown = row.querySelector(".row-menu-dropdown");
+    const originalParent = dropdown.parentElement;
+    const originalNextSibling = dropdown.nextSibling;
+
+    document.body.appendChild(dropdown);
+    dropdown.classList.add("row-menu-dropdown-open");
+    row.classList.add("open");
+
+    const rect = trigger.getBoundingClientRect();
+    const menuRect = dropdown.getBoundingClientRect();
+    let top = rect.bottom + 4;
+    if (top + menuRect.height > window.innerHeight) {
+        top = rect.top - menuRect.height - 4;
+    }
+    let left = rect.right - menuRect.width;
+    if (left < 4) left = 4;
+    dropdown.style.top = `${top}px`;
+    dropdown.style.left = `${left}px`;
+
+    openRowMenuState = { dropdown, originalParent, originalNextSibling, row };
+}
+
+document.addEventListener("click", (event) => {
+    if (!openRowMenuState) return;
+    if (
+        event.target.closest(".row-menu-dropdown") ||
+        event.target.closest(".row-menu-trigger")
+    ) return;
+    closeRowMenu();
+});
+// Capture (3e argument true) : un scroll à l'intérieur de
+// #customers-scroll-box ne remonte jamais jusqu'à window via bubbling
+// (scroll ne bubble pas), seule la phase de capture le détecte.
+document.addEventListener("scroll", () => closeRowMenu(), true);
+window.addEventListener("resize", () => closeRowMenu());
+document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeRowMenu();
+});
+
 export async function mount(container, params = {}) {
+
+    // Évite un dropdown de menu ••• orphelin dans <body> (réparenté par
+    // openRowMenu) si on change de section (ex: Produits -> Clients)
+    // pendant qu'un menu est encore ouvert - son .row-menu d'origine est
+    // détruit par le container.innerHTML ci-dessous, mais pas le dropdown
+    // lui-même puisqu'il a été déplacé hors de cet arbre.
+    closeRowMenu();
 
     const section = params.section || "clients";
 
@@ -500,26 +572,6 @@ async function renderClients(container) {
     const form =
         container.querySelector("#create-client-form");
 
-    /* Ferme le menu ••• ouvert si on clique ailleurs - voir le même
-       pattern/commentaire dans renderProducts. */
-    if (container._closeRowMenusHandler) {
-        document.removeEventListener(
-            "click",
-            container._closeRowMenusHandler
-        );
-    }
-    container._closeRowMenusHandler = (event) => {
-        if (!event.target.closest(".row-menu")) {
-            container
-                .querySelectorAll(".row-menu.open")
-                .forEach(row => row.classList.remove("open"));
-        }
-    };
-    document.addEventListener(
-        "click",
-        container._closeRowMenusHandler
-    );
-
     /* =====================================================
        OUVRIR / FERMER MODAL CRÉATION
     ===================================================== */
@@ -566,6 +618,11 @@ async function renderClients(container) {
     ===================================================== */
 
     async function loadCustomers() {
+
+        // Évite un dropdown de menu ••• orphelin dans <body> (réparenté par
+        // openRowMenu) si cette fonction est rappelée pendant qu'un menu
+        // d'une ligne précédente est encore ouvert.
+        closeRowMenu();
 
         const list =
             container.querySelector("#clients-list");
@@ -776,14 +833,11 @@ async function renderClients(container) {
 
                         event.stopPropagation();
 
-                        const row = trigger.closest(".row-menu");
-                        const wasOpen = row.classList.contains("open");
-
-                        list
-                            .querySelectorAll(".row-menu.open")
-                            .forEach(open => open.classList.remove("open"));
-
-                        if (!wasOpen) row.classList.add("open");
+                        if (trigger.closest(".row-menu").classList.contains("open")) {
+                            closeRowMenu();
+                        } else {
+                            openRowMenu(trigger);
+                        }
 
                     });
 
@@ -796,7 +850,7 @@ async function renderClients(container) {
                     item.addEventListener("click", () => {
 
                         const row = item.closest(".row-menu");
-                        row.classList.remove("open");
+                        closeRowMenu();
 
                         const customer = customers.find(
                             c => c.id === row.dataset.customerId
@@ -1312,28 +1366,6 @@ async function renderProducts(container) {
     const form =
         container.querySelector("#create-product-form");
 
-    /* Ferme le menu ••• ouvert si on clique ailleurs - le handler est
-       stocké sur container pour pouvoir le retirer avant d'en rattacher un
-       nouveau si cette vue est remontée plusieurs fois dans la session
-       (sinon les listeners s'accumuleraient sur document). */
-    if (container._closeRowMenusHandler) {
-        document.removeEventListener(
-            "click",
-            container._closeRowMenusHandler
-        );
-    }
-    container._closeRowMenusHandler = (event) => {
-        if (!event.target.closest(".row-menu")) {
-            container
-                .querySelectorAll(".row-menu.open")
-                .forEach(row => row.classList.remove("open"));
-        }
-    };
-    document.addEventListener(
-        "click",
-        container._closeRowMenusHandler
-    );
-
 
     /* =====================================================
        OUVERTURE / FERMETURE CRÉATION
@@ -1420,6 +1452,8 @@ async function renderProducts(container) {
     ===================================================== */
 
     async function loadProducts() {
+
+        closeRowMenu();
 
         const list =
             container.querySelector("#products-list");
@@ -1724,14 +1758,11 @@ async function renderProducts(container) {
 
                         event.stopPropagation();
 
-                        const row = trigger.closest(".row-menu");
-                        const wasOpen = row.classList.contains("open");
-
-                        list
-                            .querySelectorAll(".row-menu.open")
-                            .forEach(open => open.classList.remove("open"));
-
-                        if (!wasOpen) row.classList.add("open");
+                        if (trigger.closest(".row-menu").classList.contains("open")) {
+                            closeRowMenu();
+                        } else {
+                            openRowMenu(trigger);
+                        }
 
                     });
 
@@ -1744,7 +1775,7 @@ async function renderProducts(container) {
                     item.addEventListener("click", () => {
 
                         const row = item.closest(".row-menu");
-                        row.classList.remove("open");
+                        closeRowMenu();
 
                         const product =
                             products.find(
@@ -2489,26 +2520,6 @@ async function renderSubscriptions(container) {
             detailsModal.classList.remove("open");
         });
 
-    /* Ferme le menu ••• ouvert si on clique ailleurs - même pattern que
-       renderClients/renderProducts. */
-    if (container._closeRowMenusHandler) {
-        document.removeEventListener(
-            "click",
-            container._closeRowMenusHandler
-        );
-    }
-    container._closeRowMenusHandler = (event) => {
-        if (!event.target.closest(".row-menu")) {
-            container
-                .querySelectorAll(".row-menu.open")
-                .forEach(row => row.classList.remove("open"));
-        }
-    };
-    document.addEventListener(
-        "click",
-        container._closeRowMenusHandler
-    );
-
     function showSubscriptionDetails(subscription) {
 
         const item = subscription.items?.data?.[0];
@@ -2915,6 +2926,8 @@ async function renderSubscriptions(container) {
     ===================================================== */
 
     async function loadSubscriptions() {
+
+        closeRowMenu();
 
         const list =
             container.querySelector(
@@ -3350,14 +3363,11 @@ async function renderSubscriptions(container) {
 
                         event.stopPropagation();
 
-                        const row = trigger.closest(".row-menu");
-                        const wasOpen = row.classList.contains("open");
-
-                        list
-                            .querySelectorAll(".row-menu.open")
-                            .forEach(open => open.classList.remove("open"));
-
-                        if (!wasOpen) row.classList.add("open");
+                        if (trigger.closest(".row-menu").classList.contains("open")) {
+                            closeRowMenu();
+                        } else {
+                            openRowMenu(trigger);
+                        }
 
                     });
 
@@ -3370,7 +3380,7 @@ async function renderSubscriptions(container) {
                     item.addEventListener("click", () => {
 
                         const row = item.closest(".row-menu");
-                        row.classList.remove("open");
+                        closeRowMenu();
 
                         const subscription = subscriptions.find(
                             s => s.id === row.dataset.subscriptionId
@@ -3908,26 +3918,6 @@ async function renderInvoices(container) {
         });
     });
 
-    /* Ferme le menu ••• ouvert si on clique ailleurs - même pattern que
-       renderClients/renderProducts/renderSubscriptions. */
-    if (container._closeRowMenusHandler) {
-        document.removeEventListener(
-            "click",
-            container._closeRowMenusHandler
-        );
-    }
-    container._closeRowMenusHandler = (event) => {
-        if (!event.target.closest(".row-menu")) {
-            container
-                .querySelectorAll(".row-menu.open")
-                .forEach(row => row.classList.remove("open"));
-        }
-    };
-    document.addEventListener(
-        "click",
-        container._closeRowMenusHandler
-    );
-
     function showInvoiceDetails(invoice) {
 
         const statusLabels = {
@@ -4228,6 +4218,8 @@ async function renderInvoices(container) {
     ===================================================== */
 
     async function loadInvoices() {
+
+        closeRowMenu();
 
         const list =
             container.querySelector(
@@ -4606,14 +4598,11 @@ async function renderInvoices(container) {
 
                         event.stopPropagation();
 
-                        const row = trigger.closest(".row-menu");
-                        const wasOpen = row.classList.contains("open");
-
-                        list
-                            .querySelectorAll(".row-menu.open")
-                            .forEach(open => open.classList.remove("open"));
-
-                        if (!wasOpen) row.classList.add("open");
+                        if (trigger.closest(".row-menu").classList.contains("open")) {
+                            closeRowMenu();
+                        } else {
+                            openRowMenu(trigger);
+                        }
 
                     });
 
@@ -4626,7 +4615,7 @@ async function renderInvoices(container) {
                     item.addEventListener("click", () => {
 
                         const row = item.closest(".row-menu");
-                        row.classList.remove("open");
+                        closeRowMenu();
 
                         if (item.dataset.rowAction !== "details") return;
 

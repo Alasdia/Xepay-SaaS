@@ -980,13 +980,15 @@
     border-color: #9ca3af;
 }
 
+/* position:fixed + top/left posés en JS (voir openRowMenu) : le dropdown
+   est réparenté dans <body> à l'ouverture pour échapper à l'overflow des
+   conteneurs de tableau (#customers-scroll-box), qui le couperait sinon
+   pour les lignes hors de la zone visible. */
 .row-menu-dropdown {
     display: none;
-    position: absolute;
-    right: 0;
-    top: calc(100% + 6px);
+    position: fixed;
     min-width: 170px;
-    z-index: 30;
+    z-index: 3000;
 
     background: #ffffff;
     border: 1px solid #e5e7eb;
@@ -996,7 +998,7 @@
     overflow: hidden;
 }
 
-.row-menu.open .row-menu-dropdown {
+.row-menu-dropdown.row-menu-dropdown-open {
     display: block;
 }
 
