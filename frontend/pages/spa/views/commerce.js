@@ -749,7 +749,6 @@ async function renderClients(container) {
                             <thead>
                                 <tr>
                                     <th>Client</th>
-                                    <th>Identifiant</th>
                                     <th>Email</th>
                                     <th>Téléphone</th>
                                     <th>Pays</th>
@@ -773,10 +772,6 @@ async function renderClients(container) {
 
                                         <td>
                                             ${customer.name || "—"}
-                                        </td>
-
-                                        <td>
-                                            ${customer.id || "—"}
                                         </td>
 
                                         <td>
@@ -1018,6 +1013,11 @@ async function renderClients(container) {
             </div>
 
             <div class="customer-details-grid">
+
+                <div class="customer-detail-item">
+                    <span>Identifiant</span>
+                    <strong>${customer.id || "—"}</strong>
+                </div>
 
                 <div class="customer-detail-item">
                     <span>Nom</span>
@@ -1628,7 +1628,6 @@ async function renderProducts(container) {
                             <thead>
                                 <tr>
                                     <th>Produit</th>
-                                    <th>Identifiant</th>
                                     <th>Description</th>
                                     <th>Prix</th>
                                     <th>Type</th>
@@ -1725,11 +1724,6 @@ async function renderProducts(container) {
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </td>
-                                            <td>
-                                                <code class="customer-id">
-                                                    ${product.id || "—"}
-                                                </code>
                                             </td>
                                             <td>
                                                 ${

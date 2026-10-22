@@ -316,6 +316,24 @@ def process_invoice_paid_event(
         f"Stripe {invoice_id}"
     )
 
+    # S'assure que le client a bien un moyen de paiement par défaut
+    # (colonne "Moyen de paiement" de la vue Clients, qui lit
+    # customer.invoice_settings.default_payment_method) : pour les
+    # factures send_invoice payées via la page hébergée Stripe, ce champ
+    # n'est PAS mis à jour automatiquement par Stripe (contrairement aux
+    # abonnements créés via Checkout, qui le font déjà eux-mêmes) - posé
+    # ici au mieux, sans jamais faire échouer le crédit du wallet si ça rate.
+    customer_id = invoice_data.get("customer")
+    if customer_id and intent.payment_method:
+        try:
+            stripe.Customer.modify(
+                customer_id,
+                invoice_settings={"default_payment_method": intent.payment_method},
+                stripe_account=connected_account_id,
+            )
+        except stripe.error.StripeError:
+            pass
+
     # Le PaymentIntent qui règle une facture/un abonnement n'hérite jamais
     # automatiquement des metadata posées sur l'Invoice/la Subscription à
     # leur création (create_connect_invoice/create_merchant_subscription) -
