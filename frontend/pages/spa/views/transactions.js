@@ -7,7 +7,7 @@ import { showToast } from "../shared/toast.js";
 import { showUpgradeModal } from "../shared/modalUpgrade.js";
 import { navigate } from "../core/router.js";
 import { getWorkspaceId } from "../core/state.js";
-import { renderCommerceKpis, ensureCommerceKpiStyles } from "./commerce.js";
+import { renderCommerceKpis, ensureCommerceKpiStyles, renderMetadataSection } from "./commerce.js";
 import { initDetailsDrawer } from "../shared/detailsDrawer.js";
 
 const STRIPE_PUBLISHABLE_KEY =
@@ -336,11 +336,21 @@ export async function mount(container, params = {}) {
     if (!theadRow) return;
     theadRow.innerHTML =
       currentType === "payment"
-        ? `<th>Client</th><th>Moyen de paiement</th><th>Montant brut</th><th>Commission globale</th><th>Commission Xepay</th><th>Frais Stripe</th><th>Montant net marchand</th><th>Créé le</th><th>Disponible le</th><th>Statut</th><th>Actions</th>`
+        ? `<th>Client</th><th>Moyen de paiement</th><th>Type</th><th>Montant brut</th><th>Commission globale</th><th>Commission Xepay</th><th>Frais Stripe</th><th>Montant net marchand</th><th>Créé le</th><th>Disponible le</th><th>Statut</th><th>Actions</th>`
         : currentType === "withdraw"
         ? `<th>Référence</th><th>Méthode</th><th>Montant</th><th>Statut</th><th>Motif</th><th>Date</th>`
         : `<th>Client</th><th>Montant</th><th>Status</th><th>Date</th>`;
   }
+
+  // Origine du paiement (Payment.source, backend) : "link" = paiement par
+  // lien, "invoice"/"subscription" = facture/abonnement Connect. Absent
+  // (null) sur les paiements créés avant l'ajout de ce champ - jamais
+  // deviné, affiché tel quel ("-").
+  const paymentSourceLabel = {
+    link: "Lien",
+    invoice: "Facture",
+    subscription: "Abonnement",
+  };
 
   const paymentMethodLabel = {
     card: "Carte",
@@ -435,6 +445,9 @@ export async function mount(container, params = {}) {
             t.details?.card_brand,
             t.details?.card_last4
           )}
+        </td>
+        <td onclick="voirDetailActivite(${i})" style="cursor:pointer;">
+          ${paymentSourceLabel[t.source] ?? "-"}
         </td>
         <td class="amount-cell" onclick="voirDetailActivite(${i})">
           ${formatMontant(t.amount_gross, currency)}
@@ -858,6 +871,7 @@ export async function mount(container, params = {}) {
         </div>
       </div>
       <div class="customer-details-grid">
+        ${detailRow("Type", paymentSourceLabel[t.source] ?? "-")}
         ${detailRow("Montant brut", formatMontant(t.amount_gross, currency))}
         ${detailRow("Commission globale", formatMontant(t.commission_xepay, currency))}
         ${detailRow("Commission Xepay", formatMontant(xepayShare(t), currency))}
@@ -873,6 +887,7 @@ export async function mount(container, params = {}) {
         ${detailRow("Compte Stripe", d.stripe_account_id)}
         ${detailRow("Lien de paiement", d.link_id)}
       </div>
+      ${renderMetadataSection(d.metadata)}
     `;
     paymentDetailsModal.classList.add("open");
   }

@@ -124,6 +124,28 @@ function formatDate(timestampSeconds) {
         : "—";
 }
 
+// Bloc "Métadonnées" partagé par les modals de détails (Clients/Produits/
+// Abonnements/Factures/Paiements) : affiche les metadata Stripe envoyées à
+// la création (user_id/workspace_id/xepay_type, etc.) quand il y en a,
+// sinon ne rend rien (pas de section vide).
+export function renderMetadataSection(metadata) {
+    const entries = Object.entries(metadata || {});
+    if (!entries.length) return "";
+    return `
+        <div style="margin-top:20px;">
+            <h4>Métadonnées</h4>
+            <div class="customer-details-grid">
+                ${entries.map(([key, value]) => `
+                    <div class="customer-detail-item">
+                        <span>${key}</span>
+                        <strong>${value}</strong>
+                    </div>
+                `).join("")}
+            </div>
+        </div>
+    `;
+}
+
 // Menu d'actions "..." partagé par Clients/Produits/Abonnements/Factures.
 // .row-menu-dropdown est position:fixed (voir commerce.css) : ça suffit à
 // échapper à l'overflow de #customers-scroll-box sans déplacer l'élément
@@ -1030,6 +1052,8 @@ async function renderClients(container) {
                 </div>
 
             </div>
+
+            ${renderMetadataSection(customer.metadata)}
 
         `;
 
@@ -2106,6 +2130,8 @@ async function renderProducts(container) {
                     `
             }
 
+            ${renderMetadataSection(product.metadata)}
+
         `;
 
         detailsModal.classList.add("open");
@@ -2614,6 +2640,8 @@ async function renderSubscriptions(container) {
                 </div>
 
             </div>
+
+            ${renderMetadataSection(subscription.metadata)}
         `;
 
         detailsModal.classList.add("open");
@@ -3990,6 +4018,8 @@ async function renderInvoices(container) {
                 </div>
 
             </div>
+
+            ${renderMetadataSection(invoice.metadata)}
         `;
 
         detailsModal.classList.add("open");

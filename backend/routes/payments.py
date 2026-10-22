@@ -191,6 +191,7 @@ def get_activity(
                 "stripe_fee": p.stripe_fee_amount,
                 "amount_net_merchant": amount_net_merchant,
                 "payment_method_type": p.payment_method_type,
+                "source": p.source,
                 "details": {
                     "amount_origin": p.amount,
                     "currency_origin": p.currency,
@@ -207,7 +208,8 @@ def get_activity(
                     "card_brand": p.card_brand,
                     "card_last4": p.card_last4,
                     "card_exp_month": p.card_exp_month,
-                    "card_exp_year": p.card_exp_year
+                    "card_exp_year": p.card_exp_year,
+                    "metadata": p.stripe_metadata
                 }
             })
     if type in (None, "withdraw"):

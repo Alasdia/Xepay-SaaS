@@ -333,6 +333,8 @@ def process_invoice_paid_event(
         rate_used=float(rate_used),
         status=payment_status,
         created_at=created_at,
+        source=source,
+        stripe_metadata=dict(intent.metadata) if intent.metadata else None,
         stripe_account_id=connected_account_id,
         stripe_payment_intent_id=intent.id,
         charge_id=latest_charge.id if latest_charge else None,

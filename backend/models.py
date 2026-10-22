@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
 from backend.database import Base
 from sqlalchemy import Column, String, Boolean
-from sqlalchemy import Column, Integer, String, Float, DateTime
+from sqlalchemy import Column, Integer, String, Float, DateTime, JSON
 from typing import Optional
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship  
@@ -423,6 +423,20 @@ class Payment(Base):
     card_last4 = Column(String, nullable=True)
     card_exp_month = Column(Integer, nullable=True)
     card_exp_year = Column(Integer, nullable=True)
+    # Origine du paiement : "link" (paiement.py), "invoice" ou "subscription"
+    # (webhook/stripe.py, process_invoice_paid_event - memes valeurs que
+    # WalletTransaction.source pour ce flux). NULL sur les paiements crees
+    # avant l'ajout de ce champ (toujours des paiements par lien a cette
+    # epoque, mais pas devine ici - voir PAYMENT_SOURCE_LABELS cote API).
+    source = Column(String, nullable=True)
+    # metadata du PaymentIntent Stripe qui a regle ce paiement (deja
+    # recupere en memoire dans les deux flux de creation, aucun appel
+    # Stripe supplementaire) - nomme stripe_metadata (pas "metadata",
+    # reserve par Base.metadata chez SQLAlchemy). Vide/absent si rien n'a
+    # ete envoye a la creation (ex: factures/abonnements, dont le
+    # PaymentIntent qui regle la facture n'herite pas automatiquement des
+    # metadata poses sur l'Invoice/la Subscription elles-memes).
+    stripe_metadata = Column(JSON, nullable=True)
 
 # --- SQLAlchemy (DB) ---
 class Link(Base):

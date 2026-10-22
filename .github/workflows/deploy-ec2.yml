@@ -38,6 +38,7 @@ jobs:
               "git fetch origin main",
               "git reset --hard origin/main",
               "./venv/bin/pip install -r requirements.txt",
+              "set -a; . ./.env; set +a; ./venv/bin/alembic upgrade head",
               "systemctl restart xepay-backend",
               "sleep 5",
               "curl -sf http://127.0.0.1:8000/health"

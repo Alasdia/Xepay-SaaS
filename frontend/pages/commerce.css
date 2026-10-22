@@ -1048,6 +1048,7 @@
 .customer-profile-avatar {
     width: 42px;
     height: 42px;
+    flex-shrink: 0;
 
     display: grid;
     place-items: center;
@@ -1060,13 +1061,32 @@
     font-weight: 700;
 }
 
+/* L'avatar a une largeur fixe (flex-shrink:0 ci-dessus) : ce bloc texte
+   doit pouvoir rétrécir sous sa largeur de contenu (min-width:0, un flex
+   item s'en tient sinon à son contenu) pour que l'overflow-x du <code>
+   ci-dessous ait un espace borné où défiler plutôt que de pousser le
+   layout ou déborder du modal. */
+.customer-profile-avatar + div {
+    min-width: 0;
+    flex: 1;
+}
+
 .customer-profile h4 {
     margin: 0 0 4px;
     font-size: 14px;
     color: #111827;
 }
 
+/* ID Stripe (ex: cus_..., prod_...) : une seule "mot" sans espace, donc
+   jamais coupé par un retour à la ligne naturel - un défilement
+   horizontal local permet de le lire en entier sans élargir le modal. */
 .customer-profile code {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+
     font-size: 11px;
     color: #6b7280;
 }
@@ -1092,6 +1112,7 @@
     padding: 12px;
     background: #ffffff;
     border-bottom: 1px solid #f1f3f5;
+    min-width: 0;
 }
 
 .customer-detail-item span,
@@ -1103,7 +1124,18 @@
     color: #6b7280;
 }
 
+/* Valeurs longues et non coupables (ID Stripe, URL...) : défilement
+   horizontal local plutôt que troncature - la cellule de la grille garde
+   sa largeur, seule la valeur elle-même défile pour rester lisible en
+   entier. S'applique à toutes les vues qui réutilisent ce gabarit de
+   détails (Clients/Produits/Abonnements/Factures). */
 .customer-detail-item strong {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+
     font-size: 13px;
     color: #111827;
     font-weight: 600;
