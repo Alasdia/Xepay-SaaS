@@ -1255,6 +1255,28 @@ async function renderProducts(container) {
     const form =
         container.querySelector("#create-product-form");
 
+    /* Ferme le menu ••• ouvert si on clique ailleurs - le handler est
+       stocké sur container pour pouvoir le retirer avant d'en rattacher un
+       nouveau si cette vue est remontée plusieurs fois dans la session
+       (sinon les listeners s'accumuleraient sur document). */
+    if (container._closeRowMenusHandler) {
+        document.removeEventListener(
+            "click",
+            container._closeRowMenusHandler
+        );
+    }
+    container._closeRowMenusHandler = (event) => {
+        if (!event.target.closest(".row-menu")) {
+            container
+                .querySelectorAll(".row-menu.open")
+                .forEach(row => row.classList.remove("open"));
+        }
+    };
+    document.addEventListener(
+        "click",
+        container._closeRowMenusHandler
+    );
+
 
     /* =====================================================
        OUVERTURE / FERMETURE CRÉATION
@@ -1606,13 +1628,38 @@ async function renderProducts(container) {
                                                 </span>
                                             </td>
                                             <td>
-                                                <button
-                                                    type="button"
-                                                    class="customer-details-btn product-details-btn"
+                                                <div
+                                                    class="row-menu"
                                                     data-product-id="${product.id}"
                                                 >
-                                                    Détails
-                                                </button>
+                                                    <button
+                                                        type="button"
+                                                        class="row-menu-trigger"
+                                                        aria-label="Actions"
+                                                    >
+                                                        •••
+                                                    </button>
+                                                    <div class="row-menu-dropdown">
+                                                        <button
+                                                            type="button"
+                                                            class="row-menu-item"
+                                                            data-row-action="details"
+                                                        >
+                                                            Détails
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            class="row-menu-item row-menu-item-danger"
+                                                            data-row-action="archive"
+                                                        >
+                                                            ${
+                                                                product.active
+                                                                    ? "Archiver"
+                                                                    : "Désarchiver"
+                                                            }
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </td>
                                         </tr>
                                     `;
@@ -1624,32 +1671,53 @@ async function renderProducts(container) {
             `;
 
             /* =================================================
-               BOUTONS DÉTAILS
+               MENU D'ACTIONS PAR LIGNE (•••)
             ================================================= */
 
             list
-                .querySelectorAll(".product-details-btn")
-                .forEach(button => {
+                .querySelectorAll(".row-menu-trigger")
+                .forEach(trigger => {
 
-                    button.addEventListener(
-                        "click",
-                        () => {
+                    trigger.addEventListener("click", (event) => {
 
-                            const product =
-                                products.find(
-                                    item =>
-                                        item.id ===
-                                        button.dataset.productId
-                                );
+                        event.stopPropagation();
 
+                        const row = trigger.closest(".row-menu");
+                        const wasOpen = row.classList.contains("open");
 
-                            if (!product) return;
+                        list
+                            .querySelectorAll(".row-menu.open")
+                            .forEach(open => open.classList.remove("open"));
 
+                        if (!wasOpen) row.classList.add("open");
 
+                    });
+
+                });
+
+            list
+                .querySelectorAll("[data-row-action]")
+                .forEach(item => {
+
+                    item.addEventListener("click", () => {
+
+                        const row = item.closest(".row-menu");
+                        row.classList.remove("open");
+
+                        const product =
+                            products.find(
+                                p => p.id === row.dataset.productId
+                            );
+
+                        if (!product) return;
+
+                        if (item.dataset.rowAction === "details") {
                             showProductDetails(product);
-
+                        } else if (item.dataset.rowAction === "archive") {
+                            toggleProductArchive(product);
                         }
-                    );
+
+                    });
 
                 });
 
@@ -1979,67 +2047,53 @@ async function renderProducts(container) {
                     `
             }
 
-            <div class="customer-modal-actions" style="margin-top:20px;">
-                <button
-                    type="button"
-                    class="modal-danger-btn"
-                    id="product-archive-toggle-btn"
-                    data-product-id="${product.id}"
-                    data-active="${product.active}"
-                >
-                    ${product.active ? "Archiver" : "Désarchiver"}
-                </button>
-            </div>
-
         `;
-
-        container
-            .querySelector("#product-archive-toggle-btn")
-            .addEventListener("click", async (event) => {
-
-                const btn = event.currentTarget;
-                const isActive = btn.dataset.active === "true";
-                const endpoint = isActive ? "archive" : "unarchive";
-
-                btn.disabled = true;
-
-                try {
-                    const response = await apiFetch(
-                        `/stripe/connect/products/${btn.dataset.productId}/${endpoint}`,
-                        { method: "POST" }
-                    );
-                    const data = await response.json();
-
-                    if (!response.ok) {
-                        throw new Error(
-                            data.detail ||
-                            "Impossible de mettre à jour le produit"
-                        );
-                    }
-
-                    showToast(
-                        isActive
-                            ? "Produit archivé"
-                            : "Produit réactivé",
-                        "success"
-                    );
-
-                    detailsModal.classList.remove("open");
-
-                    await loadProducts();
-
-                } catch (error) {
-                    showToast(
-                        error.message ||
-                        "Erreur lors de l'archivage",
-                        "error"
-                    );
-                    btn.disabled = false;
-                }
-            });
 
         detailsModal.classList.add("open");
 
+    }
+
+    /* =====================================================
+       ARCHIVER / DÉSARCHIVER UN PRODUIT
+       (appelé depuis le menu ••• de la ligne, voir list.querySelectorAll
+       ("[data-row-action]") ci-dessus)
+    ===================================================== */
+
+    async function toggleProductArchive(product) {
+
+        const isActive = product.active;
+        const endpoint = isActive ? "archive" : "unarchive";
+
+        try {
+            const response = await apiFetch(
+                `/stripe/connect/products/${product.id}/${endpoint}`,
+                { method: "POST" }
+            );
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.detail ||
+                    "Impossible de mettre à jour le produit"
+                );
+            }
+
+            showToast(
+                isActive
+                    ? "Produit archivé"
+                    : "Produit réactivé",
+                "success"
+            );
+
+            await loadProducts();
+
+        } catch (error) {
+            showToast(
+                error.message ||
+                "Erreur lors de l'archivage",
+                "error"
+            );
+        }
     }
 
 

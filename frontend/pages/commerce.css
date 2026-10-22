@@ -974,25 +974,79 @@
     background: #eab308;
 }
 
-.modal-danger-btn {
+/* =========================================================
+   MENU D'ACTIONS PAR LIGNE (•••)
+========================================================= */
+
+.row-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.row-menu-trigger {
+    width: 32px;
+    height: 32px;
+
+    border: 1px solid #e5e7eb;
     border-radius: 8px;
-    padding: 9px 14px;
+    background: #ffffff;
+    color: #374151;
+
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 1px;
+    cursor: pointer;
+}
+
+.row-menu-trigger:hover {
+    background: #f3f4f6;
+}
+
+.row-menu-dropdown {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    min-width: 160px;
+    z-index: 30;
+
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, .14);
+    overflow: hidden;
+}
+
+.row-menu.open .row-menu-dropdown {
+    display: block;
+}
+
+.row-menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+
+    padding: 9px 12px;
+    border: none;
+    background: none;
+
     font-size: 12px;
     font-weight: 600;
+    color: #374151;
     cursor: pointer;
+}
 
-    border: 1px solid #fecaca;
-    background: #fef2f2;
+.row-menu-item:hover {
+    background: #f3f4f6;
+}
+
+.row-menu-item-danger {
     color: #b91c1c;
 }
 
-.modal-danger-btn:hover {
-    background: #fee2e2;
-}
-
-.modal-danger-btn:disabled {
-    opacity: 0.6;
-    cursor: default;
+.row-menu-item-danger:hover {
+    background: #fef2f2;
 }
 
 
