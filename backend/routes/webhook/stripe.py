@@ -805,12 +805,20 @@ def list_merchant_invoices(
             limit=100,
             stripe_account=profile.stripe_account_id,
         )
+        invoices_list = list(invoices.auto_paging_iter())
+        emails_by_id = _emails_by_user_id(
+            db, [i.metadata.to_dict() if i.metadata else {} for i in invoices_list]
+        )
+        result = []
+        for invoice in invoices_list:
+            invoice_data = invoice.to_dict()
+            invoice_data["metadata"] = _enrich_metadata(
+                invoice_data.get("metadata"), emails_by_id
+            )
+            result.append(invoice_data)
         return {
             "object": "list",
-            "data": [
-                invoice.to_dict()
-                for invoice in invoices.auto_paging_iter()
-            ],
+            "data": result,
         }
     except stripe.error.StripeError as e:
         raise HTTPException(
