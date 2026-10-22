@@ -2405,6 +2405,40 @@ async function renderSubscriptions(container) {
             </div>
 
         </div>
+
+        <!-- =================================================
+             MODAL DÉTAILS ABONNEMENT
+        ================================================== -->
+
+        <div
+            class="customer-modal-overlay"
+            id="subscription-details-modal"
+        >
+
+            <div class="customer-modal customer-details-modal">
+
+                <div class="customer-modal-header">
+
+                    <div>
+                        <h3>Détails de l'abonnement</h3>
+                        <p id="subscription-details-subtitle"></p>
+                    </div>
+
+                    <button
+                        type="button"
+                        class="customer-modal-close"
+                        id="close-subscription-details"
+                    >
+                        ×
+                    </button>
+
+                </div>
+
+                <div id="subscription-details-content"></div>
+
+            </div>
+
+        </div>
     `;
 
 
@@ -2436,6 +2470,145 @@ async function renderSubscriptions(container) {
         container.querySelector(
             "#create-subscription-modal"
         );
+
+    const detailsModal =
+        container.querySelector(
+            "#subscription-details-modal"
+        );
+
+    // Détails abonnement -> tiroir latéral droit (voir shared/detailsDrawer.js),
+    // même gabarit que Clients/Produits.
+    initDetailsDrawer(
+        detailsModal,
+        detailsModal.querySelector(".customer-modal")
+    );
+
+    container
+        .querySelector("#close-subscription-details")
+        .addEventListener("click", () => {
+            detailsModal.classList.remove("open");
+        });
+
+    /* Ferme le menu ••• ouvert si on clique ailleurs - même pattern que
+       renderClients/renderProducts. */
+    if (container._closeRowMenusHandler) {
+        document.removeEventListener(
+            "click",
+            container._closeRowMenusHandler
+        );
+    }
+    container._closeRowMenusHandler = (event) => {
+        if (!event.target.closest(".row-menu")) {
+            container
+                .querySelectorAll(".row-menu.open")
+                .forEach(row => row.classList.remove("open"));
+        }
+    };
+    document.addEventListener(
+        "click",
+        container._closeRowMenusHandler
+    );
+
+    function showSubscriptionDetails(subscription) {
+
+        const item = subscription.items?.data?.[0];
+        const price = item?.price;
+
+        const amount =
+            price?.unit_amount != null
+                ? `${(price.unit_amount / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${(price.currency || "").toUpperCase()}`
+                : "—";
+
+        const statusLabels = {
+            active: "Actif",
+            trialing: "Essai",
+            past_due: "En retard",
+            canceled: "Annulé",
+            incomplete: "Incomplet",
+            incomplete_expired: "Incomplet (expiré)",
+            unpaid: "Impayé",
+            paused: "En pause",
+        };
+
+        container.querySelector("#subscription-details-subtitle").textContent =
+            subscription.id;
+
+        container.querySelector("#subscription-details-content").innerHTML = `
+            <div class="customer-details-grid">
+
+                <div class="customer-detail-item">
+                    <span>ID abonnement</span>
+                    <strong>${subscription.id}</strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Client</span>
+                    <strong>${subscription.customer || "—"}</strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Montant</span>
+                    <strong>${amount}</strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Statut</span>
+                    <strong>${statusLabels[subscription.status] || subscription.status || "—"}</strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Mode de paiement</span>
+                    <strong>
+                        ${
+                            subscription.collection_method === "charge_automatically"
+                                ? "Prélèvement automatique"
+                                : subscription.collection_method === "send_invoice"
+                                    ? "Facturation sur facture"
+                                    : subscription.collection_method || "—"
+                        }
+                    </strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Quantité</span>
+                    <strong>${item?.quantity ?? "—"}</strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Début</span>
+                    <strong>${formatDate(subscription.start_date)}</strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Prochaine échéance</span>
+                    <strong>${formatDate(item?.current_period_end)}</strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Créé le</span>
+                    <strong>${formatDate(subscription.created)}</strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Annulation prévue</span>
+                    <strong>${subscription.cancel_at_period_end ? "Oui" : "Non"}</strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Annulé le</span>
+                    <strong>${formatDate(subscription.canceled_at)}</strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Facture Stripe</span>
+                    <strong>${subscription.latest_invoice || "—"}</strong>
+                </div>
+
+            </div>
+        `;
+
+        detailsModal.classList.add("open");
+    }
 
 
     /* =====================================================
@@ -2475,20 +2648,13 @@ async function renderSubscriptions(container) {
         });
 
 
-    createModal.addEventListener(
-        "click",
-        event => {
-
-            if (
-                event.target === createModal
-            ) {
-
-                createModal.classList.remove("open");
-
+    [createModal, detailsModal].forEach(modal => {
+        modal.addEventListener("click", (event) => {
+            if (event.target === modal) {
+                modal.classList.remove("open");
             }
-
-        }
-    );
+        });
+    });
 
 
     /* =====================================================
@@ -2895,6 +3061,8 @@ async function renderSubscriptions(container) {
 
                                     <th>Créé le</th>
 
+                                    <th></th>
+
                                 </tr>
 
                             </thead>
@@ -3129,6 +3297,31 @@ async function renderSubscriptions(container) {
 
                                             </td>
 
+                                            <td>
+                                                <div
+                                                    class="row-menu"
+                                                    data-subscription-id="${subscription.id}"
+                                                >
+                                                    <button
+                                                        type="button"
+                                                        class="row-menu-trigger"
+                                                        aria-label="Actions"
+                                                        aria-haspopup="true"
+                                                    >
+                                                        •••
+                                                    </button>
+                                                    <div class="row-menu-dropdown">
+                                                        <button
+                                                            type="button"
+                                                            class="row-menu-item"
+                                                            data-row-action="details"
+                                                        >
+                                                            Détails
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </td>
+
                                         </tr>
 
                                     `;
@@ -3144,6 +3337,52 @@ async function renderSubscriptions(container) {
                 </div>
 
             `;
+
+            /* =================================================
+               MENU D'ACTIONS PAR LIGNE (•••)
+            ================================================= */
+
+            list
+                .querySelectorAll(".row-menu-trigger")
+                .forEach(trigger => {
+
+                    trigger.addEventListener("click", (event) => {
+
+                        event.stopPropagation();
+
+                        const row = trigger.closest(".row-menu");
+                        const wasOpen = row.classList.contains("open");
+
+                        list
+                            .querySelectorAll(".row-menu.open")
+                            .forEach(open => open.classList.remove("open"));
+
+                        if (!wasOpen) row.classList.add("open");
+
+                    });
+
+                });
+
+            list
+                .querySelectorAll("[data-row-action]")
+                .forEach(item => {
+
+                    item.addEventListener("click", () => {
+
+                        const row = item.closest(".row-menu");
+                        row.classList.remove("open");
+
+                        const subscription = subscriptions.find(
+                            s => s.id === row.dataset.subscriptionId
+                        );
+
+                        if (!subscription) return;
+
+                        if (item.dataset.rowAction === "details") {
+                            showSubscriptionDetails(subscription);
+                        }
+                    });
+                });
 
             }
 
@@ -3580,6 +3819,32 @@ async function renderInvoices(container) {
                 </form>
             </div>
         </div>
+
+        <!-- =================================================
+             MODAL DÉTAILS FACTURE
+        ================================================== -->
+
+        <div
+            class="customer-modal-overlay"
+            id="invoice-details-modal"
+        >
+            <div class="customer-modal customer-details-modal">
+                <div class="customer-modal-header">
+                    <div>
+                        <h3>Détails de la facture</h3>
+                        <p id="invoice-details-subtitle"></p>
+                    </div>
+                    <button
+                        type="button"
+                        class="customer-modal-close"
+                        id="close-invoice-details"
+                    >
+                        ×
+                    </button>
+                </div>
+                <div id="invoice-details-content"></div>
+            </div>
+        </div>
     `;
     const form =
         container.querySelector(
@@ -3601,6 +3866,25 @@ async function renderInvoices(container) {
         container.querySelector(
             "#create-invoice-modal"
         );
+
+    const detailsModal =
+        container.querySelector(
+            "#invoice-details-modal"
+        );
+
+    // Détails facture -> tiroir latéral droit (voir shared/detailsDrawer.js),
+    // même gabarit que Clients/Produits/Abonnements.
+    initDetailsDrawer(
+        detailsModal,
+        detailsModal.querySelector(".customer-modal")
+    );
+
+    container
+        .querySelector("#close-invoice-details")
+        .addEventListener("click", () => {
+            detailsModal.classList.remove("open");
+        });
+
     container
         .querySelector("#open-create-invoice-modal")
         .addEventListener("click", () => {
@@ -3616,11 +3900,113 @@ async function renderInvoices(container) {
         .addEventListener("click", () => {
             createModal.classList.remove("open");
         });
-    createModal.addEventListener("click", (event) => {
-        if (event.target === createModal) {
-            createModal.classList.remove("open");
-        }
+    [createModal, detailsModal].forEach(modal => {
+        modal.addEventListener("click", (event) => {
+            if (event.target === modal) {
+                modal.classList.remove("open");
+            }
+        });
     });
+
+    /* Ferme le menu ••• ouvert si on clique ailleurs - même pattern que
+       renderClients/renderProducts/renderSubscriptions. */
+    if (container._closeRowMenusHandler) {
+        document.removeEventListener(
+            "click",
+            container._closeRowMenusHandler
+        );
+    }
+    container._closeRowMenusHandler = (event) => {
+        if (!event.target.closest(".row-menu")) {
+            container
+                .querySelectorAll(".row-menu.open")
+                .forEach(row => row.classList.remove("open"));
+        }
+    };
+    document.addEventListener(
+        "click",
+        container._closeRowMenusHandler
+    );
+
+    function showInvoiceDetails(invoice) {
+
+        const statusLabels = {
+            draft: "Brouillon",
+            open: "À encaisser",
+            paid: "Payée",
+            uncollectible: "Irrécouvrable",
+            void: "Annulée",
+        };
+
+        container.querySelector("#invoice-details-subtitle").textContent =
+            invoice.number || invoice.id;
+
+        container.querySelector("#invoice-details-content").innerHTML = `
+            <div class="customer-details-grid">
+
+                <div class="customer-detail-item">
+                    <span>ID facture</span>
+                    <strong>${invoice.id}</strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Numéro</span>
+                    <strong>${invoice.number || "—"}</strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Client</span>
+                    <strong>${invoice.customer_email || invoice.customer || "—"}</strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Montant dû</span>
+                    <strong>${invoice.amount_due != null ? `${(invoice.amount_due / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${(invoice.currency || "").toUpperCase()}` : "—"}</strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Montant payé</span>
+                    <strong>${invoice.amount_paid != null ? `${(invoice.amount_paid / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${(invoice.currency || "").toUpperCase()}` : "—"}</strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Statut</span>
+                    <strong>${statusLabels[invoice.status] || invoice.status || "—"}</strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Encaissement</span>
+                    <strong>
+                        ${
+                            invoice.collection_method === "send_invoice"
+                                ? "Paiement par facture"
+                                : invoice.collection_method === "charge_automatically"
+                                    ? "Prélèvement automatique"
+                                    : "—"
+                        }
+                    </strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Échéance</span>
+                    <strong>${formatDate(invoice.due_date)}</strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Créée le</span>
+                    <strong>${formatDate(invoice.created)}</strong>
+                </div>
+
+                <div class="customer-detail-item">
+                    <span>Payée le</span>
+                    <strong>${formatDate(invoice.status_transitions?.paid_at)}</strong>
+                </div>
+
+            </div>
+        `;
+
+        detailsModal.classList.add("open");
+    }
 
     /* =====================================================
        CHARGER CLIENTS + TARIFS
@@ -4154,22 +4540,42 @@ async function renderInvoices(container) {
 
 
                                             <td>
-
-                                                ${
-                                                    invoice.hosted_invoice_url
-                                                        ? `
-                                                            <a
-                                                                href="${invoice.hosted_invoice_url}"
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                class="customer-details-btn"
-                                                            >
-                                                                Voir
-                                                            </a>
-                                                        `
-                                                        : "—"
-                                                }
-
+                                                <div
+                                                    class="row-menu"
+                                                    data-invoice-id="${invoice.id}"
+                                                >
+                                                    <button
+                                                        type="button"
+                                                        class="row-menu-trigger"
+                                                        aria-label="Actions"
+                                                        aria-haspopup="true"
+                                                    >
+                                                        •••
+                                                    </button>
+                                                    <div class="row-menu-dropdown">
+                                                        <button
+                                                            type="button"
+                                                            class="row-menu-item"
+                                                            data-row-action="details"
+                                                        >
+                                                            Détails
+                                                        </button>
+                                                        ${
+                                                            invoice.hosted_invoice_url
+                                                                ? `
+                                                                    <a
+                                                                        href="${invoice.hosted_invoice_url}"
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        class="row-menu-item"
+                                                                    >
+                                                                        Voir sur Stripe
+                                                                    </a>
+                                                                `
+                                                                : ""
+                                                        }
+                                                    </div>
+                                                </div>
                                             </td>
 
                                         </tr>
@@ -4187,6 +4593,50 @@ async function renderInvoices(container) {
                 </div>
 
             `;
+
+            /* =================================================
+               MENU D'ACTIONS PAR LIGNE (•••)
+            ================================================= */
+
+            list
+                .querySelectorAll(".row-menu-trigger")
+                .forEach(trigger => {
+
+                    trigger.addEventListener("click", (event) => {
+
+                        event.stopPropagation();
+
+                        const row = trigger.closest(".row-menu");
+                        const wasOpen = row.classList.contains("open");
+
+                        list
+                            .querySelectorAll(".row-menu.open")
+                            .forEach(open => open.classList.remove("open"));
+
+                        if (!wasOpen) row.classList.add("open");
+
+                    });
+
+                });
+
+            list
+                .querySelectorAll(".row-menu-item")
+                .forEach(item => {
+
+                    item.addEventListener("click", () => {
+
+                        const row = item.closest(".row-menu");
+                        row.classList.remove("open");
+
+                        if (item.dataset.rowAction !== "details") return;
+
+                        const invoice = invoices.find(
+                            i => i.id === row.dataset.invoiceId
+                        );
+
+                        if (invoice) showInvoiceDetails(invoice);
+                    });
+                });
 
             }
 
