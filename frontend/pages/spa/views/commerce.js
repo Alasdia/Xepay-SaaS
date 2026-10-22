@@ -691,11 +691,11 @@ async function renderClients(container) {
                                     <th>Téléphone</th>
                                     <th>Pays</th>
                                     <th>Moyen de paiement</th>
-                                    <th>Créé le</th>
                                     <th>Total dépensé</th>
                                     <th>Paiements</th>
                                     <th>Remboursements</th>
                                     <th>Litiges</th>
+                                    <th>Créé le</th>
                                     <th>Dernier paiement</th>
                                     <th>Statut</th>
                                     <th></th>
@@ -733,10 +733,6 @@ async function renderClients(container) {
                                         </td>
 
                                         <td>
-                                            ${formatDate(customer.created)}
-                                        </td>
-
-                                        <td>
                                             ${
                                                 customer.total_spent != null
                                                     ? `${(
@@ -762,6 +758,10 @@ async function renderClients(container) {
 
                                         <td>
                                             ${customer.disputes_total ?? 0}
+                                        </td>
+
+                                        <td>
+                                            ${formatDate(customer.created)}
                                         </td>
 
                                         <td>
@@ -3062,8 +3062,6 @@ async function renderSubscriptions(container) {
 
                                     <th>Fréquence</th>
 
-                                    <th>Statut</th>
-
                                     <th>Mode de paiement</th>
 
                                     <th>Début</th>
@@ -3071,6 +3069,8 @@ async function renderSubscriptions(container) {
                                     <th>Prochaine échéance</th>
 
                                     <th>Créé le</th>
+
+                                    <th>Statut</th>
 
                                     <th></th>
 
@@ -3259,17 +3259,6 @@ async function renderSubscriptions(container) {
 
                                             <td>
 
-                                                <span
-                                                    class="status-badge ${statusClass}"
-                                                >
-                                                    ${statusText}
-                                                </span>
-
-                                            </td>
-
-
-                                            <td>
-
                                                 ${
                                                     subscription.collection_method ===
                                                     "charge_automatically"
@@ -3305,6 +3294,16 @@ async function renderSubscriptions(container) {
                                             <td>
 
                                                 ${formatDate(subscription.created)}
+
+                                            </td>
+
+                                            <td>
+
+                                                <span
+                                                    class="status-badge ${statusClass}"
+                                                >
+                                                    ${statusText}
+                                                </span>
 
                                             </td>
 
@@ -4330,13 +4329,13 @@ async function renderInvoices(container) {
 
                                     <th>Montant payé</th>
 
-                                    <th>Statut</th>
-
                                     <th>Encaissement</th>
 
                                     <th>Échéance</th>
 
                                     <th>Créée le</th>
+
+                                    <th>Statut</th>
 
                                     <th></th>
 
@@ -4498,15 +4497,6 @@ async function renderInvoices(container) {
 
 
                                             <td>
-
-                                                <span
-                                                    class="status-badge ${statusClass}"
-                                                >
-                                                    ${statusText}
-                                                </span>
-
-                                            </td>
-                                            <td>
                                                 ${
                                                     invoice.collection_method === "send_invoice"
                                                         ? "Paiement par facture"
@@ -4528,6 +4518,15 @@ async function renderInvoices(container) {
 
                                             </td>
 
+                                            <td>
+
+                                                <span
+                                                    class="status-badge ${statusClass}"
+                                                >
+                                                    ${statusText}
+                                                </span>
+
+                                            </td>
 
                                             <td>
                                                 <div
