@@ -108,6 +108,22 @@ function buildCountryOptions(selectedCode = "") {
     ).join("");
 }
 
+// Même format que la colonne Date de Paiements (views/transactions.js) :
+// jour/mois abrégé/année + heure:minute, plus compact que le format par
+// défaut de toLocaleString (secondes incluses, jj/mm/aaaa numérique).
+// Partagé par toutes les vues de ce fichier pour un format unique.
+function formatDate(timestampSeconds) {
+    return timestampSeconds
+        ? new Date(timestampSeconds * 1000).toLocaleDateString("fr-FR", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+        })
+        : "—";
+}
+
 export async function mount(container, params = {}) {
 
     const section = params.section || "clients";
@@ -642,13 +658,7 @@ async function renderClients(container) {
                                         </td>
 
                                         <td>
-                                            ${
-                                                customer.created
-                                                    ? new Date(
-                                                        customer.created * 1000
-                                                    ).toLocaleString("fr-FR")
-                                                    : "—"
-                                            }
+                                            ${formatDate(customer.created)}
                                         </td>
 
                                         <td>
@@ -680,13 +690,7 @@ async function renderClients(container) {
                                         </td>
 
                                         <td>
-                                            ${
-                                                customer.last_payment_at
-                                                    ? new Date(
-                                                        customer.last_payment_at * 1000
-                                                    ).toLocaleString("fr-FR")
-                                                    : "—"
-                                            }
+                                            ${formatDate(customer.last_payment_at)}
                                         </td>
 
                                         <td>
@@ -855,13 +859,7 @@ async function renderClients(container) {
                 <div class="customer-detail-item">
                     <span>Créé le</span>
                     <strong>
-                        ${
-                            customer.created
-                                ? new Date(
-                                    customer.created * 1000
-                                ).toLocaleString("fr-FR")
-                                : "—"
-                        }
+                        ${formatDate(customer.created)}
                     </strong>
                 </div>
 
@@ -1255,6 +1253,28 @@ async function renderProducts(container) {
     const form =
         container.querySelector("#create-product-form");
 
+    /* Ferme le menu ••• ouvert si on clique ailleurs - le handler est
+       stocké sur container pour pouvoir le retirer avant d'en rattacher un
+       nouveau si cette vue est remontée plusieurs fois dans la session
+       (sinon les listeners s'accumuleraient sur document). */
+    if (container._closeRowMenusHandler) {
+        document.removeEventListener(
+            "click",
+            container._closeRowMenusHandler
+        );
+    }
+    container._closeRowMenusHandler = (event) => {
+        if (!event.target.closest(".row-menu")) {
+            container
+                .querySelectorAll(".row-menu.open")
+                .forEach(row => row.classList.remove("open"));
+        }
+    };
+    document.addEventListener(
+        "click",
+        container._closeRowMenusHandler
+    );
+
 
     /* =====================================================
        OUVERTURE / FERMETURE CRÉATION
@@ -1569,26 +1589,10 @@ async function renderProducts(container) {
                                                 ${recurringText}
                                             </td>
                                             <td>
-                                                ${
-                                                    product.created
-                                                        ? new Date(
-                                                            product.created * 1000
-                                                        ).toLocaleString(
-                                                            "fr-FR"
-                                                        )
-                                                        : "—"
-                                                }
+                                                ${formatDate(product.created)}
                                             </td>
                                             <td>
-                                                ${
-                                                    product.updated
-                                                        ? new Date(
-                                                            product.updated * 1000
-                                                        ).toLocaleString(
-                                                            "fr-FR"
-                                                        )
-                                                        : "—"
-                                                }
+                                                ${formatDate(product.updated)}
                                             </td>
                                             <td>
                                                 <span
@@ -1606,13 +1610,39 @@ async function renderProducts(container) {
                                                 </span>
                                             </td>
                                             <td>
-                                                <button
-                                                    type="button"
-                                                    class="customer-details-btn product-details-btn"
+                                                <div
+                                                    class="row-menu"
                                                     data-product-id="${product.id}"
                                                 >
-                                                    Détails
-                                                </button>
+                                                    <button
+                                                        type="button"
+                                                        class="row-menu-trigger"
+                                                        aria-label="Actions"
+                                                        aria-haspopup="true"
+                                                    >
+                                                        •••
+                                                    </button>
+                                                    <div class="row-menu-dropdown">
+                                                        <button
+                                                            type="button"
+                                                            class="row-menu-item"
+                                                            data-row-action="details"
+                                                        >
+                                                            Détails
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            class="row-menu-item row-menu-item-danger"
+                                                            data-row-action="archive"
+                                                        >
+                                                            ${
+                                                                product.active
+                                                                    ? "Désactiver"
+                                                                    : "Activer"
+                                                            }
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </td>
                                         </tr>
                                     `;
@@ -1624,32 +1654,53 @@ async function renderProducts(container) {
             `;
 
             /* =================================================
-               BOUTONS DÉTAILS
+               MENU D'ACTIONS PAR LIGNE (•••)
             ================================================= */
 
             list
-                .querySelectorAll(".product-details-btn")
-                .forEach(button => {
+                .querySelectorAll(".row-menu-trigger")
+                .forEach(trigger => {
 
-                    button.addEventListener(
-                        "click",
-                        () => {
+                    trigger.addEventListener("click", (event) => {
 
-                            const product =
-                                products.find(
-                                    item =>
-                                        item.id ===
-                                        button.dataset.productId
-                                );
+                        event.stopPropagation();
 
+                        const row = trigger.closest(".row-menu");
+                        const wasOpen = row.classList.contains("open");
 
-                            if (!product) return;
+                        list
+                            .querySelectorAll(".row-menu.open")
+                            .forEach(open => open.classList.remove("open"));
 
+                        if (!wasOpen) row.classList.add("open");
 
+                    });
+
+                });
+
+            list
+                .querySelectorAll("[data-row-action]")
+                .forEach(item => {
+
+                    item.addEventListener("click", () => {
+
+                        const row = item.closest(".row-menu");
+                        row.classList.remove("open");
+
+                        const product =
+                            products.find(
+                                p => p.id === row.dataset.productId
+                            );
+
+                        if (!product) return;
+
+                        if (item.dataset.rowAction === "details") {
                             showProductDetails(product);
-
+                        } else if (item.dataset.rowAction === "archive") {
+                            toggleProductArchive(product);
                         }
-                    );
+
+                    });
 
                 });
 
@@ -1823,13 +1874,7 @@ async function renderProducts(container) {
                     <span>Créé le</span>
 
                     <strong>
-                        ${
-                            product.created
-                                ? new Date(
-                                    product.created * 1000
-                                ).toLocaleString("fr-FR")
-                                : "—"
-                        }
+                        ${formatDate(product.created)}
                     </strong>
 
                 </div>
@@ -1840,13 +1885,7 @@ async function renderProducts(container) {
                     <span>Modifié le</span>
 
                     <strong>
-                        ${
-                            product.updated
-                                ? new Date(
-                                    product.updated * 1000
-                                ).toLocaleString("fr-FR")
-                                : "—"
-                        }
+                        ${formatDate(product.updated)}
                     </strong>
 
                 </div>
@@ -1979,67 +2018,52 @@ async function renderProducts(container) {
                     `
             }
 
-            <div class="customer-modal-actions" style="margin-top:20px;">
-                <button
-                    type="button"
-                    class="modal-danger-btn"
-                    id="product-archive-toggle-btn"
-                    data-product-id="${product.id}"
-                    data-active="${product.active}"
-                >
-                    ${product.active ? "Archiver" : "Désarchiver"}
-                </button>
-            </div>
-
         `;
-
-        container
-            .querySelector("#product-archive-toggle-btn")
-            .addEventListener("click", async (event) => {
-
-                const btn = event.currentTarget;
-                const isActive = btn.dataset.active === "true";
-                const endpoint = isActive ? "archive" : "unarchive";
-
-                btn.disabled = true;
-
-                try {
-                    const response = await apiFetch(
-                        `/stripe/connect/products/${btn.dataset.productId}/${endpoint}`,
-                        { method: "POST" }
-                    );
-                    const data = await response.json();
-
-                    if (!response.ok) {
-                        throw new Error(
-                            data.detail ||
-                            "Impossible de mettre à jour le produit"
-                        );
-                    }
-
-                    showToast(
-                        isActive
-                            ? "Produit archivé"
-                            : "Produit réactivé",
-                        "success"
-                    );
-
-                    detailsModal.classList.remove("open");
-
-                    await loadProducts();
-
-                } catch (error) {
-                    showToast(
-                        error.message ||
-                        "Erreur lors de l'archivage",
-                        "error"
-                    );
-                    btn.disabled = false;
-                }
-            });
 
         detailsModal.classList.add("open");
 
+    }
+
+    /* =====================================================
+       ACTIVER / DÉSACTIVER UN PRODUIT
+       (appelé depuis le menu ••• de la ligne, voir plus bas)
+    ===================================================== */
+
+    async function toggleProductArchive(product) {
+
+        const isActive = product.active;
+        const endpoint = isActive ? "archive" : "unarchive";
+
+        try {
+            const response = await apiFetch(
+                `/stripe/connect/products/${product.id}/${endpoint}`,
+                { method: "POST" }
+            );
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.detail ||
+                    "Impossible de mettre à jour le produit"
+                );
+            }
+
+            showToast(
+                isActive
+                    ? "Produit désactivé"
+                    : "Produit réactivé",
+                "success"
+            );
+
+            await loadProducts();
+
+        } catch (error) {
+            showToast(
+                error.message ||
+                "Erreur lors de la mise à jour du produit",
+                "error"
+            );
+        }
     }
 
 
@@ -3028,49 +3052,21 @@ async function renderSubscriptions(container) {
 
                                             <td>
 
-                                                ${
-                                                    subscription.start_date
-                                                        ? new Date(
-                                                            subscription.start_date * 1000
-                                                        ).toLocaleDateString(
-                                                            "fr-FR"
-                                                        )
-                                                        : "—"
-                                                }
+                                                ${formatDate(subscription.start_date)}
 
                                             </td>
 
 
                                             <td>
 
-                                                ${
-                                                    subscription.items?.data?.[0]?.current_period_end
-
-                                                        ? new Date(
-                                                            subscription.items.data[0].current_period_end * 1000
-                                                        ).toLocaleDateString(
-                                                            "fr-FR"
-                                                        )
-
-                                                        : "—"
-                                                }
+                                                ${formatDate(subscription.items?.data?.[0]?.current_period_end)}
 
                                             </td>
 
 
                                             <td>
 
-                                                ${
-                                                    subscription.created
-
-                                                        ? new Date(
-                                                            subscription.created * 1000
-                                                        ).toLocaleString(
-                                                            "fr-FR"
-                                                        )
-
-                                                        : "—"
-                                                }
+                                                ${formatDate(subscription.created)}
 
                                             </td>
 
@@ -4086,30 +4082,14 @@ async function renderInvoices(container) {
                                             </td>
                                             <td>
 
-                                                ${
-                                                    invoice.due_date
-                                                        ? new Date(
-                                                            invoice.due_date * 1000
-                                                        ).toLocaleDateString(
-                                                            "fr-FR"
-                                                        )
-                                                        : "—"
-                                                }
+                                                ${formatDate(invoice.due_date)}
 
                                             </td>
 
 
                                             <td>
 
-                                                ${
-                                                    invoice.created
-                                                        ? new Date(
-                                                            invoice.created * 1000
-                                                        ).toLocaleString(
-                                                            "fr-FR"
-                                                        )
-                                                        : "—"
-                                                }
+                                                ${formatDate(invoice.created)}
 
                                             </td>
 
@@ -5211,10 +5191,6 @@ async function renderRisk(container) {
             : "—";
     }
 
-    function fmtDate(ts) {
-        return ts ? new Date(ts * 1000).toLocaleString("fr-FR") : "—";
-    }
-
     async function loadRisk() {
 
         const list = container.querySelector("#risk-list");
@@ -5314,7 +5290,7 @@ async function renderRisk(container) {
                                             <td><code class="customer-id">${efw.charge || "—"}</code></td>
                                             <td>${efw.fraud_type || "—"}</td>
                                             <td>${efw.actionable ? "Oui" : "Non"}</td>
-                                            <td>${fmtDate(efw.created)}</td>
+                                            <td>${formatDate(efw.created)}</td>
                                         </tr>
                                     `).join("")}
                                 </tbody>
@@ -5355,7 +5331,7 @@ async function renderRisk(container) {
                                             <td><span class="status-badge status-danger">${RISK_LEVEL_LABELS[c.outcome?.risk_level] || c.outcome?.risk_level || "—"}</span></td>
                                             <td>${c.outcome?.risk_score ?? "—"}</td>
                                             <td>${c.disputed ? "Oui" : "Non"}</td>
-                                            <td>${fmtDate(c.created)}</td>
+                                            <td>${formatDate(c.created)}</td>
                                         </tr>
                                     `).join("")}
                                 </tbody>
@@ -5400,8 +5376,8 @@ async function renderRisk(container) {
                                                 <td>${fmtAmount(dispute.amount, dispute.currency)}</td>
                                                 <td>${dispute.reason || "—"}</td>
                                                 <td><span class="status-badge ${statusClass}">${STATUS_LABELS[dispute.status] || dispute.status || "—"}</span></td>
-                                                <td>${fmtDate(dispute.created)}</td>
-                                                <td>${fmtDate(evidenceDueBy)}</td>
+                                                <td>${formatDate(dispute.created)}</td>
+                                                <td>${formatDate(evidenceDueBy)}</td>
                                             </tr>
                                         `;
                                     }).join("")}
