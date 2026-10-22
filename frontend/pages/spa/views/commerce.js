@@ -127,17 +127,27 @@ function formatDate(timestampSeconds) {
 // Bloc "Métadonnées" partagé par les modals de détails (Clients/Produits/
 // Abonnements/Factures/Paiements) : affiche les metadata Stripe envoyées à
 // la création (user_id/workspace_id/xepay_type, etc.) quand il y en a,
-// sinon ne rend rien (pas de section vide).
-export function renderMetadataSection(metadata) {
+// sinon ne rend rien (pas de section vide). entityLabel ("Client",
+// "Produit", "Abonnement", "Facture", "Paiement") personnalise le libellé
+// de user_id ("<entité> créé par" plutôt que l'ID technique) ; workspace_id
+// devient "ID du workspace" dans tous les cas.
+export function renderMetadataSection(metadata, entityLabel = "") {
     const entries = Object.entries(metadata || {});
     if (!entries.length) return "";
+    const keyLabel = (key) => {
+        if (key === "user_id") {
+            return entityLabel ? `${entityLabel} créé par` : "Créé par";
+        }
+        if (key === "workspace_id") return "ID du workspace";
+        return key;
+    };
     return `
         <div style="margin-top:20px;">
             <h4>Métadonnées</h4>
             <div class="customer-details-grid">
                 ${entries.map(([key, value]) => `
                     <div class="customer-detail-item">
-                        <span>${key}</span>
+                        <span>${keyLabel(key)}</span>
                         <strong>${value}</strong>
                     </div>
                 `).join("")}
@@ -1053,7 +1063,7 @@ async function renderClients(container) {
 
             </div>
 
-            ${renderMetadataSection(customer.metadata)}
+            ${renderMetadataSection(customer.metadata, "Client")}
 
         `;
 
@@ -2130,7 +2140,7 @@ async function renderProducts(container) {
                     `
             }
 
-            ${renderMetadataSection(product.metadata)}
+            ${renderMetadataSection(product.metadata, "Produit")}
 
         `;
 
@@ -2641,7 +2651,7 @@ async function renderSubscriptions(container) {
 
             </div>
 
-            ${renderMetadataSection(subscription.metadata)}
+            ${renderMetadataSection(subscription.metadata, "Abonnement")}
         `;
 
         detailsModal.classList.add("open");
@@ -4019,7 +4029,7 @@ async function renderInvoices(container) {
 
             </div>
 
-            ${renderMetadataSection(invoice.metadata)}
+            ${renderMetadataSection(invoice.metadata, "Facture")}
         `;
 
         detailsModal.classList.add("open");

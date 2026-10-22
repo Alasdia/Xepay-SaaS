@@ -887,7 +887,7 @@ export async function mount(container, params = {}) {
         ${detailRow("Compte Stripe", d.stripe_account_id)}
         ${detailRow("Lien de paiement", d.link_id)}
       </div>
-      ${renderMetadataSection(d.metadata)}
+      ${renderMetadataSection(d.metadata, "Paiement")}
     `;
     paymentDetailsModal.classList.add("open");
   }
