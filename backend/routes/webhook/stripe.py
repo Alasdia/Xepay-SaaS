@@ -1058,12 +1058,41 @@ def list_merchant_subscriptions(
             status="all",
             stripe_account=profile.stripe_account_id,
         )
+        subscriptions_list = list(subscriptions.auto_paging_iter())
+
+        # price.product n'est jamais expand par defaut (juste l'ID en
+        # string) - un Product.retrieve par ID UNIQUE (pas par abonnement)
+        # pour afficher le nom du produit concerne sans multiplier les
+        # appels Stripe si plusieurs abonnements partagent le meme produit.
+        product_ids = {
+            sub.items.data[0].price.product
+            for sub in subscriptions_list
+            if sub.items.data and sub.items.data[0].price
+        }
+        product_names = {}
+        for product_id in product_ids:
+            try:
+                product_names[product_id] = stripe.Product.retrieve(
+                    product_id,
+                    stripe_account=profile.stripe_account_id,
+                ).name
+            except stripe.error.StripeError:
+                product_names[product_id] = None
+
+        result = []
+        for subscription in subscriptions_list:
+            sub_data = subscription.to_dict()
+            product_id = (
+                subscription.items.data[0].price.product
+                if subscription.items.data and subscription.items.data[0].price
+                else None
+            )
+            sub_data["product_name"] = product_names.get(product_id)
+            result.append(sub_data)
+
         return {
             "object": "list",
-            "data": [
-                subscription.to_dict()
-                for subscription in subscriptions.auto_paging_iter()
-            ],
+            "data": result,
         }
     except stripe.error.StripeError as e:
         raise HTTPException(

@@ -255,7 +255,7 @@
 #customers-scroll-box .table thead th {
     color: #6b7280;
     font-size: 11px;
-    text-transform: uppercase;
+    text-transform: none;
     letter-spacing: 0.5px;
     border-bottom: 1px solid #e5e7eb;
     font-weight: 700;
@@ -532,7 +532,7 @@
 #customers-scroll-box .table thead th {
     color: #6b7280;
     font-size: 11px;
-    text-transform: uppercase;
+    text-transform: none;
     letter-spacing: 0.5px;
     font-weight: 700;
 

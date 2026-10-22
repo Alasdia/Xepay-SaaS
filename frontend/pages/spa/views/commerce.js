@@ -3296,13 +3296,19 @@ async function renderSubscriptions(container) {
 
                                 <tr>
 
-                                    <th>Client</th>
+                                    <th>Email du client</th>
 
-                                    <th>Identifiant</th>
+                                    <th>Nom du client</th>
+
+                                    <th>Produit</th>
 
                                     <th>Montant</th>
 
                                     <th>Fréquence</th>
+
+                                    <th>Total mensuel</th>
+
+                                    <th>Total annuel</th>
 
                                     <th>Mode de paiement</th>
 
@@ -3343,6 +3349,10 @@ async function renderSubscriptions(container) {
 
                                     const customerName =
                                         customer?.name || "—";
+
+
+                                    const customerEmail =
+                                        customer?.email || "—";
 
 
                                     const amount =
@@ -3400,6 +3410,47 @@ async function renderSubscriptions(container) {
                                         }
 
                                     }
+
+
+                                    // Total facturé par cycle (prix unitaire x quantité), ramené
+                                    // à un total mensuel/annuel équivalent selon l'intervalle -
+                                    // permet de comparer des abonnements à fréquences différentes.
+                                    const quantity =
+                                        item?.quantity || 1;
+
+                                    const perCycleAmount =
+                                        price?.unit_amount != null
+                                            ? (price.unit_amount * quantity) / 100
+                                            : null;
+
+                                    let monthlyTotal = null;
+                                    let annualTotal = null;
+
+                                    if (perCycleAmount != null && interval) {
+                                        const perUnitInterval =
+                                            perCycleAmount / intervalCount;
+                                        if (interval === "month") {
+                                            monthlyTotal = perUnitInterval;
+                                            annualTotal = perUnitInterval * 12;
+                                        } else if (interval === "year") {
+                                            annualTotal = perUnitInterval;
+                                            monthlyTotal = perUnitInterval / 12;
+                                        } else if (interval === "week") {
+                                            monthlyTotal = perUnitInterval * (52 / 12);
+                                            annualTotal = perUnitInterval * 52;
+                                        } else if (interval === "day") {
+                                            monthlyTotal = perUnitInterval * 30;
+                                            annualTotal = perUnitInterval * 365;
+                                        }
+                                    }
+
+                                    const formatSubscriptionAmount = (value) =>
+                                        value != null
+                                            ? `${value.toLocaleString("fr-FR", {
+                                                minimumFractionDigits: 2,
+                                                maximumFractionDigits: 2
+                                            })} ${currency}`
+                                            : "—";
 
 
                                     let statusClass =
@@ -3462,16 +3513,17 @@ async function renderSubscriptions(container) {
                                         <tr>
 
                                             <td>
+                                                ${customerEmail}
+                                            </td>
+
+
+                                            <td>
                                                 ${customerName}
                                             </td>
 
 
                                             <td>
-
-                                                <code class="customer-id">
-                                                    ${subscription.id}
-                                                </code>
-
+                                                ${subscription.product_name || "—"}
                                             </td>
 
 
@@ -3496,6 +3548,16 @@ async function renderSubscriptions(container) {
 
                                             <td>
                                                 ${recurringText}
+                                            </td>
+
+
+                                            <td>
+                                                ${formatSubscriptionAmount(monthlyTotal)}
+                                            </td>
+
+
+                                            <td>
+                                                ${formatSubscriptionAmount(annualTotal)}
                                             </td>
 
 
@@ -4746,9 +4808,11 @@ async function renderInvoices(container) {
 
                                 <tr>
 
-                                    <th>Client</th>
+                                    <th>Nom du client</th>
 
-                                    <th>Facture</th>
+                                    <th>Email du client</th>
+
+                                    <th>Numéro de facture</th>
 
                                     <th>Montant dû</th>
 
@@ -4878,7 +4942,14 @@ async function renderInvoices(container) {
 
                                             <td>
 
-                                                ${invoice.customer || "—"}
+                                                ${invoice.customer_name || "—"}
+
+                                            </td>
+
+
+                                            <td>
+
+                                                ${invoice.customer_email || "—"}
 
                                             </td>
 
