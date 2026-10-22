@@ -1218,6 +1218,20 @@ def list_merchant_risk(
     db: Session = Depends(get_db),
     membership: WorkspaceUser = Depends(require_manager),
 ):
+    """Vue Risque complète pour le compte connecté. Un Dispute (litige) ne
+    représente qu'une contestation déjà déposée par la banque du client -
+    un évènement tardif et rare. Le niveau de risque de fraude réel
+    (visible dans le Dashboard Stripe) vient de sources distinctes, jamais
+    interrogées auparavant ici, d'où une vue vide pour des comptes
+    pourtant signalés à risque élevé côté Stripe :
+    - Radar Early Fraud Warning : la banque émettrice signale une charge
+      comme probablement frauduleuse, souvent bien avant qu'un Dispute
+      ne soit (ou soit jamais) déposé.
+    - Charge.outcome.risk_level/risk_score : l'évaluation Radar propre à
+      CHAQUE charge (confirmé : coexiste avec disputed=False).
+    - Account.requirements/future_requirements : restrictions côté
+      plateforme pouvant découler d'une revue de risque Stripe
+      (disabled_reason, errors)."""
     profile = db.query(Profile).filter(
         Profile.user_id == membership.workspace_id
     ).first()
@@ -1226,20 +1240,47 @@ def list_merchant_risk(
             status_code=404,
             detail="Compte Stripe introuvable"
         )
+    stripe_account = profile.stripe_account_id
     try:
-        disputes = stripe.Dispute.list(
-            limit=100,
-            stripe_account=profile.stripe_account_id,
+        disputes = stripe.Dispute.list(limit=100, stripe_account=stripe_account)
+        disputes_data = [d.to_dict() for d in disputes.auto_paging_iter()]
+
+        early_fraud_warnings = stripe.radar.EarlyFraudWarning.list(
+            limit=100, stripe_account=stripe_account
         )
-        result = [
-            dispute.to_dict()
-            for dispute in disputes.auto_paging_iter()
+        early_fraud_warnings_data = [
+            efw.to_dict() for efw in early_fraud_warnings.auto_paging_iter()
         ]
+
+        charges = stripe.Charge.list(limit=100, stripe_account=stripe_account)
+        charges_risk_data = [
+            {
+                "id": c.id,
+                "amount": c.amount,
+                "currency": c.currency,
+                "created": c.created,
+                "disputed": c.disputed,
+                "outcome": c.outcome.to_dict() if c.outcome else None,
+            }
+            for c in charges.auto_paging_iter()
+        ]
+
+        account = stripe.Account.retrieve(stripe_account)
+        account_status = {
+            "charges_enabled": account.charges_enabled,
+            "payouts_enabled": account.payouts_enabled,
+            "requirements": account.requirements.to_dict() if account.requirements else None,
+            "future_requirements": account.future_requirements.to_dict() if account.future_requirements else None,
+        }
+
         return {
-            "object": "list",
-            "data": result,
+            "disputes": disputes_data,
+            "early_fraud_warnings": early_fraud_warnings_data,
+            "charges_risk": charges_risk_data,
+            "account_status": account_status,
         }
     except stripe.error.StripeError as e:
+        print(f"❌ ERREUR récupération risque (merchant={stripe_account}): {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=400,
             detail=e.user_message or str(e)

@@ -5159,14 +5159,45 @@ async function renderRisk(container) {
             <div>
                 <h1>Risque</h1>
                 <p>
-                    Litiges et alertes de risque envoyés par Stripe
-                    pour votre compte connecté.
+                    Alertes de fraude Radar, paiements à risque élevé,
+                    statut du compte connecté et litiges Stripe.
                 </p>
             </div>
         </div>
 
         <div id="risk-list"></div>
     `;
+
+    const STATUS_LABELS = {
+        won: "Gagné",
+        lost: "Perdu",
+        warning_closed: "Clôturé",
+        charge_refunded: "Remboursé",
+        needs_response: "Réponse requise",
+        warning_needs_response: "Réponse requise",
+        under_review: "En cours d'examen",
+        warning_under_review: "En cours d'examen"
+    };
+
+    const SUCCESS_STATUSES = ["won", "warning_closed", "charge_refunded"];
+
+    const RISK_LEVEL_LABELS = {
+        normal: "Normal",
+        elevated: "Élevé",
+        highest: "Très élevé",
+        not_assessed: "Non évalué",
+        unknown: "Inconnu"
+    };
+
+    function fmtAmount(amount, currency) {
+        return amount != null
+            ? `${(amount / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${(currency || "").toUpperCase()}`
+            : "—";
+    }
+
+    function fmtDate(ts) {
+        return ts ? new Date(ts * 1000).toLocaleString("fr-FR") : "—";
+    }
 
     async function loadRisk() {
 
@@ -5180,16 +5211,10 @@ async function renderRisk(container) {
 
         try {
 
-            const response = await apiFetch(
-                "/stripe/connect/risk"
-            );
-
+            const response = await apiFetch("/stripe/connect/risk");
             const data = await response.json();
 
-            console.log(
-                "DONNÉES STRIPE — RISQUE :",
-                data
-            );
+            console.log("DONNÉES STRIPE — RISQUE :", data);
 
             if (!response.ok) {
                 throw new Error(
@@ -5198,187 +5223,180 @@ async function renderRisk(container) {
                 );
             }
 
-            const disputes = data.data || [];
+            const disputes = data.disputes || [];
+            const earlyFraudWarnings = data.early_fraud_warnings || [];
+            const allChargesRisk = data.charges_risk || [];
+            // Niveau de risque Radar propre à CHAQUE charge
+            // (Charge.outcome.risk_level) - coexiste avec disputed=false,
+            // c'est la source qui manquait entièrement avant ce fix.
+            const chargesRisk = allChargesRisk.filter(
+                c => c.outcome?.risk_level && c.outcome.risk_level !== "normal"
+            );
+            const accountStatus = data.account_status || {};
+            const requirements = accountStatus.requirements || {};
+            const hasAccountIssue =
+                accountStatus.charges_enabled === false ||
+                accountStatus.payouts_enabled === false ||
+                !!requirements.disabled_reason ||
+                (requirements.currently_due || []).length > 0 ||
+                (requirements.past_due || []).length > 0;
 
-            if (!disputes.length) {
+            const sections = [];
 
-                list.innerHTML = `
-                    <div class="commerce-card">
-                        <p>
-                            Aucun litige ni alerte de risque pour le moment.
-                        </p>
-                    </div>
-                `;
-
-                return;
-            }
-
-            const STATUS_LABELS = {
-                won: "Gagné",
-                lost: "Perdu",
-                warning_closed: "Clôturé",
-                charge_refunded: "Remboursé",
-                needs_response: "Réponse requise",
-                warning_needs_response: "Réponse requise",
-                under_review: "En cours d'examen",
-                warning_under_review: "En cours d'examen"
-            };
-
-            const SUCCESS_STATUSES = [
-                "won",
-                "warning_closed",
-                "charge_refunded"
-            ];
-
-            list.innerHTML = `
-                <div class="table-wrap">
-
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-
-                        <div>
-                            <div class="table-title">
-                                Litiges
+            if (hasAccountIssue) {
+                sections.push(`
+                    <div class="commerce-card" style="border-color:#f87171; margin-bottom:20px;">
+                        <div class="table-title" style="margin-bottom:8px;">Statut du compte connecté</div>
+                        <div class="customer-details-grid">
+                            <div class="customer-detail-item">
+                                <span>Paiements activés</span>
+                                <strong>${accountStatus.charges_enabled ? "Oui" : "Non"}</strong>
                             </div>
-
-                            <div class="page-subtitle">
-                                ${disputes.length} litige(s)
+                            <div class="customer-detail-item">
+                                <span>Versements activés</span>
+                                <strong>${accountStatus.payouts_enabled ? "Oui" : "Non"}</strong>
+                            </div>
+                            <div class="customer-detail-item">
+                                <span>Raison de restriction</span>
+                                <strong>${requirements.disabled_reason || "—"}</strong>
+                            </div>
+                            <div class="customer-detail-item">
+                                <span>Exigences en retard</span>
+                                <strong>${(requirements.past_due || []).join(", ") || "—"}</strong>
                             </div>
                         </div>
-
                     </div>
+                `);
+            }
 
-                    <div id="customers-scroll-box">
-
-                        <table class="table">
-
-                            <thead>
-                                <tr>
-                                    <th>Litige</th>
-                                    <th>Paiement</th>
-                                    <th>Montant</th>
-                                    <th>Motif</th>
-                                    <th>Statut</th>
-                                    <th>Créé le</th>
-                                    <th>Réponse avant le</th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-
-                                ${disputes.map(dispute => {
-
-                                    const amount =
-                                        dispute.amount != null
-                                            ? (
-                                                dispute.amount / 100
-                                            ).toLocaleString(
-                                                "fr-FR",
-                                                {
-                                                    minimumFractionDigits: 2,
-                                                    maximumFractionDigits: 2
-                                                }
-                                            )
-                                            : "—";
-
-                                    const currency =
-                                        (
-                                            dispute.currency || ""
-                                        ).toUpperCase();
-
-                                    const statusClass =
-                                        SUCCESS_STATUSES.includes(
-                                            dispute.status
-                                        )
-                                            ? "status-success"
-                                            : "status-danger";
-
-                                    const evidenceDueBy =
-                                        dispute.evidence_details?.due_by;
-
-                                    return `
+            sections.push(`
+                <div class="table-wrap" style="margin-bottom:20px;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <div class="table-title">Alertes de fraude (Radar)</div>
+                            <div class="page-subtitle">${earlyFraudWarnings.length} alerte(s) — signalées par la banque émettrice, souvent avant tout litige formel</div>
+                        </div>
+                    </div>
+                    ${!earlyFraudWarnings.length ? `
+                        <p class="text-muted">Aucune alerte de fraude Radar pour le moment.</p>
+                    ` : `
+                        <div id="customers-scroll-box">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Alerte</th>
+                                        <th>Paiement</th>
+                                        <th>Type de fraude</th>
+                                        <th>Actionnable</th>
+                                        <th>Créé le</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${earlyFraudWarnings.map(efw => `
                                         <tr>
-
-                                            <td>
-                                                <code class="customer-id">
-                                                    ${dispute.id || "—"}
-                                                </code>
-                                            </td>
-
-                                            <td>
-                                                <code class="customer-id">
-                                                    ${
-                                                        dispute.charge || "—"
-                                                    }
-                                                </code>
-                                            </td>
-
-                                            <td>
-                                                <span class="amount-cell">
-                                                    ${amount}
-                                                </span>
-
-                                                <span class="amount-currency">
-                                                    ${currency}
-                                                </span>
-                                            </td>
-
-                                            <td>
-                                                ${dispute.reason || "—"}
-                                            </td>
-
-                                            <td>
-                                                <span class="status-badge ${
-                                                    statusClass
-                                                }">
-                                                    ${
-                                                        STATUS_LABELS[
-                                                            dispute.status
-                                                        ]
-                                                        ||
-                                                        dispute.status
-                                                        ||
-                                                        "—"
-                                                    }
-                                                </span>
-                                            </td>
-
-                                            <td>
-                                                ${
-                                                    dispute.created
-                                                        ? new Date(
-                                                            dispute.created * 1000
-                                                        ).toLocaleString(
-                                                            "fr-FR"
-                                                        )
-                                                        : "—"
-                                                }
-                                            </td>
-
-                                            <td>
-                                                ${
-                                                    evidenceDueBy
-                                                        ? new Date(
-                                                            evidenceDueBy * 1000
-                                                        ).toLocaleString(
-                                                            "fr-FR"
-                                                        )
-                                                        : "—"
-                                                }
-                                            </td>
-
+                                            <td><code class="customer-id">${efw.id || "—"}</code></td>
+                                            <td><code class="customer-id">${efw.charge || "—"}</code></td>
+                                            <td>${efw.fraud_type || "—"}</td>
+                                            <td>${efw.actionable ? "Oui" : "Non"}</td>
+                                            <td>${fmtDate(efw.created)}</td>
                                         </tr>
-                                    `;
-
-                                }).join("")}
-
-                            </tbody>
-
-                        </table>
-
-                    </div>
-
+                                    `).join("")}
+                                </tbody>
+                            </table>
+                        </div>
+                    `}
                 </div>
-            `;
+            `);
+
+            sections.push(`
+                <div class="table-wrap" style="margin-bottom:20px;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <div class="table-title">Paiements à risque élevé (Radar)</div>
+                            <div class="page-subtitle">${chargesRisk.length} paiement(s) signalé(s) sur les ${allChargesRisk.length} plus récents analysés</div>
+                        </div>
+                    </div>
+                    ${!chargesRisk.length ? `
+                        <p class="text-muted">Aucun paiement signalé à risque élevé parmi les plus récents.</p>
+                    ` : `
+                        <div id="customers-scroll-box">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Paiement</th>
+                                        <th>Montant</th>
+                                        <th>Niveau de risque</th>
+                                        <th>Score</th>
+                                        <th>Déjà contesté</th>
+                                        <th>Créé le</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${chargesRisk.map(c => `
+                                        <tr>
+                                            <td><code class="customer-id">${c.id || "—"}</code></td>
+                                            <td>${fmtAmount(c.amount, c.currency)}</td>
+                                            <td><span class="status-badge status-danger">${RISK_LEVEL_LABELS[c.outcome?.risk_level] || c.outcome?.risk_level || "—"}</span></td>
+                                            <td>${c.outcome?.risk_score ?? "—"}</td>
+                                            <td>${c.disputed ? "Oui" : "Non"}</td>
+                                            <td>${fmtDate(c.created)}</td>
+                                        </tr>
+                                    `).join("")}
+                                </tbody>
+                            </table>
+                        </div>
+                    `}
+                </div>
+            `);
+
+            sections.push(`
+                <div class="table-wrap">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <div class="table-title">Litiges</div>
+                            <div class="page-subtitle">${disputes.length} litige(s)</div>
+                        </div>
+                    </div>
+                    ${!disputes.length ? `
+                        <p class="text-muted">Aucun litige pour le moment.</p>
+                    ` : `
+                        <div id="customers-scroll-box">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Litige</th>
+                                        <th>Paiement</th>
+                                        <th>Montant</th>
+                                        <th>Motif</th>
+                                        <th>Statut</th>
+                                        <th>Créé le</th>
+                                        <th>Réponse avant le</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${disputes.map(dispute => {
+                                        const statusClass = SUCCESS_STATUSES.includes(dispute.status) ? "status-success" : "status-danger";
+                                        const evidenceDueBy = dispute.evidence_details?.due_by;
+                                        return `
+                                            <tr>
+                                                <td><code class="customer-id">${dispute.id || "—"}</code></td>
+                                                <td><code class="customer-id">${dispute.charge || "—"}</code></td>
+                                                <td>${fmtAmount(dispute.amount, dispute.currency)}</td>
+                                                <td>${dispute.reason || "—"}</td>
+                                                <td><span class="status-badge ${statusClass}">${STATUS_LABELS[dispute.status] || dispute.status || "—"}</span></td>
+                                                <td>${fmtDate(dispute.created)}</td>
+                                                <td>${fmtDate(evidenceDueBy)}</td>
+                                            </tr>
+                                        `;
+                                    }).join("")}
+                                </tbody>
+                            </table>
+                        </div>
+                    `}
+                </div>
+            `);
+
+            list.innerHTML = sections.join("");
 
         } catch (error) {
 
