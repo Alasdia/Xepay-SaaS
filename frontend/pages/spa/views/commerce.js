@@ -4555,8 +4555,7 @@ async function renderInvoices(container) {
                                                                 ? `
                                                                     <a
                                                                         href="${invoice.invoice_pdf}"
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
+                                                                        download
                                                                         class="row-menu-item"
                                                                     >
                                                                         Télécharger
