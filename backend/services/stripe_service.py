@@ -163,6 +163,32 @@ def create_connect_customer(
         stripe_account=merchant_account,
     )
 
+def update_connect_customer(
+    merchant_account: str,
+    customer_id: str,
+    name: str | None = None,
+    email: str | None = None,
+    phone: str | None = None,
+    country: str | None = None,
+):
+    # Meme logique que create_connect_customer : un champ vide/absent n'est
+    # pas envoye (donc jamais efface involontairement), seuls les champs
+    # effectivement renseignes dans le formulaire sont mis a jour.
+    params = {}
+    if name:
+        params["name"] = name
+    if email:
+        params["email"] = email
+    if phone:
+        params["phone"] = phone
+    if country:
+        params["address"] = {"country": country}
+    return stripe.Customer.modify(
+        customer_id,
+        **params,
+        stripe_account=merchant_account,
+    )
+
 def create_connect_product(
     merchant_account: str,
     name: str,

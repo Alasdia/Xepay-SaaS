@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 import stripe
 
 from backend.database import get_db
-from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest, Payment
+from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectSubscriptionQuantityUpdateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest, ConnectInvoiceUpdateRequest, Payment
 from backend.middleware.authorization import require_manager
-from backend.services.stripe_service import (create_connect_invoice, create_connect_product, create_connect_customer)
+from backend.services.stripe_service import (create_connect_invoice, create_connect_product, create_connect_customer, update_connect_customer)
 from backend.services.email_service import send_account_updated_email, send_payout_success_email, send_payout_failed_email
 import stripe  
 import os
@@ -787,6 +787,96 @@ def create_merchant_invoice(
             detail=e.user_message or str(e)
         )
 
+@router.post("/stripe/connect/invoices/{invoice_id}")
+def update_merchant_invoice(
+    invoice_id: str,
+    data: ConnectInvoiceUpdateRequest,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_manager),
+):
+    from datetime import datetime, timedelta, timezone
+
+    profile = db.query(Profile).filter(
+        Profile.user_id == membership.workspace_id
+    ).first()
+    if not profile or not profile.stripe_account_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Compte Stripe introuvable"
+        )
+    try:
+        current = stripe.Invoice.retrieve(
+            invoice_id,
+            stripe_account=profile.stripe_account_id,
+        )
+        # Seules les factures encore brouillon ou ouvertes (jamais payees/
+        # annulees/irrecouvrables) peuvent etre modifiees chez Stripe.
+        if current.status not in ("draft", "open"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Facture non modifiable (statut actuel : {current.status})"
+            )
+        due_date = int(
+            (datetime.now(timezone.utc) + timedelta(days=data.days_until_due)).timestamp()
+        )
+        invoice = stripe.Invoice.modify(
+            invoice_id,
+            due_date=due_date,
+            stripe_account=profile.stripe_account_id,
+        )
+        return {"id": invoice.id, "due_date": invoice.due_date, "status": invoice.status}
+    except stripe.error.StripeError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=e.user_message or str(e)
+        )
+
+@router.post("/stripe/connect/invoices/{invoice_id}/void")
+def void_merchant_invoice(
+    invoice_id: str,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_manager),
+):
+    profile = db.query(Profile).filter(
+        Profile.user_id == membership.workspace_id
+    ).first()
+    if not profile or not profile.stripe_account_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Compte Stripe introuvable"
+        )
+    try:
+        current = stripe.Invoice.retrieve(
+            invoice_id,
+            stripe_account=profile.stripe_account_id,
+        )
+        # Stripe distingue les deux cas : un brouillon se SUPPRIME
+        # (Invoice.delete, jamais payé/finalisé donc rien à annuler), une
+        # facture ouverte s'ANNULE (Invoice.void_invoice, passe à "void" -
+        # jamais recouvrable, contrairement à "uncollectible").
+        if current.status == "draft":
+            stripe.Invoice.delete(
+                invoice_id,
+                stripe_account=profile.stripe_account_id,
+            )
+            return {"id": invoice_id, "status": "deleted"}
+        elif current.status == "open":
+            invoice = stripe.Invoice.void_invoice(
+                invoice_id,
+                stripe_account=profile.stripe_account_id,
+            )
+            return {"id": invoice.id, "status": invoice.status}
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Facture non annulable (statut actuel : {current.status})"
+            )
+    except stripe.error.StripeError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=e.user_message or str(e)
+        )
+
 @router.get("/stripe/connect/invoices")
 def list_merchant_invoices(
     db: Session = Depends(get_db),
@@ -880,6 +970,72 @@ def create_merchant_subscription(
             detail=e.user_message or str(e)
         )
 
+@router.post("/stripe/connect/subscriptions/{subscription_id}/cancel")
+def cancel_merchant_subscription(
+    subscription_id: str,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_manager),
+):
+    profile = db.query(Profile).filter(
+        Profile.user_id == membership.workspace_id
+    ).first()
+    if not profile or not profile.stripe_account_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Compte Stripe introuvable"
+        )
+    try:
+        # Annulation immediate (pas cancel_at_period_end) : Stripe arrete
+        # aussitot de facturer, l'abonnement passe directement a "canceled".
+        subscription = stripe.Subscription.cancel(
+            subscription_id,
+            stripe_account=profile.stripe_account_id,
+        )
+        return {"id": subscription.id, "status": subscription.status}
+    except stripe.error.StripeError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=e.user_message or str(e)
+        )
+
+@router.post("/stripe/connect/subscriptions/{subscription_id}/quantity")
+def update_merchant_subscription_quantity(
+    subscription_id: str,
+    data: ConnectSubscriptionQuantityUpdateRequest,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_manager),
+):
+    profile = db.query(Profile).filter(
+        Profile.user_id == membership.workspace_id
+    ).first()
+    if not profile or not profile.stripe_account_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Compte Stripe introuvable"
+        )
+    try:
+        current = stripe.Subscription.retrieve(
+            subscription_id,
+            stripe_account=profile.stripe_account_id,
+        )
+        item = current.items.data[0] if current.items.data else None
+        if not item:
+            raise HTTPException(
+                status_code=400,
+                detail="Aucun élément trouvé sur cet abonnement"
+            )
+        subscription = stripe.Subscription.modify(
+            subscription_id,
+            items=[{"id": item.id, "quantity": data.quantity}],
+            stripe_account=profile.stripe_account_id,
+        )
+        return {"id": subscription.id, "quantity": subscription.items.data[0].quantity}
+    except stripe.error.StripeError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=e.user_message or str(e)
+        )
+
 @router.get("/stripe/connect/subscriptions")
 def list_merchant_subscriptions(
     db: Session = Depends(get_db),
@@ -942,6 +1098,44 @@ def create_merchant_customer(
                 "workspace_id": membership.workspace_id,
                 "xepay_type": "merchant_customer",
             },
+        )
+        return {
+            "id": customer.id,
+            "name": customer.name,
+            "email": customer.email,
+            "phone": customer.phone,
+            "address": customer.address,
+        }
+    except stripe.error.StripeError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=e.user_message or str(e)
+        )
+
+@router.post("/stripe/connect/customers/{customer_id}")
+def update_merchant_customer(
+    customer_id: str,
+    data: ConnectCustomerCreateRequest,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_manager),
+):
+    profile = db.query(Profile).filter(
+        Profile.user_id == membership.workspace_id
+    ).first()
+
+    if not profile or not profile.stripe_account_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Compte Stripe introuvable"
+        )
+    try:
+        customer = update_connect_customer(
+            merchant_account=profile.stripe_account_id,
+            customer_id=customer_id,
+            name=data.name,
+            email=data.email,
+            phone=data.phone,
+            country=data.country,
         )
         return {
             "id": customer.id,

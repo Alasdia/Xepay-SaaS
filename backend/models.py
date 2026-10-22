@@ -157,6 +157,16 @@ class ConnectSubscriptionCreateRequest(BaseModel):
     collection_method: str = "charge_automatically"
     payment_method_id: str | None = None
 
+class ConnectSubscriptionQuantityUpdateRequest(BaseModel):
+    quantity: int = Field(..., ge=1)
+
+class ConnectInvoiceUpdateRequest(BaseModel):
+    # Seul champ modifiable expose : l'echeance (due_date), recalculee a
+    # partir d'aujourd'hui + days_until_due - Stripe n'autorise due_date
+    # que pour collection_method="send_invoice", et uniquement sur une
+    # facture encore en brouillon ou ouverte (jamais payee/annulee).
+    days_until_due: int = Field(..., ge=0)
+
 class RefundRequest(BaseModel):
     amount: Optional[int] = Field(default=None, gt=0)
     reason: Optional[str] = None

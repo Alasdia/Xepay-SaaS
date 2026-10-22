@@ -469,7 +469,7 @@ async function renderClients(container) {
             <div class="customer-modal customer-create-modal">
                 <div class="customer-modal-header">
                     <div>
-                        <h3>Créer un client</h3>
+                        <h3 id="create-client-modal-title">Créer un client</h3>
                         <p>Ajoutez les informations de votre client.</p>
                     </div>
                     <button
@@ -553,6 +553,7 @@ async function renderClients(container) {
                         <button
                             type="submit"
                             class="modal-submit-btn"
+                            id="create-client-submit-btn"
                         >
                             Créer le client
                         </button>
@@ -602,6 +603,36 @@ async function renderClients(container) {
     const form =
         container.querySelector("#create-client-form");
 
+    // Non-null pendant l'édition d'un client existant (menu ••• ->
+    // "Modifier") : le formulaire de création est alors réutilisé tel
+    // quel, seul le endpoint appelé par le submit change (voir plus bas).
+    let editingCustomerId = null;
+
+    function openClientModalForCreate() {
+        editingCustomerId = null;
+        form.reset();
+        container.querySelector("#create-client-modal-title").textContent =
+            "Créer un client";
+        container.querySelector("#create-client-submit-btn").textContent =
+            "Créer le client";
+        createModal.classList.add("open");
+    }
+
+    function openClientModalForEdit(customer) {
+        editingCustomerId = customer.id;
+        const [firstName, ...rest] = (customer.name || "").split(" ");
+        container.querySelector("#client-first-name").value = firstName || "";
+        container.querySelector("#client-last-name").value = rest.join(" ");
+        container.querySelector("#client-email").value = customer.email || "";
+        container.querySelector("#client-phone").value = customer.phone || "";
+        container.querySelector("#client-country").value = customer.country || "";
+        container.querySelector("#create-client-modal-title").textContent =
+            "Modifier le client";
+        container.querySelector("#create-client-submit-btn").textContent =
+            "Enregistrer";
+        createModal.classList.add("open");
+    }
+
     /* =====================================================
        OUVRIR / FERMER MODAL CRÉATION
     ===================================================== */
@@ -609,7 +640,7 @@ async function renderClients(container) {
     container
         .querySelector("#open-create-client")
         .addEventListener("click", () => {
-            createModal.classList.add("open");
+            openClientModalForCreate();
         });
 
     container
@@ -835,6 +866,13 @@ async function renderClients(container) {
                                                     >
                                                         Détails
                                                     </button>
+                                                    <button
+                                                        type="button"
+                                                        class="row-menu-item"
+                                                        data-row-action="edit"
+                                                    >
+                                                        Modifier
+                                                    </button>
                                                 </div>
                                             </div>
                                         </td>
@@ -890,6 +928,8 @@ async function renderClients(container) {
 
                         if (item.dataset.rowAction === "details") {
                             showCustomerDetails(customer);
+                        } else if (item.dataset.rowAction === "edit") {
+                            openClientModalForEdit(customer);
                         }
                     });
                 });
@@ -1087,9 +1127,12 @@ async function renderClients(container) {
           container.querySelector("#client-phone").value.trim();
         const country =
           container.querySelector("#client-country").value.trim();
+        const isEditing = Boolean(editingCustomerId);
         try {
             const response = await apiFetch(
-                "/stripe/connect/customers",
+                isEditing
+                    ? `/stripe/connect/customers/${editingCustomerId}`
+                    : "/stripe/connect/customers",
                 {
                     method: "POST",
                     body: {
@@ -1104,16 +1147,21 @@ async function renderClients(container) {
             if (!response.ok) {
                 throw new Error(
                     data.detail ||
-                    "Impossible de créer le client"
+                    (isEditing
+                        ? "Impossible de modifier le client"
+                        : "Impossible de créer le client")
                 );
             }
 
             showToast(
-                "Client créé avec succès",
+                isEditing
+                    ? "Client modifié avec succès"
+                    : "Client créé avec succès",
                 "success"
             );
 
             form.reset();
+            editingCustomerId = null;
 
             createModal.classList.remove("open");
 
@@ -1125,7 +1173,9 @@ async function renderClients(container) {
 
             showToast(
                 error.message ||
-                "Erreur lors de la création du client",
+                (isEditing
+                    ? "Erreur lors de la modification du client"
+                    : "Erreur lors de la création du client"),
                 "error"
             );
         }
@@ -2504,6 +2554,60 @@ async function renderSubscriptions(container) {
             </div>
 
         </div>
+
+        <!-- =================================================
+             MODAL CHANGER LA QUANTITÉ
+        ================================================== -->
+
+        <div
+            class="customer-modal-overlay"
+            id="subscription-quantity-modal"
+        >
+            <div class="customer-modal">
+                <div class="customer-modal-header">
+                    <div>
+                        <h3>Changer la quantité</h3>
+                        <p>Nouvelle quantité pour cet abonnement.</p>
+                    </div>
+                    <button
+                        type="button"
+                        class="customer-modal-close"
+                        id="close-subscription-quantity"
+                    >
+                        ×
+                    </button>
+                </div>
+                <form id="subscription-quantity-form">
+                    <div class="form-group">
+                        <label for="subscription-quantity-input">
+                            Quantité
+                        </label>
+                        <input
+                            type="number"
+                            id="subscription-quantity-input"
+                            min="1"
+                            value="1"
+                            required
+                        >
+                    </div>
+                    <div class="customer-modal-actions">
+                        <button
+                            type="button"
+                            class="modal-cancel-btn"
+                            id="cancel-subscription-quantity"
+                        >
+                            Annuler
+                        </button>
+                        <button
+                            type="submit"
+                            class="modal-submit-btn"
+                        >
+                            Enregistrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     `;
 
 
@@ -2695,7 +2799,18 @@ async function renderSubscriptions(container) {
         });
 
 
-    [createModal, detailsModal].forEach(modal => {
+    const quantityModal =
+        container.querySelector("#subscription-quantity-modal");
+    const quantityForm =
+        container.querySelector("#subscription-quantity-form");
+    const changeQuantityInput =
+        container.querySelector("#subscription-quantity-input");
+
+    // Abonnement actuellement visé par le modal "Changer la quantité"
+    // (posé au clic sur le menu ••• de la ligne, voir plus bas).
+    let quantitySubscriptionId = null;
+
+    [createModal, detailsModal, quantityModal].forEach(modal => {
         modal.addEventListener("click", (event) => {
             if (event.target === modal) {
                 modal.classList.remove("open");
@@ -2703,6 +2818,95 @@ async function renderSubscriptions(container) {
         });
     });
 
+    container
+        .querySelector("#close-subscription-quantity")
+        .addEventListener("click", () => {
+            quantityModal.classList.remove("open");
+        });
+
+    container
+        .querySelector("#cancel-subscription-quantity")
+        .addEventListener("click", () => {
+            quantityModal.classList.remove("open");
+        });
+
+    function openQuantityModal(subscription) {
+        quantitySubscriptionId = subscription.id;
+        changeQuantityInput.value =
+            subscription.items?.data?.[0]?.quantity || 1;
+        quantityModal.classList.add("open");
+    }
+
+    quantityForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const newQuantity = Number(changeQuantityInput.value);
+
+        try {
+            const response = await apiFetch(
+                `/stripe/connect/subscriptions/${quantitySubscriptionId}/quantity`,
+                {
+                    method: "POST",
+                    body: { quantity: newQuantity }
+                }
+            );
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.detail ||
+                    "Impossible de modifier la quantité"
+                );
+            }
+
+            showToast("Quantité mise à jour", "success");
+
+            quantityModal.classList.remove("open");
+
+            await loadSubscriptions();
+
+        } catch (error) {
+            console.error(error);
+            showToast(
+                error.message ||
+                "Erreur lors de la modification de la quantité",
+                "error"
+            );
+        }
+    });
+
+    async function cancelSubscription(subscription) {
+        if (!confirm(
+            "Confirmer l'annulation de cet abonnement ? Cette action est immédiate et irréversible."
+        )) return;
+
+        try {
+            const response = await apiFetch(
+                `/stripe/connect/subscriptions/${subscription.id}/cancel`,
+                { method: "POST" }
+            );
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.detail ||
+                    "Impossible d'annuler l'abonnement"
+                );
+            }
+
+            showToast("Abonnement annulé", "success");
+
+            await loadSubscriptions();
+
+        } catch (error) {
+            console.error(error);
+            showToast(
+                error.message ||
+                "Erreur lors de l'annulation de l'abonnement",
+                "error"
+            );
+        }
+    }
 
     /* =====================================================
        CHARGER CLIENTS + TARIFS
@@ -3366,6 +3570,26 @@ async function renderSubscriptions(container) {
                                                         >
                                                             Détails
                                                         </button>
+                                                        ${
+                                                            subscription.status !== "canceled"
+                                                                ? `
+                                                                    <button
+                                                                        type="button"
+                                                                        class="row-menu-item"
+                                                                        data-row-action="quantity"
+                                                                    >
+                                                                        Changer la quantité
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        class="row-menu-item row-menu-item-danger"
+                                                                        data-row-action="cancel"
+                                                                    >
+                                                                        Annuler
+                                                                    </button>
+                                                                `
+                                                                : ""
+                                                        }
                                                     </div>
                                                 </div>
                                             </td>
@@ -3425,6 +3649,10 @@ async function renderSubscriptions(container) {
 
                         if (item.dataset.rowAction === "details") {
                             showSubscriptionDetails(subscription);
+                        } else if (item.dataset.rowAction === "quantity") {
+                            openQuantityModal(subscription);
+                        } else if (item.dataset.rowAction === "cancel") {
+                            cancelSubscription(subscription);
                         }
                     });
                 });
@@ -3890,6 +4118,60 @@ async function renderInvoices(container) {
                 <div id="invoice-details-content"></div>
             </div>
         </div>
+
+        <!-- =================================================
+             MODAL MODIFIER L'ÉCHÉANCE
+        ================================================== -->
+
+        <div
+            class="customer-modal-overlay"
+            id="invoice-edit-modal"
+        >
+            <div class="customer-modal">
+                <div class="customer-modal-header">
+                    <div>
+                        <h3>Modifier la facture</h3>
+                        <p>Nouvelle échéance pour cette facture.</p>
+                    </div>
+                    <button
+                        type="button"
+                        class="customer-modal-close"
+                        id="close-invoice-edit"
+                    >
+                        ×
+                    </button>
+                </div>
+                <form id="invoice-edit-form">
+                    <div class="form-group">
+                        <label for="invoice-edit-days">
+                            Jours avant échéance (à partir d'aujourd'hui)
+                        </label>
+                        <input
+                            type="number"
+                            id="invoice-edit-days"
+                            min="0"
+                            value="7"
+                            required
+                        >
+                    </div>
+                    <div class="customer-modal-actions">
+                        <button
+                            type="button"
+                            class="modal-cancel-btn"
+                            id="cancel-invoice-edit"
+                        >
+                            Annuler
+                        </button>
+                        <button
+                            type="submit"
+                            class="modal-submit-btn"
+                        >
+                            Enregistrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     `;
     const form =
         container.querySelector(
@@ -3945,13 +4227,116 @@ async function renderInvoices(container) {
         .addEventListener("click", () => {
             createModal.classList.remove("open");
         });
-    [createModal, detailsModal].forEach(modal => {
+
+    const editModal =
+        container.querySelector("#invoice-edit-modal");
+    const editForm =
+        container.querySelector("#invoice-edit-form");
+    const editDaysInput =
+        container.querySelector("#invoice-edit-days");
+
+    // Facture actuellement visée par le modal "Modifier" (posé au clic
+    // sur le menu ••• de la ligne, voir plus bas).
+    let editingInvoiceId = null;
+
+    [createModal, detailsModal, editModal].forEach(modal => {
         modal.addEventListener("click", (event) => {
             if (event.target === modal) {
                 modal.classList.remove("open");
             }
         });
     });
+
+    container
+        .querySelector("#close-invoice-edit")
+        .addEventListener("click", () => {
+            editModal.classList.remove("open");
+        });
+
+    container
+        .querySelector("#cancel-invoice-edit")
+        .addEventListener("click", () => {
+            editModal.classList.remove("open");
+        });
+
+    function openInvoiceEditModal(invoice) {
+        editingInvoiceId = invoice.id;
+        editDaysInput.value = 7;
+        editModal.classList.add("open");
+    }
+
+    editForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const days = Number(editDaysInput.value);
+
+        try {
+            const response = await apiFetch(
+                `/stripe/connect/invoices/${editingInvoiceId}`,
+                {
+                    method: "POST",
+                    body: { days_until_due: days }
+                }
+            );
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.detail ||
+                    "Impossible de modifier la facture"
+                );
+            }
+
+            showToast("Facture modifiée", "success");
+
+            editModal.classList.remove("open");
+
+            await loadInvoices();
+
+        } catch (error) {
+            console.error(error);
+            showToast(
+                error.message ||
+                "Erreur lors de la modification de la facture",
+                "error"
+            );
+        }
+    });
+
+    async function voidInvoice(invoice) {
+        if (!confirm(
+            invoice.status === "draft"
+                ? "Confirmer la suppression de ce brouillon de facture ?"
+                : "Confirmer l'annulation de cette facture ? Cette action est irréversible."
+        )) return;
+
+        try {
+            const response = await apiFetch(
+                `/stripe/connect/invoices/${invoice.id}/void`,
+                { method: "POST" }
+            );
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.detail ||
+                    "Impossible d'annuler la facture"
+                );
+            }
+
+            showToast("Facture annulée", "success");
+
+            await loadInvoices();
+
+        } catch (error) {
+            console.error(error);
+            showToast(
+                error.message ||
+                "Erreur lors de l'annulation de la facture",
+                "error"
+            );
+        }
+    }
 
     function showInvoiceDetails(invoice) {
 
@@ -4616,6 +5001,26 @@ async function renderInvoices(container) {
                                                                 `
                                                                 : ""
                                                         }
+                                                        ${
+                                                            invoice.status === "draft" || invoice.status === "open"
+                                                                ? `
+                                                                    <button
+                                                                        type="button"
+                                                                        class="row-menu-item"
+                                                                        data-row-action="edit"
+                                                                    >
+                                                                        Modifier
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        class="row-menu-item row-menu-item-danger"
+                                                                        data-row-action="void"
+                                                                    >
+                                                                        Annuler
+                                                                    </button>
+                                                                `
+                                                                : ""
+                                                        }
                                                     </div>
                                                 </div>
                                             </td>
@@ -4667,13 +5072,21 @@ async function renderInvoices(container) {
                         const row = item.closest(".row-menu");
                         closeRowMenu();
 
-                        if (item.dataset.rowAction !== "details") return;
+                        if (!item.dataset.rowAction) return;
 
                         const invoice = invoices.find(
                             i => i.id === row.dataset.invoiceId
                         );
 
-                        if (invoice) showInvoiceDetails(invoice);
+                        if (!invoice) return;
+
+                        if (item.dataset.rowAction === "details") {
+                            showInvoiceDetails(invoice);
+                        } else if (item.dataset.rowAction === "edit") {
+                            openInvoiceEditModal(invoice);
+                        } else if (item.dataset.rowAction === "void") {
+                            voidInvoice(invoice);
+                        }
                     });
                 });
 
