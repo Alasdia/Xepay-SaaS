@@ -122,9 +122,13 @@ class WithdrawRequest(BaseModel):
     amount: float  
 
 class ConnectCustomerCreateRequest(BaseModel):
-    name: str
-    email: EmailStr
+    # Aucun champ n'est obligatoire chez Stripe pour créer un Customer -
+    # on garde cette même souplesse ici plutôt que d'imposer une
+    # contrainte Xepay que l'API elle-même n'impose pas.
+    name: str | None = None
+    email: EmailStr | None = None
     phone: str | None = None
+    country: str | None = None
 
 class ConnectProductCreateRequest(BaseModel):
     name: str

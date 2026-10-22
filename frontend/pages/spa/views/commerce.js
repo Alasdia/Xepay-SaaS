@@ -267,6 +267,9 @@ async function renderClients(container) {
                     <div class="customer-form-section-title">
                         Informations du client
                     </div>
+                    <p class="customer-form-hint">
+                        Aucun champ n'est obligatoire.
+                    </p>
                     <div class="customer-form-grid customer-form-grid-2">
                         <div class="form-group">
                             <label for="client-first-name">
@@ -286,7 +289,6 @@ async function renderClients(container) {
                                 type="text"
                                 id="client-last-name"
                                 autocomplete="family-name"
-                                required
                             >
                         </div>
                         </div>
@@ -299,7 +301,6 @@ async function renderClients(container) {
                                     type="email"
                                     id="client-email"
                                     autocomplete="email"
-                                    required
                                 >
                             </div>
                             <div class="form-group">
@@ -313,19 +314,11 @@ async function renderClients(container) {
                                 >
                             </div>
                         </div>
-                    </div>
-                    <!-- =================================================
-                      ADRESSE DE FACTURATION
-                    ================================================== -->
-                    <div class="customer-form-section">
-                        <div class="customer-form-section-title">
-                            Adresse de facturation
-                        </div>
                         <div class="form-group">
-                            <label for="billing-country">
+                            <label for="client-country">
                                 Pays
                             </label>
-                            <select id="billing-country">
+                            <select id="client-country">
                                 <option value="">Sélectionner un pays</option>
                                 <option value="SN">Sénégal</option>
                                 <option value="CI">Côte d’Ivoire</option>
@@ -336,193 +329,6 @@ async function renderClients(container) {
                                 <option value="FR">France</option>
                                 <option value="US">États-Unis</option>
                                 <option value="GB">Royaume-Uni</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="billing-line1">
-                                Adresse
-                            </label>
-                            <input
-                                type="text"
-                                id="billing-line1"
-                                autocomplete="address-line1"
-                            >
-                        </div>
-                        <div class="form-group">
-                            <label for="billing-line2">
-                                Appartement, unité, bâtiment, complément
-                            </label>
-                            <input
-                                type="text"
-                                id="billing-line2"
-                                autocomplete="address-line2"
-                            >
-                        </div>
-                        <div class="customer-form-grid customer-form-grid-2">
-                            <div class="form-group">
-                               <label for="billing-postal-code">
-                                    Code postal
-                                </label>
-                                <input
-                                    type="text"
-                                    id="billing-postal-code"
-                                    autocomplete="postal-code"
-                                >
-                            </div>
-                            <div class="form-group">
-                                <label for="billing-city">
-                                    Ville
-                                </label>
-                                <input
-                                    type="text"
-                                    id="billing-city"
-                                    autocomplete="address-level2"
-                                >
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="billing-state">
-                                État / Région
-                            </label>
-                            <input
-                                type="text"
-                                id="billing-state"
-                                autocomplete="address-level1"
-                            >
-                        </div>
-                    </div>
-
-                    <!-- =================================================
-                      ADRESSE DE LIVRAISON
-                    ================================================== -->
-
-                    <div class="customer-form-section">
-                        <div class="customer-form-section-title">
-                            Adresse de livraison
-                        </div>
-                        <label class="customer-checkbox-row">
-                            <input
-                                type="checkbox"
-                                id="shipping-same-as-billing"
-                            >
-                            <span>
-                                Identique à l’adresse de facturation
-                            </span>
-                        </label>
-                        <div id="shipping-fields">
-                            <div class="form-group">
-                                <label for="shipping-name">
-                                    Nom du destinataire
-                                </label>
-                                <input
-                                    type="text"
-                                    id="shipping-name"
-                                    autocomplete="shipping name"
-                                >
-                            </div>
-                            <div class="form-group">
-                                <label for="shipping-country">
-                                    Pays
-                                </label>
-                                <select id="shipping-country">
-                                    <option value="">
-                                        Sélectionner un pays
-                                    </option>
-                                    <option value="SN">Sénégal</option>
-                                    <option value="CI">Côte d’Ivoire</option>
-                                    <option value="ML">Mali</option>
-                                    <option value="BF">Burkina Faso</option>
-                                    <option value="BJ">Bénin</option>
-                                    <option value="TG">Togo</option>
-                                    <option value="FR">France</option>
-                                    <option value="US">États-Unis</option>
-                                    <option value="GB">Royaume-Uni</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="shipping-line1">
-                                    Adresse
-                                </label>
-                                <input
-                                    type="text"
-                                    id="shipping-line1"
-                                    autocomplete="shipping address-line1"
-                                >
-                            </div>
-                            <div class="form-group">
-                                <label for="shipping-line2">
-                                    Appartement, unité, bâtiment, complément
-                                </label>
-                                <input
-                                    type="text"
-                                    id="shipping-line2"
-                                    autocomplete="shipping address-line2"
-                                >
-                            </div>
-                            <div class="customer-form-grid customer-form-grid-2">
-                                <div class="form-group">
-                                    <label for="shipping-postal-code">
-                                        Code postal
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="shipping-postal-code"
-                                        autocomplete="shipping postal-code"
-                                    >
-                                </div>
-                                <div class="form-group">
-                                    <label for="shipping-city">
-                                        Ville
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="shipping-city"
-                                        autocomplete="shipping address-level2"
-                                    >
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="shipping-state">
-                                    État / Région
-                                </label>
-                                <input
-                                    type="text"
-                                    id="shipping-state"
-                                    autocomplete="shipping address-level1"
-                                >
-                            </div>
-                            <div class="form-group">
-                                <label for="shipping-phone">
-                                    Téléphone
-                                </label>
-                                <input
-                                    type="tel"
-                                    id="shipping-phone"
-                                    autocomplete="shipping tel"
-                                >
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- =================================================
-                      PRÉFÉRENCES
-                    ================================================== -->
-
-                    <div class="customer-form-section">
-                        <div class="customer-form-section-title">
-                            Préférences
-                        </div>
-                        <div class="form-group">
-                            <label for="client-language">
-                                Langue
-                            </label>
-                            <select id="client-language">
-                                <option value="fr-FR">
-                                    Français
-                                </option>
-                                <option value="en">
-                                    English
-                                </option>
                             </select>
                         </div>
                     </div>
@@ -1049,15 +855,18 @@ async function renderClients(container) {
           container.querySelector("#client-email").value.trim();
         const phone =
           container.querySelector("#client-phone").value.trim();
+        const country =
+          container.querySelector("#client-country").value.trim();
         try {
             const response = await apiFetch(
                 "/stripe/connect/customers",
                 {
                     method: "POST",
                     body: {
-                        name,
-                        email,
-                        phone: phone || null
+                        name: name || null,
+                        email: email || null,
+                        phone: phone || null,
+                        country: country || null
                     }
                 }
             );

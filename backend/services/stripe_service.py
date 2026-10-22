@@ -143,18 +143,21 @@ def create_connect_invoice(
 
 def create_connect_customer(
     merchant_account: str,
-    name: str,
-    email: str,
+    name: str | None = None,
+    email: str | None = None,
     phone: str | None = None,
+    country: str | None = None,
     metadata: dict | None = None,
 ):
-    params = {
-        "name": name,
-        "email": email,
-        "metadata": metadata or {},
-    }
+    params = {"metadata": metadata or {}}
+    if name:
+        params["name"] = name
+    if email:
+        params["email"] = email
     if phone:
         params["phone"] = phone
+    if country:
+        params["address"] = {"country": country}
     return stripe.Customer.create(
         **params,
         stripe_account=merchant_account,

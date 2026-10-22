@@ -905,6 +905,7 @@ def create_merchant_customer(
             name=data.name,
             email=data.email,
             phone=data.phone,
+            country=data.country,
             metadata={
                 "user_id": membership.user_id,
                 "workspace_id": membership.workspace_id,
@@ -916,6 +917,7 @@ def create_merchant_customer(
             "name": customer.name,
             "email": customer.email,
             "phone": customer.phone,
+            "address": customer.address,
         }
     except stripe.error.StripeError as e:
         raise HTTPException(
