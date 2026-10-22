@@ -4551,6 +4551,20 @@ async function renderInvoices(container) {
                                                             Détails
                                                         </button>
                                                         ${
+                                                            invoice.invoice_pdf
+                                                                ? `
+                                                                    <a
+                                                                        href="${invoice.invoice_pdf}"
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        class="row-menu-item"
+                                                                    >
+                                                                        Télécharger
+                                                                    </a>
+                                                                `
+                                                                : ""
+                                                        }
+                                                        ${
                                                             invoice.hosted_invoice_url
                                                                 ? `
                                                                     <a
