@@ -316,6 +316,27 @@ def process_invoice_paid_event(
         f"Stripe {invoice_id}"
     )
 
+    # Le PaymentIntent qui règle une facture/un abonnement n'hérite jamais
+    # automatiquement des metadata posées sur l'Invoice/la Subscription à
+    # leur création (create_connect_invoice/create_merchant_subscription) -
+    # intent.metadata est donc toujours vide sur ce flux. On retrouve donc
+    # les vraies metadata (user_id/workspace_id/xepay_type) directement sur
+    # l'Invoice (déjà récupérée ci-dessus, aucun appel en plus), avec repli
+    # sur la Subscription elle-même si l'Invoice n'en porte pas (un seul
+    # appel Stripe supplémentaire, uniquement dans ce cas précis).
+    stripe_metadata = intent.metadata.to_dict() if intent.metadata else {}
+    if not stripe_metadata:
+        stripe_metadata = inv.metadata.to_dict() if inv.metadata else {}
+    if not stripe_metadata and subscription_id:
+        try:
+            sub = stripe.Subscription.retrieve(
+                subscription_id,
+                stripe_account=connected_account_id,
+            )
+            stripe_metadata = sub.metadata.to_dict() if sub.metadata else {}
+        except stripe.error.StripeError:
+            pass
+
     # Payment n'était jusqu'ici créé que pour le paiement par lien
     # (process_checkout_session_payment) : factures/abonnements ne
     # créditaient que WalletTransaction. Même table, même schéma, pour que
@@ -334,7 +355,7 @@ def process_invoice_paid_event(
         status=payment_status,
         created_at=created_at,
         source=source,
-        stripe_metadata=intent.metadata.to_dict() if intent.metadata else None,
+        stripe_metadata=stripe_metadata or None,
         stripe_account_id=connected_account_id,
         stripe_payment_intent_id=intent.id,
         charge_id=latest_charge.id if latest_charge else None,
