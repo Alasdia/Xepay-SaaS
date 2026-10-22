@@ -1228,10 +1228,33 @@ def list_merchant_risk(
       comme probablement frauduleuse, souvent bien avant qu'un Dispute
       ne soit (ou soit jamais) déposé.
     - Charge.outcome.risk_level/risk_score : l'évaluation Radar propre à
-      CHAQUE charge (confirmé : coexiste avec disputed=False).
+      CHAQUE charge (confirmé : coexiste avec disputed=False). risk_score
+      n'existe que pour les charges par carte (confirmé sur de vraies
+      charges : absent - pas juste null - pour cashapp ; outcome entier
+      absent pour les paiements par lien, voir ci-dessous).
     - Account.requirements/future_requirements : restrictions côté
       plateforme pouvant découler d'une revue de risque Stripe
-      (disabled_reason, errors)."""
+      (disabled_reason, errors).
+
+    Pas de score de risque global (ex: le 74/100 du Dashboard) : aucune
+    API publique ne l'expose. Les seules API "Account Signals/
+    Evaluations" (preview, 2026-08-26) couvrent un sujet différent
+    (partage de compte/multi-comptes) et exigent d'envoyer ses propres
+    données d'activité - jamais une simple lecture d'un score existant.
+
+    stripe.Charge.list(stripe_account=...) mélange deux natures de
+    charges bien distinctes, toutes deux object="charge" (vérifié - ce
+    ne sont jamais des objets invalides) :
+    - les vraies charges directes (factures/abonnements : carte, cashapp)
+      - seules celles-ci ont une évaluation de risque exploitable.
+    - le miroir, côté compte connecté, du règlement d'un paiement par
+      lien (destination charge) : payment_method_details.type ==
+      "stripe_account", source_transfer renseigné, outcome TOUJOURS None
+      (vérifié sur un vrai paiement) - aucune évaluation de risque n'a
+      jamais lieu sur cette entrée, la vraie charge (avec risque) vit
+      sur la PLATEFORME, jamais sur ce compte connecté. Exclues d'abord,
+      puis complétées via Payment.charge_id (lien = pas de
+      stripe_account, charge sur la plateforme)."""
     profile = db.query(Profile).filter(
         Profile.user_id == membership.workspace_id
     ).first()
@@ -1252,7 +1275,10 @@ def list_merchant_risk(
             efw.to_dict() for efw in early_fraud_warnings.auto_paging_iter()
         ]
 
-        charges = stripe.Charge.list(limit=100, stripe_account=stripe_account)
+        # Charges directes (factures/abonnements) : exclut les miroirs de
+        # paiement par lien (payment_method_details.type ==
+        # "stripe_account", jamais de vrai outcome - voir docstring).
+        direct_charges = stripe.Charge.list(limit=100, stripe_account=stripe_account)
         charges_risk_data = [
             {
                 "id": c.id,
@@ -1262,8 +1288,42 @@ def list_merchant_risk(
                 "disputed": c.disputed,
                 "outcome": c.outcome.to_dict() if c.outcome else None,
             }
-            for c in charges.auto_paging_iter()
+            for c in direct_charges.auto_paging_iter()
+            if not (
+                c.payment_method_details
+                and c.payment_method_details.type == "stripe_account"
+            )
         ]
+
+        # Paiements par lien (destination charge) : la vraie charge, avec
+        # son évaluation de risque, vit sur la PLATEFORME - jamais
+        # stripe_account= ici. Retrouvée via Payment.charge_id (déjà
+        # stocké à la création du paiement), pas via stripe_account=.
+        link_payments = (
+            db.query(Payment)
+            .filter(
+                Payment.user_id == membership.workspace_id,
+                Payment.link_id.isnot(None),
+                Payment.charge_id.isnot(None),
+            )
+            .order_by(Payment.created_at.desc())
+            .limit(100)
+            .all()
+        )
+        for p in link_payments:
+            try:
+                c = stripe.Charge.retrieve(p.charge_id)
+            except stripe.error.StripeError as e:
+                print(f"⚠️ Charge.retrieve (risque, lien) a échoué pour {p.charge_id}: {e}")
+                continue
+            charges_risk_data.append({
+                "id": c.id,
+                "amount": c.amount,
+                "currency": c.currency,
+                "created": c.created,
+                "disputed": c.disputed,
+                "outcome": c.outcome.to_dict() if c.outcome else None,
+            })
 
         account = stripe.Account.retrieve(stripe_account)
         account_status = {
