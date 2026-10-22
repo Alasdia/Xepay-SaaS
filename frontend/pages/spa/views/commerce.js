@@ -112,7 +112,11 @@ export async function mount(container, params = {}) {
 
     const section = params.section || "clients";
 
-    setViewStyles(["commerce.css"]);
+    // transactions.css fournit .status-pill/.badge-success/.badge-warning/
+    // .badge-danger (statuts) et .action-menu-trigger/.action-menu-dropdown/
+    // .action-menu-item (menu "..." par ligne) - mêmes styles que Paiements/
+    // Retraits (views/transactions.js), réutilisés ici plutôt que dupliqués.
+    setViewStyles(["commerce.css", "transactions.css"]);
 
     container.innerHTML = `
         <div class="commerce-view">
@@ -692,8 +696,8 @@ async function renderClients(container) {
                                         <td>
                                             <span class="${
                                                 customer.delinquent
-                                                    ? "status-badge status-danger"
-                                                    : "status-badge status-success"
+                                                    ? "status-pill badge-danger"
+                                                    : "status-pill badge-success"
                                             }">
                                                 ${
                                                     customer.delinquent
@@ -1238,6 +1242,97 @@ async function renderProducts(container) {
         </div>
     `;
 
+    // Menu d'actions "..." (Détails / Archiver) : un seul élément partagé
+    // par toutes les lignes, en position fixed et attaché à <body> (jamais
+    // dans #customers-scroll-box, qui a overflow:auto et couperait le menu
+    // sur les dernières lignes) - même mécanisme que #payment-action-menu
+    // dans views/transactions.js (Paiements/Retraits), positionné via
+    // getBoundingClientRect() du bouton cliqué. Retiré avant d'en recréer
+    // un si cette vue est remontée plusieurs fois dans la session (pas de
+    // lifecycle unmount() ici, voir core/router.js).
+    document.getElementById("product-action-menu")?.remove();
+    document.body.insertAdjacentHTML(
+        "beforeend",
+        `
+            <div id="product-action-menu" class="action-menu-dropdown">
+                <button type="button" class="action-menu-item" data-action="details">Détails</button>
+                <button type="button" class="action-menu-item" data-action="archive">Archiver</button>
+            </div>
+        `
+    );
+    const actionMenuEl =
+        document.getElementById("product-action-menu");
+    let actionMenuTriggerBtn = null;
+
+    function closeActionMenu() {
+        actionMenuEl.classList.remove("open");
+        actionMenuTriggerBtn = null;
+    }
+
+    function openActionMenu(triggerBtn) {
+        actionMenuTriggerBtn = triggerBtn;
+        actionMenuEl.querySelector('[data-action="archive"]').textContent =
+            triggerBtn.dataset.active === "true" ? "Archiver" : "Désarchiver";
+        actionMenuEl.classList.add("open");
+        const rect = triggerBtn.getBoundingClientRect();
+        const menuRect = actionMenuEl.getBoundingClientRect();
+        let top = rect.bottom + 4;
+        if (top + menuRect.height > window.innerHeight) {
+            top = rect.top - menuRect.height - 4;
+        }
+        let left = rect.right - menuRect.width;
+        if (left < 4) left = 4;
+        actionMenuEl.style.top = `${top}px`;
+        actionMenuEl.style.left = `${left}px`;
+    }
+
+    actionMenuEl.addEventListener("click", (event) => {
+        const item = event.target.closest(".action-menu-item");
+        if (!item || !actionMenuTriggerBtn) return;
+        const triggerBtn = actionMenuTriggerBtn;
+        const product = products.find(
+            p => p.id === triggerBtn.dataset.productId
+        );
+        closeActionMenu();
+        if (!product) return;
+        if (item.dataset.action === "details") {
+            showProductDetails(product);
+        } else if (item.dataset.action === "archive") {
+            toggleProductArchive(product);
+        }
+    });
+
+    /* Document/window : mêmes listeners que Paiements (clic ailleurs,
+       scroll, resize, Échap) - retirés avant d'en rattacher de nouveaux
+       pour la même raison que le remove() ci-dessus sur #product-action-menu. */
+    if (container._productActionMenuListeners) {
+        const old = container._productActionMenuListeners;
+        document.removeEventListener("click", old.onDocClick);
+        window.removeEventListener("scroll", old.onScroll);
+        window.removeEventListener("resize", old.onResize);
+        document.removeEventListener("keydown", old.onKeydown);
+    }
+    const onDocClick = (event) => {
+        if (!actionMenuTriggerBtn) return;
+        if (
+            event.target.closest("#product-action-menu") ||
+            event.target.closest(".js-action-menu-toggle")
+        ) return;
+        closeActionMenu();
+    };
+    const onScroll = () => closeActionMenu();
+    const onResize = () => closeActionMenu();
+    const onKeydown = (event) => {
+        if (event.key === "Escape") closeActionMenu();
+    };
+    document.addEventListener("click", onDocClick);
+    window.addEventListener("scroll", onScroll);
+    window.addEventListener("resize", onResize);
+    document.addEventListener("keydown", onKeydown);
+    container._productActionMenuListeners = {
+        onDocClick, onScroll, onResize, onKeydown
+    };
+
 
     const createModal =
         container.querySelector("#create-product-modal");
@@ -1255,28 +1350,23 @@ async function renderProducts(container) {
     const form =
         container.querySelector("#create-product-form");
 
-    /* Ferme le menu ••• ouvert si on clique ailleurs - le handler est
-       stocké sur container pour pouvoir le retirer avant d'en rattacher un
-       nouveau si cette vue est remontée plusieurs fois dans la session
-       (sinon les listeners s'accumuleraient sur document). */
-    if (container._closeRowMenusHandler) {
-        document.removeEventListener(
-            "click",
-            container._closeRowMenusHandler
-        );
-    }
-    container._closeRowMenusHandler = (event) => {
-        if (!event.target.closest(".row-menu")) {
-            container
-                .querySelectorAll(".row-menu.open")
-                .forEach(row => row.classList.remove("open"));
-        }
-    };
-    document.addEventListener(
-        "click",
-        container._closeRowMenusHandler
-    );
+    // Alimenté par loadProducts() (fetch "/stripe/connect/products") et lu
+    // par le menu "..." ci-dessus (closure) pour retrouver l'objet produit
+    // complet (avec ses prices) à partir du seul data-product-id du bouton.
+    let products = [];
 
+    const list =
+        container.querySelector("#products-list");
+
+    list.addEventListener("click", (event) => {
+        const toggleBtn = event.target.closest(".js-action-menu-toggle");
+        if (!toggleBtn) return;
+        if (actionMenuTriggerBtn === toggleBtn) {
+            closeActionMenu();
+        } else {
+            openActionMenu(toggleBtn);
+        }
+    });
 
     /* =====================================================
        OUVERTURE / FERMETURE CRÉATION
@@ -1364,10 +1454,6 @@ async function renderProducts(container) {
 
     async function loadProducts() {
 
-        const list =
-            container.querySelector("#products-list");
-
-
         list.innerHTML = `
             <div class="commerce-card">
                 <p>Chargement des produits...</p>
@@ -1395,7 +1481,7 @@ async function renderProducts(container) {
             }
 
 
-            const products =
+            products =
                 data.data || [];
 
 
@@ -1616,8 +1702,8 @@ async function renderProducts(container) {
                                                 <span
                                                     class="${
                                                         product.active
-                                                            ? "status-badge status-success"
-                                                            : "status-badge status-danger"
+                                                            ? "status-pill badge-success"
+                                                            : "status-pill badge-danger"
                                                     }"
                                                 >
                                                     ${
@@ -1628,38 +1714,15 @@ async function renderProducts(container) {
                                                 </span>
                                             </td>
                                             <td>
-                                                <div
-                                                    class="row-menu"
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-export action-menu-trigger js-action-menu-toggle"
                                                     data-product-id="${product.id}"
+                                                    data-active="${product.active}"
+                                                    title="Actions"
                                                 >
-                                                    <button
-                                                        type="button"
-                                                        class="row-menu-trigger"
-                                                        aria-label="Actions"
-                                                    >
-                                                        •••
-                                                    </button>
-                                                    <div class="row-menu-dropdown">
-                                                        <button
-                                                            type="button"
-                                                            class="row-menu-item"
-                                                            data-row-action="details"
-                                                        >
-                                                            Détails
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            class="row-menu-item row-menu-item-danger"
-                                                            data-row-action="archive"
-                                                        >
-                                                            ${
-                                                                product.active
-                                                                    ? "Archiver"
-                                                                    : "Désarchiver"
-                                                            }
-                                                        </button>
-                                                    </div>
-                                                </div>
+                                                    <i class="bi bi-three-dots"></i>
+                                                </button>
                                             </td>
                                         </tr>
                                     `;
@@ -1669,57 +1732,6 @@ async function renderProducts(container) {
                     </div>
                 </div>
             `;
-
-            /* =================================================
-               MENU D'ACTIONS PAR LIGNE (•••)
-            ================================================= */
-
-            list
-                .querySelectorAll(".row-menu-trigger")
-                .forEach(trigger => {
-
-                    trigger.addEventListener("click", (event) => {
-
-                        event.stopPropagation();
-
-                        const row = trigger.closest(".row-menu");
-                        const wasOpen = row.classList.contains("open");
-
-                        list
-                            .querySelectorAll(".row-menu.open")
-                            .forEach(open => open.classList.remove("open"));
-
-                        if (!wasOpen) row.classList.add("open");
-
-                    });
-
-                });
-
-            list
-                .querySelectorAll("[data-row-action]")
-                .forEach(item => {
-
-                    item.addEventListener("click", () => {
-
-                        const row = item.closest(".row-menu");
-                        row.classList.remove("open");
-
-                        const product =
-                            products.find(
-                                p => p.id === row.dataset.productId
-                            );
-
-                        if (!product) return;
-
-                        if (item.dataset.rowAction === "details") {
-                            showProductDetails(product);
-                        } else if (item.dataset.rowAction === "archive") {
-                            toggleProductArchive(product);
-                        }
-
-                    });
-
-                });
 
             }
 
@@ -2055,8 +2067,8 @@ async function renderProducts(container) {
 
     /* =====================================================
        ARCHIVER / DÉSARCHIVER UN PRODUIT
-       (appelé depuis le menu ••• de la ligne, voir list.querySelectorAll
-       ("[data-row-action]") ci-dessus)
+       (appelé depuis le menu ••• de la ligne, voir #product-action-menu
+       plus haut)
     ===================================================== */
 
     async function toggleProductArchive(product) {
@@ -2953,7 +2965,7 @@ async function renderSubscriptions(container) {
 
 
                                     let statusClass =
-                                        "status-warning";
+                                        "badge-warning";
 
 
                                     let statusText =
@@ -2966,7 +2978,7 @@ async function renderSubscriptions(container) {
                                     ) {
 
                                         statusClass =
-                                            "status-success";
+                                            "badge-success";
 
                                         statusText =
                                             "Actif";
@@ -2977,7 +2989,7 @@ async function renderSubscriptions(container) {
                                     ) {
 
                                         statusClass =
-                                            "status-danger";
+                                            "badge-danger";
 
                                         statusText =
                                             "Annulé";
@@ -2988,7 +3000,7 @@ async function renderSubscriptions(container) {
                                     ) {
 
                                         statusClass =
-                                            "status-danger";
+                                            "badge-danger";
 
                                         statusText =
                                             "Impayé";
@@ -2999,7 +3011,7 @@ async function renderSubscriptions(container) {
                                     ) {
 
                                         statusClass =
-                                            "status-success";
+                                            "badge-success";
 
                                         statusText =
                                             "Essai";
@@ -3052,7 +3064,7 @@ async function renderSubscriptions(container) {
                                             <td>
 
                                                 <span
-                                                    class="status-badge ${statusClass}"
+                                                    class="status-pill ${statusClass}"
                                                 >
                                                     ${statusText}
                                                 </span>
@@ -4007,7 +4019,7 @@ async function renderInvoices(container) {
 
 
                                     let statusClass =
-                                        "status-warning";
+                                        "badge-warning";
 
                                     let statusText =
                                         invoice.status || "—";
@@ -4019,7 +4031,7 @@ async function renderInvoices(container) {
                                     ) {
 
                                         statusClass =
-                                            "status-success";
+                                            "badge-success";
 
                                         statusText =
                                             "Payée";
@@ -4030,7 +4042,7 @@ async function renderInvoices(container) {
                                     ) {
 
                                         statusClass =
-                                            "status-warning";
+                                            "badge-warning";
 
                                         statusText =
                                             "Ouverte";
@@ -4041,7 +4053,7 @@ async function renderInvoices(container) {
                                     ) {
 
                                         statusClass =
-                                            "status-danger";
+                                            "badge-danger";
 
                                         statusText =
                                             "Annulée";
@@ -4052,7 +4064,7 @@ async function renderInvoices(container) {
                                     ) {
 
                                         statusClass =
-                                            "status-danger";
+                                            "badge-danger";
 
                                         statusText =
                                             "Irrécouvrable";
@@ -4063,7 +4075,7 @@ async function renderInvoices(container) {
                                     ) {
 
                                         statusClass =
-                                            "status-warning";
+                                            "badge-warning";
 
                                         statusText =
                                             "Brouillon";
@@ -4123,7 +4135,7 @@ async function renderInvoices(container) {
                                             <td>
 
                                                 <span
-                                                    class="status-badge ${statusClass}"
+                                                    class="status-pill ${statusClass}"
                                                 >
                                                     ${statusText}
                                                 </span>
@@ -5045,10 +5057,10 @@ async function renderPaymentMethods(container) {
 
                                                 const statusClass =
                                                     method.blocked
-                                                        ? "status-danger"
+                                                        ? "badge-danger"
                                                         : method.enabled
-                                                            ? "status-success"
-                                                            : "status-danger";
+                                                            ? "badge-success"
+                                                            : "badge-danger";
 
                                                 
                                                 const popularity = getPaymentMethodPopularity(method.id);
@@ -5406,7 +5418,7 @@ async function renderRisk(container) {
                                         <tr>
                                             <td><code class="customer-id">${c.id || "—"}</code></td>
                                             <td>${fmtAmount(c.amount, c.currency)}</td>
-                                            <td><span class="status-badge status-danger">${RISK_LEVEL_LABELS[c.outcome?.risk_level] || c.outcome?.risk_level || "—"}</span></td>
+                                            <td><span class="status-pill badge-danger">${RISK_LEVEL_LABELS[c.outcome?.risk_level] || c.outcome?.risk_level || "—"}</span></td>
                                             <td>${c.outcome?.risk_score ?? "—"}</td>
                                             <td>${c.disputed ? "Oui" : "Non"}</td>
                                             <td>${fmtDate(c.created)}</td>
@@ -5445,7 +5457,7 @@ async function renderRisk(container) {
                                 </thead>
                                 <tbody>
                                     ${disputes.map(dispute => {
-                                        const statusClass = SUCCESS_STATUSES.includes(dispute.status) ? "status-success" : "status-danger";
+                                        const statusClass = SUCCESS_STATUSES.includes(dispute.status) ? "badge-success" : "badge-danger";
                                         const evidenceDueBy = dispute.evidence_details?.due_by;
                                         return `
                                             <tr>
@@ -5453,7 +5465,7 @@ async function renderRisk(container) {
                                                 <td><code class="customer-id">${dispute.charge || "—"}</code></td>
                                                 <td>${fmtAmount(dispute.amount, dispute.currency)}</td>
                                                 <td>${dispute.reason || "—"}</td>
-                                                <td><span class="status-badge ${statusClass}">${STATUS_LABELS[dispute.status] || dispute.status || "—"}</span></td>
+                                                <td><span class="status-pill ${statusClass}">${STATUS_LABELS[dispute.status] || dispute.status || "—"}</span></td>
                                                 <td>${fmtDate(dispute.created)}</td>
                                                 <td>${fmtDate(evidenceDueBy)}</td>
                                             </tr>
