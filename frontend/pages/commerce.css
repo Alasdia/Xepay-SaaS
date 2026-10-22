@@ -833,17 +833,19 @@
    (grille 2 colonnes) plutôt que d'empiler un champ par ligne comme les
    autres modals - le formulaire Client a plus de champs courts, ce
    regroupement le garde aussi compact que les autres. Repasse en 1 colonne
-   sous 600px pour ne jamais compresser les champs. */
-#create-client-modal .form-row {
+   sous 600px pour ne jamais compresser les champs. Générique : réutilisée
+   par les autres modals de création pour leurs propres paires de champs
+   (ex. Prix/Devise dans Produit). */
+.form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
 }
-#create-client-modal .form-row .form-group {
+.form-row .form-group {
     margin-bottom: 0;
 }
 @media (max-width: 600px) {
-    #create-client-modal .form-row {
+    .form-row {
         grid-template-columns: 1fr;
     }
 }

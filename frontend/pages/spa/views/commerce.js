@@ -1078,31 +1078,34 @@ async function renderProducts(container) {
                     </div>
 
 
-                    <div class="form-group">
+                    <div class="form-row">
 
-                        <label>Prix</label>
+                        <div class="form-group">
 
-                        <input
-                            type="number"
-                            id="product-amount"
-                            min="0"
-                            required
-                        >
+                            <label>Prix</label>
 
-                    </div>
+                            <input
+                                type="number"
+                                id="product-amount"
+                                min="0"
+                                required
+                            >
 
+                        </div>
 
-                    <div class="form-group">
+                        <div class="form-group">
 
-                        <label>Devise</label>
+                            <label>Devise</label>
 
-                        <select id="product-currency">
+                            <select id="product-currency">
 
-                            <option value="xof">XOF</option>
-                            <option value="usd">USD</option>
-                            <option value="eur">EUR</option>
+                                <option value="xof">XOF</option>
+                                <option value="usd">USD</option>
+                                <option value="eur">EUR</option>
 
-                        </select>
+                            </select>
+
+                        </div>
 
                     </div>
 
