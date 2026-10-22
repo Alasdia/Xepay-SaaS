@@ -3,6 +3,111 @@ import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
 import { initDetailsDrawer } from "../shared/detailsDrawer.js";
 
+// Pays acceptés par Stripe pour une adresse (address.country) : tout code
+// ISO 3166-1 alpha-2, à l'exception de Cuba, l'Iran, la Corée du Nord et la
+// Syrie, non pris en charge par Stripe (voir "Supported countries" dans la
+// doc Stripe). Triée par nom affiché à l'affichage (voir buildCountryOptions).
+const STRIPE_COUNTRIES = [
+    ["AD", "Andorre"], ["AE", "Émirats arabes unis"], ["AF", "Afghanistan"],
+    ["AG", "Antigua-et-Barbuda"], ["AI", "Anguilla"], ["AL", "Albanie"],
+    ["AM", "Arménie"], ["AO", "Angola"], ["AQ", "Antarctique"],
+    ["AR", "Argentine"], ["AS", "Samoa américaines"], ["AT", "Autriche"],
+    ["AU", "Australie"], ["AW", "Aruba"], ["AX", "Îles Åland"],
+    ["AZ", "Azerbaïdjan"], ["BA", "Bosnie-Herzégovine"], ["BB", "Barbade"],
+    ["BD", "Bangladesh"], ["BE", "Belgique"], ["BF", "Burkina Faso"],
+    ["BG", "Bulgarie"], ["BH", "Bahreïn"], ["BI", "Burundi"],
+    ["BJ", "Bénin"], ["BL", "Saint-Barthélemy"], ["BM", "Bermudes"],
+    ["BN", "Brunei"], ["BO", "Bolivie"],
+    ["BQ", "Bonaire, Saint-Eustache et Saba"], ["BR", "Brésil"],
+    ["BS", "Bahamas"], ["BT", "Bhoutan"], ["BV", "Île Bouvet"],
+    ["BW", "Botswana"], ["BY", "Biélorussie"], ["BZ", "Belize"],
+    ["CA", "Canada"], ["CC", "Îles Cocos"], ["CD", "Congo (RDC)"],
+    ["CF", "République centrafricaine"], ["CG", "Congo"], ["CH", "Suisse"],
+    ["CI", "Côte d’Ivoire"], ["CK", "Îles Cook"], ["CL", "Chili"],
+    ["CM", "Cameroun"], ["CN", "Chine"], ["CO", "Colombie"],
+    ["CR", "Costa Rica"], ["CV", "Cap-Vert"], ["CW", "Curaçao"],
+    ["CX", "Île Christmas"], ["CY", "Chypre"], ["CZ", "République tchèque"],
+    ["DE", "Allemagne"], ["DJ", "Djibouti"], ["DK", "Danemark"],
+    ["DM", "Dominique"], ["DO", "République dominicaine"],
+    ["DZ", "Algérie"], ["EC", "Équateur"], ["EE", "Estonie"],
+    ["EG", "Égypte"], ["EH", "Sahara occidental"], ["ER", "Érythrée"],
+    ["ES", "Espagne"], ["ET", "Éthiopie"], ["FI", "Finlande"],
+    ["FJ", "Fidji"], ["FK", "Îles Malouines"], ["FM", "Micronésie"],
+    ["FO", "Îles Féroé"], ["FR", "France"], ["GA", "Gabon"],
+    ["GB", "Royaume-Uni"], ["GD", "Grenade"], ["GE", "Géorgie"],
+    ["GF", "Guyane française"], ["GG", "Guernesey"], ["GH", "Ghana"],
+    ["GI", "Gibraltar"], ["GL", "Groenland"], ["GM", "Gambie"],
+    ["GN", "Guinée"], ["GP", "Guadeloupe"], ["GQ", "Guinée équatoriale"],
+    ["GR", "Grèce"],
+    ["GS", "Géorgie du Sud-et-les Îles Sandwich du Sud"],
+    ["GT", "Guatemala"], ["GU", "Guam"], ["GW", "Guinée-Bissau"],
+    ["GY", "Guyana"], ["HK", "Hong Kong"],
+    ["HM", "Îles Heard-et-MacDonald"], ["HN", "Honduras"],
+    ["HR", "Croatie"], ["HT", "Haïti"], ["HU", "Hongrie"],
+    ["ID", "Indonésie"], ["IE", "Irlande"], ["IL", "Israël"],
+    ["IM", "Île de Man"], ["IN", "Inde"],
+    ["IO", "Territoire britannique de l’océan Indien"], ["IQ", "Irak"],
+    ["IS", "Islande"], ["IT", "Italie"], ["JE", "Jersey"],
+    ["JM", "Jamaïque"], ["JO", "Jordanie"], ["JP", "Japon"],
+    ["KE", "Kenya"], ["KG", "Kirghizistan"], ["KH", "Cambodge"],
+    ["KI", "Kiribati"], ["KM", "Comores"],
+    ["KN", "Saint-Christophe-et-Niévès"], ["KR", "Corée du Sud"],
+    ["KW", "Koweït"], ["KY", "Îles Caïmans"], ["KZ", "Kazakhstan"],
+    ["LA", "Laos"], ["LB", "Liban"], ["LC", "Sainte-Lucie"],
+    ["LI", "Liechtenstein"], ["LK", "Sri Lanka"], ["LR", "Libéria"],
+    ["LS", "Lesotho"], ["LT", "Lituanie"], ["LU", "Luxembourg"],
+    ["LV", "Lettonie"], ["LY", "Libye"], ["MA", "Maroc"],
+    ["MC", "Monaco"], ["MD", "Moldavie"], ["ME", "Monténégro"],
+    ["MF", "Saint-Martin"], ["MG", "Madagascar"], ["MH", "Îles Marshall"],
+    ["MK", "Macédoine du Nord"], ["ML", "Mali"], ["MM", "Myanmar"],
+    ["MN", "Mongolie"], ["MO", "Macao"], ["MP", "Îles Mariannes du Nord"],
+    ["MQ", "Martinique"], ["MR", "Mauritanie"], ["MS", "Montserrat"],
+    ["MT", "Malte"], ["MU", "Maurice"], ["MV", "Maldives"],
+    ["MW", "Malawi"], ["MX", "Mexique"], ["MY", "Malaisie"],
+    ["MZ", "Mozambique"], ["NA", "Namibie"],
+    ["NC", "Nouvelle-Calédonie"], ["NE", "Niger"], ["NF", "Île Norfolk"],
+    ["NG", "Nigéria"], ["NI", "Nicaragua"], ["NL", "Pays-Bas"],
+    ["NO", "Norvège"], ["NP", "Népal"], ["NR", "Nauru"], ["NU", "Niue"],
+    ["NZ", "Nouvelle-Zélande"], ["OM", "Oman"], ["PA", "Panama"],
+    ["PE", "Pérou"], ["PF", "Polynésie française"],
+    ["PG", "Papouasie-Nouvelle-Guinée"], ["PH", "Philippines"],
+    ["PK", "Pakistan"], ["PL", "Pologne"],
+    ["PM", "Saint-Pierre-et-Miquelon"], ["PN", "Îles Pitcairn"],
+    ["PR", "Porto Rico"], ["PS", "Territoires palestiniens"],
+    ["PT", "Portugal"], ["PW", "Palaos"], ["PY", "Paraguay"],
+    ["QA", "Qatar"], ["RE", "Réunion"], ["RO", "Roumanie"],
+    ["RS", "Serbie"], ["RU", "Russie"], ["RW", "Rwanda"],
+    ["SA", "Arabie saoudite"], ["SB", "Îles Salomon"], ["SC", "Seychelles"],
+    ["SD", "Soudan"], ["SE", "Suède"], ["SG", "Singapour"],
+    ["SH", "Sainte-Hélène"], ["SI", "Slovénie"],
+    ["SJ", "Svalbard et Jan Mayen"], ["SK", "Slovaquie"],
+    ["SL", "Sierra Leone"], ["SM", "Saint-Marin"], ["SN", "Sénégal"],
+    ["SO", "Somalie"], ["SR", "Suriname"], ["SS", "Soudan du Sud"],
+    ["ST", "Sao Tomé-et-Principe"], ["SV", "Salvador"],
+    ["SX", "Saint-Martin (partie néerlandaise)"],
+    ["SZ", "Eswatini (Swaziland)"], ["TC", "Îles Turques-et-Caïques"],
+    ["TD", "Tchad"], ["TF", "Terres australes françaises"], ["TG", "Togo"],
+    ["TH", "Thaïlande"], ["TJ", "Tadjikistan"], ["TK", "Tokelau"],
+    ["TL", "Timor oriental"], ["TM", "Turkménistan"], ["TN", "Tunisie"],
+    ["TO", "Tonga"], ["TR", "Turquie"], ["TT", "Trinité-et-Tobago"],
+    ["TV", "Tuvalu"], ["TW", "Taïwan"], ["TZ", "Tanzanie"],
+    ["UA", "Ukraine"], ["UG", "Ouganda"], ["US", "États-Unis"],
+    ["UY", "Uruguay"], ["UZ", "Ouzbékistan"],
+    ["VA", "État de la Cité du Vatican"],
+    ["VC", "Saint-Vincent-et-les-Grenadines"], ["VE", "Venezuela"],
+    ["VG", "Îles Vierges britanniques"], ["VI", "Îles Vierges américaines"],
+    ["VN", "Vietnam"], ["VU", "Vanuatu"], ["WF", "Wallis-et-Futuna"],
+    ["WS", "Samoa"], ["YE", "Yémen"], ["YT", "Mayotte"],
+    ["ZA", "Afrique du Sud"], ["ZM", "Zambie"], ["ZW", "Zimbabwe"],
+].sort((a, b) => a[1].localeCompare(b[1], "fr"));
+
+function buildCountryOptions(selectedCode = "") {
+    return STRIPE_COUNTRIES.map(
+        ([code, name]) =>
+            `<option value="${code}" ${code === selectedCode ? "selected" : ""}>${name}</option>`
+    ).join("");
+}
+
 export async function mount(container, params = {}) {
 
     const section = params.section || "clients";
@@ -259,18 +364,11 @@ async function renderClients(container) {
                 </div>
                 <form id="create-client-form">
 
-                <!-- =================================================
-                 INFORMATIONS DU CLIENT
-                ================================================== -->
-
-                <div class="customer-form-section">
-                    <div class="customer-form-section-title">
-                        Informations du client
-                    </div>
-                    <p class="customer-form-hint">
+                    <p class="form-hint">
                         Aucun champ n'est obligatoire.
                     </p>
-                    <div class="customer-form-grid customer-form-grid-2">
+
+                    <div class="form-row">
                         <div class="form-group">
                             <label for="client-first-name">
                                 Prénom
@@ -291,51 +389,40 @@ async function renderClients(container) {
                                 autocomplete="family-name"
                             >
                         </div>
-                        </div>
-                        <div class="customer-form-grid customer-form-grid-2">
-                            <div class="form-group">
-                                <label for="client-email">
-                                    Email
-                                </label>
-                                <input
-                                    type="email"
-                                    id="client-email"
-                                    autocomplete="email"
-                                >
-                            </div>
-                            <div class="form-group">
-                                <label for="client-phone">
-                                    Téléphone
-                                </label>
-                                <input
-                                    type="tel"
-                                    id="client-phone"
-                                    autocomplete="tel"
-                                >
-                            </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="client-email">
+                                Email
+                            </label>
+                            <input
+                                type="email"
+                                id="client-email"
+                                autocomplete="email"
+                            >
                         </div>
                         <div class="form-group">
-                            <label for="client-country">
-                                Pays
+                            <label for="client-phone">
+                                Téléphone
                             </label>
-                            <select id="client-country">
-                                <option value="">Sélectionner un pays</option>
-                                <option value="SN">Sénégal</option>
-                                <option value="CI">Côte d’Ivoire</option>
-                                <option value="ML">Mali</option>
-                                <option value="BF">Burkina Faso</option>
-                                <option value="BJ">Bénin</option>
-                                <option value="TG">Togo</option>
-                                <option value="FR">France</option>
-                                <option value="US">États-Unis</option>
-                                <option value="GB">Royaume-Uni</option>
-                            </select>
+                            <input
+                                type="tel"
+                                id="client-phone"
+                                autocomplete="tel"
+                            >
                         </div>
                     </div>
 
-                    <!-- =================================================
-                      ACTIONS
-                    ================================================== -->
+                    <div class="form-group">
+                        <label for="client-country">
+                            Pays
+                        </label>
+                        <select id="client-country">
+                            <option value="">Sélectionner un pays</option>
+                            ${buildCountryOptions()}
+                        </select>
+                    </div>
 
                     <div class="customer-modal-actions">
                         <button

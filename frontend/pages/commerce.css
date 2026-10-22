@@ -111,6 +111,12 @@
     margin-bottom: 14px;
 }
 
+.form-hint {
+    margin: -4px 0 4px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
 .form-group label {
     display: block;
     margin-bottom: 6px;
@@ -768,21 +774,20 @@
    formulaire centré dans l'espace restant sous l'en-tête — sinon le centre
    visuel du contenu reste décalé vers le bas par la hauteur de l'en-tête. */
 #modalCreationLien .customer-modal,
+#create-client-modal .customer-modal,
 #create-product-modal .customer-modal,
 #create-subscription-modal .customer-modal,
 #create-invoice-modal .customer-modal {
     justify-content: center;
 }
 
-/* Client seul : formulaire potentiellement long (adresses de facturation/
-   livraison, etc.) → contrairement aux autres (overflow:visible), celui-ci
-   défile à l'intérieur de sa propre boîte (overflow-y) plutôt que de
-   déborder visuellement, pour garder la même taille de boîte que les
-   autres modals de création. "safe center" : centré au milieu de la boîte
-   quand le contenu rentre (écran haut/large) ; dès qu'il dépasse, retombe
-   automatiquement en haut (jamais de contenu caché ou de défilement vers
-   une zone vide) — contrairement à "center" seul, qui couperait le haut du
-   formulaire quand ça déborde. */
+/* Les 5 modals de création défilent à l'intérieur de leur propre boîte
+   (overflow-y) plutôt que de déborder visuellement, pour garder la même
+   taille de boîte quel que soit le contenu. "safe center" : centré au
+   milieu de la boîte quand le contenu rentre (écran haut/large) ; dès
+   qu'il dépasse, retombe automatiquement en haut (jamais de contenu caché
+   ou de défilement vers une zone vide) — contrairement à "center" seul,
+   qui couperait le haut du formulaire quand ça déborde. */
 #create-client-modal .customer-modal {
     overflow-y: auto;
     justify-content: center;
@@ -807,10 +812,9 @@
    formulaire sont désormais centrés ENSEMBLE comme un seul bloc par
    .customer-modal{justify-content:center} ci-dessus (pas de flex:1 ici,
    sinon le formulaire s'étire pour occuper tout l'espace restant sous
-   l'en-tête, décentrant visuellement l'ensemble). Même style pour
-   Lien/Produit/Abonnement/Facture (largeur de formulaire limitée et
-   centrée) ; Client reste pleine largeur (champs en grille 2 colonnes) et
-   garde son flux naturel (pas de centrage, voir overflow-y plus haut). */
+   l'en-tête, décentrant visuellement l'ensemble). Même style pour les 5
+   modals de création (Lien/Client/Produit/Abonnement/Facture) : largeur de
+   formulaire limitée et centrée. */
 #modalCreationLien .customer-modal > form,
 #create-client-modal .customer-modal > form,
 #create-product-modal .customer-modal > form,
@@ -819,15 +823,29 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-}
-#modalCreationLien .customer-modal > form,
-#create-product-modal .customer-modal > form,
-#create-subscription-modal .customer-modal > form,
-#create-invoice-modal .customer-modal > form {
     width: 100%;
     max-width: 480px;
     margin-left: auto;
     margin-right: auto;
+}
+
+/* Client : les paires Prénom/Nom et Email/Téléphone se partagent une ligne
+   (grille 2 colonnes) plutôt que d'empiler un champ par ligne comme les
+   autres modals - le formulaire Client a plus de champs courts, ce
+   regroupement le garde aussi compact que les autres. Repasse en 1 colonne
+   sous 600px pour ne jamais compresser les champs. */
+#create-client-modal .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+#create-client-modal .form-row .form-group {
+    margin-bottom: 0;
+}
+@media (max-width: 600px) {
+    #create-client-modal .form-row {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Produit a plus de champs que Abonnement/Facture (nom, description, prix,
