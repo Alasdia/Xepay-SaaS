@@ -927,6 +927,35 @@ def create_merchant_customer(
             detail=e.user_message or str(e)
         )
 
+def _emails_by_user_id(db: Session, metadata_dicts: list[dict]) -> dict[str, str]:
+    """Resout en un seul aller-retour DB les emails des user_id/workspace_id
+    presents dans une liste de metadata Stripe (ce sont les memes IDs,
+    workspace_id = l'ID du compte proprietaire - voir WorkspaceUser) - pour
+    enrichir l'affichage "qui a cree / quel workspace" sans un aller-retour
+    par ligne (customer_id, product_id, etc.)."""
+    ids = {
+        metadata.get("user_id") for metadata in metadata_dicts if metadata
+    } | {
+        metadata.get("workspace_id") for metadata in metadata_dicts if metadata
+    }
+    ids.discard(None)
+    if not ids:
+        return {}
+    users = db.query(UserDB).filter(UserDB.id.in_(ids)).all()
+    return {user.id: user.email for user in users}
+
+def _enrich_metadata(metadata: dict | None, emails_by_id: dict[str, str]) -> dict | None:
+    """Remplace user_id/workspace_id par "<id> (email)" quand l'email est
+    connu - ne modifie rien d'autre (xepay_type, etc. restent tels quels)."""
+    if not metadata:
+        return metadata
+    enriched = dict(metadata)
+    for key in ("user_id", "workspace_id"):
+        value = enriched.get(key)
+        if value and value in emails_by_id:
+            enriched[key] = f"{value} ({emails_by_id[value]})"
+    return enriched
+
 @router.get("/stripe/connect/customers")
 def list_merchant_customers(
     db: Session = Depends(get_db),
@@ -948,6 +977,10 @@ def list_merchant_customers(
         customers = stripe.Customer.list(
             limit=100,
             stripe_account=stripe_account,
+        )
+
+        emails_by_id = _emails_by_user_id(
+            db, [dict(c.metadata or {}) for c in customers.data]
         )
 
         result = []
@@ -1073,7 +1106,7 @@ def list_merchant_customers(
                 "invoice_prefix": customer.invoice_prefix,
                 "invoice_settings": customer.invoice_settings,
 
-                "metadata": customer.metadata,
+                "metadata": _enrich_metadata(dict(customer.metadata or {}), emails_by_id),
                 "tax_exempt": customer.tax_exempt,
                 "preferred_locales": customer.preferred_locales,
 
@@ -1116,14 +1149,21 @@ def list_merchant_products(
             limit=100,
             stripe_account=stripe_account,
         )
+        products_list = list(products.auto_paging_iter())
+        emails_by_id = _emails_by_user_id(
+            db, [dict(p.metadata or {}) for p in products_list]
+        )
         result = []
-        for product in products.auto_paging_iter():
+        for product in products_list:
             prices = stripe.Price.list(
                 product=product.id,
                 limit=100,
                 stripe_account=stripe_account,
             )
             product_data = product.to_dict()
+            product_data["metadata"] = _enrich_metadata(
+                product_data.get("metadata"), emails_by_id
+            )
             product_data["prices"] = [
                 price.to_dict()
                 for price in prices.auto_paging_iter()
