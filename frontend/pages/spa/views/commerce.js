@@ -125,23 +125,24 @@ function formatDate(timestampSeconds) {
 }
 
 // Menu d'actions "..." partagé par Clients/Produits/Abonnements/Factures.
-// Le dropdown (.row-menu-dropdown) est réparenté dans <body> et positionné
-// en fixed via getBoundingClientRect() du bouton cliqué, car les tableaux
-// vivent dans #customers-scroll-box (overflow-x:auto) : un positionnement
-// absolute/relative à la ligne se faisait couper pour les lignes qui
-// dépassaient la zone visible du tableau (invisible, pas juste tronqué).
-// Déclaré une seule fois au niveau module (pas dans une fonction render*)
-// pour que les listeners document/window ne soient jamais dupliqués,
-// quel que soit le nombre de fois où une vue est (re)montée.
+// .row-menu-dropdown est position:fixed (voir commerce.css) : ça suffit à
+// échapper à l'overflow de #customers-scroll-box sans déplacer l'élément
+// dans le DOM (position:fixed se positionne déjà par rapport au viewport,
+// pas par rapport à un ancêtre avec overflow, contrairement à absolute/
+// relative qui se faisaient couper pour les lignes hors de la zone visible
+// du tableau). Seul le top/left est calculé en JS via getBoundingClientRect
+// du bouton cliqué. Déclaré une seule fois au niveau module (pas dans une
+// fonction render*) pour que les listeners document/window ne soient
+// jamais dupliqués, quel que soit le nombre de fois où une vue est
+// (re)montée.
 let openRowMenuState = null;
 
 function closeRowMenu() {
     if (!openRowMenuState) return;
-    const { dropdown, originalParent, originalNextSibling, row } = openRowMenuState;
+    const { dropdown, row } = openRowMenuState;
     dropdown.classList.remove("row-menu-dropdown-open");
     dropdown.style.top = "";
     dropdown.style.left = "";
-    originalParent.insertBefore(dropdown, originalNextSibling);
     row.classList.remove("open");
     openRowMenuState = null;
 }
@@ -151,10 +152,7 @@ function openRowMenu(trigger) {
 
     const row = trigger.closest(".row-menu");
     const dropdown = row.querySelector(".row-menu-dropdown");
-    const originalParent = dropdown.parentElement;
-    const originalNextSibling = dropdown.nextSibling;
 
-    document.body.appendChild(dropdown);
     dropdown.classList.add("row-menu-dropdown-open");
     row.classList.add("open");
 
@@ -169,7 +167,7 @@ function openRowMenu(trigger) {
     dropdown.style.top = `${top}px`;
     dropdown.style.left = `${left}px`;
 
-    openRowMenuState = { dropdown, originalParent, originalNextSibling, row };
+    openRowMenuState = { dropdown, row };
 }
 
 document.addEventListener("click", (event) => {

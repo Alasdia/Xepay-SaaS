@@ -980,10 +980,11 @@
     border-color: #9ca3af;
 }
 
-/* position:fixed + top/left posés en JS (voir openRowMenu) : le dropdown
-   est réparenté dans <body> à l'ouverture pour échapper à l'overflow des
-   conteneurs de tableau (#customers-scroll-box), qui le couperait sinon
-   pour les lignes hors de la zone visible. */
+/* position:fixed (+ top/left posés en JS, voir openRowMenu) : se positionne
+   par rapport au viewport, pas par rapport à un ancêtre - échappe donc à
+   l'overflow de #customers-scroll-box sans avoir à déplacer l'élément dans
+   le DOM (absolute/relative s'y faisaient couper pour les lignes hors de
+   la zone visible du tableau). */
 .row-menu-dropdown {
     display: none;
     position: fixed;
