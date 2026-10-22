@@ -1131,25 +1131,46 @@ async function renderProducts(container) {
                         style="display:none;"
                     >
 
-                        <div class="form-group">
+                        <div class="form-row">
 
-                            <label>Intervalle</label>
+                            <div class="form-group">
 
-                            <select id="product-interval">
+                                <label>Répéter tous les</label>
 
-                                <option value="month">
-                                    Mensuel
-                                </option>
+                                <input
+                                    type="number"
+                                    id="product-interval-count"
+                                    min="1"
+                                    value="1"
+                                >
 
-                                <option value="year">
-                                    Annuel
-                                </option>
+                            </div>
 
-                                <option value="week">
-                                    Hebdomadaire
-                                </option>
+                            <div class="form-group">
 
-                            </select>
+                                <label>Intervalle</label>
+
+                                <select id="product-interval">
+
+                                    <option value="day">
+                                        Jour(s)
+                                    </option>
+
+                                    <option value="week">
+                                        Semaine(s)
+                                    </option>
+
+                                    <option value="month" selected>
+                                        Mois
+                                    </option>
+
+                                    <option value="year">
+                                        An(s)
+                                    </option>
+
+                                </select>
+
+                            </div>
 
                         </div>
 
@@ -1461,10 +1482,22 @@ async function renderProducts(container) {
                                                         ? "Annuel"
                                                         : interval === "week"
                                                             ? "Hebdomadaire"
-                                                            : interval;
+                                                            : interval === "day"
+                                                                ? "Quotidien"
+                                                                : interval;
                                         } else {
+                                            const unitPlural =
+                                                interval === "month"
+                                                    ? "mois"
+                                                    : interval === "year"
+                                                        ? "ans"
+                                                        : interval === "week"
+                                                            ? "semaines"
+                                                            : interval === "day"
+                                                                ? "jours"
+                                                                : interval;
                                             recurringText =
-                                                `Tous les ${count} ${interval}`;
+                                                `Tous les ${count} ${unitPlural}`;
                                         }
                                     }
                                     return `
@@ -1921,7 +1954,11 @@ async function renderProducts(container) {
                                                                 ? (price.recurring.interval_count || 1) === 1
                                                                     ? "Toutes les semaines"
                                                                     : `Toutes les ${price.recurring.interval_count} semaines`
-                                                                : price.recurring.interval
+                                                                : price.recurring.interval === "day"
+                                                                    ? (price.recurring.interval_count || 1) === 1
+                                                                        ? "Tous les jours"
+                                                                        : `Tous les ${price.recurring.interval_count} jours`
+                                                                    : price.recurring.interval
                                             }
                                         </strong>
                                     </div>
@@ -1942,8 +1979,64 @@ async function renderProducts(container) {
                     `
             }
 
+            <div class="customer-modal-actions" style="margin-top:20px;">
+                <button
+                    type="button"
+                    class="modal-danger-btn"
+                    id="product-archive-toggle-btn"
+                    data-product-id="${product.id}"
+                    data-active="${product.active}"
+                >
+                    ${product.active ? "Archiver" : "Désarchiver"}
+                </button>
+            </div>
+
         `;
 
+        container
+            .querySelector("#product-archive-toggle-btn")
+            .addEventListener("click", async (event) => {
+
+                const btn = event.currentTarget;
+                const isActive = btn.dataset.active === "true";
+                const endpoint = isActive ? "archive" : "unarchive";
+
+                btn.disabled = true;
+
+                try {
+                    const response = await apiFetch(
+                        `/stripe/connect/products/${btn.dataset.productId}/${endpoint}`,
+                        { method: "POST" }
+                    );
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(
+                            data.detail ||
+                            "Impossible de mettre à jour le produit"
+                        );
+                    }
+
+                    showToast(
+                        isActive
+                            ? "Produit archivé"
+                            : "Produit réactivé",
+                        "success"
+                    );
+
+                    detailsModal.classList.remove("open");
+
+                    await loadProducts();
+
+                } catch (error) {
+                    showToast(
+                        error.message ||
+                        "Erreur lors de l'archivage",
+                        "error"
+                    );
+                    btn.disabled = false;
+                }
+            });
 
         detailsModal.classList.add("open");
 
@@ -1998,6 +2091,13 @@ async function renderProducts(container) {
                     .querySelector("#product-interval")
                     .value;
 
+            const intervalCount =
+                Number(
+                    container
+                        .querySelector("#product-interval-count")
+                        .value
+                ) || 1;
+
 
             try {
 
@@ -2018,7 +2118,11 @@ async function renderProducts(container) {
                                 interval:
                                     isRecurring
                                         ? interval
-                                        : null
+                                        : null,
+                                interval_count:
+                                    isRecurring
+                                        ? intervalCount
+                                        : 1
                             }
                         }
                     );
@@ -2483,12 +2587,25 @@ async function renderSubscriptions(container) {
                                     ? "Annuel"
                                     : interval === "week"
                                         ? "Hebdomadaire"
-                                        : interval;
+                                        : interval === "day"
+                                            ? "Quotidien"
+                                            : interval;
 
                     } else {
 
+                        const unitPlural =
+                            interval === "month"
+                                ? "mois"
+                                : interval === "year"
+                                    ? "ans"
+                                    : interval === "week"
+                                        ? "semaines"
+                                        : interval === "day"
+                                            ? "jours"
+                                            : interval;
+
                         recurringText =
-                            `Tous les ${intervalCount} ${interval}`;
+                            `Tous les ${intervalCount} ${unitPlural}`;
 
                     }
 

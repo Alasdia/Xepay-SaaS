@@ -1160,6 +1160,7 @@ def create_merchant_product(
             currency=data.currency,
             recurring=data.recurring,
             interval=data.interval,
+            interval_count=data.interval_count,
             metadata={
                 "user_id": membership.user_id,
                 "workspace_id": membership.workspace_id,
@@ -1183,6 +1184,65 @@ def create_merchant_product(
             status_code=400,
             detail=e.user_message or str(e)
         )
+
+def _set_merchant_product_active(
+    product_id: str,
+    active: bool,
+    db: Session,
+    membership: WorkspaceUser,
+):
+    profile = db.query(Profile).filter(
+        Profile.user_id == membership.workspace_id
+    ).first()
+    if not profile or not profile.stripe_account_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Compte Stripe introuvable"
+        )
+    try:
+        product = stripe.Product.modify(
+            product_id,
+            active=active,
+            stripe_account=profile.stripe_account_id,
+        )
+        # Les tarifs restent utilisables indefiniment chez Stripe meme si le
+        # produit est archive (ils ne sont pas lies automatiquement) : on
+        # les desactive/reactive avec le produit pour qu'un produit archive
+        # ne reste pas selectionnable dans un nouvel abonnement/facture.
+        prices = stripe.Price.list(
+            product=product_id,
+            limit=100,
+            stripe_account=profile.stripe_account_id,
+        )
+        for price in prices.auto_paging_iter():
+            if price.active != active:
+                stripe.Price.modify(
+                    price.id,
+                    active=active,
+                    stripe_account=profile.stripe_account_id,
+                )
+        return {"id": product.id, "active": product.active}
+    except stripe.error.StripeError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=e.user_message or str(e)
+        )
+
+@router.post("/stripe/connect/products/{product_id}/archive")
+def archive_merchant_product(
+    product_id: str,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_manager),
+):
+    return _set_merchant_product_active(product_id, False, db, membership)
+
+@router.post("/stripe/connect/products/{product_id}/unarchive")
+def unarchive_merchant_product(
+    product_id: str,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_manager),
+):
+    return _set_merchant_product_active(product_id, True, db, membership)
 
 @router.get("/stripe/connect/payment-methods")
 def list_merchant_payment_methods(

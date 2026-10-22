@@ -171,6 +171,7 @@ def create_connect_product(
     currency: str,
     recurring: bool = False,
     interval: str | None = None,
+    interval_count: int = 1,
     metadata: dict | None = None,
 ):
     product = stripe.Product.create(
@@ -188,6 +189,7 @@ def create_connect_product(
     if recurring:
         price_params["recurring"] = {
             "interval": interval or "month",
+            "interval_count": interval_count or 1,
         }
     price = stripe.Price.create(
         **price_params,

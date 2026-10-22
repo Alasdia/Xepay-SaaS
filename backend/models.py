@@ -137,6 +137,11 @@ class ConnectProductCreateRequest(BaseModel):
     currency: str = "xof"
     recurring: bool = False
     interval: str | None = None
+    # Nombre de periodes entre deux facturations (ex: interval="month" +
+    # interval_count=2 -> "tous les 2 mois"). Stripe plafonne ce total selon
+    # l'intervalle (365 jours/52 semaines/12 mois/1 an) et renvoie une
+    # erreur sinon - verifie par Stripe, pas ici.
+    interval_count: int = Field(default=1, ge=1)
 
 class ConnectInvoiceCreateRequest(BaseModel):
     customer_id: str
