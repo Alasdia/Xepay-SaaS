@@ -142,7 +142,6 @@
   color: #9ca3af;
   font-size: 13px;
   margin-bottom: 14px;
-  max-width: 560px;
 }
 
 /* En-tête de sous-section avec action à l'extrême droite (Connecter un
@@ -158,6 +157,7 @@
 
 .params-subsection-header .params-subsection-sub {
   margin-bottom: 0;
+  white-space: nowrap;
 }
 
 .params-subsection-header .create-client-btn {
@@ -229,7 +229,11 @@
 /* Mini-tableaux (Clés d'accès, Sessions actives). */
 .table-wrap {
   overflow-x: auto;
-  max-width: 720px;
+  width: 100%;
+}
+
+.params-mini-table {
+  width: 100%;
 }
 
 .params-mini-table thead th {
