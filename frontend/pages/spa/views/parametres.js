@@ -171,13 +171,10 @@ function informationsPersonnellesTemplate() {
     ${detailHeader("Informations personnelles")}
 
     <h6 class="params-subsection-title">Coordonnées</h6>
-    <div class="card-epay p-4 mb-5" style="max-width:560px;">
+    <div class="params-row-list mb-5">
       <div class="params-info-row">
         <span>Nom complet</span>
-        <div class="params-info-edit">
-          <input type="text" id="p-name-input" class="form-control form-control-sm" placeholder="Votre nom complet">
-          <button type="button" id="p-name-save-btn" class="create-client-btn">Ajouter votre nom</button>
-        </div>
+        <div class="params-row-right" id="p-field-right-full_name"></div>
       </div>
       <div class="params-info-row">
         <span>Email</span>
@@ -185,23 +182,31 @@ function informationsPersonnellesTemplate() {
       </div>
       <div class="params-info-row">
         <span>Téléphone</span>
-        <div class="params-info-edit">
-          <input type="tel" id="p-phone-input" class="form-control form-control-sm" placeholder="Votre numéro de téléphone">
-          <button type="button" id="p-phone-save-btn" class="create-client-btn">Ajouter votre téléphone</button>
-        </div>
+        <div class="params-row-right" id="p-field-right-phone"></div>
       </div>
     </div>
 
-    <h6 class="params-subsection-title">Compte Google</h6>
-    <p class="params-subsection-sub">Connectez-vous à Xepay à l'aide de votre compte Google.</p>
-    <div class="card-epay p-4 mb-5" style="max-width:560px;">
-      <div id="p-google-status" class="mb-3"></div>
+    <div class="params-subsection-header">
+      <div>
+        <h6 class="params-subsection-title">Compte Google</h6>
+        <p class="params-subsection-sub">Connectez-vous à Xepay à l'aide de votre compte Google.</p>
+      </div>
       <button type="button" id="p-google-btn" class="create-client-btn">Connecter un compte Google</button>
     </div>
+    <div class="params-row-list mb-5">
+      <div class="params-info-row">
+        <span>Statut</span>
+        <strong id="p-google-status">—</strong>
+      </div>
+    </div>
 
-    <h6 class="params-subsection-title">Clés d'accès</h6>
-    <p class="params-subsection-sub">Connectez-vous en toute sécurité à l'aide de vos données biométriques, du code PIN de votre appareil ou de votre clé de sécurité.</p>
-    <button type="button" id="p-passkey-add-btn" class="create-client-btn mb-3">+ Ajouter une clé d'accès</button>
+    <div class="params-subsection-header">
+      <div>
+        <h6 class="params-subsection-title">Clés d'accès</h6>
+        <p class="params-subsection-sub">Connectez-vous en toute sécurité à l'aide de vos données biométriques, du code PIN de votre appareil ou de votre clé de sécurité.</p>
+      </div>
+      <button type="button" id="p-passkey-add-btn" class="create-client-btn">+ Ajouter une clé d'accès</button>
+    </div>
     <div class="table-wrap mb-5">
       <table class="table params-mini-table">
         <thead>
@@ -218,9 +223,13 @@ function informationsPersonnellesTemplate() {
       </table>
     </div>
 
-    <h6 class="params-subsection-title">Sessions actives</h6>
-    <p class="params-subsection-sub">Tous les lieux où vous êtes connecté à Xepay.</p>
-    <button type="button" id="p-sessions-revoke-others-btn" class="create-client-btn mb-3">Se déconnecter de toutes les autres sessions</button>
+    <div class="params-subsection-header">
+      <div>
+        <h6 class="params-subsection-title">Sessions actives</h6>
+        <p class="params-subsection-sub">Tous les lieux où vous êtes connecté à Xepay.</p>
+      </div>
+      <button type="button" id="p-sessions-revoke-others-btn" class="create-client-btn">Se déconnecter de toutes les autres sessions</button>
+    </div>
     <div class="table-wrap">
       <table class="table params-mini-table">
         <thead>
@@ -240,6 +249,33 @@ function informationsPersonnellesTemplate() {
   `;
 }
 
+const FIELD_LABELS = { full_name: "Votre nom complet", phone: "Votre numéro de téléphone" };
+const FIELD_EMPTY_BTN = { full_name: "Ajouter votre nom", phone: "Ajouter votre téléphone" };
+const profileFieldValues = { full_name: "", phone: "" };
+
+// Lecture : valeur + bouton "Modifier"/"Ajouter votre ..." à l'extrême
+// droite de la ligne. L'input (avec placeholder) n'apparaît qu'au clic sur
+// ce bouton (renderFieldEdit), jamais affiché par défaut.
+function renderFieldDisplay(field) {
+  const container = document.getElementById(`p-field-right-${field}`);
+  const value = profileFieldValues[field];
+  container.innerHTML = `
+    ${value ? `<strong>${value}</strong>` : ""}
+    <button type="button" class="params-edit-btn" data-field="${field}">${value ? "Modifier" : FIELD_EMPTY_BTN[field]}</button>
+  `;
+  container.querySelector("[data-field]").addEventListener("click", () => renderFieldEdit(field));
+}
+
+function renderFieldEdit(field) {
+  const container = document.getElementById(`p-field-right-${field}`);
+  container.innerHTML = `
+    <input type="${field === "phone" ? "tel" : "text"}" class="form-control form-control-sm" id="p-field-input-${field}" value="${profileFieldValues[field] || ""}" placeholder="${FIELD_LABELS[field]}">
+    <button type="button" class="create-client-btn" id="p-field-save-${field}">Enregistrer</button>
+  `;
+  document.getElementById(`p-field-input-${field}`).focus();
+  document.getElementById(`p-field-save-${field}`).addEventListener("click", () => saveProfileField(field));
+}
+
 function formatSessionTime(value) {
   if (!value || isNaN(new Date(value))) return "—";
   return new Date(value).toLocaleDateString("fr-FR", {
@@ -251,9 +287,10 @@ function formatSessionTime(value) {
   });
 }
 
-async function saveProfileField(field, value, btnId, emptyLabel) {
-  const btn = document.getElementById(btnId);
-  const previousLabel = btn.innerText;
+async function saveProfileField(field) {
+  const input = document.getElementById(`p-field-input-${field}`);
+  const btn = document.getElementById(`p-field-save-${field}`);
+  const value = input.value.trim();
   btn.disabled = true;
   btn.innerText = "Enregistrement...";
   try {
@@ -261,27 +298,21 @@ async function saveProfileField(field, value, btnId, emptyLabel) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Erreur");
     showToast("Mis à jour");
-    btn.innerText = value ? "Enregistrer" : emptyLabel;
+    profileFieldValues[field] = value;
+    renderFieldDisplay(field);
   } catch (err) {
     showToast(err.message, "error");
-    btn.innerText = previousLabel;
-  } finally {
     btn.disabled = false;
+    btn.innerText = "Enregistrer";
   }
 }
 
 function updateGoogleStatus(linked, email) {
-  const box = document.getElementById("p-google-status");
+  const status = document.getElementById("p-google-status");
   const btn = document.getElementById("p-google-btn");
-  if (linked) {
-    box.innerHTML = `<div class="params-info-row" style="padding:0;"><span>Compte connecté</span><strong>${email || ""}</strong></div>`;
-    btn.innerText = "Déconnecter le compte Google";
-    btn.dataset.linked = "true";
-  } else {
-    box.innerHTML = `<p class="text-muted small mb-0">Aucun compte Google connecté.</p>`;
-    btn.innerText = "Connecter un compte Google";
-    btn.dataset.linked = "false";
-  }
+  status.innerText = linked ? `Connecté (${email || ""})` : "Non connecté";
+  btn.innerText = linked ? "Déconnecter le compte Google" : "Connecter un compte Google";
+  btn.dataset.linked = linked ? "true" : "false";
 }
 
 // Widget Google Identity Services (GIS), même pattern que login.js
@@ -532,12 +563,6 @@ async function revokeOtherSessions() {
 }
 
 function mountInformationsPersonnelles(on) {
-  on(document.getElementById("p-name-save-btn"), "click", () =>
-    saveProfileField("full_name", document.getElementById("p-name-input").value.trim(), "p-name-save-btn", "Ajouter votre nom")
-  );
-  on(document.getElementById("p-phone-save-btn"), "click", () =>
-    saveProfileField("phone", document.getElementById("p-phone-input").value.trim(), "p-phone-save-btn", "Ajouter votre téléphone")
-  );
   on(document.getElementById("p-google-btn"), "click", handleGoogleBtnClick);
   on(document.getElementById("p-passkey-add-btn"), "click", registerPasskey);
   on(document.getElementById("p-sessions-revoke-others-btn"), "click", revokeOtherSessions);
@@ -567,14 +592,10 @@ function mountInformationsPersonnelles(on) {
       const res = await apiFetch("/profile");
       const data = await res.json();
       document.getElementById("p-profile-email").innerText = data.email || "—";
-      const nameInput = document.getElementById("p-name-input");
-      const nameBtn = document.getElementById("p-name-save-btn");
-      nameInput.value = data.full_name || "";
-      nameBtn.innerText = data.full_name ? "Enregistrer" : "Ajouter votre nom";
-      const phoneInput = document.getElementById("p-phone-input");
-      const phoneBtn = document.getElementById("p-phone-save-btn");
-      phoneInput.value = data.phone || "";
-      phoneBtn.innerText = data.phone ? "Enregistrer" : "Ajouter votre téléphone";
+      profileFieldValues.full_name = data.full_name || "";
+      profileFieldValues.phone = data.phone || "";
+      renderFieldDisplay("full_name");
+      renderFieldDisplay("phone");
       updateGoogleStatus(data.google_linked, data.google_email);
     } catch (err) {
       console.error("Erreur chargement profil:", err);
