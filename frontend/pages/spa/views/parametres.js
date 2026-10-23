@@ -13,27 +13,20 @@ import { showToast } from "../shared/toast.js";
 import { clearSession } from "../core/state.js";
 import { navigate } from "../core/router.js";
 
-function tile(section, icon, title, sub) {
+function tile(section, icon, title, sub, danger = false) {
   return `
-    <button type="button" class="params-tile" data-section="${section}">
-      <i class="${icon} params-tile-icon"></i>
-      <div>
-        <div class="params-tile-title">${title}</div>
-        <div class="params-tile-sub">${sub}</div>
+    <button type="button" class="params-tile${danger ? " params-tile--danger" : ""}" data-section="${section}">
+      <div class="params-tile-head">
+        <i class="${icon} params-tile-icon"></i>
+        <span class="params-tile-title">${title}</span>
       </div>
-      <i class="fa-solid fa-chevron-right params-tile-arrow"></i>
+      <div class="params-tile-sub">${sub}</div>
     </button>
   `;
 }
 
-function kpiTile(section, icon, title, sub, danger = false) {
-  return `
-    <button type="button" class="params-kpi-tile${danger ? " params-kpi-tile--danger" : ""}" data-section="${section}">
-      <i class="${icon} params-kpi-icon"></i>
-      <div class="params-kpi-title">${title}</div>
-      <div class="params-kpi-sub">${sub}</div>
-    </button>
-  `;
+function sectionTitle(icon, label) {
+  return `<h6 class="params-section-title"><i class="${icon}"></i> ${label}</h6>`;
 }
 
 function overviewTemplate() {
@@ -42,8 +35,8 @@ function overviewTemplate() {
       <h4 class="fw-bold mb-4 text-muted"><i class="fa-solid fa-gear"></i> Paramètres</h4>
 
       <section class="params-section">
-        <h6 class="params-section-title">Paramètres personnels</h6>
-        <div class="params-tile-list">
+        ${sectionTitle("fa-solid fa-user", "Paramètres personnels")}
+        <div class="params-tiles-grid">
           ${tile("informations-personnelles", "fa-solid fa-id-card", "Informations personnelles", "Nom, email, téléphone")}
           ${tile("authentification", "fa-solid fa-key", "Authentification", "Mot de passe, double authentification")}
           ${tile("notifications", "fa-solid fa-bell", "Paramètres de notifications", "Alertes de connexion, paiement, sécurité")}
@@ -51,21 +44,21 @@ function overviewTemplate() {
       </section>
 
       <section class="params-section">
-        <h6 class="params-section-title">Paramètres du compte</h6>
-        <div class="params-kpi-grid">
-          ${kpiTile("stripe", "fa-brands fa-stripe", "Compte Stripe", "Vérification et paiements")}
-          ${kpiTile("abonnement", "fa-solid fa-crown", "Abonnement", "Plan et facturation")}
-          ${kpiTile("sessions", "fa-solid fa-desktop", "Sessions actives", "Appareils connectés")}
-          ${kpiTile("zone-dangereuse", "fa-solid fa-triangle-exclamation", "Zone dangereuse", "Suppression du compte", true)}
+        ${sectionTitle("fa-solid fa-sliders", "Paramètres du compte")}
+        <div class="params-tiles-grid">
+          ${tile("stripe", "fa-brands fa-stripe", "Compte Stripe", "Vérification et paiements")}
+          ${tile("abonnement", "fa-solid fa-crown", "Abonnement", "Plan et facturation")}
+          ${tile("sessions", "fa-solid fa-desktop", "Sessions actives", "Appareils connectés")}
+          ${tile("zone-dangereuse", "fa-solid fa-triangle-exclamation", "Zone dangereuse", "Suppression du compte", true)}
         </div>
       </section>
 
       <section class="params-section">
-        <h6 class="params-section-title">Paramètres produit</h6>
-        <div class="params-kpi-grid">
-          ${kpiTile("cartes-virtuelles", "fa-solid fa-credit-card", "Cartes virtuelles", "Issuing")}
-          ${kpiTile("retraits", "fa-solid fa-building-columns", "Retraits & Comptes US", "LLC et comptes bancaires")}
-          ${kpiTile("infos-stripe", "fa-brands fa-stripe", "Infos compte Stripe", "Widget de gestion Stripe")}
+        ${sectionTitle("fa-solid fa-box", "Paramètres produit")}
+        <div class="params-tiles-grid">
+          ${tile("cartes-virtuelles", "fa-solid fa-credit-card", "Cartes virtuelles", "Issuing")}
+          ${tile("retraits", "fa-solid fa-building-columns", "Retraits & Comptes US", "LLC et comptes bancaires")}
+          ${tile("infos-stripe", "fa-brands fa-stripe", "Infos compte Stripe", "Widget de gestion Stripe")}
         </div>
       </section>
     </div>
