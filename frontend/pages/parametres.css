@@ -7,19 +7,12 @@
 
 .params-section { margin-bottom: 40px; }
 
-/* Noir à faible opacité (pas de gris "muted") + icône collée au texte. */
+/* Noir à faible opacité (pas de gris "muted"), sans icône. */
 .params-section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   font-size: 15px;
   font-weight: 700;
   color: rgba(17, 24, 39, 0.55);
   margin-bottom: 14px;
-}
-
-.params-section-title i {
-  font-size: 14px;
 }
 
 /* Les 3 sections partagent la même grille de tuiles horizontales,
@@ -38,12 +31,12 @@
 }
 
 /* Tuile sans bordure, fond gris très léger au survol pour signaler
-   qu'elle est cliquable. */
+   qu'elle est cliquable. Icône à gauche, titre/sous-titre alignés
+   horizontalement avec elle et empilés l'un sur l'autre à droite. */
 .params-tile {
   display: flex;
-  flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
+  gap: 12px;
   width: 100%;
   background: transparent;
   border: none;
@@ -59,19 +52,20 @@
   background: rgba(17, 24, 39, 0.05);
 }
 
-.params-tile-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .params-tile-icon {
-  font-size: 16px;
+  font-size: 18px;
   color: #f0b429;
+  margin-top: 2px;
 }
 
 .params-tile--danger .params-tile-icon {
   color: #ef4444;
+}
+
+.params-tile-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 /* Titre du bloc : jaune à faible opacité. */

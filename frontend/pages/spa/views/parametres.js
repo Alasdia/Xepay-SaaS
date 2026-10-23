@@ -16,17 +16,17 @@ import { navigate } from "../core/router.js";
 function tile(section, icon, title, sub, danger = false) {
   return `
     <button type="button" class="params-tile${danger ? " params-tile--danger" : ""}" data-section="${section}">
-      <div class="params-tile-head">
-        <i class="${icon} params-tile-icon"></i>
-        <span class="params-tile-title">${title}</span>
+      <i class="${icon} params-tile-icon"></i>
+      <div class="params-tile-text">
+        <div class="params-tile-title">${title}</div>
+        <div class="params-tile-sub">${sub}</div>
       </div>
-      <div class="params-tile-sub">${sub}</div>
     </button>
   `;
 }
 
-function sectionTitle(icon, label) {
-  return `<h6 class="params-section-title"><i class="${icon}"></i> ${label}</h6>`;
+function sectionTitle(label) {
+  return `<h6 class="params-section-title">${label}</h6>`;
 }
 
 function overviewTemplate() {
@@ -35,7 +35,7 @@ function overviewTemplate() {
       <h4 class="fw-bold mb-4 text-muted"><i class="fa-solid fa-gear"></i> Paramètres</h4>
 
       <section class="params-section">
-        ${sectionTitle("fa-solid fa-user", "Paramètres personnels")}
+        ${sectionTitle("Paramètres personnels")}
         <div class="params-tiles-grid">
           ${tile("informations-personnelles", "fa-solid fa-id-card", "Informations personnelles", "Nom, email, téléphone")}
           ${tile("authentification", "fa-solid fa-key", "Authentification", "Mot de passe, double authentification")}
@@ -44,7 +44,7 @@ function overviewTemplate() {
       </section>
 
       <section class="params-section">
-        ${sectionTitle("fa-solid fa-sliders", "Paramètres du compte")}
+        ${sectionTitle("Paramètres du compte")}
         <div class="params-tiles-grid">
           ${tile("stripe", "fa-brands fa-stripe", "Compte Stripe", "Vérification et paiements")}
           ${tile("abonnement", "fa-solid fa-crown", "Abonnement", "Plan et facturation")}
@@ -54,7 +54,7 @@ function overviewTemplate() {
       </section>
 
       <section class="params-section">
-        ${sectionTitle("fa-solid fa-box", "Paramètres produit")}
+        ${sectionTitle("Paramètres produit")}
         <div class="params-tiles-grid">
           ${tile("cartes-virtuelles", "fa-solid fa-credit-card", "Cartes virtuelles", "Issuing")}
           ${tile("retraits", "fa-solid fa-building-columns", "Retraits & Comptes US", "LLC et comptes bancaires")}
