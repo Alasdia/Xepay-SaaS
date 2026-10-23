@@ -141,6 +141,9 @@ export function setActiveRoute(routeName) {
   if (["paiements", "retraits"].includes(effectiveRouteName)) {
     setSubmenuOpen("submenu-transactions", true);
   }
+  if (["clients", "produits", "abonnements", "factures", "moyens-paiement", "risque"].includes(effectiveRouteName)) {
+    setSubmenuOpen("submenu-commerce", true);
+  }
   // Les liens du menu doivent toujours pointer vers le workspace courant,
   // même après un changement de workspace en cours de session.
   document.querySelectorAll("#sidebar a[data-page]").forEach((a) => {

@@ -1,7 +1,7 @@
 // Point d'entrée unique de la SPA — chargé par dashboard.html (le shell).
 // Déclare les routes, démarre le router, monte la sidebar partagée et la
 // modale upgrade partagée une seule fois pour toute la session.
-import { registerRoute, configure, start } from "./core/router.js";
+import { registerRoute, configure, start, navigate } from "./core/router.js";
 import { isAuthenticated, setSession, getWorkspaceId, setWorkspaceId } from "./core/state.js";
 import { initSidebar, setActiveRoute } from "./sidebar.js";
 import { ensureModalLoaded, upgrade } from "./shared/modalUpgrade.js";
@@ -72,10 +72,14 @@ async function init() {
 
   registerRoute("/dash/workspace/:workspaceId/", mountDashboard, { name: "dashboard" });
   registerRoute("/dash/workspace/:workspaceId/solde", mountSolde, { name: "solde" });
-  // Pointe directement sur la vue Paiements (fixedType), comme
-  // /transactions/paiements - la vue fusionnée "Toute activité" n'a plus
-  // sa propre URL (Retraits reste accessible via /transactions/retraits).
-  registerRoute("/dash/workspace/:workspaceId/transactions", (c, p) => mountTransactions(c, { ...p, fixedType: "payment" }), { name: "transactions" });
+  // Redirige vers /transactions/paiements plutôt que de monter la vue sur
+  // cette URL (l'ancienne vue fusionnée "Toute activité" n'a plus sa propre
+  // page) - l'URL affichée doit refléter la page réellement montrée.
+  registerRoute(
+    "/dash/workspace/:workspaceId/transactions",
+    (c, p) => navigate(`/dash/workspace/${encodeURIComponent(p.workspaceId)}/transactions/paiements`, { replace: true }),
+    { name: "transactions" }
+  );
   // Pages dédiées Paiements/Retraits : même vue/layout que
   // "transactions" (mountTransactions), avec le type verrouillé via un
   // paramètre supplémentaire injecté ici plutôt qu'un chip cliqué en page —
@@ -88,12 +92,16 @@ async function init() {
   registerRoute("/dash/workspace/:workspaceId/transactions/paiements/py/:paymentId", mountPaymentDetail, { name: "transaction-paiement-detail" });
   registerRoute("/dash/workspace/:workspaceId/transactions/retraits/wd/:withdrawalId", mountWithdrawalDetail, { name: "transaction-retrait-detail" });
   registerRoute("/dash/workspace/:workspaceId/liens", mountLiens, { name: "liens" });
-  registerRoute("/dash/workspace/:workspaceId/commerce/clients", (c, p) => mountCommerce(c, { ...p, section: "clients" }), { name: "commerce-clients" });
-  registerRoute("/dash/workspace/:workspaceId/commerce/produits", (c, p) => mountCommerce(c, { ...p, section: "produits" }), { name: "commerce-produits" });
-  registerRoute("/dash/workspace/:workspaceId/commerce/abonnements", (c, p) => mountCommerce(c, { ...p, section: "abonnements" }), { name: "commerce-abonnements" });
-  registerRoute("/dash/workspace/:workspaceId/commerce/factures", (c, p) => mountCommerce(c, { ...p, section: "factures" }), { name: "commerce-factures" });
-  registerRoute("/dash/workspace/:workspaceId/commerce/moyens-paiement", (c, p) => mountCommerce(c, { ...p, section: "moyens-paiement" }), { name: "commerce-moyens-paiement" });
-  registerRoute("/dash/workspace/:workspaceId/commerce/risque", (c, p) => mountCommerce(c, { ...p, section: "risque" }),{ name: "commerce-risque" });
+  // Noms de route identiques aux data-page de la sidebar (clients/produits/
+  // ... voir sidebar.html) - avec un préfixe "commerce-" ici, setActiveRoute
+  // ne reconnaissait jamais ces routes (comparaison stricte dataset.page ===
+  // routeName) et aucun sous-lien Commerce ne s'allumait jamais en "actif".
+  registerRoute("/dash/workspace/:workspaceId/commerce/clients", (c, p) => mountCommerce(c, { ...p, section: "clients" }), { name: "clients" });
+  registerRoute("/dash/workspace/:workspaceId/commerce/produits", (c, p) => mountCommerce(c, { ...p, section: "produits" }), { name: "produits" });
+  registerRoute("/dash/workspace/:workspaceId/commerce/abonnements", (c, p) => mountCommerce(c, { ...p, section: "abonnements" }), { name: "abonnements" });
+  registerRoute("/dash/workspace/:workspaceId/commerce/factures", (c, p) => mountCommerce(c, { ...p, section: "factures" }), { name: "factures" });
+  registerRoute("/dash/workspace/:workspaceId/commerce/moyens-paiement", (c, p) => mountCommerce(c, { ...p, section: "moyens-paiement" }), { name: "moyens-paiement" });
+  registerRoute("/dash/workspace/:workspaceId/commerce/risque", (c, p) => mountCommerce(c, { ...p, section: "risque" }),{ name: "risque" });
   registerRoute("/dash/workspace/:workspaceId/api", mountApi, { name: "api" });
   registerRoute("/dash/workspace/:workspaceId/multi-users", mountMultiUsers, { name: "multi-users" });
   registerRoute("/dash/workspace/:workspaceId/profil", mountProfil, { name: "profil" });

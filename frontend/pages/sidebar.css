@@ -60,9 +60,6 @@
 #sidebar .nav-submenu.open{ max-height:240px; }
 /* Sous-liens : même style que .nav-link, juste indenté et sans icône dédiée. */
 #sidebar .nav-link.nav-sublink{ padding-left:34px; font-size:14px; }
-/* Espace neutre entre groupes non étiquetés (ex: avant le bloc Clients/
-   Produits/.../Risque), sans texte. */
-#sidebar .nav-section-gap{ height:14px; }
 /* Libellés de groupe ("Gestion", "Compte") : même langage visuel que les
    kpi-label utilisés ailleurs dans l'app (petit, majuscules, discret). */
 #sidebar .nav-section-label{ font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af; font-weight:700; padding:14px 10px 4px; }
