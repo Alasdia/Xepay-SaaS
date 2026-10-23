@@ -1198,15 +1198,18 @@ def update_merchant_customer(
         )
 
 def _emails_by_user_id(db: Session, metadata_dicts: list[dict]) -> dict[str, str]:
-    """Resout en un seul aller-retour DB les emails des user_id/workspace_id
-    presents dans une liste de metadata Stripe (ce sont les memes IDs,
-    workspace_id = l'ID du compte proprietaire - voir WorkspaceUser) - pour
-    enrichir l'affichage "qui a cree / quel workspace" sans un aller-retour
-    par ligne (customer_id, product_id, etc.)."""
+    """Resout en un seul aller-retour DB les emails des user_id/workspace_id/
+    merchant_id presents dans une liste de metadata Stripe (ce sont tous des
+    ID UserDB, workspace_id = l'ID du compte proprietaire - voir
+    WorkspaceUser) - pour enrichir l'affichage "qui a cree / quel workspace /
+    quel marchand" sans un aller-retour par ligne (customer_id, product_id,
+    etc.)."""
     ids = {
         metadata.get("user_id") for metadata in metadata_dicts if metadata
     } | {
         metadata.get("workspace_id") for metadata in metadata_dicts if metadata
+    } | {
+        metadata.get("merchant_id") for metadata in metadata_dicts if metadata
     }
     ids.discard(None)
     if not ids:
@@ -1215,12 +1218,13 @@ def _emails_by_user_id(db: Session, metadata_dicts: list[dict]) -> dict[str, str
     return {user.id: user.email for user in users}
 
 def _enrich_metadata(metadata: dict | None, emails_by_id: dict[str, str]) -> dict | None:
-    """Remplace user_id/workspace_id par "<id> (email)" quand l'email est
-    connu - ne modifie rien d'autre (xepay_type, etc. restent tels quels)."""
+    """Remplace user_id/workspace_id/merchant_id par "<id> (email)" quand
+    l'email est connu - ne modifie rien d'autre (xepay_type, etc. restent
+    tels quels)."""
     if not metadata:
         return metadata
     enriched = dict(metadata)
-    for key in ("user_id", "workspace_id"):
+    for key in ("user_id", "workspace_id", "merchant_id"):
         value = enriched.get(key)
         if value and value in emails_by_id:
             enriched[key] = f"{value} ({emails_by_id[value]})"

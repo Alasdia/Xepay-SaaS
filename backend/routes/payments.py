@@ -14,6 +14,7 @@ from backend.middleware.authorization import require_member, require_pro_or_busi
 from backend.models import WorkspaceUser
 from datetime import timedelta
 from backend.models import Payment, Link
+from backend.routes.webhook.stripe import _emails_by_user_id, _enrich_metadata
 from fastapi import Header
 import os
 from typing import Optional
@@ -156,6 +157,7 @@ def get_activity(
             dict(db.query(Link.id, Link.url).filter(Link.id.in_(link_ids)).all())
             if link_ids else {}
         )
+        emails_by_id = _emails_by_user_id(db, [p.stripe_metadata for p in payments_list])
         for p in payments_list:
             # application_fee_requested = ApplicationFee.balance_transaction.
             # amount (montant réellement réglé sur le solde plateforme,
@@ -194,6 +196,7 @@ def get_activity(
                 metadata.pop("stripe_account_id", None)
                 if metadata.get("link_id") in link_urls_by_id:
                     metadata["link_id"] = link_urls_by_id[metadata["link_id"]]
+                metadata = _enrich_metadata(metadata, emails_by_id)
             items.append({
                 "type": "payment",
                 "payment_id": p.id,

@@ -905,7 +905,7 @@ export async function mount(container, params = {}) {
         ${detailRow("Moyen de paiement", paymentMethodIcon(d.payment_method_type, d.card_brand, d.card_last4))}
         ${detailRow("Expiration carte", d.card_exp_month && d.card_exp_year ? `${d.card_exp_month}/${d.card_exp_year}` : "-")}
         ${detailRow("Session Stripe", d.stripe_session_id)}
-        ${detailRow("Payment Intent", d.stripe_payment_intent_id)}
+        ${detailIdRow("Référence de la transaction", d.stripe_payment_intent_id)}
         ${detailIdRow("Compte Stripe", d.stripe_account_id)}
       </div>
       ${renderMetadataSection(d.metadata, "Paiement")}

@@ -217,7 +217,7 @@ export function renderMetadataSection(metadata, entityLabel = "") {
             return renderIdRow(`Lien de paiement${source ? ` (${source})` : ""}`, value);
         }
         if (key === "merchant_id") {
-            return renderIdRow("Marchand", value);
+            return renderIdentityRow("Marchand", value);
         }
         if (key === "payment_type") {
             return `
