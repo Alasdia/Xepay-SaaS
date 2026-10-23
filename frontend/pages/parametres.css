@@ -1,0 +1,172 @@
+/* Vue "Paramètres" — page d'accueil (3 sections de tuiles) + vues de
+   détail par section (voir spa/views/parametres.js). .card-epay et les
+   autres classes des cartes de détail viennent de profil.css/sécurité.css,
+   chargés en même temps que ce fichier. */
+
+.params-page { max-width: 900px; }
+
+.params-section { margin-bottom: 40px; }
+
+.params-section-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: #9ca3af;
+  margin-bottom: 14px;
+}
+
+/* Paramètres personnels : liste de blocs sans bordure, fond gris très
+   léger au survol pour signaler qu'ils sont cliquables. */
+.params-tile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.params-tile {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+
+.params-tile:hover,
+.params-tile:focus-visible {
+  background: rgba(17, 24, 39, 0.05);
+}
+
+.params-tile-icon {
+  width: 20px;
+  flex-shrink: 0;
+  font-size: 16px;
+  color: #9ca3af;
+}
+
+.params-tile-title {
+  font-weight: 600;
+  color: #111827;
+  font-size: 14px;
+}
+
+.params-tile-sub {
+  color: #9ca3af;
+  font-size: 12.5px;
+  margin-top: 2px;
+}
+
+.params-tile-arrow {
+  margin-left: auto;
+  color: #d1d5db;
+  font-size: 13px;
+}
+
+/* Paramètres du compte / produit : tuiles KPI sans bordure, alignées par 3,
+   fond gris léger au survol - même logique de hover que .params-tile. */
+.params-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .params-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+  .params-kpi-grid { grid-template-columns: 1fr; }
+}
+
+.params-kpi-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 14px;
+  padding: 18px;
+  cursor: pointer;
+  text-align: left;
+  transition: background .15s ease;
+}
+
+.params-kpi-tile:hover,
+.params-kpi-tile:focus-visible {
+  background: rgba(17, 24, 39, 0.05);
+}
+
+.params-kpi-icon {
+  font-size: 18px;
+  color: #f0b429;
+}
+
+.params-kpi-tile--danger .params-kpi-icon {
+  color: #ef4444;
+}
+
+.params-kpi-title {
+  font-weight: 600;
+  color: #111827;
+  font-size: 14px;
+}
+
+.params-kpi-sub {
+  color: #9ca3af;
+  font-size: 12.5px;
+}
+
+/* Vues de détail */
+.params-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.params-back-btn {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: .15s;
+}
+
+.params-back-btn:hover {
+  color: #111827;
+  background: rgba(17, 24, 39, 0.05);
+}
+
+.params-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.params-info-row:last-child {
+  border-bottom: none;
+}
+
+.params-info-row span {
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.params-info-row strong {
+  color: #111827;
+  font-size: 14px;
+}
