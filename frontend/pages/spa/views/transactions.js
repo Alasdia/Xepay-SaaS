@@ -857,6 +857,28 @@ export async function mount(container, params = {}) {
     `;
   }
 
+  function detailIdRow(label, value) {
+    return `
+      <div class="customer-detail-item">
+        <span>${label}</span>
+        <strong>${value ? `Id : ${value}` : "-"}</strong>
+      </div>
+    `;
+  }
+
+  // Même format que la colonne Date du tableau (voir renderPaymentRow) -
+  // pour que la modal et la liste affichent la date de façon cohérente.
+  function formatDateLikeTable(value) {
+    if (!value || isNaN(new Date(value))) return null;
+    return new Date(value).toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }
+
   function showPaymentDetails(t) {
     const currency = t.currency_gross ?? "USD";
     const d = t.details || {};
@@ -871,21 +893,20 @@ export async function mount(container, params = {}) {
         </div>
       </div>
       <div class="customer-details-grid">
-        ${detailRow("Type", paymentSourceLabel[t.source] ?? "-")}
+        ${detailIdRow("Lien de paiement", d.link_id)}
         ${detailRow("Montant brut", formatMontant(t.amount_gross, currency))}
         ${detailRow("Commission globale", formatMontant(t.commission_xepay, currency))}
         ${detailRow("Commission Xepay", formatMontant(xepayShare(t), currency))}
         ${detailRow("Frais Stripe", formatMontant(t.stripe_fee, currency))}
         ${detailRow("Montant net marchand", formatMontant(t.amount_net_merchant, currency))}
         ${detailRow("Statut", statusMap[String(t.status).toLowerCase()] || t.status)}
-        ${detailRow("Date", t.date && !isNaN(new Date(t.date)) ? new Date(t.date).toLocaleString("fr-FR") : "N/A")}
-        ${detailRow("Disponible le", d.available_at ? new Date(d.available_at).toLocaleString("fr-FR") : "-")}
+        ${detailRow("Date", formatDateLikeTable(t.date) ?? "N/A")}
+        ${detailRow("Disponible le", formatDateLikeTable(d.available_at) ?? "-")}
         ${detailRow("Moyen de paiement", paymentMethodIcon(d.payment_method_type, d.card_brand, d.card_last4))}
         ${detailRow("Expiration carte", d.card_exp_month && d.card_exp_year ? `${d.card_exp_month}/${d.card_exp_year}` : "-")}
         ${detailRow("Session Stripe", d.stripe_session_id)}
         ${detailRow("Payment Intent", d.stripe_payment_intent_id)}
-        ${detailRow("Compte Stripe", d.stripe_account_id)}
-        ${detailRow("Lien de paiement", d.link_id)}
+        ${detailIdRow("Compte Stripe", d.stripe_account_id)}
       </div>
       ${renderMetadataSection(d.metadata, "Paiement")}
     `;

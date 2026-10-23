@@ -147,7 +147,16 @@ def get_activity(
             q = q.filter(Payment.created_at >= datetime.fromisoformat(start_date))
         if end_date:
             q = q.filter(Payment.created_at <= datetime.fromisoformat(end_date) + timedelta(days=1))
-        for p in q.all():
+        payments_list = q.all()
+        # Resout link_id -> URL publique complete du lien (pas reconstructible
+        # depuis l'ID seul : Link.token est un hash, Link.url est stocke tel
+        # quel a la creation) pour l'afficher dans les metadata du detail.
+        link_ids = {p.link_id for p in payments_list if p.link_id}
+        link_urls_by_id = (
+            dict(db.query(Link.id, Link.url).filter(Link.id.in_(link_ids)).all())
+            if link_ids else {}
+        )
+        for p in payments_list:
             # application_fee_requested = ApplicationFee.balance_transaction.
             # amount (montant réellement réglé sur le solde plateforme,
             # rempli par l'event application_fee.created - voir routes/
@@ -176,6 +185,15 @@ def get_activity(
             # soustrait en plus puisqu'il est déjà inclus dans
             # commission_xepay ci-dessus).
             amount_net_merchant = p.balance_transaction_net
+            # stripe_account_id retire : deja affiche tel quel dans le detail
+            # (p.stripe_account_id ci-dessous), redondant dans les metadata.
+            # link_id remplace par l'URL complete du lien quand elle est
+            # connue (plus utile a l'affichage que l'ID interne).
+            metadata = dict(p.stripe_metadata) if p.stripe_metadata else None
+            if metadata:
+                metadata.pop("stripe_account_id", None)
+                if metadata.get("link_id") in link_urls_by_id:
+                    metadata["link_id"] = link_urls_by_id[metadata["link_id"]]
             items.append({
                 "type": "payment",
                 "payment_id": p.id,
@@ -209,7 +227,7 @@ def get_activity(
                     "card_last4": p.card_last4,
                     "card_exp_month": p.card_exp_month,
                     "card_exp_year": p.card_exp_year,
-                    "metadata": p.stripe_metadata
+                    "metadata": metadata
                 }
             })
     if type in (None, "withdraw"):

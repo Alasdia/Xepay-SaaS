@@ -136,6 +136,28 @@ const XEPAY_TYPE_LABELS = {
     payment_link: "Lien",
 };
 
+// payment_type (posé uniquement sur les metadata Paiement - voir
+// create_checkout_session) décrit comment le paiement a été initié.
+const PAYMENT_TYPE_LABELS = {
+    payment_link: "Paiement par lien",
+};
+
+// Ordre d'affichage fixe plutôt que l'ordre d'insertion du dict (qui place
+// user_id avant link_id/merchant_id côté Paiement) - les clés absentes de
+// cette liste sont affichées après, dans leur ordre d'origine.
+const METADATA_KEY_ORDER = ["link_id", "merchant_id", "payment_type", "user_id", "workspace_id", "xepay_type"];
+
+function sortMetadataEntries(entries) {
+    return [...entries].sort(([keyA], [keyB]) => {
+        const a = METADATA_KEY_ORDER.indexOf(keyA);
+        const b = METADATA_KEY_ORDER.indexOf(keyB);
+        if (a === -1 && b === -1) return 0;
+        if (a === -1) return 1;
+        if (b === -1) return -1;
+        return a - b;
+    });
+}
+
 // user_id/workspace_id arrivent déjà enrichis "<id> (email)" par le backend
 // (voir _enrich_metadata) quand l'email est connu - on sépare ça en deux
 // lignes Email/Id plutôt que d'afficher la chaîne combinée brute. Sans
@@ -155,16 +177,28 @@ function renderIdentityRow(label, value) {
     `;
 }
 
+function renderIdRow(label, value) {
+    return `
+        <div class="customer-detail-item">
+            <span>${label}</span>
+            <strong>Id : ${value}</strong>
+        </div>
+    `;
+}
+
 // Bloc "Métadonnées" partagé par les modals de détails (Clients/Produits/
 // Abonnements/Factures/Paiements/Liens) : affiche les metadata envoyées à
 // la création (user_id/workspace_id/xepay_type, etc.) quand il y en a,
 // sinon ne rend rien (pas de section vide). entityLabel ("Client",
 // "Produit", "Abonnement", "Facture", "Paiement", "Lien") personnalise le
 // libellé de user_id ("<entité> créé par" plutôt que l'ID technique).
+// source (Paiement uniquement, toujours "xepay") n'a pas sa propre ligne -
+// affiché entre parenthèses à côté du titre "Lien de paiement".
 export function renderMetadataSection(metadata, entityLabel = "") {
     const entries = Object.entries(metadata || {});
     if (!entries.length) return "";
-    const rows = entries.map(([key, value]) => {
+    const source = metadata.source;
+    const rows = sortMetadataEntries(entries.filter(([key]) => key !== "source")).map(([key, value]) => {
         if (key === "user_id") {
             return renderIdentityRow(entityLabel ? `${entityLabel} créé par` : "Créé par", value);
         }
@@ -176,6 +210,20 @@ export function renderMetadataSection(metadata, entityLabel = "") {
                 <div class="customer-detail-item">
                     <span>Objet</span>
                     <strong>${XEPAY_TYPE_LABELS[value] || entityLabel || value}</strong>
+                </div>
+            `;
+        }
+        if (key === "link_id") {
+            return renderIdRow(`Lien de paiement${source ? ` (${source})` : ""}`, value);
+        }
+        if (key === "merchant_id") {
+            return renderIdRow("Marchand", value);
+        }
+        if (key === "payment_type") {
+            return `
+                <div class="customer-detail-item">
+                    <span>Type de paiement</span>
+                    <strong>${PAYMENT_TYPE_LABELS[value] || value}</strong>
                 </div>
             `;
         }
