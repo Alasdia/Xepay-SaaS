@@ -79,15 +79,10 @@ export async function initSidebar() {
   container.addEventListener("click", (e) => {
     const link = e.target.closest("a[data-route]");
     if (!link) return;
-    // "Transactions" : les 2 sous-vues (Paiements/Retraits)
-    // couvrent désormais tout ce que cette page "Toute activité" affichait
-    // seule — son clic ouvre donc le sous-menu, comme le chevron, au lieu
-    // de naviguer (la route /transactions reste joignable par URL directe).
-    if (link.dataset.page === "transactions") {
-      e.preventDefault();
-      toggleSubmenu("submenu-transactions");
-      return;
-    }
+    // "Transactions" navigue normalement : la route /transactions redirige
+    // elle-même vers /transactions/paiements (voir app.js), qui ouvre aussi
+    // automatiquement le sous-menu (setActiveRoute) - plus besoin de cas
+    // particulier ici.
     e.preventDefault();
     navigate(link.getAttribute("data-route"));
   });
