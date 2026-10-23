@@ -48,6 +48,7 @@ from backend.security import (
 def _insert_token_row(
     db: Session, user_id: str, family_id: str, token_hash: str,
     now: datetime, session_started_at: datetime,
+    device: str = None, ip: str = None,
 ) -> None:
     row = RefreshToken(
         user_id=user_id,
@@ -56,12 +57,14 @@ def _insert_token_row(
         created_at=now,
         expires_at=now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
         session_started_at=session_started_at,
+        device=device,
+        ip=ip,
     )
     db.add(row)
     db.commit()
 
 
-def issue_refresh_token(db: Session, user_id: str) -> str:
+def issue_refresh_token(db: Session, user_id: str, device: str = None, ip: str = None) -> str:
     """Premier jeton d'une nouvelle famille — appelé au login (classique,
     2FA, Google). session_started_at démarre ICI, une seule fois pour toute
     la durée de vie de cette famille (voir ABSOLUTE_SESSION_MAX_DAYS)."""
@@ -70,11 +73,12 @@ def issue_refresh_token(db: Session, user_id: str) -> str:
     _insert_token_row(
         db, user_id, family_id=str(uuid4()),
         token_hash=hash_refresh_token(raw_token), now=now, session_started_at=now,
+        device=device, ip=ip,
     )
     return raw_token
 
 
-def rotate_refresh_token(db: Session, raw_token: str):
+def rotate_refresh_token(db: Session, raw_token: str, device: str = None, ip: str = None):
     """Valide puis fait tourner un refresh token. Retourne
     (nouveau_raw_token, UserDB) en cas de succès, None sinon (jeton inconnu,
     expiré, limite de session absolue atteinte, ou réutilisation hors
@@ -123,6 +127,7 @@ def rotate_refresh_token(db: Session, raw_token: str):
         _insert_token_row(
             db, old_row.user_id, old_row.family_id, new_hash, now,
             session_started_at=old_row.session_started_at,
+            device=device or old_row.device, ip=ip or old_row.ip,
         )
         return new_raw, user
 
@@ -178,6 +183,7 @@ def rotate_refresh_token(db: Session, raw_token: str):
     _insert_token_row(
         db, existing.user_id, existing.family_id, hash_refresh_token(child_raw), now,
         session_started_at=existing.session_started_at,
+        device=device or existing.device, ip=ip or existing.ip,
     )
     return child_raw, user
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from backend.database import engine, get_db
-from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, PlanUpdate, Link, SecurityAlertsRequest, GoogleCodeExchange
+from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, ProfileUpdateRequest, PlanUpdate, Link, SecurityAlertsRequest, GoogleCodeExchange, GoogleLinkRequest
 from backend.auth import get_current_user, issue_new_session
 from backend.services.workspace_service import (
     get_workspace_owner_id
@@ -193,7 +193,7 @@ def login(
     device = request.headers.get("user-agent", "Appareil inconnu")
     user.last_login = datetime.now(timezone.utc)
     db.commit()
-    issue_new_session(db, response, user)
+    issue_new_session(db, response, user, request=request)
     if user.alert_login:
         send_login_alert_email(email=user.email, device=device, ip=ip)
     return {
@@ -282,7 +282,13 @@ def _exchange_google_code(code: str, db: Session, redirect_uri: str) -> dict:
     if not email:
         raise HTTPException(400, "User info invalid")
 
+    google_id = user_data.get("id")
+    # Email d'abord (comportement historique), puis repli sur google_id -
+    # permet de se connecter via un compte Google lié (Paramètres > Compte
+    # Google) même si son email differe de celui du compte Xepay.
     user = db.query(UserDB).filter(UserDB.email == email).first()
+    if not user and google_id:
+        user = db.query(UserDB).filter(UserDB.google_id == google_id).first()
 
     if not user:
 
@@ -373,6 +379,7 @@ def _exchange_google_code(code: str, db: Session, redirect_uri: str) -> dict:
 @router.get("/auth/google/callback")
 def google_callback(
     code: str,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     result = _exchange_google_code(code, db, redirect_uri=REDIRECT_URI)
@@ -388,13 +395,14 @@ def google_callback(
     redirect = RedirectResponse(
         url=f"https://alasdia.com/dashboard.html?workspace_id={result['workspace_id']}"
     )
-    issue_new_session(db, redirect, result["user"])
+    issue_new_session(db, redirect, result["user"], request=request)
     return redirect
 
 
 @router.post("/auth/google/exchange")
 def google_exchange(
     payload: GoogleCodeExchange,
+    request: Request,
     response: Response,
     db: Session = Depends(get_db)
 ):
@@ -415,12 +423,72 @@ def google_exchange(
             "pre_auth_token": result["pre_auth_token"],
         }
 
-    issue_new_session(db, response, result["user"])
+    issue_new_session(db, response, result["user"], request=request)
     return {
         "email": result["email"],
         "workspace_id": result["workspace_id"],
         "account_id": result["account_id"],
     }
+
+
+@router.post("/auth/google/link")
+def link_google_account(
+    payload: GoogleLinkRequest,
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Associe un compte Google à l'utilisateur déjà connecté (Paramètres >
+    Informations personnelles > Compte Google) - ne crée jamais de session,
+    contrairement à _exchange_google_code (login). google_id permet ensuite
+    de se connecter via ce compte Google même si son email diffère de celui
+    du compte Xepay (voir le repli dans _exchange_google_code)."""
+    if payload.redirect_uri not in ALLOWED_GOOGLE_EXCHANGE_ORIGINS:
+        raise HTTPException(400, "Origine non autorisée")
+
+    token_res = requests.post("https://oauth2.googleapis.com/token", data={
+        "code": payload.code,
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "redirect_uri": payload.redirect_uri,
+        "grant_type": "authorization_code",
+    })
+    access_token = token_res.json().get("access_token")
+    if not access_token:
+        raise HTTPException(400, "Échec de l'authentification Google")
+
+    user_res = requests.get(
+        "https://www.googleapis.com/oauth2/v2/userinfo",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    user_data = user_res.json()
+    google_id = user_data.get("id")
+    google_email = user_data.get("email")
+    if not google_id or not google_email:
+        raise HTTPException(400, "Informations Google invalides")
+
+    already_linked = db.query(UserDB).filter(
+        UserDB.google_id == google_id,
+        UserDB.id != current_user.id,
+    ).first()
+    if already_linked:
+        raise HTTPException(409, "Ce compte Google est déjà lié à un autre compte Xepay")
+
+    current_user.google_id = google_id
+    current_user.google_email = google_email
+    db.commit()
+    return {"google_email": google_email}
+
+
+@router.post("/auth/google/unlink")
+def unlink_google_account(
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    current_user.google_id = None
+    current_user.google_email = None
+    db.commit()
+    return {"ok": True}
+
 
 @router.post("/onboarding")
 def create_onboarding_link(
@@ -720,7 +788,32 @@ def get_profile(
         "plan_expires_at": owner.plan_expires_at,
         "subscription_status": owner.subscription_status,
         "cancel_at_period_end": owner.cancel_at_period_end,
+        "google_linked": owner.google_id is not None,
+        "google_email": owner.google_email,
     }
+
+
+@router.patch("/profile")
+def update_profile(
+    data: ProfileUpdateRequest,
+    membership: WorkspaceUser = Depends(require_manager),
+    db: Session = Depends(get_db),
+):
+    """Seuls full_name/phone sont modifiables ici (email/compte géré par
+    Stripe/auth) - voir Paramètres > Informations personnelles > Coordonnées.
+    Seul un champ non-None est modifié, l'autre reste inchangé."""
+    owner_id = membership.workspace_id
+    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
+    if not profile:
+        profile = Profile(user_id=owner_id)
+        db.add(profile)
+    if data.full_name is not None:
+        profile.full_name = data.full_name.strip() or None
+    if data.phone is not None:
+        profile.phone = data.phone.strip() or None
+    db.commit()
+    return {"full_name": profile.full_name, "phone": profile.phone}
+
 
 @router.get("/me/user-plan")
 def get_my_plan(
@@ -1049,6 +1142,7 @@ def get_invites(
 @router.get("/invites/accept")
 def accept_invite(
     token: str,
+    request: Request,
     db: Session = Depends(get_db)
 ):
 
@@ -1105,7 +1199,7 @@ def accept_invite(
         redirect = RedirectResponse(
             url=f"https://alasdia.com/multi-users.html?workspace_id={invite.workspace_id}"
         )
-        issue_new_session(db, redirect, existing_user)
+        issue_new_session(db, redirect, existing_user, request=request)
         return redirect
     # ==================================================
     # CAS 2 → NOUVEL UTILISATEUR

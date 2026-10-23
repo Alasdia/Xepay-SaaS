@@ -22,3 +22,4 @@ qrcode[pil]
 pydantic[email]
 redis
 alembic
+webauthn

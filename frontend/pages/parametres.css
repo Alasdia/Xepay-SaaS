@@ -128,3 +128,159 @@
   color: #111827;
   font-size: 14px;
 }
+
+/* Sous-sections à l'intérieur d'une vue de détail (ex: Coordonnées, Compte
+   Google, Clés d'accès, Sessions actives dans Informations personnelles). */
+.params-subsection-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(17, 24, 39, 0.85);
+  margin-bottom: 4px;
+}
+
+.params-subsection-sub {
+  color: #9ca3af;
+  font-size: 13px;
+  margin-bottom: 14px;
+  max-width: 560px;
+}
+
+.params-info-edit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.params-info-edit input {
+  width: 200px;
+}
+
+/* Bouton de création - mêmes styles que .create-client-btn de commerce.css
+   (Nouveau client/produit/lien), dupliqué ici pour la même raison que
+   .row-menu ci-dessous (éviter de charger tout commerce.css). */
+.create-client-btn {
+  background: transparent;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  border-radius: 8px;
+  height: 32px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: .2s;
+  flex-shrink: 0;
+}
+
+.create-client-btn:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: #111827;
+}
+
+.create-client-btn:active {
+  transform: translateY(1px);
+}
+
+/* Mini-tableaux (Clés d'accès, Sessions actives). */
+.table-wrap {
+  overflow-x: auto;
+  max-width: 720px;
+}
+
+.params-mini-table thead th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9ca3af;
+  font-weight: 700;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.params-mini-table td {
+  font-size: 13.5px;
+  color: #111827;
+  vertical-align: middle;
+}
+
+/* Menu d'actions "..." - mêmes classes/styles que .row-menu dans
+   commerce.css, dupliqué ici pour ne pas charger tout commerce.css dans
+   cette vue (qui n'en a besoin que pour ce seul menu). */
+.row-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.row-menu-trigger {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #374151;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.row-menu-trigger:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.row-menu.open .row-menu-trigger {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.row-menu-dropdown {
+  display: none;
+  position: fixed;
+  min-width: 170px;
+  z-index: 3000;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, .14);
+  padding: 6px;
+  overflow: hidden;
+}
+
+.row-menu-dropdown.row-menu-dropdown-open {
+  display: block;
+}
+
+.row-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+}
+
+.row-menu-item:hover {
+  background: #f3f4f6;
+}
+
+.row-menu-item-danger {
+  color: #b91c1c;
+}
+
+.row-menu-item-danger:hover {
+  background: #fef2f2;
+}

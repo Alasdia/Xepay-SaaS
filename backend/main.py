@@ -30,6 +30,7 @@ from backend.auth import router as auth_router
 from backend.routes.account_id import router as account_router
 from backend.routes import reports
 from backend.routes import issuing
+from backend.routes.passkeys import router as passkeys_router
 app = FastAPI()
 
 # LogMiddleware est ajoutée avant CORSMiddleware : Starlette empile les
@@ -71,6 +72,7 @@ app.include_router(auth_router)
 app.include_router(account_router)
 app.include_router(reports.router)
 app.include_router(issuing.router)
+app.include_router(passkeys_router)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app.mount(
     "/static",

@@ -13,6 +13,49 @@ import { showToast } from "../shared/toast.js";
 import { clearSession } from "../core/state.js";
 import { navigate } from "../core/router.js";
 
+// Menu d'actions "..." des mini-tableaux (Clés d'accès) - même classes CSS
+// que .row-menu/.row-menu-trigger/.row-menu-dropdown de commerce.js (voir
+// parametres.css), mais déclaré ici au niveau module (une seule fois à
+// l'import, jamais ré-enregistré à chaque montage de la vue) pour ne
+// jamais dupliquer ce listener document au fil des navigations.
+let openParamsRowMenu = null;
+
+function closeParamsRowMenu() {
+  if (!openParamsRowMenu) return;
+  openParamsRowMenu.classList.remove("row-menu-dropdown-open");
+  openParamsRowMenu.style.top = "";
+  openParamsRowMenu.style.left = "";
+  openParamsRowMenu.closest(".row-menu")?.classList.remove("open");
+  openParamsRowMenu = null;
+}
+
+function toggleParamsRowMenu(trigger) {
+  const row = trigger.closest(".row-menu");
+  const dropdown = row.querySelector(".row-menu-dropdown");
+  if (dropdown === openParamsRowMenu) {
+    closeParamsRowMenu();
+    return;
+  }
+  closeParamsRowMenu();
+  dropdown.classList.add("row-menu-dropdown-open");
+  row.classList.add("open");
+  const rect = trigger.getBoundingClientRect();
+  const menuRect = dropdown.getBoundingClientRect();
+  let top = rect.bottom + 4;
+  if (top + menuRect.height > window.innerHeight) top = rect.top - menuRect.height - 4;
+  let left = rect.right - menuRect.width;
+  if (left < 4) left = 4;
+  dropdown.style.top = `${top}px`;
+  dropdown.style.left = `${left}px`;
+  openParamsRowMenu = dropdown;
+}
+
+document.addEventListener("click", (event) => {
+  if (!openParamsRowMenu) return;
+  if (event.target.closest(".row-menu-dropdown") || event.target.closest(".row-menu-trigger")) return;
+  closeParamsRowMenu();
+});
+
 function tile(section, icon, title, sub, danger = false) {
   return `
     <button type="button" class="params-tile${danger ? " params-tile--danger" : ""}" data-section="${section}">
@@ -37,7 +80,7 @@ function overviewTemplate() {
       <section class="params-section">
         ${sectionTitle("Paramètres personnels")}
         <div class="params-tiles-grid">
-          ${tile("informations-personnelles", "fa-solid fa-id-card", "Informations personnelles", "Nom, email, téléphone")}
+          ${tile("informations-personnelles", "fa-solid fa-id-card", "Informations personnelles", "Coordonnées (nom complet, email, téléphone) et vos sessions actives")}
           ${tile("authentification", "fa-solid fa-key", "Authentification", "Mot de passe, double authentification")}
           ${tile("notifications", "fa-solid fa-bell", "Paramètres de notifications", "Alertes de connexion, paiement, sécurité")}
         </div>
@@ -48,7 +91,6 @@ function overviewTemplate() {
         <div class="params-tiles-grid">
           ${tile("stripe", "fa-brands fa-stripe", "Compte Stripe", "Vérification et paiements")}
           ${tile("abonnement", "fa-solid fa-crown", "Abonnement", "Plan et facturation")}
-          ${tile("sessions", "fa-solid fa-desktop", "Sessions actives", "Appareils connectés")}
           ${tile("zone-dangereuse", "fa-solid fa-triangle-exclamation", "Zone dangereuse", "Suppression du compte", true)}
         </div>
       </section>
@@ -127,10 +169,15 @@ const TWOFA_MODAL_HTML = `
 function informationsPersonnellesTemplate() {
   return `
     ${detailHeader("Informations personnelles")}
-    <div class="card-epay p-4" style="max-width:480px;">
+
+    <h6 class="params-subsection-title">Coordonnées</h6>
+    <div class="card-epay p-4 mb-5" style="max-width:560px;">
       <div class="params-info-row">
         <span>Nom complet</span>
-        <strong id="p-profile-name">—</strong>
+        <div class="params-info-edit">
+          <input type="text" id="p-name-input" class="form-control form-control-sm" placeholder="Votre nom complet">
+          <button type="button" id="p-name-save-btn" class="create-client-btn">Ajouter votre nom</button>
+        </div>
       </div>
       <div class="params-info-row">
         <span>Email</span>
@@ -138,28 +185,404 @@ function informationsPersonnellesTemplate() {
       </div>
       <div class="params-info-row">
         <span>Téléphone</span>
-        <strong id="p-profile-phone">—</strong>
+        <div class="params-info-edit">
+          <input type="tel" id="p-phone-input" class="form-control form-control-sm" placeholder="Votre numéro de téléphone">
+          <button type="button" id="p-phone-save-btn" class="create-client-btn">Ajouter votre téléphone</button>
+        </div>
       </div>
-      <div class="params-info-row">
-        <span>Identifiant du compte</span>
-        <strong id="p-profile-account-id">—</strong>
+    </div>
+
+    <h6 class="params-subsection-title">Compte Google</h6>
+    <p class="params-subsection-sub">Connectez-vous à Xepay à l'aide de votre compte Google.</p>
+    <div class="card-epay p-4 mb-5" style="max-width:560px;">
+      <div id="p-google-status" class="mb-3"></div>
+      <button type="button" id="p-google-btn" class="create-client-btn">Connecter un compte Google</button>
+    </div>
+
+    <h6 class="params-subsection-title">Clés d'accès</h6>
+    <p class="params-subsection-sub">Connectez-vous en toute sécurité à l'aide de vos données biométriques, du code PIN de votre appareil ou de votre clé de sécurité.</p>
+    <button type="button" id="p-passkey-add-btn" class="create-client-btn mb-3">+ Ajouter une clé d'accès</button>
+    <div class="table-wrap mb-5">
+      <table class="table params-mini-table">
+        <thead>
+          <tr>
+            <th>Nom de la clé</th>
+            <th>Date d'ajout</th>
+            <th>Dernière utilisation</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="p-passkeys-tbody">
+          <tr><td colspan="4" class="text-muted">Chargement...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h6 class="params-subsection-title">Sessions actives</h6>
+    <p class="params-subsection-sub">Tous les lieux où vous êtes connecté à Xepay.</p>
+    <button type="button" id="p-sessions-revoke-others-btn" class="create-client-btn mb-3">Se déconnecter de toutes les autres sessions</button>
+    <div class="table-wrap">
+      <table class="table params-mini-table">
+        <thead>
+          <tr>
+            <th>Lieu</th>
+            <th>Appareil</th>
+            <th>Adresse IP</th>
+            <th>Heure</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="p-sessions-tbody">
+          <tr><td colspan="5" class="text-muted">Chargement...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function formatSessionTime(value) {
+  if (!value || isNaN(new Date(value))) return "—";
+  return new Date(value).toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+async function saveProfileField(field, value, btnId, emptyLabel) {
+  const btn = document.getElementById(btnId);
+  const previousLabel = btn.innerText;
+  btn.disabled = true;
+  btn.innerText = "Enregistrement...";
+  try {
+    const res = await apiFetch("/profile", { method: "PATCH", body: { [field]: value } });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Erreur");
+    showToast("Mis à jour");
+    btn.innerText = value ? "Enregistrer" : emptyLabel;
+  } catch (err) {
+    showToast(err.message, "error");
+    btn.innerText = previousLabel;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function updateGoogleStatus(linked, email) {
+  const box = document.getElementById("p-google-status");
+  const btn = document.getElementById("p-google-btn");
+  if (linked) {
+    box.innerHTML = `<div class="params-info-row" style="padding:0;"><span>Compte connecté</span><strong>${email || ""}</strong></div>`;
+    btn.innerText = "Déconnecter le compte Google";
+    btn.dataset.linked = "true";
+  } else {
+    box.innerHTML = `<p class="text-muted small mb-0">Aucun compte Google connecté.</p>`;
+    btn.innerText = "Connecter un compte Google";
+    btn.dataset.linked = "false";
+  }
+}
+
+// Widget Google Identity Services (GIS), même pattern que login.js
+// (initCodeClient, ux_mode:'popup') - le code obtenu est envoyé à
+// /auth/google/link (authentifié) plutôt qu'à /auth/google/exchange
+// (login) : ça associe le compte Google à l'utilisateur déjà connecté,
+// sans jamais créer de nouvelle session.
+const GOOGLE_CLIENT_ID = "366389455040-q0iie187c1ok621vbcl3vkuflib3fvgf.apps.googleusercontent.com";
+let googleLinkCodeClient = null;
+
+function getGoogleLinkCodeClient(onCode) {
+  if (!window.google?.accounts?.oauth2) return null;
+  googleLinkCodeClient = google.accounts.oauth2.initCodeClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: "openid email profile",
+    ux_mode: "popup",
+    callback: onCode,
+    error_callback: (err) => {
+      if (err && err.type && err.type.indexOf("popup") === -1) {
+        showToast("La connexion avec Google a échoué", "error");
+      }
+    },
+  });
+  return googleLinkCodeClient;
+}
+
+async function connectGoogle() {
+  const client = getGoogleLinkCodeClient(async (response) => {
+    if (response.error) {
+      showToast("La connexion avec Google a échoué", "error");
+      return;
+    }
+    try {
+      const res = await apiFetch("/auth/google/link", {
+        method: "POST",
+        body: { code: response.code, redirect_uri: window.location.origin },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Erreur");
+      showToast("Compte Google connecté");
+      updateGoogleStatus(true, data.google_email);
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  });
+  if (!client) {
+    showToast("Le service Google n'a pas pu se charger, réessayez", "error");
+    return;
+  }
+  client.requestCode();
+}
+
+async function disconnectGoogle() {
+  try {
+    const res = await apiFetch("/auth/google/unlink", { method: "POST" });
+    if (!res.ok) throw new Error("Erreur");
+    showToast("Compte Google déconnecté");
+    updateGoogleStatus(false, null);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+function handleGoogleBtnClick() {
+  const btn = document.getElementById("p-google-btn");
+  if (btn.dataset.linked === "true") disconnectGoogle();
+  else connectGoogle();
+}
+
+// --- Clés d'accès (WebAuthn) ---
+function bufferToBase64url(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let str = "";
+  for (const b of bytes) str += String.fromCharCode(b);
+  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64urlToBuffer(base64url) {
+  const base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = base64.length % 4 ? "=".repeat(4 - (base64.length % 4)) : "";
+  const str = atob(base64 + pad);
+  const bytes = new Uint8Array(str.length);
+  for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i);
+  return bytes;
+}
+
+function passkeyRowMenuHtml(id) {
+  return `
+    <div class="row-menu" data-passkey-id="${id}">
+      <button type="button" class="row-menu-trigger" aria-label="Actions" aria-haspopup="true">•••</button>
+      <div class="row-menu-dropdown">
+        <button type="button" class="row-menu-item" data-passkey-action="rename">Modifier</button>
+        <button type="button" class="row-menu-item row-menu-item-danger" data-passkey-action="delete">Supprimer</button>
       </div>
     </div>
   `;
 }
 
-async function mountInformationsPersonnelles() {
+async function loadPasskeys() {
+  const tbody = document.getElementById("p-passkeys-tbody");
   try {
-    const res = await apiFetch("/profile");
-    const data = await res.json();
-    document.getElementById("p-profile-name").innerText = data.full_name || "—";
-    document.getElementById("p-profile-email").innerText = data.email || "—";
-    document.getElementById("p-profile-phone").innerText = data.phone || "—";
-    document.getElementById("p-profile-account-id").innerText = data.account_id || "—";
+    const res = await apiFetch("/passkeys");
+    const list = await res.json();
+    if (!res.ok) throw new Error("Erreur");
+    tbody.innerHTML = list.length
+      ? list.map((p) => `
+          <tr>
+            <td>${p.name}</td>
+            <td>${formatSessionTime(p.created_at)}</td>
+            <td>${p.last_used_at ? formatSessionTime(p.last_used_at) : "Jamais utilisée"}</td>
+            <td>${passkeyRowMenuHtml(p.id)}</td>
+          </tr>
+        `).join("")
+      : `<tr><td colspan="4" class="text-muted">Aucune clé d'accès enregistrée.</td></tr>`;
   } catch (err) {
-    console.error("Erreur chargement profil:", err);
+    tbody.innerHTML = `<tr><td colspan="4" class="text-muted">Erreur de chargement.</td></tr>`;
   }
-  return [];
+}
+
+async function registerPasskey() {
+  if (!window.PublicKeyCredential) {
+    showToast("Les clés d'accès ne sont pas prises en charge par ce navigateur", "error");
+    return;
+  }
+  const btn = document.getElementById("p-passkey-add-btn");
+  btn.disabled = true;
+  try {
+    const startRes = await apiFetch("/passkeys/register/start", { method: "POST" });
+    const options = await startRes.json();
+    if (!startRes.ok) throw new Error(options.detail || "Erreur");
+
+    const publicKey = {
+      ...options,
+      challenge: base64urlToBuffer(options.challenge),
+      user: { ...options.user, id: base64urlToBuffer(options.user.id) },
+      excludeCredentials: (options.excludeCredentials || []).map((c) => ({
+        ...c,
+        id: base64urlToBuffer(c.id),
+      })),
+    };
+
+    const credential = await navigator.credentials.create({ publicKey });
+    const credentialJson = {
+      id: credential.id,
+      rawId: bufferToBase64url(credential.rawId),
+      type: credential.type,
+      response: {
+        clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+        attestationObject: bufferToBase64url(credential.response.attestationObject),
+      },
+      origin: window.location.origin,
+    };
+
+    const name = (window.prompt("Nom de cette clé d'accès (ex: iPhone de Jean)") || "").trim() || "Clé d'accès";
+    const finishRes = await apiFetch("/passkeys/register/finish", {
+      method: "POST",
+      body: { credential: credentialJson, name },
+    });
+    const data = await finishRes.json();
+    if (!finishRes.ok) throw new Error(data.detail || "Erreur");
+    showToast("Clé d'accès ajoutée");
+    loadPasskeys();
+  } catch (err) {
+    if (err.name !== "NotAllowedError") {
+      showToast(err.message || "Erreur lors de l'ajout de la clé d'accès", "error");
+    }
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function renamePasskey(id) {
+  const name = (window.prompt("Nouveau nom de la clé d'accès :") || "").trim();
+  if (!name) return;
+  try {
+    const res = await apiFetch(`/passkeys/${id}`, { method: "PATCH", body: { name } });
+    if (!res.ok) throw new Error("Erreur");
+    showToast("Clé d'accès renommée");
+    loadPasskeys();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+async function deletePasskey(id) {
+  if (!confirm("Supprimer cette clé d'accès ?")) return;
+  try {
+    const res = await apiFetch(`/passkeys/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Erreur");
+    showToast("Clé d'accès supprimée");
+    loadPasskeys();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+// --- Sessions actives ---
+function sessionRowHtml(s) {
+  const action = s.is_current
+    ? `<span class="badge bg-success">Actuelle</span>`
+    : `<button type="button" class="row-menu-item params-session-logout-btn" data-session-id="${s.id}">Déconnexion</button>`;
+  return `
+    <tr>
+      <td>${s.location}</td>
+      <td>${s.device}</td>
+      <td>${s.ip}</td>
+      <td>${formatSessionTime(s.created_at)}</td>
+      <td>${action}</td>
+    </tr>
+  `;
+}
+
+async function loadSessions() {
+  const tbody = document.getElementById("p-sessions-tbody");
+  try {
+    const res = await apiFetch("/sessions");
+    const list = await res.json();
+    if (!res.ok) throw new Error("Erreur");
+    tbody.innerHTML = list.length
+      ? list.map(sessionRowHtml).join("")
+      : `<tr><td colspan="5" class="text-muted">Aucune session active.</td></tr>`;
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-muted">Erreur de chargement.</td></tr>`;
+  }
+}
+
+async function revokeSession(id) {
+  try {
+    const res = await apiFetch(`/sessions/${id}/revoke`, { method: "POST" });
+    if (!res.ok) throw new Error("Erreur");
+    showToast("Session déconnectée");
+    loadSessions();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+async function revokeOtherSessions() {
+  if (!confirm("Déconnecter toutes les autres sessions ?")) return;
+  try {
+    const res = await apiFetch("/sessions/revoke-others", { method: "POST" });
+    if (!res.ok) throw new Error("Erreur");
+    showToast("Toutes les autres sessions ont été déconnectées");
+    loadSessions();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+function mountInformationsPersonnelles(on) {
+  on(document.getElementById("p-name-save-btn"), "click", () =>
+    saveProfileField("full_name", document.getElementById("p-name-input").value.trim(), "p-name-save-btn", "Ajouter votre nom")
+  );
+  on(document.getElementById("p-phone-save-btn"), "click", () =>
+    saveProfileField("phone", document.getElementById("p-phone-input").value.trim(), "p-phone-save-btn", "Ajouter votre téléphone")
+  );
+  on(document.getElementById("p-google-btn"), "click", handleGoogleBtnClick);
+  on(document.getElementById("p-passkey-add-btn"), "click", registerPasskey);
+  on(document.getElementById("p-sessions-revoke-others-btn"), "click", revokeOtherSessions);
+
+  on(document.getElementById("p-passkeys-tbody"), "click", (e) => {
+    const trigger = e.target.closest(".row-menu-trigger");
+    if (trigger) {
+      toggleParamsRowMenu(trigger);
+      return;
+    }
+    const actionBtn = e.target.closest("[data-passkey-action]");
+    if (!actionBtn) return;
+    const id = actionBtn.closest(".row-menu").dataset.passkeyId;
+    closeParamsRowMenu();
+    if (actionBtn.dataset.passkeyAction === "rename") renamePasskey(id);
+    else if (actionBtn.dataset.passkeyAction === "delete") deletePasskey(id);
+  });
+
+  on(document.getElementById("p-sessions-tbody"), "click", (e) => {
+    const logoutBtn = e.target.closest(".params-session-logout-btn");
+    if (!logoutBtn) return;
+    revokeSession(logoutBtn.dataset.sessionId);
+  });
+
+  (async () => {
+    try {
+      const res = await apiFetch("/profile");
+      const data = await res.json();
+      document.getElementById("p-profile-email").innerText = data.email || "—";
+      const nameInput = document.getElementById("p-name-input");
+      const nameBtn = document.getElementById("p-name-save-btn");
+      nameInput.value = data.full_name || "";
+      nameBtn.innerText = data.full_name ? "Enregistrer" : "Ajouter votre nom";
+      const phoneInput = document.getElementById("p-phone-input");
+      const phoneBtn = document.getElementById("p-phone-save-btn");
+      phoneInput.value = data.phone || "";
+      phoneBtn.innerText = data.phone ? "Enregistrer" : "Ajouter votre téléphone";
+      updateGoogleStatus(data.google_linked, data.google_email);
+    } catch (err) {
+      console.error("Erreur chargement profil:", err);
+    }
+  })();
+
+  loadPasskeys();
+  loadSessions();
 }
 
 // --- Detail : Authentification (mot de passe + 2FA) ---
@@ -691,46 +1114,6 @@ function mountAbonnement(on) {
 }
 
 // --- Detail : Sessions actives ---
-function sessionsTemplate() {
-  return `
-    ${detailHeader("Sessions actives")}
-    <div class="card-epay p-4" style="max-width:480px;">
-      <div class="session-card">
-        <div class="d-flex justify-content-between align-items-center">
-          <div>
-            <div class="fw-bold text-muted" id="p-session-device">Chargement...</div>
-            <small id="p-session-location">Chargement...</small>
-            <div class="session-email" id="p-session-email">Chargement...</div>
-          </div>
-          <span class="badge bg-success">Actuelle</span>
-        </div>
-      </div>
-      <button type="button" class="btn btn-danger btn-sm w-100 mt-3 text-muted" id="p-btn-logout-others">Déconnecter toutes les autres sessions</button>
-    </div>
-  `;
-}
-
-function deconnecterTout() {
-  showToast("Toutes les autres sessions ont été déconnectées.");
-}
-
-async function mountSessions(on) {
-  on(document.getElementById("p-btn-logout-others"), "click", deconnecterTout);
-  try {
-    const response = await apiFetch("/me");
-    const data = await response.json();
-    document.getElementById("p-session-email").innerText = data.email || "Utilisateur inconnu";
-    if (data.session) {
-      document.getElementById("p-session-device").innerText = data.session.device || "Appareil inconnu";
-      document.getElementById("p-session-location").innerText =
-        (data.session.ip || "IP inconnue") + " - " + (data.session.last_seen || "Maintenant");
-    }
-  } catch (error) {
-    console.error("Erreur user connecté :", error);
-    document.getElementById("p-session-email").innerText = "Utilisateur inconnu";
-  }
-}
-
 // --- Detail : Zone dangereuse ---
 function zoneDangereuseTemplate() {
   return `
@@ -901,12 +1284,11 @@ async function mountInfosStripe() {
 }
 
 const SECTIONS = {
-  "informations-personnelles": { title: "Informations personnelles", template: informationsPersonnellesTemplate, mount: (on) => mountInformationsPersonnelles() },
+  "informations-personnelles": { title: "Informations personnelles", template: informationsPersonnellesTemplate, mount: (on) => mountInformationsPersonnelles(on) },
   "authentification": { title: "Authentification", template: authentificationTemplate, mount: (on) => mountAuthentification(on) },
   "notifications": { title: "Paramètres de notifications", template: notificationsTemplate, mount: (on) => mountNotifications(on) },
   "stripe": { title: "Compte Stripe", template: stripeTemplate, mount: (on) => mountStripe() },
   "abonnement": { title: "Abonnement", template: abonnementTemplate, mount: (on) => mountAbonnement(on) },
-  "sessions": { title: "Sessions actives", template: sessionsTemplate, mount: (on) => mountSessions(on) },
   "zone-dangereuse": { title: "Zone dangereuse", template: zoneDangereuseTemplate, mount: (on) => mountZoneDangereuse(on) },
   "cartes-virtuelles": { title: "Cartes virtuelles", template: cartesVirtuellesTemplate, mount: (on) => mountCartesVirtuelles(on) },
   "retraits": { title: "Retraits & Comptes US", template: retraitsTemplate, mount: (on) => {} },

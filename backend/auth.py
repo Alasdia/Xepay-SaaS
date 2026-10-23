@@ -1,16 +1,17 @@
 import pyotp
 import qrcode
 import base64
+import requests
 from io import BytesIO
 from fastapi import Header, HTTPException, Depends, APIRouter, Request, Response
 from sqlalchemy.orm import Session
 from backend.database import get_db
-from backend.models import UserDB, TwoFAVerifyRequest, WorkspaceUser, LoginTwoFAVerify
+from backend.models import UserDB, TwoFAVerifyRequest, WorkspaceUser, LoginTwoFAVerify, RefreshToken
 from datetime import datetime, timezone
 from backend.security import (
     decode_token, create_access_token,
     encrypt_secret, decrypt_secret, decode_2fa_pending_token,
-    generate_csrf_token,
+    generate_csrf_token, hash_refresh_token,
     ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS,
     ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME, CSRF_COOKIE_NAME,
     CSRF_COOKIE_DOMAIN,
@@ -73,12 +74,23 @@ def clear_session_cookies(response: Response) -> None:
     response.delete_cookie(key=CSRF_COOKIE_NAME, path="/", domain=CSRF_COOKIE_DOMAIN)
 
 
-def issue_new_session(db: Session, response: Response, user: UserDB) -> None:
+def session_device_ip(request: Request | None) -> tuple[str | None, str | None]:
+    """User-agent brut + IP de la requête de connexion - affichés tels quels
+    dans "Sessions actives" (Paramètres), pas de parsing device/OS ici."""
+    if request is None:
+        return None, None
+    device = request.headers.get("user-agent")
+    ip = request.client.host if request.client else None
+    return device, ip
+
+
+def issue_new_session(db: Session, response: Response, user: UserDB, request: Request | None = None) -> None:
     """Point d'entrée unique pour démarrer une session (login classique,
     2FA, Google) : émet l'access token (JWT) + un nouveau refresh token
     (nouvelle famille, DB) + un jeton CSRF, et les pose en cookies."""
     access_token = create_access_token({"sub": user.email})
-    refresh_token = issue_refresh_token(db, user.id)
+    device, ip = session_device_ip(request)
+    refresh_token = issue_refresh_token(db, user.id, device=device, ip=ip)
     csrf_token = generate_csrf_token()
     set_session_cookies(response, access_token, refresh_token, csrf_token)
 
@@ -121,7 +133,8 @@ def refresh_session(
     if not raw_refresh:
         raise HTTPException(status_code=401, detail="Aucune session à renouveler")
 
-    result = rotate_refresh_token(db, raw_refresh)
+    device, ip = session_device_ip(request)
+    result = rotate_refresh_token(db, raw_refresh, device=device, ip=ip)
     if result is None:
         # Jeton invalide/expiré/réutilisé hors fenêtre de grâce : on efface
         # les cookies existants pour forcer une reconnexion propre côté SPA.
@@ -145,6 +158,118 @@ def logout_session(
     if raw_refresh:
         revoke_refresh_token(db, raw_refresh)
     clear_session_cookies(response)
+    return {"ok": True}
+
+
+# IP -> "Pays (Région)" via un service public gratuit, pas de clé requise -
+# meilleur effort uniquement : court timeout, jamais bloquant pour l'affichage
+# des sessions, "Lieu inconnu" sur tout échec (IP locale/privée, service
+# indisponible, etc.). Pas de cache : volume attendu très faible (ouverture
+# de la page Paramètres), pas la peine d'ajouter un store supplémentaire.
+def _lookup_ip_location(ip: str | None) -> str:
+    if not ip or ip in ("127.0.0.1", "localhost", "::1") or ip.startswith("192.168.") or ip.startswith("10."):
+        return "Local"
+    try:
+        res = requests.get(
+            f"https://ip-api.com/json/{ip}",
+            params={"fields": "status,country,regionName"},
+            timeout=2,
+        )
+        data = res.json()
+        if data.get("status") != "success":
+            return "Lieu inconnu"
+        country = data.get("country")
+        region = data.get("regionName")
+        if country and region:
+            return f"{country} ({region})"
+        return country or "Lieu inconnu"
+    except Exception:
+        return "Lieu inconnu"
+
+
+def _active_sessions_query(db: Session, user_id: str):
+    now = datetime.now(timezone.utc)
+    return (
+        db.query(RefreshToken)
+        .filter(
+            RefreshToken.user_id == user_id,
+            RefreshToken.revoked_at.is_(None),
+            RefreshToken.expires_at >= now,
+        )
+        .order_by(RefreshToken.created_at.desc())
+    )
+
+
+@router.get("/sessions")
+def list_sessions(
+    request: Request,
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    raw_refresh = request.cookies.get(REFRESH_COOKIE_NAME)
+    current_hash = hash_refresh_token(raw_refresh) if raw_refresh else None
+
+    sessions = _active_sessions_query(db, current_user.id).all()
+    return [
+        {
+            "id": s.id,
+            "device": s.device or "Appareil inconnu",
+            "ip": s.ip or "—",
+            "location": _lookup_ip_location(s.ip),
+            "created_at": s.created_at,
+            "is_current": s.token_hash == current_hash,
+        }
+        for s in sessions
+    ]
+
+
+@router.post("/sessions/{session_id}/revoke")
+def revoke_one_session(
+    session_id: str,
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    session_row = db.query(RefreshToken).filter(
+        RefreshToken.id == session_id,
+        RefreshToken.user_id == current_user.id,
+        RefreshToken.revoked_at.is_(None),
+    ).first()
+    if not session_row:
+        raise HTTPException(status_code=404, detail="Session introuvable")
+    # Révoque toute la famille de ce jeton (même logique que le logout
+    # classique, voir revoke_refresh_token) - pas seulement cette ligne.
+    now = datetime.now(timezone.utc)
+    db.query(RefreshToken).filter(
+        RefreshToken.family_id == session_row.family_id,
+        RefreshToken.revoked_at.is_(None),
+    ).update({"revoked_at": now})
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/sessions/revoke-others")
+def revoke_other_sessions(
+    request: Request,
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    raw_refresh = request.cookies.get(REFRESH_COOKIE_NAME)
+    current_hash = hash_refresh_token(raw_refresh) if raw_refresh else None
+    current_row = (
+        db.query(RefreshToken).filter(RefreshToken.token_hash == current_hash).first()
+        if current_hash else None
+    )
+    current_family = current_row.family_id if current_row else None
+
+    now = datetime.now(timezone.utc)
+    q = db.query(RefreshToken).filter(
+        RefreshToken.user_id == current_user.id,
+        RefreshToken.revoked_at.is_(None),
+    )
+    if current_family:
+        q = q.filter(RefreshToken.family_id != current_family)
+    q.update({"revoked_at": now})
+    db.commit()
     return {"ok": True}
 
 
@@ -252,7 +377,7 @@ def verify_login_2fa(
             WorkspaceUser.user_id == user.id
         ).first()
 
-    issue_new_session(db, response, user)
+    issue_new_session(db, response, user, request=request)
 
     if user.alert_login:
         device = request.headers.get("user-agent", "Appareil inconnu")

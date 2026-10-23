@@ -42,6 +42,23 @@ class ProfileRequest(BaseModel):
     wallet_number: str
     doc_type: str
 
+class ProfileUpdateRequest(BaseModel):
+    # Les deux optionnels : seul le champ envoyé (non None) est modifié -
+    # voir PATCH /profile (boutons "Ajouter votre nom"/"... téléphone").
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+
+class GoogleLinkRequest(BaseModel):
+    code: str
+    redirect_uri: str
+
+class PasskeyRegisterFinishRequest(BaseModel):
+    credential: dict
+    name: Optional[str] = None
+
+class PasskeyRenameRequest(BaseModel):
+    name: str
+
 class LoginTwoFAVerify(BaseModel):
     email: str
     code: str
@@ -271,6 +288,29 @@ class UserDB(Base):
     alert_login = Column(Boolean, default=True)
     alert_payment = Column(Boolean, default=True)
     alert_suspect = Column(Boolean, default=True)
+    # Compte Google connecté (en plus de l'email) - voir /auth/google/link.
+    # google_id (le "sub" du token Google) est ce qui permet a terme de se
+    # reconnecter via un compte Google dont l'email differe de celui de la
+    # connexion classique ; _exchange_google_code s'appuie sur ce champ en
+    # repli si l'email ne correspond a aucun compte.
+    google_id = Column(String, nullable=True, unique=True, index=True)
+    google_email = Column(String, nullable=True)
+
+class PasskeyCredential(Base):
+    """Clé d'accès WebAuthn (Paramètres > Informations personnelles). Le
+    challenge de la cérémonie d'enregistrement n'est jamais persisté ici -
+    uniquement en mémoire côté backend/routes/passkeys.py, le temps très
+    court entre /register/start et /register/finish."""
+    __tablename__ = "passkey_credentials"
+
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("pk"))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    credential_id = Column(String, nullable=False, unique=True)
+    public_key = Column(String, nullable=False)
+    sign_count = Column(Integer, nullable=False, default=0)
+    name = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
 
 class WorkspaceUser(Base):
     __tablename__ = "workspace_users"
@@ -323,6 +363,12 @@ class RefreshToken(Base):
     revoked_at = Column(DateTime(timezone=True), nullable=True)
     replaced_by = Column(String, nullable=True)
     session_started_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    # Capturés à l'émission (login) et propagés/rafraîchis à chaque rotation
+    # (voir refresh_token_service.py) - pour la liste "Sessions actives"
+    # (un seul jeton non révoqué par famille à un instant donné, cf. le
+    # mécanisme de rotation : une ligne = un appareil/session réel).
+    device = Column(String, nullable=True)
+    ip = Column(String, nullable=True)
 
     __table_args__ = (
         Index("idx_refresh_token_hash", "token_hash"),
