@@ -4,6 +4,7 @@ import { isAuthenticated } from "../core/state.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { updateUpgradeModal } from "../shared/modalUpgrade.js";
 import { initDetailsDrawer } from "../shared/detailsDrawer.js";
+import { renderMetadataSection } from "./commerce.js";
 
 const TEMPLATE = `
 <div id="links-lock" class="d-none">
@@ -282,6 +283,8 @@ export async function mount(container) {
         </div>
       </div>
       <div class="lien-url ${info.legacy}">${lien.url}</div>
+
+      ${renderMetadataSection(lien.metadata, "Lien")}
     `;
 
     detailsModal.classList.add("open");

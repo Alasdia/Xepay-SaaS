@@ -83,7 +83,7 @@ class LinkDashboardResponse(BaseModel):
     url: str
     expires_at: datetime
     created_at: datetime
-
+    metadata: Optional[dict] = None
 
     class Config:
         from_attributes = True
@@ -466,6 +466,12 @@ class Link(Base):
     deleted = Column(Boolean, default=False)
     active = Column(Boolean)
     archived = Column(Boolean, default=False)
+    # Createur (membership.user_id) + workspace (membership.workspace_id) au
+    # moment de la creation du lien - nomme link_metadata (pas "metadata",
+    # reserve par Base.metadata chez SQLAlchemy, voir Payment.stripe_metadata).
+    # Link.user_id vaut deja l'ID du workspace (voir create_link), donc ce
+    # champ est surtout utile pour retrouver QUI dans l'equipe a cree le lien.
+    link_metadata = Column(JSON, nullable=True)
     user = relationship("UserDB", back_populates="links")
     def __repr__(self):
         return f"<Link id={self.id} name={self.name} amount={self.amount}>"

@@ -18,6 +18,7 @@ from backend.models import PaymentResponse
 from backend.middleware.authorization import require_admin, require_owner, require_member, require_manager
 from backend.models import Link, WorkspaceUser, generate_prefixed_id
 from backend.services.stripe_service import create_checkout_session
+from backend.routes.webhook.stripe import _emails_by_user_id, _enrich_metadata
 from backend.models import Payment
 from backend.models import UserDB
 from fastapi import HTTPException
@@ -98,7 +99,12 @@ def create_link(
         created_at=datetime.now(timezone.utc),
         active=True,
         expires_at=expires_at,
-        source=getattr(data, "source", "dashboard")
+        source=getattr(data, "source", "dashboard"),
+        link_metadata={
+            "user_id": membership.user_id,
+            "workspace_id": membership.workspace_id,
+            "xepay_type": "payment_link",
+        },
     )
     db.add(link)
     db.commit()
@@ -183,6 +189,7 @@ def get_links(
     if link_ids:
         for p in db.query(Payment).filter(Payment.link_id.in_(link_ids)).all():
             payments_by_link.setdefault(p.link_id, p)
+    emails_by_id = _emails_by_user_id(db, [link.link_metadata for link in links])
     result = []
     now = datetime.now(timezone.utc)
     for link in links:
@@ -218,7 +225,8 @@ def get_links(
             archived=link.archived,
             url=link.url,
             expires_at=link.expires_at,
-            created_at=link.created_at
+            created_at=link.created_at,
+            metadata=_enrich_metadata(link.link_metadata, emails_by_id)
         ))
     return result
 
@@ -239,7 +247,7 @@ def get_payment(token: str):
     else:
         end = datetime(now.year, now.month + 1, 1, tzinfo=timezone.utc)
     paid_count = (
-      db.query(Payment)
+      db.query(Payment.link_id)
         .join(Link, Payment.link_id == Link.id)
         .filter(Link.user_id == user.id)
         .filter(Payment.status.in_(["paid", "success"]))
@@ -343,6 +351,7 @@ def get_link_detail(
         currency = link.currency
         status = "pending"
     is_active = link.expires_at > now
+    emails_by_id = _emails_by_user_id(db, [link.link_metadata])
 
     return LinkDashboardResponse(
         id=link.id,
@@ -353,5 +362,7 @@ def get_link_detail(
         active=is_active,
         archived=link.archived,
         url=link.url,
-        expires_at=link.expires_at
+        expires_at=link.expires_at,
+        created_at=link.created_at,
+        metadata=_enrich_metadata(link.link_metadata, emails_by_id)
     )

@@ -124,33 +124,73 @@ function formatDate(timestampSeconds) {
         : "—";
 }
 
+// xepay_type (posé côté backend sur chaque metadata - voir _enrich_metadata
+// et create_link) identifie l'entité réellement concernée, indépendamment
+// de l'entityLabel passé par l'appelant - traduit en français pour la ligne
+// "Objet" de la section Métadonnées.
+const XEPAY_TYPE_LABELS = {
+    merchant_invoice: "Facture",
+    merchant_subscription: "Abonnement",
+    merchant_customer: "Client",
+    merchant_product: "Produit",
+    payment_link: "Lien",
+};
+
+// user_id/workspace_id arrivent déjà enrichis "<id> (email)" par le backend
+// (voir _enrich_metadata) quand l'email est connu - on sépare ça en deux
+// lignes Email/Id plutôt que d'afficher la chaîne combinée brute. Sans
+// email connu (parenthèse absente), seule la ligne Id est affichée.
+function renderIdentityRow(label, value) {
+    const match = /^(.+) \((.+)\)$/.exec(String(value));
+    const id = match ? match[1] : value;
+    const email = match ? match[2] : null;
+    return `
+        <div class="customer-detail-item">
+            <span>${label}</span>
+            <strong>
+                ${email ? `<div>Email : ${email}</div>` : ""}
+                <div>Id : ${id}</div>
+            </strong>
+        </div>
+    `;
+}
+
 // Bloc "Métadonnées" partagé par les modals de détails (Clients/Produits/
-// Abonnements/Factures/Paiements) : affiche les metadata Stripe envoyées à
+// Abonnements/Factures/Paiements/Liens) : affiche les metadata envoyées à
 // la création (user_id/workspace_id/xepay_type, etc.) quand il y en a,
 // sinon ne rend rien (pas de section vide). entityLabel ("Client",
-// "Produit", "Abonnement", "Facture", "Paiement") personnalise le libellé
-// de user_id ("<entité> créé par" plutôt que l'ID technique) ; workspace_id
-// devient "ID du workspace" dans tous les cas.
+// "Produit", "Abonnement", "Facture", "Paiement", "Lien") personnalise le
+// libellé de user_id ("<entité> créé par" plutôt que l'ID technique).
 export function renderMetadataSection(metadata, entityLabel = "") {
     const entries = Object.entries(metadata || {});
     if (!entries.length) return "";
-    const keyLabel = (key) => {
+    const rows = entries.map(([key, value]) => {
         if (key === "user_id") {
-            return entityLabel ? `${entityLabel} créé par` : "Créé par";
+            return renderIdentityRow(entityLabel ? `${entityLabel} créé par` : "Créé par", value);
         }
-        if (key === "workspace_id") return "ID du workspace";
-        return key;
-    };
+        if (key === "workspace_id") {
+            return renderIdentityRow("Workspace", value);
+        }
+        if (key === "xepay_type") {
+            return `
+                <div class="customer-detail-item">
+                    <span>Objet</span>
+                    <strong>${XEPAY_TYPE_LABELS[value] || entityLabel || value}</strong>
+                </div>
+            `;
+        }
+        return `
+            <div class="customer-detail-item">
+                <span>${key}</span>
+                <strong>${value}</strong>
+            </div>
+        `;
+    });
     return `
         <div style="margin-top:20px;">
             <h4>Métadonnées</h4>
             <div class="customer-details-grid">
-                ${entries.map(([key, value]) => `
-                    <div class="customer-detail-item">
-                        <span>${keyLabel(key)}</span>
-                        <strong>${value}</strong>
-                    </div>
-                `).join("")}
+                ${rows.join("")}
             </div>
         </div>
     `;
