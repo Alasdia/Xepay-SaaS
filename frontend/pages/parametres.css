@@ -237,10 +237,8 @@
 }
 
 .params-mini-table thead th {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #9ca3af;
+  font-size: 13px;
+  color: #111827;
   font-weight: 700;
   border-bottom: 1px solid #e5e7eb;
 }
