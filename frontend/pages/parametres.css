@@ -238,7 +238,7 @@
 
 .params-mini-table thead th {
   font-size: 13px;
-  color: #111827;
+  color: rgba(17, 24, 39, 0.75);
   font-weight: 700;
   border-bottom: 1px solid #e5e7eb;
 }

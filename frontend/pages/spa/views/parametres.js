@@ -193,12 +193,6 @@ function informationsPersonnellesTemplate() {
       </div>
       <button type="button" id="p-google-btn" class="create-client-btn">Connecter un compte Google</button>
     </div>
-    <div class="params-row-list mb-5">
-      <div class="params-info-row">
-        <span>Statut</span>
-        <strong id="p-google-status">—</strong>
-      </div>
-    </div>
 
     <div class="params-subsection-header">
       <div>
@@ -307,10 +301,8 @@ async function saveProfileField(field) {
   }
 }
 
-function updateGoogleStatus(linked, email) {
-  const status = document.getElementById("p-google-status");
+function updateGoogleStatus(linked) {
   const btn = document.getElementById("p-google-btn");
-  status.innerText = linked ? `Connecté (${email || ""})` : "Non connecté";
   btn.innerText = linked ? "Déconnecter le compte Google" : "Connecter un compte Google";
   btn.dataset.linked = linked ? "true" : "false";
 }
@@ -512,7 +504,7 @@ async function deletePasskey(id) {
 // --- Sessions actives ---
 function sessionRowHtml(s) {
   const action = s.is_current
-    ? `<span class="badge bg-success">Actuelle</span>`
+    ? `Actuelle`
     : `<button type="button" class="row-menu-item params-session-logout-btn" data-session-id="${s.id}">Déconnexion</button>`;
   return `
     <tr>
@@ -520,7 +512,7 @@ function sessionRowHtml(s) {
       <td>${s.device}</td>
       <td>${s.ip}</td>
       <td>${formatSessionTime(s.created_at)}</td>
-      <td>${action}</td>
+      <td class="text-end">${action}</td>
     </tr>
   `;
 }
