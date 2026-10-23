@@ -5,6 +5,7 @@ import { registerRoute, configure, start, navigate } from "./core/router.js";
 import { isAuthenticated, setSession, getWorkspaceId, setWorkspaceId } from "./core/state.js";
 import { initSidebar, setActiveRoute } from "./sidebar.js";
 import { ensureModalLoaded, upgrade } from "./shared/modalUpgrade.js";
+import { openSettingsDrawer } from "./shared/settingsDrawer.js";
 
 import { mount as mountDashboard } from "./views/dashboard.js";
 import { mount as mountSolde } from "./views/solde.js";
@@ -13,8 +14,6 @@ import { mount as mountLiens } from "./views/liens.js";
 import { mount as mountCommerce } from "./views/commerce.js";
 import { mount as mountApi } from "./views/api.js";
 import { mount as mountMultiUsers } from "./views/multiUsers.js";
-import { mount as mountProfil } from "./views/profil.js";
-import { mount as mountSecurite } from "./views/securite.js";
 import { mountPayment as mountPaymentDetail, mountWithdrawal as mountWithdrawalDetail } from "./views/transactionDetail.js";
 
 const WORKSPACE_PLACEHOLDER = "me";
@@ -104,11 +103,34 @@ async function init() {
   registerRoute("/dash/workspace/:workspaceId/commerce/risque", (c, p) => mountCommerce(c, { ...p, section: "risque" }),{ name: "risque" });
   registerRoute("/dash/workspace/:workspaceId/api", mountApi, { name: "api" });
   registerRoute("/dash/workspace/:workspaceId/multi-users", mountMultiUsers, { name: "multi-users" });
-  registerRoute("/dash/workspace/:workspaceId/profil", mountProfil, { name: "profil" });
-  registerRoute("/dash/workspace/:workspaceId/securite", mountSecurite, { name: "securite" });
+  // Anciennes pages dédiées, retirées de la sidebar : leur contenu vit
+  // maintenant dans le tiroir Paramètres (icône ⚙️ du bandeau) - un lien
+  // direct vers ces URL (favori, etc.) revient à l'accueil et ouvre le
+  // tiroir plutôt que d'afficher une page qui n'existe plus.
+  registerRoute(
+    "/dash/workspace/:workspaceId/profil",
+    (c, p) => {
+      navigate(`/dash/workspace/${encodeURIComponent(p.workspaceId)}/`, { replace: true });
+      openSettingsDrawer();
+    },
+    { name: "profil" }
+  );
+  registerRoute(
+    "/dash/workspace/:workspaceId/securite",
+    (c, p) => {
+      navigate(`/dash/workspace/${encodeURIComponent(p.workspaceId)}/`, { replace: true });
+      openSettingsDrawer();
+    },
+    { name: "securite" }
+  );
 
   await initSidebar();
   await ensureModalLoaded();
+
+  // Icône ⚙️ du bandeau jaune (#top-banner, dashboard.html) - ouvre le
+  // tiroir Paramètres partagé (ex-pages Profil/KYC + Sécurité), chargé à la
+  // demande au premier clic (voir shared/settingsDrawer.js).
+  document.getElementById("settings-gear-btn")?.addEventListener("click", openSettingsDrawer);
 
   // La modale upgrade partagée (modal-upgrade.html) est chargée une seule
   // fois pour toute la session et reste dans le DOM en permanence — ses
