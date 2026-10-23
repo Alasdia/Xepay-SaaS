@@ -33,9 +33,21 @@
 <!-- Bandeau réservé en haut de la page (5% de la hauteur), au-dessus de la
      sidebar ET de #main-content — voir #top-banner dans sidebar.css. -->
 <div id="top-banner">
-  <button type="button" id="settings-gear-btn" aria-label="Paramètres">
-    <i class="fa-solid fa-gear"></i>
-  </button>
+  <div class="top-banner-search">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <input type="text" id="top-banner-search-input" placeholder="Rechercher...">
+  </div>
+  <div class="top-banner-actions">
+    <button type="button" id="notifications-btn" aria-label="Notifications">
+      <i class="fa-solid fa-bell"></i>
+    </button>
+    <a href="mailto:support@alasdia.com" id="help-btn" aria-label="Aide">
+      <i class="fa-solid fa-circle-question"></i>
+    </a>
+    <button type="button" id="settings-gear-btn" aria-label="Paramètres">
+      <i class="fa-solid fa-gear"></i>
+    </button>
+  </div>
 </div>
 <div id="sidebar-container"></div>
 <div id="main-content"></div>

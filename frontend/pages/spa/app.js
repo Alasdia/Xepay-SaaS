@@ -5,6 +5,7 @@ import { registerRoute, configure, start, navigate } from "./core/router.js";
 import { isAuthenticated, setSession, getWorkspaceId, setWorkspaceId } from "./core/state.js";
 import { initSidebar, setActiveRoute } from "./sidebar.js";
 import { ensureModalLoaded, upgrade } from "./shared/modalUpgrade.js";
+import { showToast } from "./shared/toast.js";
 
 import { mount as mountDashboard } from "./views/dashboard.js";
 import { mount as mountSolde } from "./views/solde.js";
@@ -126,6 +127,14 @@ async function init() {
   // views/parametres.js), comme n'importe quel autre lien de la sidebar.
   document.getElementById("settings-gear-btn")?.addEventListener("click", () => {
     navigate(`/dash/workspace/${encodeURIComponent(getWorkspaceId() || WORKSPACE_PLACEHOLDER)}/parametres`);
+  });
+
+  // Cloche notifications : pas de centre de notifications côté backend pour
+  // l'instant - feedback honnête plutôt qu'un panneau avec du contenu
+  // inventé. Aide : mailto direct (même adresse support que les pages
+  // légales, voir conditions-utilisation.html).
+  document.getElementById("notifications-btn")?.addEventListener("click", () => {
+    showToast("Aucune nouvelle notification");
   });
 
   // La modale upgrade partagée (modal-upgrade.html) est chargée une seule
