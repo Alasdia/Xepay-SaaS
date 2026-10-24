@@ -93,7 +93,6 @@ function overviewTemplate() {
           ${tile("plans-et-frais", "fa-solid fa-crown", "Plans et frais", "Plan actuel, consommation du mois et frais Xepay sur vos paiements")}
           ${tile("equipe", "fa-solid fa-users", "Équipe et sécurité", "Membres, rôles et sécurité de votre compte")}
           ${tile("entreprise", "fa-solid fa-building", "Entreprise", "Détails d'entreprise et représentant légal, via Stripe")}
-          ${tile("zone-dangereuse", "fa-solid fa-triangle-exclamation", "Zone dangereuse", "Suppression définitive et irréversible de votre compte", true)}
         </div>
       </section>
 
@@ -1220,11 +1219,20 @@ function stripeEtatPanelHtml() {
   `;
 }
 
+function stripeAccountPanelHtml() {
+  const infoHtml = (!stripeBusinessData && stripeBusinessError)
+    ? `<p class="text-muted">${stripeBusinessError}</p>`
+    : infoRowsHtml(stripeAccountRows(stripeBusinessData, stripeStatusData));
+  return `
+    ${infoHtml}
+    <h6 class="params-subsection-title mt-5" style="color:#ef4444;">Zone dangereuse</h6>
+    <p class="params-subsection-sub">Cette action est irréversible. Procédez avec précaution.</p>
+    <button type="button" class="btn btn-outline-danger btn-sm" id="p-stripe-delete-account-btn">Supprimer mon compte</button>
+  `;
+}
+
 function stripeTabContentHtml(key) {
-  if (key === "account") {
-    if (!stripeBusinessData && stripeBusinessError) return `<p class="text-muted">${stripeBusinessError}</p>`;
-    return infoRowsHtml(stripeAccountRows(stripeBusinessData, stripeStatusData));
-  }
+  if (key === "account") return stripeAccountPanelHtml();
   if (key === "etat") return stripeEtatPanelHtml();
   return "";
 }
@@ -1340,6 +1348,10 @@ async function loadStripeDetails() {
 
 function mountStripe(on) {
   on(document.getElementById("p-stripe-body"), "click", (e) => {
+    if (e.target.closest("#p-stripe-delete-account-btn")) {
+      supprimerCompte();
+      return;
+    }
     const tabBtn = e.target.closest("[data-stripe-tab]");
     if (!tabBtn) return;
     stripeActiveTab = tabBtn.dataset.stripeTab;
@@ -1454,18 +1466,10 @@ function mountPlansEtFrais(on) {
 }
 
 // --- Detail : Sessions actives ---
-// --- Detail : Zone dangereuse ---
-function zoneDangereuseTemplate() {
-  return `
-    ${detailHeader("Zone dangereuse")}
-    <div class="card-epay p-4" style="max-width:480px; border:1px solid rgba(239,68,68,0.3) !important;">
-      <h6 class="fw-bold mb-3" style="color:#ef4444;">⚠️ Supprimer mon compte</h6>
-      <p class="text-muted" style="font-size:0.85rem;">Cette action est irréversible. Procédez avec précaution.</p>
-      <button type="button" class="btn btn-outline-danger btn-sm w-100" id="p-btn-delete-account">Supprimer mon compte</button>
-    </div>
-  `;
-}
-
+// Zone dangereuse (suppression du compte) : déplacée dans l'onglet
+// Informations du compte de Compte Stripe Connect (stripeTabContentHtml),
+// plus de vue/tuile dédiée - supprimerCompte reste la même fonction,
+// juste appelée depuis mountStripe désormais.
 async function supprimerCompte() {
   if (!confirm("Voulez-vous vraiment supprimer votre compte ?")) return;
   try {
@@ -1478,10 +1482,6 @@ async function supprimerCompte() {
   } catch (error) {
     showToast(error.message, "error");
   }
-}
-
-function mountZoneDangereuse(on) {
-  on(document.getElementById("p-btn-delete-account"), "click", supprimerCompte);
 }
 
 // --- Detail : Équipe et sécurité ---
@@ -1940,7 +1940,6 @@ const SECTIONS = {
   "plans-et-frais": { title: "Plans et frais", template: plansEtFraisTemplate, mount: (on) => mountPlansEtFrais(on) },
   "equipe": { title: "Équipe et sécurité", template: equipeTemplate, mount: (on) => mountEquipe(on) },
   "entreprise": { title: "Entreprise", template: entrepriseTemplate, mount: (on) => mountEntreprise(on) },
-  "zone-dangereuse": { title: "Zone dangereuse", template: zoneDangereuseTemplate, mount: (on) => mountZoneDangereuse(on) },
   "cartes-virtuelles": { title: "Cartes virtuelles", template: cartesVirtuellesTemplate, mount: (on) => mountCartesVirtuelles(on) },
   "retraits": { title: "Retraits & Comptes US", template: retraitsTemplate, mount: (on) => {} },
   "infos-stripe": { title: "Infos compte Stripe", template: infosStripeTemplate, mount: (on) => mountInfosStripe().catch(console.error) },
