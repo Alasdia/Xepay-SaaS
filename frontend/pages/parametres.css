@@ -142,6 +142,8 @@
   color: rgba(17, 24, 39, 0.5);
   font-size: 13px;
   margin-bottom: 14px;
+  max-width: 480px;
+  line-height: 1.5;
 }
 
 /* En-tête de sous-section avec action à l'extrême droite (Connecter un
