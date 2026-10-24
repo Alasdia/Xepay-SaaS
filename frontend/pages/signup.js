@@ -168,15 +168,101 @@ async function signup(){
   }
 }
 document.addEventListener('keydown',e=>{if(e.key==='Enter')signup()});
+// Widget Google Identity Services (GIS) — google.accounts.oauth2.initCodeClient
+// en ux_mode:'popup', même pattern que login.js (qui fonctionne) : l'ancien
+// flux ici redirigeait en pleine page vers /auth/google/callback avec un
+// redirect_uri qui n'est plus celui enregistré/attendu côté Google/backend
+// (Error 400: redirect_uri_mismatch) - jamais corrigé quand login.js est
+// passé au popup. Le code revient dans un callback JS et part en JSON vers
+// /auth/google/exchange, qui crée déjà un compte + workspace + Stripe quand
+// l'email Google ne correspond à aucun utilisateur existant (voir
+// _exchange_google_code, backend/routes/users.py).
+const GOOGLE_BTN_IDLE_HTML=`
+  <div class="google-g">
+    <img src="https://developers.google.com/identity/images/g-logo.png" alt="G">
+  </div>
+  Continuer avec Google
+`;
+let googleCodeClient=null;
+function getGoogleCodeClient(){
+  if(googleCodeClient)return googleCodeClient;
+  if(!window.google||!window.google.accounts||!window.google.accounts.oauth2)return null;
+  googleCodeClient=google.accounts.oauth2.initCodeClient({
+    client_id:'366389455040-q0iie187c1ok621vbcl3vkuflib3fvgf.apps.googleusercontent.com',
+    scope:'openid email profile',
+    ux_mode:'popup',
+    callback:handleGoogleCodeResponse,
+    error_callback:handleGoogleCodeError,
+  });
+  return googleCodeClient;
+}
+function resetGoogleBtn(){
+  const btn=document.getElementById('btnGoogle');
+  btn.classList.remove('loading');
+  btn.innerHTML=GOOGLE_BTN_IDLE_HTML;
+}
 function loginWithGoogle(){
   const btn=document.getElementById('btnGoogle');
+  const client=getGoogleCodeClient();
+  if(!client){
+    showToast('error','GOOGLE INDISPONIBLE','Le service Google n\'a pas pu se charger. Réessayez.');
+    return;
+  }
   btn.classList.add('loading');
-  btn.innerHTML='<span class="spin" style="border-color:rgba(255,255,255,.15);border-top-color:rgba(255,255,255,.7)"></span>Redirection Google...';
-  showToast('info','GOOGLE AUTH','Redirection vers Google en cours...',3000);
-  const clientId='366389455040-q0iie187c1ok621vbcl3vkuflib3fvgf.apps.googleusercontent.com';
-  const redirectUri='https://aws.api.alasdia.com/auth/google/callback';
-  const url=`https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid%20email%20profile`;
-  setTimeout(()=>{window.location.href=url},800);
+  btn.innerHTML='<span class="spin" style="border-color:rgba(255,255,255,.15);border-top-color:rgba(255,255,255,.7)"></span>Inscription avec Google...';
+  client.requestCode();
+}
+function handleGoogleCodeError(err){
+  resetGoogleBtn();
+  // "popup_closed"/"popup_failed_to_open" : annulation volontaire, pas une
+  // vraie erreur à afficher.
+  if(err&&err.type&&err.type.indexOf('popup')===-1){
+    showToast('error','GOOGLE AUTH','L\'inscription avec Google a échoué.');
+  }
+}
+async function handleGoogleCodeResponse(response){
+  if(response.error){
+    resetGoogleBtn();
+    showToast('error','GOOGLE AUTH','L\'inscription avec Google a échoué.');
+    return;
+  }
+  try{
+    const res=await fetch('https://aws.api.alasdia.com/auth/google/exchange',{
+      method:'POST',
+      credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code:response.code,redirect_uri:window.location.origin}),
+    });
+    const data=await res.json();
+    if(!res.ok){
+      throw new Error(data.detail||'Échec de l\'inscription Google');
+    }
+    if(data.requires_2fa){
+      // Compte existant (email Google déjà utilisé) protégé par la 2FA :
+      // signup.html n'a pas cette UI, on renvoie vers /login qui la gère
+      // déjà via ces mêmes paramètres (voir login.js, DOMContentLoaded).
+      resetGoogleBtn();
+      const params=new URLSearchParams({requires_2fa:'true',email:data.email,workspace_id:data.workspace_id||''});
+      window.location.href=`/login?${params.toString()}`;
+      return;
+    }
+    localStorage.setItem('has_session','1');
+    localStorage.setItem('email',data.email);
+    if(data.workspace_id)localStorage.setItem('workspace_id',data.workspace_id);
+    const btn=document.getElementById('btnGoogle');
+    btn.classList.add('success');
+    btn.innerHTML=`
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:6px"><path d="M20 6L9 17l-5-5" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Compte créé — Redirection...
+    `;
+    showToast('success','COMPTE CRÉÉ','Bienvenue sur Xepay !',3000);
+    setTimeout(()=>{
+      window.location.href=data.account_id?`dashboard.html?account_id=${data.account_id}`:'dashboard.html';
+    },1200);
+  }catch(err){
+    resetGoogleBtn();
+    showToast('error','ERREUR GOOGLE',err.message||'Impossible de terminer l\'inscription avec Google.');
+  }
 }
 const hamburger = document.querySelector('.nav-hamburger');
 const navLinks = document.querySelector('.nav-links');
