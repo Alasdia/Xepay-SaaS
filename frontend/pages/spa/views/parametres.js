@@ -1384,13 +1384,17 @@ function plansEtFraisTemplate() {
       <div class="params-info-row"><span>Liens créés ce mois</span><strong id="p-plan-row-links">—</strong></div>
     </div>
 
+    <div class="params-subsection-header">
+      <h6 class="params-subsection-title mb-0">Résiliation</h6>
+      <button type="button" id="p-btn-cancel-sub" class="params-danger-btn">Résilier mon abonnement</button>
+    </div>
+    <p class="params-subsection-sub mb-5">Résilie votre abonnement payant. Vous conservez l'accès à vos fonctionnalités actuelles jusqu'à la fin de la période déjà payée, puis votre compte repasse automatiquement au plan Free. Aucune donnée n'est supprimée.</p>
+
     <h6 class="params-subsection-title">Frais Xepay</h6>
     <p class="params-subsection-sub">Prélevés automatiquement au moment du paiement, en plus des frais Stripe, quel que soit le type de paiement (lien, abonnement, facture).</p>
-    <div class="params-row-list mb-5" style="max-width:560px;">
+    <div class="params-row-list" style="max-width:560px;">
       <div class="params-info-row"><span>Frais Xepay sur chaque paiement reçu</span><strong>6% du montant</strong></div>
     </div>
-
-    <button type="button" id="p-btn-cancel-sub" class="btn btn-outline-danger btn-sm">Résilier mon abonnement</button>
   `;
 }
 
