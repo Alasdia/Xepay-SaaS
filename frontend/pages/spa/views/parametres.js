@@ -92,7 +92,7 @@ function overviewTemplate() {
           ${tile("stripe", "fa-brands fa-stripe", "Compte Stripe Connect", "Configuration, vérifications et événements de votre compte Connect")}
           ${tile("plans-et-frais", "fa-solid fa-crown", "Plans et frais", "Plan actuel, consommation du mois et frais Xepay sur vos paiements")}
           ${tile("equipe", "fa-solid fa-users", "Équipe et sécurité", "Membres, rôles et sécurité de votre compte")}
-          ${tile("entreprise", "fa-solid fa-building", "Entreprise", "Informations du compte, de l'entreprise, publiques et du représentant légal")}
+          ${tile("entreprise", "fa-solid fa-building", "Entreprise", "Informations du compte, état du compte Connect et détails d'entreprise")}
           ${tile("zone-dangereuse", "fa-solid fa-triangle-exclamation", "Zone dangereuse", "Suppression définitive et irréversible de votre compte", true)}
         </div>
       </section>
@@ -1615,54 +1615,25 @@ function mountEquipe(on) {
 
 // --- Detail : Entreprise ---
 // Colonnes cliquables (même pattern que Paramètres de notifications :
-// .notif-tabs/.notif-tab à gauche, contenu à droite), lecture seule - les
-// données viennent de ce qui a déjà été fourni à Stripe lors de
-// l'onboarding Connect (GET /stripe/business-details), jamais d'un
-// formulaire local dupliqué.
+// .notif-tabs/.notif-tab à gauche, contenu à droite). Les 3 panneaux
+// restent tous dans le DOM (juste masqués) pour ne jamais détruire le
+// widget Stripe une fois chargé si on change d'onglet puis qu'on revient.
 const COMPANY_TABS = [
   { key: "account", label: "Informations du compte" },
-  { key: "business", label: "Informations sur votre entreprise" },
-  { key: "public", label: "Informations publiques" },
-  { key: "representative", label: "Représentant légal" },
+  { key: "etat", label: "État du compte" },
+  { key: "widget", label: "Informations sur votre entreprise" },
 ];
 
 function entrepriseTemplate() {
   return `
     ${detailHeader("Entreprise")}
-    <p class="params-subsection-sub">Informations déjà fournies à Stripe lors de la vérification de votre compte Connect.</p>
+    <p class="params-subsection-sub">Informations de votre compte Stripe Connect.</p>
     <div id="p-company-body"><p class="text-muted">Chargement...</p></div>
   `;
 }
 
-function companyFieldRows(tabKey, data) {
-  if (tabKey === "account") {
-    const a = data.account || {};
-    return [["Nom du compte", a.name], ["Identifiant du compte", a.id], ["Adresse de l'entreprise", a.address]];
-  }
-  if (tabKey === "business") {
-    const b = data.business || {};
-    return [
-      ["Site web", b.website],
-      ["Nom public", b.public_name],
-      ["Adresse", b.address],
-      ["Identifiant de l'entreprise (EIN)", b.tax_id_provided == null ? null : (b.tax_id_provided ? "Fourni" : "Non fourni")],
-      ["Description du produit", b.product_description],
-      ["Secteur d'activité (code MCC)", b.mcc],
-    ];
-  }
-  if (tabKey === "public") {
-    const p = data.public || {};
-    return [["Nom commercial", p.display_name], ["Raison sociale", p.legal_name], ["Adresse du service de support", p.support_address], ["Numéro de support", p.support_phone]];
-  }
-  if (tabKey === "representative") {
-    const r = data.representative;
-    return r ? [["Nom", r.name], ["Email", r.email], ["Téléphone", r.phone], ["Adresse", r.address]] : null;
-  }
-  return [];
-}
-
 function companyRowsHtml(rows) {
-  if (!rows) return `<p class="text-muted">Aucun représentant légal renseigné pour ce compte.</p>`;
+  if (!rows || !rows.length) return `<p class="text-muted">Aucune information disponible.</p>`;
   return `
     <div class="params-row-list" style="max-width:560px;">
       ${rows.map(([label, value]) => `<div class="params-info-row"><span>${label}</span><strong>${value || "—"}</strong></div>`).join("")}
@@ -1670,35 +1641,108 @@ function companyRowsHtml(rows) {
   `;
 }
 
-function companyTabsHtml(data, activeKey) {
+function companyAccountRows(data) {
+  if (!data) return null;
+  const a = data.account || {};
+  return [["Nom du compte", a.name], ["Identifiant du compte", a.id], ["Adresse de l'entreprise", a.address]];
+}
+
+function companyEtatRows(data) {
+  if (!data) return null;
+  const s = data.stripe || {};
+  const req = s.requirements || {};
+  const statusLabel = !data.stripe ? "Non connecté"
+    : data.needs_kyc ? "Vérification requise"
+    : data.future_requirements ? "Opérationnel (vérification finale en attente)"
+    : "Entièrement vérifié";
+  return [
+    ["Statut", statusLabel],
+    ["Paiements activés", data.stripe ? (s.charges_enabled ? "Oui" : "Non") : "—"],
+    ["Virements activés", data.stripe ? (s.payouts_enabled ? "Oui" : "Non") : "—"],
+    ["Documents requis actuellement", (req.currently_due || []).length ? req.currently_due.join(", ") : "Aucun"],
+    ["Documents requis à terme", (req.eventually_due || []).length ? req.eventually_due.join(", ") : "Aucun"],
+  ];
+}
+
+function companyWidgetSectionHtml() {
+  return `
+    <div class="params-subsection-header">
+      <h6 class="params-subsection-title mb-0">Informations sur votre entreprise</h6>
+      <button type="button" id="p-company-widget-btn" class="create-client-btn">Se connecter</button>
+    </div>
+    <p class="params-subsection-sub">Détails d'entreprise, représentant légal et documents, gérés directement via Stripe.</p>
+    <div id="p-company-widget-container"></div>
+  `;
+}
+
+function companyTabContentHtml(key) {
+  if (key === "account") return companyRowsHtml(companyAccountRows(companyAccountData));
+  if (key === "etat") return companyRowsHtml(companyEtatRows(companyStatusData));
+  if (key === "widget") return companyWidgetSectionHtml();
+  return "";
+}
+
+function companyTabsHtml() {
   return `
     <div class="notif-layout">
       <div class="notif-tabs">
-        ${COMPANY_TABS.map((t) => `<button type="button" class="notif-tab${t.key === activeKey ? " notif-tab--active" : ""}" data-company-tab="${t.key}">${t.label}</button>`).join("")}
+        ${COMPANY_TABS.map((t) => `<button type="button" class="notif-tab${t.key === companyActiveTab ? " notif-tab--active" : ""}" data-company-tab="${t.key}">${t.label}</button>`).join("")}
       </div>
-      <div class="notif-event-list">${companyRowsHtml(companyFieldRows(activeKey, data))}</div>
+      <div class="notif-event-list">
+        ${COMPANY_TABS.map((t) => `<div data-company-panel="${t.key}" style="${t.key === companyActiveTab ? "" : "display:none;"}">${companyTabContentHtml(t.key)}</div>`).join("")}
+      </div>
     </div>
   `;
 }
 
-let companyData = null;
+let companyAccountData = null;
+let companyStatusData = null;
 let companyActiveTab = "account";
+let companyWidgetLoaded = false;
+
+async function loadCompanyWidget() {
+  const btn = document.getElementById("p-company-widget-btn");
+  const container = document.getElementById("p-company-widget-container");
+  if (!btn || companyWidgetLoaded) return;
+  btn.disabled = true;
+  btn.innerText = "Connexion...";
+  try {
+    const res = await apiFetch("/stripe/account-session", { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Erreur Stripe");
+    const stripeConnect = window.StripeConnect.init({
+      publishableKey: window.STRIPE_PUBLISHABLE_KEY,
+      fetchClientSecret: () => Promise.resolve(data.client_secret),
+    });
+    const component = stripeConnect.create("account-management");
+    container.appendChild(component);
+    btn.classList.add("d-none");
+    companyWidgetLoaded = true;
+  } catch (err) {
+    showToast(err.message || "Impossible de charger les informations", "error");
+    btn.disabled = false;
+    btn.innerText = "Se connecter";
+  }
+}
 
 async function loadCompanyDetails() {
   const body = document.getElementById("p-company-body");
+  companyAccountData = null;
+  companyStatusData = null;
+  companyActiveTab = "account";
+  companyWidgetLoaded = false;
   try {
-    const res = await apiFetch("/stripe/business-details");
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      const message = errData.detail === "Aucun compte Stripe connecté"
-        ? "Connectez d'abord votre compte Stripe pour voir ces informations."
-        : "Impossible de charger ces informations.";
-      body.innerHTML = `<p class="text-muted">${message} <a href="javascript:void(0)" id="p-company-stripe-link">Configurer Stripe</a></p>`;
+    const [accRes, statusRes] = await Promise.all([
+      apiFetch("/stripe/business-details"),
+      apiFetch("/stripe/status"),
+    ]);
+    if (accRes.ok) companyAccountData = await accRes.json();
+    if (statusRes.ok) companyStatusData = await statusRes.json();
+    if (!accRes.ok && !statusRes.ok) {
+      body.innerHTML = `<p class="text-muted">Connectez d'abord votre compte Stripe pour voir ces informations. <a href="javascript:void(0)" id="p-company-stripe-link">Configurer Stripe</a></p>`;
       return;
     }
-    companyData = await res.json();
-    companyActiveTab = "account";
-    body.innerHTML = companyTabsHtml(companyData, companyActiveTab);
+    body.innerHTML = companyTabsHtml();
   } catch (err) {
     body.innerHTML = `<p class="text-muted">Erreur de chargement.</p>`;
   }
@@ -1710,10 +1754,15 @@ function mountEntreprise(on) {
       navigate("/parametres/stripe");
       return;
     }
+    if (e.target.closest("#p-company-widget-btn")) {
+      loadCompanyWidget();
+      return;
+    }
     const tabBtn = e.target.closest("[data-company-tab]");
-    if (!tabBtn || !companyData) return;
+    if (!tabBtn) return;
     companyActiveTab = tabBtn.dataset.companyTab;
-    document.getElementById("p-company-body").innerHTML = companyTabsHtml(companyData, companyActiveTab);
+    document.querySelectorAll("[data-company-tab]").forEach((b) => b.classList.toggle("notif-tab--active", b.dataset.companyTab === companyActiveTab));
+    document.querySelectorAll("[data-company-panel]").forEach((p) => { p.style.display = p.dataset.companyPanel === companyActiveTab ? "" : "none"; });
   });
   loadCompanyDetails();
 }

@@ -639,11 +639,11 @@ def stripe_business_details(
     membership: WorkspaceUser = Depends(require_manager),
     db: Session = Depends(get_db),
 ):
-    """Paramètres > Entreprise - détail des informations déjà fournies à
-    Stripe lors de l'onboarding Connect (business_profile/company/individual/
-    représentant légal), en lecture seule - toute modification passe par le
-    flux Stripe hébergé (voir Paramètres > Compte Stripe Connect), jamais
-    réécrite depuis ici pour ne pas casser une vérification KYC déjà validée."""
+    """Paramètres > Entreprise > Informations du compte - identité de base
+    du compte Connect, en lecture seule. Le détail (entreprise, représentant
+    légal, documents...) est géré par le widget Stripe intégré plutôt que
+    reconstruit ici champ par champ - voir Paramètres > Entreprise >
+    Informations sur votre entreprise (/stripe/account-session)."""
     owner_id = membership.workspace_id
     profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
     if not profile or not profile.stripe_account_id:
@@ -655,11 +655,9 @@ def stripe_business_details(
         print("STRIPE BUSINESS DETAILS - retrieve failed:", repr(e))
         raise HTTPException(status_code=502, detail="Impossible de récupérer les informations Stripe")
 
-    # Toute la mise en forme ci-dessous est protégée : une exception ici ne
-    # doit jamais remonter brute (sinon Starlette renvoie un 500 sans passer
-    # par CORSMiddleware, ce que le navigateur affiche à tort comme une
-    # erreur CORS) - voir l'incident où business-details plantait en
-    # production sur ce symptôme.
+    # Protégé : une exception ici ne doit jamais remonter brute (sinon
+    # Starlette renvoie un 500 sans passer par CORSMiddleware, ce que le
+    # navigateur affiche à tort comme une erreur CORS).
     try:
         bp = account.business_profile
         company = getattr(account, "company", None)
@@ -668,49 +666,12 @@ def stripe_business_details(
         company_address = _format_address(company.address if company else None) or _format_address(individual.address if individual else None)
         legal_name = (company.name if company else None) or (bp.name if bp else None)
 
-        representative = None
-        if company:
-            try:
-                persons = stripe.Account.list_persons(profile.stripe_account_id, limit=20)
-                rep = next((p for p in persons.data if p.get("relationship") and p.relationship.get("representative")), None)
-            except Exception:
-                rep = None
-            if rep:
-                representative = {
-                    "name": " ".join(filter(None, [rep.first_name, rep.last_name])) or None,
-                    "email": rep.email,
-                    "phone": rep.phone,
-                    "address": _format_address(rep.address),
-                }
-        elif individual:
-            representative = {
-                "name": " ".join(filter(None, [individual.first_name, individual.last_name])) or None,
-                "email": individual.email,
-                "phone": individual.phone,
-                "address": _format_address(individual.address),
-            }
-
         return {
             "account": {
                 "name": legal_name,
                 "id": account.id,
                 "address": company_address,
             },
-            "business": {
-                "website": bp.url if bp else None,
-                "public_name": bp.name if bp else None,
-                "address": company_address,
-                "tax_id_provided": bool(company.tax_id_provided) if company else None,
-                "product_description": bp.product_description if bp else None,
-                "mcc": bp.mcc if bp else None,
-            },
-            "public": {
-                "display_name": bp.name if bp else None,
-                "legal_name": legal_name,
-                "support_address": _format_address(bp.support_address) if bp else None,
-                "support_phone": bp.support_phone if bp else None,
-            },
-            "representative": representative,
         }
     except Exception as e:
         print("STRIPE BUSINESS DETAILS - shaping failed:", repr(e))
