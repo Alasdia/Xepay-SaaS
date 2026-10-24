@@ -992,9 +992,9 @@ function notifEventListHtml(categoryKey, prefs) {
     return `
       <tr data-event-key="${fullKey}">
         <td>${ev.label}</td>
-        <td class="text-center"><input type="checkbox" data-channel="email" ${emailEnabled ? "checked" : ""}></td>
-        <td class="text-center"><input type="checkbox" data-channel="sms" disabled title="Bientôt disponible"></td>
-        <td class="text-center"><input type="checkbox" data-channel="push" disabled title="Bientôt disponible"></td>
+        <td class="text-center notif-channel-col"><input type="checkbox" data-channel="email" ${emailEnabled ? "checked" : ""}></td>
+        <td class="text-center notif-channel-col"><input type="checkbox" data-channel="sms" disabled title="Bientôt disponible"></td>
+        <td class="text-center notif-channel-col"><input type="checkbox" data-channel="push" disabled title="Bientôt disponible"></td>
       </tr>
     `;
   }).join("");
@@ -1003,9 +1003,9 @@ function notifEventListHtml(categoryKey, prefs) {
       <thead>
         <tr>
           <th></th>
-          <th class="text-center">Email</th>
-          <th class="text-center">SMS</th>
-          <th class="text-center">Push</th>
+          <th class="text-center notif-channel-col">Email</th>
+          <th class="text-center notif-channel-col">SMS</th>
+          <th class="text-center notif-channel-col">Push</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
