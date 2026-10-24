@@ -1171,26 +1171,49 @@ function stripeStatusLabel(data) {
   return "Entièrement vérifié";
 }
 
-function stripeEtatRows(statusData) {
-  if (!statusData) return null;
-  const s = statusData.stripe || {};
-  const req = s.requirements || {};
-  return [
-    ["Statut", stripeStatusLabel(statusData)],
-    ["Paiements activés", statusData.stripe ? (s.charges_enabled ? "Oui" : "Non") : "—"],
-    ["Virements activés", statusData.stripe ? (s.payouts_enabled ? "Oui" : "Non") : "—"],
-    ["Documents requis actuellement", (req.currently_due || []).length ? req.currently_due.join(", ") : "Aucun"],
-    ["Documents requis à terme", (req.eventually_due || []).length ? req.eventually_due.join(", ") : "Aucun"],
-  ];
-}
-
 function stripeEtatPanelHtml() {
+  const data = stripeStatusData;
+  const s = (data && data.stripe) || {};
+  const req = s.requirements || {};
+
+  const enabledLabels = [];
+  const suspendedLabels = [];
+  (s.charges_enabled ? enabledLabels : suspendedLabels).push("Paiements");
+  (s.payouts_enabled ? enabledLabels : suspendedLabels).push("Virements");
+
+  const currentlyDue = req.currently_due || [];
+  const eventuallyDue = req.eventually_due || [];
+
   return `
     <div class="params-subsection-header">
       <h6 class="params-subsection-title mb-0">Vérification</h6>
       <button type="button" id="p-stripe-action-btn" class="create-client-btn">Configurer Stripe</button>
     </div>
-    ${infoRowsHtml(stripeEtatRows(stripeStatusData))}
+    <div class="params-status-blocks">
+      <div class="params-status-box">
+        <h6>Statut du compte</h6>
+        <div class="params-status-value">${stripeStatusLabel(data)}</div>
+      </div>
+      <div class="params-status-box">
+        <h6>Fonctionnalités</h6>
+        <ul class="params-feature-list">
+          ${enabledLabels.map((l) => `<li class="params-feature-ok"><i class="fa-solid fa-circle-check"></i> ${l} activés</li>`).join("")}
+          ${suspendedLabels.map((l) => `<li class="params-feature-off"><i class="fa-solid fa-circle-xmark"></i> ${l} suspendus</li>`).join("")}
+        </ul>
+      </div>
+    </div>
+    <h6 class="params-subsection-title">Éléments requis</h6>
+    <p class="params-subsection-sub">Documents ou informations à fournir à Stripe pour continuer à traiter des paiements.</p>
+    <div class="params-required-groups">
+      <div class="params-required-group">
+        <div class="params-required-label">Requis actuellement</div>
+        ${currentlyDue.length ? `<ul class="params-required-list">${currentlyDue.map((x) => `<li>${x}</li>`).join("")}</ul>` : `<p class="text-muted" style="font-size:13.5px;">Aucun</p>`}
+      </div>
+      <div class="params-required-group">
+        <div class="params-required-label">Requis à terme</div>
+        ${eventuallyDue.length ? `<ul class="params-required-list">${eventuallyDue.map((x) => `<li>${x}</li>`).join("")}</ul>` : `<p class="text-muted" style="font-size:13.5px;">Aucun</p>`}
+      </div>
+    </div>
   `;
 }
 
