@@ -1270,7 +1270,12 @@ function stripeEtatPanelHtml() {
   (s.payouts_enabled ? enabledLabels : suspendedLabels).push("Virements");
 
   const currentlyDue = req.currently_due || [];
-  const eventuallyDue = req.eventually_due || [];
+  // Stripe renvoie eventually_due comme un sur-ensemble de currently_due
+  // (tout ce qui est requis maintenant l'est aussi "éventuellement") - pour
+  // un compte neuf, les deux listes sont donc souvent identiques. On
+  // n'affiche ici que ce qui s'ajoute EN PLUS de "Requis actuellement",
+  // plus utile qu'une liste dupliquée.
+  const eventuallyDue = (req.eventually_due || []).filter((code) => !currentlyDue.includes(code));
 
   return `
     <div class="params-subsection-header">
@@ -1299,7 +1304,7 @@ function stripeEtatPanelHtml() {
       </div>
       <div class="params-required-group">
         <div class="params-required-label">Requis à terme</div>
-        ${eventuallyDue.length ? `<ul class="params-required-list">${formatStripeRequirementList(eventuallyDue).map((x) => `<li>${x}</li>`).join("")}</ul>` : `<p class="text-muted" style="font-size:13.5px;">Aucun</p>`}
+        ${eventuallyDue.length ? `<ul class="params-required-list">${formatStripeRequirementList(eventuallyDue).map((x) => `<li>${x}</li>`).join("")}</ul>` : `<p class="text-muted" style="font-size:13.5px;">Rien de plus que ce qui est déjà requis actuellement</p>`}
       </div>
     </div>
   `;
