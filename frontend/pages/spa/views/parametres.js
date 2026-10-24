@@ -1226,7 +1226,7 @@ function stripeAccountPanelHtml() {
   return `
     ${infoHtml}
     <div class="params-subsection-header mt-5">
-      <h6 class="params-subsection-title mb-0" style="color:#ef4444;">Zone dangereuse</h6>
+      <h6 class="params-subsection-title mb-0">Zone dangereuse</h6>
       <button type="button" class="params-danger-btn" id="p-stripe-delete-account-btn">Supprimer mon compte</button>
     </div>
     <p class="params-subsection-sub">
