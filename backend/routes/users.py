@@ -649,58 +649,72 @@ def stripe_business_details(
     if not profile or not profile.stripe_account_id:
         raise HTTPException(status_code=400, detail="Aucun compte Stripe connecté")
 
-    account = stripe.Account.retrieve(profile.stripe_account_id)
-    bp = account.business_profile
-    company = getattr(account, "company", None)
-    individual = getattr(account, "individual", None)
+    try:
+        account = stripe.Account.retrieve(profile.stripe_account_id)
+    except Exception as e:
+        print("STRIPE BUSINESS DETAILS - retrieve failed:", repr(e))
+        raise HTTPException(status_code=502, detail="Impossible de récupérer les informations Stripe")
 
-    company_address = _format_address(company.address if company else None) or _format_address(individual.address if individual else None)
-    legal_name = (company.name if company else None) or (bp.name if bp else None)
+    # Toute la mise en forme ci-dessous est protégée : une exception ici ne
+    # doit jamais remonter brute (sinon Starlette renvoie un 500 sans passer
+    # par CORSMiddleware, ce que le navigateur affiche à tort comme une
+    # erreur CORS) - voir l'incident où business-details plantait en
+    # production sur ce symptôme.
+    try:
+        bp = account.business_profile
+        company = getattr(account, "company", None)
+        individual = getattr(account, "individual", None)
 
-    representative = None
-    if company:
-        try:
-            persons = stripe.Account.list_persons(profile.stripe_account_id, limit=20)
-            rep = next((p for p in persons.data if p.get("relationship") and p.relationship.get("representative")), None)
-        except Exception:
-            rep = None
-        if rep:
+        company_address = _format_address(company.address if company else None) or _format_address(individual.address if individual else None)
+        legal_name = (company.name if company else None) or (bp.name if bp else None)
+
+        representative = None
+        if company:
+            try:
+                persons = stripe.Account.list_persons(profile.stripe_account_id, limit=20)
+                rep = next((p for p in persons.data if p.get("relationship") and p.relationship.get("representative")), None)
+            except Exception:
+                rep = None
+            if rep:
+                representative = {
+                    "name": " ".join(filter(None, [rep.first_name, rep.last_name])) or None,
+                    "email": rep.email,
+                    "phone": rep.phone,
+                    "address": _format_address(rep.address),
+                }
+        elif individual:
             representative = {
-                "name": " ".join(filter(None, [rep.first_name, rep.last_name])) or None,
-                "email": rep.email,
-                "phone": rep.phone,
-                "address": _format_address(rep.address),
+                "name": " ".join(filter(None, [individual.first_name, individual.last_name])) or None,
+                "email": individual.email,
+                "phone": individual.phone,
+                "address": _format_address(individual.address),
             }
-    elif individual:
-        representative = {
-            "name": " ".join(filter(None, [individual.first_name, individual.last_name])) or None,
-            "email": individual.email,
-            "phone": individual.phone,
-            "address": _format_address(individual.address),
-        }
 
-    return {
-        "account": {
-            "name": legal_name,
-            "id": account.id,
-            "address": company_address,
-        },
-        "business": {
-            "website": bp.url if bp else None,
-            "public_name": bp.name if bp else None,
-            "address": company_address,
-            "tax_id_provided": bool(company.tax_id_provided) if company else None,
-            "product_description": bp.product_description if bp else None,
-            "mcc": bp.mcc if bp else None,
-        },
-        "public": {
-            "display_name": bp.name if bp else None,
-            "legal_name": legal_name,
-            "support_address": _format_address(bp.support_address) if bp else None,
-            "support_phone": bp.support_phone if bp else None,
-        },
-        "representative": representative,
-    }
+        return {
+            "account": {
+                "name": legal_name,
+                "id": account.id,
+                "address": company_address,
+            },
+            "business": {
+                "website": bp.url if bp else None,
+                "public_name": bp.name if bp else None,
+                "address": company_address,
+                "tax_id_provided": bool(company.tax_id_provided) if company else None,
+                "product_description": bp.product_description if bp else None,
+                "mcc": bp.mcc if bp else None,
+            },
+            "public": {
+                "display_name": bp.name if bp else None,
+                "legal_name": legal_name,
+                "support_address": _format_address(bp.support_address) if bp else None,
+                "support_phone": bp.support_phone if bp else None,
+            },
+            "representative": representative,
+        }
+    except Exception as e:
+        print("STRIPE BUSINESS DETAILS - shaping failed:", repr(e))
+        raise HTTPException(status_code=500, detail="Erreur lors de la lecture des informations Stripe")
 
 
 @router.post("/change-password")
