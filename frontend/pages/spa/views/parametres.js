@@ -986,20 +986,31 @@ function notificationsTemplate() {
 
 function notifEventListHtml(categoryKey, prefs) {
   const category = NOTIFICATION_CATEGORIES.find((c) => c.key === categoryKey);
-  return category.events.map((ev) => {
+  const rows = category.events.map((ev) => {
     const fullKey = `${category.key}.${ev.key}`;
     const emailEnabled = prefs[fullKey] !== false;
     return `
-      <div class="notif-event-row" data-event-key="${fullKey}">
-        <div class="notif-event-label">${ev.label}</div>
-        <div class="notif-channels">
-          <button type="button" class="notif-channel-btn${emailEnabled ? " notif-channel-btn--active" : ""}" data-channel="email" title="Email"><i class="fa-solid fa-envelope"></i></button>
-          <button type="button" class="notif-channel-btn" data-channel="sms" title="Bientôt disponible" disabled><i class="fa-solid fa-comment-sms"></i></button>
-          <button type="button" class="notif-channel-btn" data-channel="push" title="Bientôt disponible" disabled><i class="fa-solid fa-bell"></i></button>
-        </div>
-      </div>
+      <tr data-event-key="${fullKey}">
+        <td>${ev.label}</td>
+        <td class="text-center"><input type="checkbox" data-channel="email" ${emailEnabled ? "checked" : ""}></td>
+        <td class="text-center"><input type="checkbox" data-channel="sms" disabled title="Bientôt disponible"></td>
+        <td class="text-center"><input type="checkbox" data-channel="push" disabled title="Bientôt disponible"></td>
+      </tr>
     `;
   }).join("");
+  return `
+    <table class="notif-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th class="text-center">Email</th>
+          <th class="text-center">SMS</th>
+          <th class="text-center">Push</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
 }
 
 async function mountNotifications(on) {
@@ -1022,13 +1033,12 @@ async function mountNotifications(on) {
     listEl.innerHTML = notifEventListHtml(tab.dataset.category, prefs);
   });
 
-  on(listEl, "click", async (e) => {
-    const btn = e.target.closest(".notif-channel-btn");
-    if (!btn || btn.disabled) return;
-    const row = btn.closest(".notif-event-row");
+  on(listEl, "change", async (e) => {
+    const checkbox = e.target.closest('input[data-channel="email"]');
+    if (!checkbox || checkbox.disabled) return;
+    const row = checkbox.closest("tr");
     const key = row.dataset.eventKey;
-    const newValue = !btn.classList.contains("notif-channel-btn--active");
-    btn.classList.toggle("notif-channel-btn--active", newValue);
+    const newValue = checkbox.checked;
     prefs[key] = newValue;
     try {
       const res = await apiFetch("/notification-preferences", {
@@ -1037,7 +1047,7 @@ async function mountNotifications(on) {
       });
       if (!res.ok) throw new Error("Erreur");
     } catch (err) {
-      btn.classList.toggle("notif-channel-btn--active", !newValue);
+      checkbox.checked = !newValue;
       prefs[key] = !newValue;
       showToast("Erreur lors de la sauvegarde", "error");
     }

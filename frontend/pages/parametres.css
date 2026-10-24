@@ -345,102 +345,76 @@
 }
 
 /* Paramètres de notifications : colonnes cliquables à gauche (Compte,
-   Paiements, Virement, Solde, Produits, Client, Mises à jour Xepay), liste
-   des événements de la catégorie sélectionnée à droite, chacun avec ses 3
-   cases Email/SMS/Push alignées à l'extrême droite. */
+   Paiements, Virement, Solde, Produits, Client, Mises à jour Xepay) - texte
+   simple, aucune bordure/bouton - et tableau Email/SMS/Push à droite pour
+   la catégorie sélectionnée. */
 .notif-layout {
   display: flex;
-  gap: 32px;
+  gap: 40px;
   align-items: flex-start;
 }
 
 .notif-tabs {
-  flex: 0 0 200px;
+  flex: 0 0 180px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 10px;
 }
 
 .notif-tab {
-  background: transparent;
+  background: none;
   border: none;
-  border-radius: 10px;
   text-align: left;
-  padding: 10px 14px;
+  padding: 0;
   font-size: 13.5px;
   font-weight: 600;
   color: #6b7280;
   cursor: pointer;
-  transition: .15s;
 }
 
 .notif-tab:hover {
-  background: rgba(17, 24, 39, 0.05);
   color: #111827;
 }
 
 .notif-tab--active {
-  background: #fff7e0;
   color: #b45309;
 }
 
 .notif-event-list {
   flex: 1 1 auto;
   max-width: 560px;
-  display: flex;
-  flex-direction: column;
 }
 
-.notif-event-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+.notif-table {
+  width: 100%;
+}
+
+.notif-table th {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(17, 24, 39, 0.75);
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.notif-table td {
+  font-size: 13.5px;
+  color: #374151;
   padding: 12px 0;
   border-bottom: 1px solid #f3f4f6;
 }
 
-.notif-event-row:last-child {
+.notif-table tr:last-child td {
   border-bottom: none;
 }
 
-.notif-event-label {
-  font-size: 13.5px;
-  color: #374151;
-}
-
-.notif-channels {
-  display: flex;
-  gap: 6px;
-}
-
-.notif-channel-btn {
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #9ca3af;
-  font-size: 11px;
+.notif-table input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
   cursor: pointer;
-  transition: .15s;
 }
 
-.notif-channel-btn:hover:not(:disabled) {
-  border-color: #9ca3af;
-}
-
-.notif-channel-btn--active {
-  background: #fff7e0;
-  border-color: #f0b429;
-  color: #b45309;
-}
-
-.notif-channel-btn:disabled {
-  background: #f9fafb;
-  color: #d1d5db;
+.notif-table input[type="checkbox"]:disabled {
   cursor: not-allowed;
+  opacity: .4;
 }
