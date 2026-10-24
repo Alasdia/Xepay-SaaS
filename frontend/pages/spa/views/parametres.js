@@ -1798,7 +1798,13 @@ async function loadTeamWorkspaces() {
 async function switchTeamWorkspace(workspaceId) {
   setWorkspaceId(workspaceId);
   await refreshPlanBadge();
-  loadTeam();
+  // navigate() (plutôt que loadTeam() seul) remet aussi l'URL en cohérence
+  // avec le workspace actif : le routeur resynchronise workspace_id depuis
+  // le segment d'URL à chaque navigation (voir app.js, onRouteChange) - si
+  // seul le localStorage change, un simple rafraîchissement ou un clic
+  // sidebar annule silencieusement le changement en revenant à l'ancien
+  // workspace_id toujours présent dans l'URL.
+  navigate(`/dash/workspace/${encodeURIComponent(workspaceId)}/parametres/equipe`, { replace: true });
 }
 
 async function loadTeam() {
