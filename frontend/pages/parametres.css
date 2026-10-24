@@ -359,6 +359,8 @@
   flex-direction: row;
   flex-wrap: wrap;
   gap: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .notif-tab {
@@ -377,11 +379,12 @@
 }
 
 .notif-tab--active {
-  color: #b45309;
+  color: rgba(17, 24, 39, 0.7);
 }
 
 .notif-event-list {
   max-width: 560px;
+  margin-left: auto;
 }
 
 .notif-table {
