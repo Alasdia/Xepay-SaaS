@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from backend.database import engine, get_db
-from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, ProfileUpdateRequest, PlanUpdate, Link, SecurityAlertsRequest, GoogleCodeExchange, GoogleLinkRequest, NotificationPreferencesRequest
+from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, ProfileUpdateRequest, PlanUpdate, Link, SecurityAlertsRequest, GoogleCodeExchange, GoogleLinkRequest, NotificationPreferencesRequest, CompanyUpdateRequest
 from backend.auth import get_current_user, issue_new_session
 from backend.services.workspace_service import (
     get_workspace_owner_id
@@ -609,6 +609,9 @@ def stripe_status(
         "stripe": {
             "charges_enabled": account.charges_enabled,
             "payouts_enabled": account.payouts_enabled,
+            "created": datetime.fromtimestamp(account.created, tz=timezone.utc).isoformat() if account.created else None,
+            "business_name": (account.business_profile.name if account.business_profile else None) or account.get("email"),
+            "country": account.country,
                 "requirements": {
                     "currently_due": account.requirements.currently_due,
                     "eventually_due": account.requirements.eventually_due
@@ -837,6 +840,63 @@ def update_profile(
         profile.phone = data.phone.strip() or None
     db.commit()
     return {"full_name": profile.full_name, "phone": profile.phone}
+
+
+@router.get("/company")
+def get_company(
+    membership: WorkspaceUser = Depends(require_manager),
+    db: Session = Depends(get_db),
+):
+    owner_id = membership.workspace_id
+    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
+    if not profile:
+        profile = Profile(user_id=owner_id)
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+    return {
+        "company_name": profile.company_name,
+        "legal_form": profile.legal_form,
+        "registration_number": profile.registration_number,
+        "vat_number": profile.vat_number,
+        "address": profile.address,
+        "postal_code": profile.postal_code,
+        "city": profile.city,
+        "country": profile.country,
+    }
+
+
+@router.patch("/company")
+def update_company(
+    data: CompanyUpdateRequest,
+    membership: WorkspaceUser = Depends(require_manager),
+    db: Session = Depends(get_db),
+):
+    """Mêmes règles que PATCH /profile : seul un champ envoyé (non None) est
+    modifié - voir Paramètres > Entreprise."""
+    owner_id = membership.workspace_id
+    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
+    if not profile:
+        profile = Profile(user_id=owner_id)
+        db.add(profile)
+    for field in (
+        "company_name", "legal_form", "registration_number", "vat_number",
+        "address", "postal_code", "city", "country",
+    ):
+        value = getattr(data, field)
+        if value is not None:
+            setattr(profile, field, value.strip() or None)
+    db.commit()
+    return {
+        "company_name": profile.company_name,
+        "legal_form": profile.legal_form,
+        "registration_number": profile.registration_number,
+        "vat_number": profile.vat_number,
+        "address": profile.address,
+        "postal_code": profile.postal_code,
+        "city": profile.city,
+        "country": profile.country,
+    }
 
 
 @router.get("/me/user-plan")

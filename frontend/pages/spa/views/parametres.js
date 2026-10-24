@@ -89,8 +89,10 @@ function overviewTemplate() {
       <section class="params-section">
         ${sectionTitle("Paramètres du compte")}
         <div class="params-tiles-grid">
-          ${tile("stripe", "fa-brands fa-stripe", "Compte Stripe", "Statut de vérification, progression du profil et alertes KYC")}
-          ${tile("abonnement", "fa-solid fa-crown", "Abonnement", "Plan actuel, facturation et résiliation de l'abonnement")}
+          ${tile("stripe", "fa-brands fa-stripe", "Compte Stripe Connect", "Configuration, vérifications et événements de votre compte Connect")}
+          ${tile("plans-et-frais", "fa-solid fa-crown", "Plans et frais", "Plan actuel, consommation du mois et frais Xepay sur vos paiements")}
+          ${tile("equipe", "fa-solid fa-users", "Équipe et sécurité", "Membres, rôles et sécurité de votre compte")}
+          ${tile("entreprise", "fa-solid fa-building", "Entreprise", "Raison sociale, immatriculation et coordonnées de facturation")}
           ${tile("zone-dangereuse", "fa-solid fa-triangle-exclamation", "Zone dangereuse", "Suppression définitive et irréversible de votre compte", true)}
         </div>
       </section>
@@ -1124,57 +1126,21 @@ async function mountNotifications(on) {
 // --- Detail : Compte Stripe (KYC) ---
 function stripeTemplate() {
   return `
-    ${detailHeader("Compte Stripe")}
-    <div id="p-main-kyc-alert" style="max-width:480px;"></div>
-    <div class="card-epay p-4 mt-3" style="max-width:480px;">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h6 class="fw-bold mb-0 text-muted">⚡ Vérification Stripe</h6>
-        <span id="p-stripe-status-badge" class="status-badge status-warn">Non configuré</span>
-      </div>
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <small class="text-muted">Profil complété</small>
-        <div class="d-flex align-items-center gap-2">
-          <div class="progress" style="width:100px; height:6px;">
-            <div id="p-kyc-progress-bar" class="progress-bar bg-warning" style="width:0%"></div>
-          </div>
-          <small id="p-kyc-progress-text" class="text-warning">0%</small>
-        </div>
-      </div>
-      <p class="text-muted small mb-3">Configurez Stripe pour activer les paiements internationaux.</p>
-      <button type="button" id="p-stripe-action-btn" class="btn btn-warning w-100 fw-bold text-muted">Configurer Stripe</button>
+    ${detailHeader("Compte Stripe Connect")}
+    <div class="params-subsection-header">
+      <h6 class="params-subsection-title mb-0">Configuration</h6>
+      <button type="button" id="p-stripe-action-btn" class="create-client-btn">Configurer Stripe</button>
+    </div>
+    <p class="params-subsection-sub">Données synchronisées depuis votre compte Stripe Connect (création, capacités, vérifications).</p>
+    <div class="params-row-list" style="max-width:560px;">
+      <div class="params-info-row"><span>Statut</span><strong id="p-stripe-row-status">—</strong></div>
+      <div class="params-info-row"><span>Paiements activés</span><strong id="p-stripe-row-charges">—</strong></div>
+      <div class="params-info-row"><span>Virements activés</span><strong id="p-stripe-row-payouts">—</strong></div>
+      <div class="params-info-row"><span>Nom de l'entreprise (Stripe)</span><strong id="p-stripe-row-name">—</strong></div>
+      <div class="params-info-row"><span>Pays</span><strong id="p-stripe-row-country">—</strong></div>
+      <div class="params-info-row"><span>Compte créé le</span><strong id="p-stripe-row-created">—</strong></div>
     </div>
   `;
-}
-
-function setProgress(percent) {
-  const bar = document.getElementById("p-kyc-progress-bar");
-  const text = document.getElementById("p-kyc-progress-text");
-  bar.style.width = percent + "%";
-  text.innerText = percent + "%";
-  bar.classList.remove("bg-danger", "bg-warning", "bg-success");
-  text.classList.remove("text-danger", "text-warning", "text-success");
-  if (percent < 40) {
-    bar.classList.add("bg-danger");
-    text.classList.add("text-danger");
-  } else if (percent < 100) {
-    bar.classList.add("bg-warning");
-    text.classList.add("text-warning");
-  } else {
-    bar.classList.add("bg-success");
-    text.classList.add("text-success");
-  }
-}
-
-function updateKycProgress(data) {
-  let percent = 0;
-  if (data.stripe) {
-    percent += 20;
-    if (data.stripe.charges_enabled) percent += 20;
-    if (data.stripe.payouts_enabled) percent += 20;
-    if (!data.needs_kyc) percent += 20;
-    if (!data.future_requirements) percent += 20;
-  }
-  setProgress(percent);
 }
 
 async function goToStripeLoginLink() {
@@ -1190,6 +1156,8 @@ async function goToStripeLoginLink() {
 }
 
 async function mountStripe() {
+  const statusRow = document.getElementById("p-stripe-row-status");
+  const btn = document.getElementById("p-stripe-action-btn");
   const res = await apiFetch("/stripe/status");
   if (!res.ok) {
     let message = "Impossible de charger les informations Stripe";
@@ -1198,35 +1166,21 @@ async function mountStripe() {
       if (errData.detail === "Permission insuffisante") message = "Seul le propriétaire du compte peut configurer Stripe";
       else if (errData.detail) message = errData.detail;
     } catch (e) {}
-    showToast(message, "error");
-    const badge = document.getElementById("p-stripe-status-badge");
-    badge.innerText = "Accès restreint";
-    const btn = document.getElementById("p-stripe-action-btn");
+    statusRow.innerText = message;
     btn.innerText = "Réservé au propriétaire";
     btn.disabled = true;
     return;
   }
   const data = await res.json();
-  updateKycProgress(data);
-  const mainAlert = document.getElementById("p-main-kyc-alert");
-  if (!data.connected) {
-    mainAlert.innerHTML = `<div class="alert mb-0" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); border-radius:12px;"><i class="fa-solid fa-triangle-exclamation warning-icon"></i> Configurez Stripe pour activer les paiements</div>`;
-  } else if (data.needs_kyc) {
-    mainAlert.innerHTML = `<div class="alert mb-0" style="background:rgba(255,193,7,0.15); border:1px solid rgba(255,193,7,0.3); border-radius:12px;"><i class="fa-solid fa-triangle-exclamation warning-icon"></i> Vérification KYC requise pour continuer à recevoir des paiements</div>`;
-  } else if (!data.future_requirements) {
-    mainAlert.innerHTML = `<div class="alert mb-0" style="background:rgba(34,197,94,0.15); border:1px solid rgba(34,197,94,0.3); border-radius:12px;"><i class="fa-solid fa-circle-check"></i> Compte entièrement vérifié</div>`;
-  } else {
-    mainAlert.innerHTML = `<div class="alert mb-0" style="background:rgba(255,193,7,0.15); border:1px solid rgba(255,193,7,0.3); border-radius:12px;"><i class="fa-solid fa-triangle-exclamation warning-icon"></i> Compte opérationnel, vérification finale incomplète</div>`;
-  }
-  const btn = document.getElementById("p-stripe-action-btn");
-  const badge = document.getElementById("p-stripe-status-badge");
+  document.getElementById("p-stripe-row-charges").innerText = data.stripe ? (data.stripe.charges_enabled ? "Oui" : "Non") : "—";
+  document.getElementById("p-stripe-row-payouts").innerText = data.stripe ? (data.stripe.payouts_enabled ? "Oui" : "Non") : "—";
+  document.getElementById("p-stripe-row-name").innerText = data.stripe?.business_name || "—";
+  document.getElementById("p-stripe-row-country").innerText = data.stripe?.country || "—";
+  document.getElementById("p-stripe-row-created").innerText = data.stripe?.created ? formatSessionTime(data.stripe.created) : "—";
+
   btn.disabled = false;
-  btn.classList.remove("btn-warning", "btn-success");
-  btn.classList.add(!data.connected || data.needs_kyc || data.future_requirements ? "btn-warning" : "btn-success");
-  badge.classList.remove("status-warn", "status-pending", "status-ok");
-  if (!data.connected) {
-    badge.innerText = "Non configuré";
-    badge.classList.add("status-warn");
+  if (!data.stripe) {
+    statusRow.innerText = "Non configuré";
     btn.innerText = "Configurer Stripe";
     btn.onclick = async () => {
       btn.innerText = "Chargement...";
@@ -1249,43 +1203,42 @@ async function mountStripe() {
       }
     };
   } else if (data.needs_kyc) {
-    badge.innerText = "Vérification requise";
-    badge.classList.add("status-pending");
-    btn.innerText = "Compléter vérification";
+    statusRow.innerText = "Vérification requise";
+    btn.innerText = "Compléter la vérification";
     btn.onclick = () => goToStripeLoginLink();
   } else if (data.future_requirements) {
-    badge.innerText = "Opérationnel";
-    badge.classList.add("status-pending");
+    statusRow.innerText = "Opérationnel (vérification finale en attente)";
     btn.innerText = "Compléter la vérification finale";
-    btn.disabled = false;
     btn.onclick = () => goToStripeLoginLink();
   } else {
-    badge.innerText = "Entièrement vérifié";
-    badge.classList.add("status-ok");
-    btn.innerText = "Compte entièrement vérifié ✅";
+    statusRow.innerText = "Entièrement vérifié";
+    btn.innerText = "Compte entièrement vérifié";
     btn.disabled = true;
   }
 }
 
-// --- Detail : Abonnement ---
-function abonnementTemplate() {
+// --- Detail : Plans et frais ---
+function plansEtFraisTemplate() {
   return `
-    ${detailHeader("Abonnement")}
-    <div class="card-epay p-4" style="max-width:480px;">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h6 class="fw-bold mb-0 text-muted">Plan actuel</h6>
-        <span id="p-plan-badge" class="badge bg-warning text-dark px-3 py-2">—</span>
-      </div>
-      <div id="p-payment-failed-alert" class="alert alert-warning d-none border-0 shadow-sm p-3 mb-3" style="border-radius: 8px;">
-        <p class="mb-0 text-muted" style="font-size: 13px; line-height: 1.5;">
-          ⚠️ Votre dernier paiement a échoué.
-          <a href="javascript:void(0);" id="p-update-card-btn" class="fw-bold text-decoration-none hover-underline" style="color: #b45309; cursor: pointer;">
-            Mettez à jour votre carte pour conserver votre accès Pro
-          </a>
-        </p>
-      </div>
-      <button type="button" id="p-btn-cancel-sub" class="btn btn-cancel-custom w-100 fw-bold text-muted">Résilier mon abonnement</button>
+    ${detailHeader("Plans et frais")}
+    <div class="params-subsection-header">
+      <h6 class="params-subsection-title mb-0">Plan actuel</h6>
+      <button type="button" id="p-btn-manage-billing" class="params-edit-btn">Gérer la facturation</button>
     </div>
+    <p id="p-payment-failed-alert" class="params-subsection-sub text-danger d-none mb-2">Votre dernier paiement a échoué — mettez à jour votre carte pour conserver votre accès.</p>
+    <div class="params-row-list mb-5" style="max-width:560px;">
+      <div class="params-info-row"><span>Plan</span><strong id="p-plan-row-name">—</strong></div>
+      <div class="params-info-row"><span>Paiements reçus ce mois</span><strong id="p-plan-row-paid">—</strong></div>
+      <div class="params-info-row"><span>Liens créés ce mois</span><strong id="p-plan-row-links">—</strong></div>
+    </div>
+
+    <h6 class="params-subsection-title">Frais Xepay</h6>
+    <p class="params-subsection-sub">Prélevés automatiquement au moment du paiement, en plus des frais Stripe, quel que soit le type de paiement (lien, abonnement, facture).</p>
+    <div class="params-row-list mb-5" style="max-width:560px;">
+      <div class="params-info-row"><span>Frais Xepay sur chaque paiement reçu</span><strong>6% du montant</strong></div>
+    </div>
+
+    <button type="button" id="p-btn-cancel-sub" class="btn btn-outline-danger btn-sm">Résilier mon abonnement</button>
   `;
 }
 
@@ -1301,7 +1254,7 @@ async function confirmCancelSubscription(cancelSubModalInstance) {
     if (cancelSubModalInstance) cancelSubModalInstance.hide();
     if (res.ok) {
       showToast(data.message || "Abonnement résilié avec succès.", "warning");
-      await mountAbonnementData();
+      await mountPlansEtFraisData();
     } else {
       showToast(data.detail || "Échec de l'annulation", "error");
     }
@@ -1316,25 +1269,28 @@ async function confirmCancelSubscription(cancelSubModalInstance) {
   }
 }
 
-async function mountAbonnementData() {
+async function mountPlansEtFraisData() {
   try {
     const res = await apiFetch("/me/plan");
     const data = await res.json();
     const alertBox = document.getElementById("p-payment-failed-alert");
     if (alertBox) alertBox.classList.toggle("d-none", data.subscription_status !== "past_due");
-    const planBadge = document.getElementById("p-plan-badge");
-    if (planBadge) planBadge.innerText = (data.plan || "free").toUpperCase();
+    const planName = (data.plan || "free");
+    document.getElementById("p-plan-row-name").innerText = planName.charAt(0).toUpperCase() + planName.slice(1);
+    const paidLimit = data.usage?.paid_limit;
+    document.getElementById("p-plan-row-paid").innerText = `${data.usage?.paid_count ?? 0}${paidLimit != null ? " / " + paidLimit : " (illimité)"}`;
+    const linksLimit = data.usage?.links_limit;
+    document.getElementById("p-plan-row-links").innerText = `${data.usage?.links_used ?? 0}${linksLimit != null ? " / " + linksLimit : " (illimité)"}`;
     localStorage.setItem("plan", data.plan || "free");
   } catch (err) {
     console.error("Erreur chargement plan:", err);
   }
 }
 
-function mountAbonnement(on) {
+function mountPlansEtFrais(on) {
   document.body.insertAdjacentHTML("beforeend", CANCEL_SUB_MODAL_HTML);
   let cancelSubModalInstance = null;
-  on(document.getElementById("p-update-card-btn"), "click", async (e) => {
-    e.preventDefault();
+  on(document.getElementById("p-btn-manage-billing"), "click", async () => {
     try {
       const res = await apiFetch("/me/create-portal-session", { method: "POST" });
       const data = await res.json();
@@ -1349,7 +1305,7 @@ function mountAbonnement(on) {
     cancelSubModalInstance.show();
   });
   on(document.getElementById("p-btn-confirm-cancel"), "click", () => confirmCancelSubscription(cancelSubModalInstance));
-  mountAbonnementData();
+  mountPlansEtFraisData();
   return () => {
     const modalEl = document.getElementById("paramsCancelSubModal");
     const instance = modalEl && bootstrap.Modal.getInstance(modalEl);
@@ -1394,6 +1350,363 @@ async function supprimerCompte() {
 
 function mountZoneDangereuse(on) {
   on(document.getElementById("p-btn-delete-account"), "click", supprimerCompte);
+}
+
+// --- Detail : Équipe et sécurité ---
+const TEAM_ROLES = ["admin", "manager", "membre", "lecteur"];
+const TEAM_ROLE_LABELS = { owner: "Propriétaire", admin: "Admin", manager: "Manager", membre: "Membre", lecteur: "Lecteur" };
+
+const TEAM_INVITE_MODAL_HTML = `
+<div class="modal fade" id="paramsInviteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 14px;">
+      <div class="modal-body p-3">
+        <h6 class="fw-bold text-dark mb-3">Inviter un membre</h6>
+        <input type="email" id="p-invite-email" class="form-control form-control-sm mb-2" placeholder="email@entreprise.com">
+        <select id="p-invite-role" class="form-select form-select-sm mb-3">
+          <option value="admin">Admin</option>
+          <option value="manager" selected>Manager</option>
+          <option value="membre">Membre</option>
+          <option value="lecteur">Lecteur</option>
+        </select>
+        <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+          <button type="button" class="btn btn-light btn-sm fw-bold px-3 py-1" style="font-size: 0.8rem; border-radius: 6px;" data-bs-dismiss="modal">Annuler</button>
+          <button type="button" class="btn btn-dark btn-sm fw-bold px-3 py-1" style="font-size: 0.8rem; border-radius: 6px;" id="p-invite-send-btn">Envoyer l'invitation</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+function equipeTemplate() {
+  return `
+    ${detailHeader("Équipe et sécurité")}
+    <div class="params-subsection-header">
+      <h6 class="params-subsection-title mb-0">Membres de l'équipe</h6>
+      <button type="button" id="p-team-invite-btn" class="create-client-btn">+ Inviter un membre</button>
+    </div>
+    <p class="params-subsection-sub">Les personnes ayant accès à votre espace Xepay et leur rôle.</p>
+    <div id="p-team-body"><p class="text-muted">Chargement...</p></div>
+
+    <h6 class="params-subsection-title mt-5">Sécurité du compte</h6>
+    <p class="params-subsection-sub">Aperçu des protections actives sur votre compte.</p>
+    <div class="params-row-list">
+      <div class="params-info-row">
+        <span>Authentification à deux facteurs</span>
+        <div class="params-row-right"><strong id="p-sec-2fa-status">—</strong><button type="button" class="params-edit-btn" id="p-sec-nav-2fa">Gérer</button></div>
+      </div>
+      <div class="params-info-row">
+        <span>Clés d'accès (WebAuthn)</span>
+        <div class="params-row-right"><strong id="p-sec-passkeys-count">—</strong><button type="button" class="params-edit-btn" id="p-sec-nav-passkeys">Gérer</button></div>
+      </div>
+      <div class="params-info-row">
+        <span>Sessions actives</span>
+        <div class="params-row-right"><strong id="p-sec-sessions-count">—</strong><button type="button" class="params-edit-btn" id="p-sec-nav-sessions">Gérer</button></div>
+      </div>
+    </div>
+  `;
+}
+
+function teamLockedHtml() {
+  return `<p class="text-muted">La gestion d'équipe est réservée au plan Business. <a href="javascript:void(0)" id="p-team-upgrade-link">Voir les plans et frais</a></p>`;
+}
+
+function teamMemberRowHtml(u) {
+  const roleLabel = TEAM_ROLE_LABELS[u.role] || u.role;
+  const statusLabel = u.status === "suspended" ? "Suspendu" : "Actif";
+  const menu = u.role === "owner"
+    ? ""
+    : `
+      <div class="row-menu" data-user-id="${u.id}">
+        <button type="button" class="row-menu-trigger" aria-label="Actions" aria-haspopup="true">•••</button>
+        <div class="row-menu-dropdown">
+          <button type="button" class="row-menu-item" data-team-action="role">Changer le rôle</button>
+          <button type="button" class="row-menu-item" data-team-action="toggle">${u.status === "suspended" ? "Réactiver" : "Suspendre"}</button>
+          <button type="button" class="row-menu-item row-menu-item-danger" data-team-action="delete">Supprimer</button>
+        </div>
+      </div>`;
+  return `
+    <tr>
+      <td>${u.name}</td>
+      <td>${u.email}</td>
+      <td>${roleLabel}</td>
+      <td>${statusLabel}</td>
+      <td class="text-end">${menu}</td>
+    </tr>
+  `;
+}
+
+function teamInviteRowHtml(inv) {
+  return `<tr><td>${inv.email}</td><td>${TEAM_ROLE_LABELS[inv.role] || inv.role}</td><td>${inv.days_remaining} j</td></tr>`;
+}
+
+function teamContentHtml(users, invites) {
+  return `
+    <div class="table-wrap">
+      <table class="table params-mini-table">
+        <thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th><th></th></tr></thead>
+        <tbody>${users.map(teamMemberRowHtml).join("")}</tbody>
+      </table>
+    </div>
+    ${invites.length ? `
+      <h6 class="params-subsection-title mt-5">Invitations en attente</h6>
+      <p class="params-subsection-sub">Invitations envoyées, pas encore acceptées.</p>
+      <div class="table-wrap">
+        <table class="table params-mini-table">
+          <thead><tr><th>Email</th><th>Rôle</th><th>Expire dans</th></tr></thead>
+          <tbody>${invites.map(teamInviteRowHtml).join("")}</tbody>
+        </table>
+      </div>
+    ` : ""}
+  `;
+}
+
+let teamUsers = [];
+
+async function loadTeam() {
+  const body = document.getElementById("p-team-body");
+  try {
+    const res = await apiFetch("/users");
+    if (res.status === 403) {
+      const data = await res.json().catch(() => ({}));
+      body.innerHTML = data.detail === "Fonctionnalité réservée à un plan supérieur"
+        ? teamLockedHtml()
+        : `<p class="text-muted">Accès à l'équipe non autorisé.</p>`;
+      return;
+    }
+    if (!res.ok) throw new Error("Erreur");
+    teamUsers = await res.json();
+    let invites = [];
+    try {
+      const invRes = await apiFetch("/invites");
+      if (invRes.ok) invites = await invRes.json();
+    } catch (e) {}
+    body.innerHTML = teamContentHtml(teamUsers, invites);
+  } catch (err) {
+    body.innerHTML = `<p class="text-muted">Erreur de chargement.</p>`;
+  }
+}
+
+async function changeTeamMemberRole(u) {
+  const current = TEAM_ROLES.includes(u.role) ? u.role : "membre";
+  const next = TEAM_ROLES[(TEAM_ROLES.indexOf(current) + 1) % TEAM_ROLES.length];
+  try {
+    const res = await apiFetch(`/users/${u.id}/role`, { method: "PUT", body: { role: next } });
+    if (!res.ok) throw new Error("Erreur");
+    showToast(`Rôle mis à jour : ${TEAM_ROLE_LABELS[next]}`);
+    loadTeam();
+  } catch (err) {
+    showToast("Impossible de modifier ce rôle", "error");
+  }
+}
+
+async function toggleTeamMember(u) {
+  try {
+    const res = await apiFetch(`/users/${u.id}/toggle`, { method: "POST" });
+    if (!res.ok) throw new Error("Erreur");
+    loadTeam();
+  } catch (err) {
+    showToast("Impossible de modifier ce statut", "error");
+  }
+}
+
+async function deleteTeamMember(u) {
+  if (!confirm(`Supprimer ${u.name} de l'équipe ?`)) return;
+  try {
+    const res = await apiFetch(`/users/${u.id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Erreur");
+    showToast("Membre supprimé");
+    loadTeam();
+  } catch (err) {
+    showToast("Impossible de supprimer ce membre", "error");
+  }
+}
+
+async function sendTeamInvite() {
+  const email = document.getElementById("p-invite-email").value.trim();
+  const role = document.getElementById("p-invite-role").value;
+  if (!email) return;
+  const btn = document.getElementById("p-invite-send-btn");
+  btn.disabled = true;
+  try {
+    const res = await apiFetch("/invites", { method: "POST", body: { email, role } });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Erreur");
+    showToast("Invitation envoyée");
+    bootstrap.Modal.getInstance(document.getElementById("paramsInviteModal"))?.hide();
+    document.getElementById("p-invite-email").value = "";
+    loadTeam();
+  } catch (err) {
+    showToast(err.message, "error");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function loadAccountSecuritySummary() {
+  try {
+    const res = await apiFetch("/profile");
+    const data = await res.json();
+    document.getElementById("p-sec-2fa-status").innerText = data.two_factor_enabled ? "Activée" : "Désactivée";
+  } catch (err) {}
+  try {
+    const res = await apiFetch("/sessions");
+    const list = await res.json();
+    document.getElementById("p-sec-sessions-count").innerText = res.ok ? `${list.length} active${list.length > 1 ? "s" : ""}` : "—";
+  } catch (err) {}
+  try {
+    const res = await apiFetch("/passkeys");
+    const list = await res.json();
+    document.getElementById("p-sec-passkeys-count").innerText = res.ok ? `${list.length}` : "—";
+  } catch (err) {}
+}
+
+function mountEquipe(on) {
+  document.body.insertAdjacentHTML("beforeend", TEAM_INVITE_MODAL_HTML);
+
+  on(document.getElementById("p-team-invite-btn"), "click", () => {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("paramsInviteModal")).show();
+  });
+  on(document.getElementById("p-invite-send-btn"), "click", sendTeamInvite);
+
+  on(document.getElementById("p-team-body"), "click", (e) => {
+    const trigger = e.target.closest(".row-menu-trigger");
+    if (trigger) {
+      toggleParamsRowMenu(trigger);
+      return;
+    }
+    if (e.target.closest("#p-team-upgrade-link")) {
+      navigate("/parametres/plans-et-frais");
+      return;
+    }
+    const actionBtn = e.target.closest("[data-team-action]");
+    if (!actionBtn) return;
+    const userId = actionBtn.closest(".row-menu").dataset.userId;
+    const u = teamUsers.find((x) => x.id === userId);
+    closeParamsRowMenu();
+    if (!u) return;
+    if (actionBtn.dataset.teamAction === "role") changeTeamMemberRole(u);
+    else if (actionBtn.dataset.teamAction === "toggle") toggleTeamMember(u);
+    else if (actionBtn.dataset.teamAction === "delete") deleteTeamMember(u);
+  });
+
+  on(document.getElementById("p-sec-nav-2fa"), "click", () => navigate("/parametres/authentification"));
+  on(document.getElementById("p-sec-nav-passkeys"), "click", () => navigate("/parametres/authentification"));
+  on(document.getElementById("p-sec-nav-sessions"), "click", () => navigate("/parametres/informations-personnelles"));
+
+  loadTeam();
+  loadAccountSecuritySummary();
+
+  return () => {
+    const modalEl = document.getElementById("paramsInviteModal");
+    const instance = modalEl && bootstrap.Modal.getInstance(modalEl);
+    if (instance) {
+      instance.hide();
+      instance.dispose();
+      document.body.classList.remove("modal-open");
+      document.body.style.removeProperty("overflow");
+      document.body.style.removeProperty("padding-right");
+      document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
+    }
+    modalEl?.remove();
+  };
+}
+
+// --- Detail : Entreprise ---
+const COMPANY_FIELDS = ["company_name", "legal_form", "registration_number", "vat_number", "address", "postal_code", "city", "country"];
+const COMPANY_LABELS = {
+  company_name: "Raison sociale",
+  legal_form: "Forme juridique",
+  registration_number: "Numéro d'immatriculation",
+  vat_number: "Numéro de TVA",
+  address: "Adresse",
+  postal_code: "Code postal",
+  city: "Ville",
+  country: "Pays",
+};
+const companyFieldValues = {};
+let companyEditing = false;
+
+function entrepriseTemplate() {
+  return `
+    ${detailHeader("Entreprise")}
+    <div class="params-subsection-header">
+      <h6 class="params-subsection-title mb-0">Informations de l'entreprise</h6>
+      <button type="button" id="p-company-edit-btn" class="params-edit-btn">Modifier</button>
+    </div>
+    <p class="params-subsection-sub">Ces informations apparaissent sur vos factures et documents officiels.</p>
+    <div class="params-row-list" style="max-width:640px;">
+      ${COMPANY_FIELDS.map((field) => `
+        <div class="params-info-row">
+          <span>${COMPANY_LABELS[field]}</span>
+          <div class="params-row-right" id="p-company-right-${field}"></div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderCompanyDisplay() {
+  for (const field of COMPANY_FIELDS) {
+    const container = document.getElementById(`p-company-right-${field}`);
+    const value = companyFieldValues[field];
+    container.innerHTML = value ? `<strong>${value}</strong>` : `<span class="text-muted">Non renseigné</span>`;
+  }
+}
+
+function renderCompanyEdit() {
+  for (const field of COMPANY_FIELDS) {
+    const container = document.getElementById(`p-company-right-${field}`);
+    container.innerHTML = `<input type="text" class="form-control form-control-sm" id="p-company-input-${field}" value="${companyFieldValues[field] || ""}" placeholder="${COMPANY_LABELS[field]}">`;
+  }
+}
+
+async function toggleCompanyEdit() {
+  const btn = document.getElementById("p-company-edit-btn");
+  if (!companyEditing) {
+    renderCompanyEdit();
+    btn.innerText = "Enregistrer";
+    companyEditing = true;
+    return;
+  }
+
+  const body = {};
+  for (const field of COMPANY_FIELDS) {
+    body[field] = document.getElementById(`p-company-input-${field}`).value.trim();
+  }
+  btn.disabled = true;
+  btn.innerText = "Enregistrement...";
+  try {
+    const res = await apiFetch("/company", { method: "PATCH", body });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Erreur");
+    for (const field of COMPANY_FIELDS) companyFieldValues[field] = data[field] || "";
+    showToast("Mis à jour");
+    renderCompanyDisplay();
+    btn.innerText = "Modifier";
+    companyEditing = false;
+  } catch (err) {
+    showToast(err.message, "error");
+    btn.innerText = "Enregistrer";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function mountEntreprise(on) {
+  companyEditing = false;
+  on(document.getElementById("p-company-edit-btn"), "click", toggleCompanyEdit);
+  (async () => {
+    try {
+      const res = await apiFetch("/company");
+      const data = await res.json();
+      for (const field of COMPANY_FIELDS) companyFieldValues[field] = data[field] || "";
+      renderCompanyDisplay();
+    } catch (err) {
+      console.error("Erreur chargement entreprise:", err);
+    }
+  })();
 }
 
 // --- Detail : Cartes virtuelles (Issuing) ---
@@ -1539,8 +1852,10 @@ const SECTIONS = {
   "informations-personnelles": { title: "Informations personnelles", template: informationsPersonnellesTemplate, mount: (on) => mountInformationsPersonnelles(on) },
   "authentification": { title: "Authentification", template: authentificationTemplate, mount: (on) => mountAuthentification(on) },
   "notifications": { title: "Paramètres de notifications", template: notificationsTemplate, mount: (on) => mountNotifications(on) },
-  "stripe": { title: "Compte Stripe", template: stripeTemplate, mount: (on) => mountStripe() },
-  "abonnement": { title: "Abonnement", template: abonnementTemplate, mount: (on) => mountAbonnement(on) },
+  "stripe": { title: "Compte Stripe Connect", template: stripeTemplate, mount: (on) => mountStripe() },
+  "plans-et-frais": { title: "Plans et frais", template: plansEtFraisTemplate, mount: (on) => mountPlansEtFrais(on) },
+  "equipe": { title: "Équipe et sécurité", template: equipeTemplate, mount: (on) => mountEquipe(on) },
+  "entreprise": { title: "Entreprise", template: entrepriseTemplate, mount: (on) => mountEntreprise(on) },
   "zone-dangereuse": { title: "Zone dangereuse", template: zoneDangereuseTemplate, mount: (on) => mountZoneDangereuse(on) },
   "cartes-virtuelles": { title: "Cartes virtuelles", template: cartesVirtuellesTemplate, mount: (on) => mountCartesVirtuelles(on) },
   "retraits": { title: "Retraits & Comptes US", template: retraitsTemplate, mount: (on) => {} },
