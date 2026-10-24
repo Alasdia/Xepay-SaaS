@@ -1188,6 +1188,70 @@ function stripeAccountRows(businessData, statusData) {
   ];
 }
 
+// Traduit les codes d'exigence Stripe (business_profile.mcc,
+// representative.dob.day, tos_acceptance.ip...) en libellés clairs - les
+// codes bruts (jargon technique Stripe) ne veulent rien dire pour un
+// marchand. Plusieurs codes bruts peuvent partager le même libellé (ex: les
+// 3 champs de date de naissance) - dédupliqué à l'affichage.
+const STRIPE_REQUIREMENT_LABELS = {
+  "business_profile.mcc": "Secteur d'activité",
+  "business_profile.url": "Site web de l'entreprise",
+  "business_profile.product_description": "Description du produit ou service",
+  "business_profile.support_phone": "Téléphone du service client",
+  "business_profile.support_email": "Email du service client",
+  "business_profile.support_address": "Adresse du service client",
+  "business_type": "Type d'entreprise (société, particulier...)",
+  "external_account": "Coordonnées bancaires pour recevoir les virements",
+  "tos_acceptance.date": "Acceptation des conditions Stripe",
+  "tos_acceptance.ip": "Acceptation des conditions Stripe",
+  "settings.payments.statement_descriptor": "Libellé affiché sur les relevés bancaires de vos clients",
+  "company.name": "Raison sociale de l'entreprise",
+  "company.tax_id": "Numéro fiscal (SIRET/TVA) de l'entreprise",
+  "company.phone": "Téléphone de l'entreprise",
+  "company.address.line1": "Adresse de l'entreprise",
+  "company.address.postal_code": "Adresse de l'entreprise",
+  "company.address.city": "Adresse de l'entreprise",
+  "company.verification.document": "Document d'immatriculation de l'entreprise",
+};
+for (const field of ["dob.day", "dob.month", "dob.year"]) {
+  STRIPE_REQUIREMENT_LABELS[`representative.${field}`] = "Date de naissance du représentant légal";
+  STRIPE_REQUIREMENT_LABELS[`individual.${field}`] = "Date de naissance";
+}
+for (const [key, label] of [
+  ["first_name", "Prénom"],
+  ["last_name", "Nom"],
+  ["email", "Email"],
+  ["phone", "Numéro de téléphone"],
+  ["id_number", "Numéro d'identité"],
+  ["verification.document", "Pièce d'identité"],
+  ["address.line1", "Adresse"],
+  ["address.postal_code", "Adresse"],
+  ["address.city", "Adresse"],
+]) {
+  STRIPE_REQUIREMENT_LABELS[`representative.${key}`] = `${label} du représentant légal`;
+  STRIPE_REQUIREMENT_LABELS[`individual.${key}`] = label;
+}
+
+function formatStripeRequirement(code) {
+  if (STRIPE_REQUIREMENT_LABELS[code]) return STRIPE_REQUIREMENT_LABELS[code];
+  // Repli pour un code non mappé : rendre au moins lisible plutôt que
+  // d'afficher le jargon technique Stripe brut.
+  return code.replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatStripeRequirementList(codes) {
+  const seen = new Set();
+  const labels = [];
+  for (const code of codes) {
+    const label = formatStripeRequirement(code);
+    if (!seen.has(label)) {
+      seen.add(label);
+      labels.push(label);
+    }
+  }
+  return labels;
+}
+
 function stripeStatusLabel(data) {
   if (!data || !data.stripe || !data.stripe.details_submitted) return "Non configuré";
   if (data.needs_kyc) return "Vérification requise";
@@ -1231,11 +1295,11 @@ function stripeEtatPanelHtml() {
     <div class="params-required-groups">
       <div class="params-required-group">
         <div class="params-required-label">Requis actuellement</div>
-        ${currentlyDue.length ? `<ul class="params-required-list">${currentlyDue.map((x) => `<li>${x}</li>`).join("")}</ul>` : `<p class="text-muted" style="font-size:13.5px;">Aucun</p>`}
+        ${currentlyDue.length ? `<ul class="params-required-list">${formatStripeRequirementList(currentlyDue).map((x) => `<li>${x}</li>`).join("")}</ul>` : `<p class="text-muted" style="font-size:13.5px;">Aucun</p>`}
       </div>
       <div class="params-required-group">
         <div class="params-required-label">Requis à terme</div>
-        ${eventuallyDue.length ? `<ul class="params-required-list">${eventuallyDue.map((x) => `<li>${x}</li>`).join("")}</ul>` : `<p class="text-muted" style="font-size:13.5px;">Aucun</p>`}
+        ${eventuallyDue.length ? `<ul class="params-required-list">${formatStripeRequirementList(eventuallyDue).map((x) => `<li>${x}</li>`).join("")}</ul>` : `<p class="text-muted" style="font-size:13.5px;">Aucun</p>`}
       </div>
     </div>
   `;
