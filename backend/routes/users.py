@@ -622,8 +622,6 @@ def stripe_status(
 ):
     owner_id = membership.workspace_id
 
-    print("🔥 STRIPE STATUS HIT 🔥")
-
     profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
 
     # ❌ pas de compte Stripe
@@ -633,44 +631,54 @@ def stripe_status(
             "needs_kyc": False
         }
 
-    account = stripe.Account.retrieve(
-        profile.stripe_account_id,
-        expand=["requirements"]
-    )
-    print("CURRENTLY DUE:", account.requirements.currently_due)
-    print("EVENTUALLY DUE:", account.requirements.eventually_due)
+    try:
+        account = stripe.Account.retrieve(
+            profile.stripe_account_id,
+            expand=["requirements"]
+        )
+    except Exception as e:
+        print("STRIPE STATUS - retrieve failed:", repr(e))
+        raise HTTPException(status_code=502, detail="Impossible de récupérer le statut Stripe")
 
-    is_ready = account.charges_enabled and account.payouts_enabled
+    # Protégé : account.requirements peut être absent/None (ex: comptes créés
+    # via l'API v2 Accounts, voir /signup et _exchange_google_code) même
+    # avec expand=["requirements"] - un accès direct à .currently_due
+    # plantait alors en AttributeError, masqué en erreur CORS côté
+    # navigateur (même classe de bug que /stripe/business-details).
+    try:
+        requirements = getattr(account, "requirements", None)
+        currently_due = list(requirements.currently_due) if requirements and requirements.currently_due else []
+        eventually_due = list(requirements.eventually_due) if requirements and requirements.eventually_due else []
 
-    return {
-        "connected": is_ready,
-        "needs_kyc": (
-            len(account.requirements.currently_due) > 0
-        ),
+        is_ready = bool(account.charges_enabled) and bool(account.payouts_enabled)
 
-        "future_requirements": (
-            len(account.requirements.eventually_due) > 0
-        ),
+        return {
+            "connected": is_ready,
+            "needs_kyc": len(currently_due) > 0,
+            "future_requirements": len(eventually_due) > 0,
 
-        "stripe": {
-            "charges_enabled": account.charges_enabled,
-            "payouts_enabled": account.payouts_enabled,
-            "details_submitted": account.details_submitted,
-            "created": datetime.fromtimestamp(account.created, tz=timezone.utc).isoformat() if account.created else None,
-            "business_name": (account.business_profile.name if account.business_profile else None) or account.get("email"),
-            "country": account.country,
+            "stripe": {
+                "charges_enabled": bool(account.charges_enabled),
+                "payouts_enabled": bool(account.payouts_enabled),
+                "details_submitted": bool(getattr(account, "details_submitted", False)),
+                "created": datetime.fromtimestamp(account.created, tz=timezone.utc).isoformat() if getattr(account, "created", None) else None,
+                "business_name": (account.business_profile.name if getattr(account, "business_profile", None) else None) or account.get("email"),
+                "country": getattr(account, "country", None),
                 "requirements": {
-                    "currently_due": account.requirements.currently_due,
-                    "eventually_due": account.requirements.eventually_due
+                    "currently_due": currently_due,
+                    "eventually_due": eventually_due,
                 }
-        },
+            },
 
-        "profile": {
-            "full_name": profile.full_name,
-            "phone": profile.phone,
-            "stripe_account_id": profile.stripe_account_id
+            "profile": {
+                "full_name": profile.full_name,
+                "phone": profile.phone,
+                "stripe_account_id": profile.stripe_account_id
+            }
         }
-    }
+    except Exception as e:
+        print("STRIPE STATUS - shaping failed:", repr(e))
+        raise HTTPException(status_code=500, detail="Erreur lors de la lecture du statut Stripe")
 
 
 def _format_address(addr) -> Optional[str]:
