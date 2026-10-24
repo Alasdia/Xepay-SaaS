@@ -70,6 +70,7 @@ def signup(
         )
         db.add(new_user)
         db.flush()
+        joined_workspace_id = None
         if user.invite_token:
             token_hash = hashlib.sha256(
                 user.invite_token.encode()
@@ -79,6 +80,7 @@ def signup(
                 membership = WorkspaceUser(user_id=new_user.id, workspace_id=invite.workspace_id, role=invite.role)
                 db.add(membership)
                 invite.used = True
+                joined_workspace_id = invite.workspace_id
         else:
             membership = WorkspaceUser(user_id=new_user.id, workspace_id=new_user.id, role="owner")
             db.add(membership)
@@ -156,6 +158,8 @@ def signup(
         wallet = Wallet(user_id=new_user.id, balance=0, created_at=datetime.now(timezone.utc))
         db.add(wallet)
         db.commit()
+        if joined_workspace_id:
+            log_security_event(db, new_user.id, "workspace_joined", "Invitation acceptée, a rejoint l'équipe", workspace_id=joined_workspace_id)
         return {"success": True}
     except Exception as e:
         db.rollback()
@@ -419,6 +423,8 @@ def _exchange_google_code(code: str, db: Session, redirect_uri: str, invite_toke
 
             db.commit()
             db.refresh(user)
+            if invite:
+                log_security_event(db, user.id, "workspace_joined", "Invitation acceptée, a rejoint l'équipe", workspace_id=invite.workspace_id)
         except Exception as e:
             print("❌ ERREUR CRITIQUE (google signup):", repr(e))
             import traceback
@@ -791,6 +797,23 @@ def stripe_business_details(
             "address": company_address,
         },
     }
+
+
+@router.post("/security/log-workspace-access")
+def log_workspace_access(
+    membership: WorkspaceUser = Depends(require_member),
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Appelé par le sélecteur de workspace (Équipe et sécurité) à chaque
+    bascule - pour que le propriétaire puisse répondre à "qui a accédé à
+    mon workspace, et quand ?" (la connexion elle-même ne porte jamais ce
+    workspace précis, voir resolve_log_workspace_id)."""
+    log_security_event(
+        db, current_user.id, "workspace_accessed", "A accédé à ce workspace",
+        workspace_id=membership.workspace_id,
+    )
+    return {"ok": True}
 
 
 @router.get("/security/events")
@@ -1462,6 +1485,7 @@ def accept_invite(
         invite.used = True
 
         db.commit()
+        log_security_event(db, existing_user.id, "workspace_joined", "Invitation acceptée, a rejoint l'équipe", workspace_id=invite.workspace_id)
 
         # Plus de jeton dans l'URL de redirection : cookie de session posé
         # directement ici, comme pour /auth/google/callback. multi-users.html

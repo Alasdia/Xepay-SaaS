@@ -188,20 +188,22 @@ def rotate_refresh_token(db: Session, raw_token: str, device: str = None, ip: st
     return child_raw, user
 
 
-def revoke_refresh_token(db: Session, raw_token: str) -> None:
+def revoke_refresh_token(db: Session, raw_token: str) -> str | None:
     """Logout : révoque toute la FAMILLE du jeton présenté, pas seulement ce
     jeton — sinon la fenêtre de grâce de rotate_refresh_token (pensée pour
     des courses bénignes entre requêtes concurrentes) traiterait une
     réutilisation juste après un logout comme une course légitime et
     réémettrait un jeton valide pour une session que l'utilisateur vient
-    explicitement de fermer."""
+    explicitement de fermer. Retourne l'user_id concerné (None si le jeton
+    était déjà invalide/inconnu) pour que l'appelant puisse journaliser qui
+    s'est déconnecté (voir /logout)."""
     token_hash = hash_refresh_token(raw_token)
     now = datetime.now(timezone.utc)
     existing = db.query(RefreshToken).filter(
         RefreshToken.token_hash == token_hash
     ).first()
     if existing is None:
-        return
+        return None
     db.execute(
         update(RefreshToken)
         .where(
@@ -211,3 +213,4 @@ def revoke_refresh_token(db: Session, raw_token: str) -> None:
         .values(revoked_at=now)
     )
     db.commit()
+    return existing.user_id

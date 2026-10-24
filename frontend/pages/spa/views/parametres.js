@@ -1803,6 +1803,12 @@ async function loadTeamWorkspaces() {
 
 async function switchTeamWorkspace(workspaceId) {
   setWorkspaceId(workspaceId);
+  // Journalise l'accès à CE workspace (Journal d'activité) - la connexion
+  // elle-même ne porte jamais ce workspace précis (voir
+  // resolve_log_workspace_id côté backend), donc sans cet appel explicite
+  // le propriétaire ne pourrait jamais répondre à "qui a accédé à mon
+  // workspace, et quand ?". Best-effort : n'empêche jamais la bascule.
+  apiFetch("/security/log-workspace-access", { method: "POST" }).catch(() => {});
   await refreshPlanBadge();
   // navigate() (plutôt que loadTeam() seul) remet aussi l'URL en cohérence
   // avec le workspace actif : le routeur resynchronise workspace_id depuis

@@ -159,7 +159,9 @@ def logout_session(
 ):
     raw_refresh = request.cookies.get(REFRESH_COOKIE_NAME)
     if raw_refresh:
-        revoke_refresh_token(db, raw_refresh)
+        user_id = revoke_refresh_token(db, raw_refresh)
+        if user_id:
+            log_security_event(db, user_id, "logout", "Déconnexion", workspace_id=resolve_log_workspace_id(request, user_id))
     clear_session_cookies(response)
     return {"ok": True}
 
