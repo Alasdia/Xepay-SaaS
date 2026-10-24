@@ -180,6 +180,20 @@
   width: 220px;
 }
 
+/* Mot de passe : mini-formulaire (3 champs) révélé dans la même zone de
+   droite que Nom/Téléphone, empilé verticalement au lieu d'un seul input
+   en ligne. */
+.params-pwd-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 260px;
+}
+
+.params-pwd-edit .input-wrapper input {
+  width: 100%;
+}
+
 /* Bouton "Modifier"/"Ajouter votre ..." à l'extrême droite de la ligne -
    texte simple, pas un bouton encadré comme create-client-btn. */
 .params-edit-btn {

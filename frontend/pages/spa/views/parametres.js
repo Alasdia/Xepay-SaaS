@@ -184,37 +184,10 @@ function informationsPersonnellesTemplate() {
         <span>Téléphone</span>
         <div class="params-row-right" id="p-field-right-phone"></div>
       </div>
-    </div>
-
-    <div class="params-subsection-header">
-      <div>
-        <h6 class="params-subsection-title">Compte Google</h6>
-        <p class="params-subsection-sub">Connectez-vous à Xepay à l'aide de votre compte Google.</p>
+      <div class="params-info-row">
+        <span>Mot de passe</span>
+        <div class="params-row-right" id="p-field-right-password"></div>
       </div>
-      <button type="button" id="p-google-btn" class="create-client-btn">Connecter un compte Google</button>
-    </div>
-
-    <div class="params-subsection-header">
-      <div>
-        <h6 class="params-subsection-title">Clés d'accès</h6>
-        <p class="params-subsection-sub">Connectez-vous en toute sécurité à l'aide de vos données biométriques, du code PIN de votre appareil ou de votre clé de sécurité.</p>
-      </div>
-      <button type="button" id="p-passkey-add-btn" class="create-client-btn">+ Ajouter une clé d'accès</button>
-    </div>
-    <div class="table-wrap mb-5">
-      <table class="table params-mini-table">
-        <thead>
-          <tr>
-            <th>Nom de la clé</th>
-            <th>Date d'ajout</th>
-            <th>Dernière utilisation</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="p-passkeys-tbody">
-          <tr><td colspan="4" class="text-muted">Chargement...</td></tr>
-        </tbody>
-      </table>
     </div>
 
     <div class="params-subsection-header">
@@ -288,6 +261,51 @@ function renderFieldEdit(field) {
   `;
   document.getElementById(`p-field-input-${field}`).focus();
   document.getElementById(`p-field-save-${field}`).addEventListener("click", () => saveProfileField(field));
+}
+
+// Mot de passe : jamais de valeur affichée (masqué), juste un bouton
+// "Modifier" qui révèle le même petit formulaire que l'ancienne carte
+// Authentification (togglePwd/checkStrength/changeMotDePasse, inchangés).
+function renderPasswordDisplay() {
+  const container = document.getElementById("p-field-right-password");
+  container.innerHTML = `
+    <strong>••••••••</strong>
+    <button type="button" class="params-edit-btn" id="p-password-edit-btn">Modifier</button>
+  `;
+  document.getElementById("p-password-edit-btn").addEventListener("click", renderPasswordEdit);
+}
+
+function renderPasswordEdit() {
+  const container = document.getElementById("p-field-right-password");
+  container.innerHTML = `
+    <div class="params-pwd-edit">
+      <div class="input-wrapper">
+        <input type="password" id="p-pwd-actuel" class="form-control form-control-sm" placeholder="Mot de passe actuel">
+        <span class="toggle-eye" data-toggle-pwd="p-pwd-actuel"><i class="bi bi-eye-slash"></i></span>
+      </div>
+      <div class="input-wrapper">
+        <input type="password" id="p-pwd-nouveau" class="form-control form-control-sm" placeholder="Nouveau mot de passe">
+        <span class="toggle-eye" data-toggle-pwd="p-pwd-nouveau"><i class="bi bi-eye-slash"></i></span>
+      </div>
+      <div class="progress" style="height:4px;">
+        <div id="p-pwd-strength-bar" class="progress-bar" style="width:0%; transition:all .3s;"></div>
+      </div>
+      <small id="p-pwd-strength-label" class="text-muted d-block"></small>
+      <div class="input-wrapper">
+        <input type="password" id="p-pwd-confirm" class="form-control form-control-sm" placeholder="Confirmer le mot de passe">
+        <span class="toggle-eye" data-toggle-pwd="p-pwd-confirm"><i class="bi bi-eye-slash"></i></span>
+      </div>
+      <button type="button" class="create-client-btn" id="p-btn-change-pwd">Enregistrer</button>
+    </div>
+  `;
+  container.querySelectorAll("[data-toggle-pwd]").forEach((el) => {
+    el.addEventListener("click", () => togglePwd(el.dataset.togglePwd));
+  });
+  document.getElementById("p-pwd-nouveau").addEventListener("input", (e) => checkStrength(e.target.value));
+  document.getElementById("p-btn-change-pwd").addEventListener("click", async () => {
+    const ok = await changeMotDePasse();
+    if (ok) renderPasswordDisplay();
+  });
 }
 
 function formatSessionTime(value) {
@@ -628,23 +646,7 @@ async function leaveWorkspace(id) {
 }
 
 function mountInformationsPersonnelles(on) {
-  on(document.getElementById("p-google-btn"), "click", handleGoogleBtnClick);
-  on(document.getElementById("p-passkey-add-btn"), "click", registerPasskey);
   on(document.getElementById("p-sessions-revoke-others-btn"), "click", revokeOtherSessions);
-
-  on(document.getElementById("p-passkeys-tbody"), "click", (e) => {
-    const trigger = e.target.closest(".row-menu-trigger");
-    if (trigger) {
-      toggleParamsRowMenu(trigger);
-      return;
-    }
-    const actionBtn = e.target.closest("[data-passkey-action]");
-    if (!actionBtn) return;
-    const id = actionBtn.closest(".row-menu").dataset.passkeyId;
-    closeParamsRowMenu();
-    if (actionBtn.dataset.passkeyAction === "rename") renamePasskey(id);
-    else if (actionBtn.dataset.passkeyAction === "delete") deletePasskey(id);
-  });
 
   on(document.getElementById("p-sessions-tbody"), "click", (e) => {
     const logoutBtn = e.target.closest(".params-session-logout-btn");
@@ -665,6 +667,8 @@ function mountInformationsPersonnelles(on) {
     if (actionBtn.dataset.workspaceAction === "leave") leaveWorkspace(id);
   });
 
+  renderPasswordDisplay();
+
   (async () => {
     try {
       const res = await apiFetch("/profile");
@@ -674,61 +678,57 @@ function mountInformationsPersonnelles(on) {
       profileFieldValues.phone = data.phone || "";
       renderFieldDisplay("full_name");
       renderFieldDisplay("phone");
-      updateGoogleStatus(data.google_linked, data.google_email);
     } catch (err) {
       console.error("Erreur chargement profil:", err);
     }
   })();
 
-  loadPasskeys();
   loadSessions();
   loadWorkspaces();
 }
 
-// --- Detail : Authentification (mot de passe + 2FA) ---
+// --- Detail : Authentification (Compte Google, 2FA, Clés d'accès) ---
 function authentificationTemplate() {
   return `
     ${detailHeader("Authentification")}
-    <div class="d-flex flex-column gap-4" style="max-width:480px;">
-      <div class="card-epay p-4">
-        <h6 class="fw-bold mb-4 text-muted">Changer le mot de passe</h6>
-        <div class="mb-3">
-          <label class="form-label">Mot de passe actuel</label>
-          <div class="input-wrapper">
-            <input type="password" id="p-pwd-actuel" class="form-control" placeholder="••••••••">
-            <span class="toggle-eye" data-toggle-pwd="p-pwd-actuel"><i class="bi bi-eye-slash"></i></span>
-          </div>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Nouveau mot de passe</label>
-          <div class="input-wrapper">
-            <input type="password" id="p-pwd-nouveau" class="form-control" placeholder="••••••••">
-            <span class="toggle-eye" data-toggle-pwd="p-pwd-nouveau"><i class="bi bi-eye-slash"></i></span>
-          </div>
-          <div class="mt-2">
-            <div class="progress" style="height:4px;">
-              <div id="p-pwd-strength-bar" class="progress-bar" style="width:0%; transition:all 0.3s;"></div>
-            </div>
-            <small id="p-pwd-strength-label" class="text-muted mt-1 d-block"></small>
-          </div>
-        </div>
-        <div class="mb-4">
-          <label class="form-label">Confirmer le mot de passe</label>
-          <div class="input-wrapper">
-            <input type="password" id="p-pwd-confirm" class="form-control" placeholder="••••••••">
-            <span class="toggle-eye" data-toggle-pwd="p-pwd-confirm"><i class="bi bi-eye-slash"></i></span>
-          </div>
-        </div>
-        <button type="button" class="btn btn-warning fw-bold w-100" id="p-btn-change-pwd">Mettre à jour le mot de passe</button>
+
+    <div class="params-subsection-header">
+      <div>
+        <h6 class="params-subsection-title">Compte Google</h6>
+        <p class="params-subsection-sub">Connectez-vous à Xepay à l'aide de votre compte Google.</p>
       </div>
-      <div class="card-epay p-4">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <h6 class="fw-bold mb-0 text-muted">Authentification à deux facteurs</h6>
-          <span id="p-twofa-status-badge" class="badge px-3 py-2" style="background:rgba(107,114,128,0.15); color:#6b7280;">Chargement...</span>
-        </div>
-        <p class="text-muted" style="font-size:0.85rem;">Sécurisez votre compte avec Google Authenticator.</p>
-        <button type="button" id="p-twofa-toggle-btn" class="btn btn-warning fw-bold w-100">Chargement...</button>
+      <button type="button" id="p-google-btn" class="create-client-btn">Connecter un compte Google</button>
+    </div>
+
+    <div class="params-subsection-header">
+      <div>
+        <h6 class="params-subsection-title">Authentification à deux facteurs</h6>
+        <p class="params-subsection-sub">Renforcez la sécurité de votre compte en utilisant plusieurs méthodes d'authentification pour vérifier votre identité. Vérifiez que vous avez bien votre code de sauvegarde à 24 caractères. Vous pouvez générer un nouveau code de sauvegarde et invalider l'ancien si vous ne l'avez plus.</p>
       </div>
+      <button type="button" id="p-twofa-toggle-btn" class="create-client-btn">Activer la 2FA</button>
+    </div>
+
+    <div class="params-subsection-header">
+      <div>
+        <h6 class="params-subsection-title">Clés d'accès</h6>
+        <p class="params-subsection-sub">Connectez-vous en toute sécurité à l'aide de vos données biométriques, du code PIN de votre appareil ou de votre clé de sécurité.</p>
+      </div>
+      <button type="button" id="p-passkey-add-btn" class="create-client-btn">+ Ajouter une clé d'accès</button>
+    </div>
+    <div class="table-wrap">
+      <table class="table params-mini-table">
+        <thead>
+          <tr>
+            <th>Nom de la clé</th>
+            <th>Date d'ajout</th>
+            <th>Dernière utilisation</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="p-passkeys-tbody">
+          <tr><td colspan="4" class="text-muted">Chargement...</td></tr>
+        </tbody>
+      </table>
     </div>
   `;
 }
@@ -780,33 +780,17 @@ async function changeMotDePasse() {
       throw new Error(message);
     }
     showToast("Mot de passe mis à jour");
-    document.getElementById("p-pwd-actuel").value = "";
-    document.getElementById("p-pwd-nouveau").value = "";
-    document.getElementById("p-pwd-confirm").value = "";
-    document.getElementById("p-pwd-strength-bar").style.width = "0%";
-    document.getElementById("p-pwd-strength-label").innerText = "";
+    return true;
   } catch (error) {
     showToast(error.message, "error");
+    return false;
   }
 }
 
 function updateTwoFaUI() {
-  const badge = document.getElementById("p-twofa-status-badge");
   const btn = document.getElementById("p-twofa-toggle-btn");
-  if (!badge || !btn) return;
-  if (twoFaCurrentlyEnabled) {
-    badge.innerText = "Activée";
-    badge.style.background = "rgba(16,185,129,0.15)";
-    badge.style.color = "#10b981";
-    btn.innerText = "Désactiver la 2FA";
-    btn.className = "btn btn-outline-danger fw-bold w-100";
-  } else {
-    badge.innerText = "Désactivée";
-    badge.style.background = "rgba(239,68,68,0.15)";
-    badge.style.color = "#ef4444";
-    btn.innerText = "Activer la 2FA";
-    btn.className = "btn btn-warning fw-bold w-100";
-  }
+  if (!btn) return;
+  btn.innerText = twoFaCurrentlyEnabled ? "Désactiver la 2FA" : "Activer la 2FA";
 }
 
 async function loadTwoFaStatus() {
@@ -877,14 +861,37 @@ function handleTwoFaToggle() {
 
 function mountAuthentification(on) {
   document.body.insertAdjacentHTML("beforeend", TWOFA_MODAL_HTML);
-  document.querySelectorAll("[data-toggle-pwd]").forEach((el) => {
-    on(el, "click", () => togglePwd(el.dataset.togglePwd));
-  });
-  on(document.getElementById("p-pwd-nouveau"), "input", (e) => checkStrength(e.target.value));
-  on(document.getElementById("p-btn-change-pwd"), "click", changeMotDePasse);
+  on(document.getElementById("p-google-btn"), "click", handleGoogleBtnClick);
   on(document.getElementById("p-twofa-toggle-btn"), "click", handleTwoFaToggle);
   on(document.getElementById("p-btn-verify-2fa"), "click", verify2FA);
+  on(document.getElementById("p-passkey-add-btn"), "click", registerPasskey);
+
+  on(document.getElementById("p-passkeys-tbody"), "click", (e) => {
+    const trigger = e.target.closest(".row-menu-trigger");
+    if (trigger) {
+      toggleParamsRowMenu(trigger);
+      return;
+    }
+    const actionBtn = e.target.closest("[data-passkey-action]");
+    if (!actionBtn) return;
+    const id = actionBtn.closest(".row-menu").dataset.passkeyId;
+    closeParamsRowMenu();
+    if (actionBtn.dataset.passkeyAction === "rename") renamePasskey(id);
+    else if (actionBtn.dataset.passkeyAction === "delete") deletePasskey(id);
+  });
+
+  (async () => {
+    try {
+      const res = await apiFetch("/profile");
+      const data = await res.json();
+      updateGoogleStatus(data.google_linked);
+    } catch (err) {
+      console.error("Erreur chargement profil:", err);
+    }
+  })();
+
   loadTwoFaStatus();
+  loadPasskeys();
   return () => {
     const modalEl = document.getElementById("paramsTwoFaModal");
     const instance = modalEl && bootstrap.Modal.getInstance(modalEl);
