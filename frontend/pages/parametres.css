@@ -139,7 +139,7 @@
 }
 
 .params-subsection-sub {
-  color: #9ca3af;
+  color: rgba(17, 24, 39, 0.5);
   font-size: 13px;
   margin-bottom: 14px;
 }
@@ -247,6 +247,22 @@
   font-size: 13.5px;
   color: #111827;
   vertical-align: middle;
+}
+
+/* Même niveau/taille que le texte "Actuelle" en face (pas de padding de
+   menu déroulant ici, ce bouton n'est pas dans un .row-menu-dropdown). */
+.params-session-logout-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #b91c1c;
+  cursor: pointer;
+}
+
+.params-session-logout-btn:hover {
+  text-decoration: underline;
 }
 
 /* Menu d'actions "..." - mêmes classes/styles que .row-menu dans

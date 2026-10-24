@@ -11,7 +11,7 @@
 /* Zone de recherche (visuelle pour l'instant, non branchée à une recherche
    réelle) - fond blanc légèrement transparent pour rester lisible sur le
    jaune, largeur bornée plutôt qu'étirée sur tout l'espace disponible. */
-#top-banner .top-banner-search { display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.55); border-radius: 10px; padding: 0 14px; height: 34px; width: 100%; max-width: 320px; flex-shrink: 1; margin-left: calc(18% + 12px); }
+#top-banner .top-banner-search { display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.55); border-radius: 10px; padding: 0 14px; height: 40px; width: 100%; max-width: 230px; flex-shrink: 1; margin-left: calc(18% + 12px); }
 #top-banner .top-banner-search i { color: rgba(17, 24, 39, 0.5); font-size: 13px; flex-shrink: 0; }
 #top-banner .top-banner-search input { background: none; border: none; outline: none; font-size: 13px; color: #111827; width: 100%; }
 #top-banner .top-banner-search input::placeholder { color: rgba(17, 24, 39, 0.45); }

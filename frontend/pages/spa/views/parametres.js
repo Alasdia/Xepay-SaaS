@@ -525,7 +525,7 @@ async function deletePasskey(id) {
 function sessionRowHtml(s) {
   const action = s.is_current
     ? `Actuelle`
-    : `<button type="button" class="row-menu-item params-session-logout-btn" data-session-id="${s.id}">Déconnexion</button>`;
+    : `<button type="button" class="params-session-logout-btn" data-session-id="${s.id}">Déconnexion</button>`;
   return `
     <tr>
       <td>${s.location}</td>
