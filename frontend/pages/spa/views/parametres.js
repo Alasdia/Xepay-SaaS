@@ -80,9 +80,9 @@ function overviewTemplate() {
       <section class="params-section">
         ${sectionTitle("Paramètres personnels")}
         <div class="params-tiles-grid">
-          ${tile("informations-personnelles", "fa-solid fa-id-card", "Informations personnelles", "Coordonnées (nom complet, email, téléphone) et vos sessions actives")}
-          ${tile("authentification", "fa-solid fa-key", "Authentification", "Mot de passe, double authentification")}
-          ${tile("notifications", "fa-solid fa-bell", "Paramètres de notifications", "Alertes de connexion, paiement, sécurité")}
+          ${tile("informations-personnelles", "fa-solid fa-id-card", "Informations personnelles", "Nom, email, téléphone, mot de passe, sessions actives et workspaces")}
+          ${tile("authentification", "fa-solid fa-key", "Authentification", "Compte Google, double authentification (2FA) avec code de sauvegarde, et clés d'accès (WebAuthn)")}
+          ${tile("notifications", "fa-solid fa-bell", "Paramètres de notifications", "Email, SMS et Push pour chaque catégorie : compte, paiements, virements, solde, abonnements, clients et mises à jour Xepay")}
         </div>
       </section>
 
