@@ -23,10 +23,11 @@ function navigateToSection(section, focus) {
   navigate(`/dash/workspace/${encodeURIComponent(getWorkspaceId() || "me")}/parametres/${section}${query}`);
 }
 
-// Au clic sur un bouton "Gérer" (Équipe et sécurité), on arrive sur une
-// section sans rien d'autre qu'un bouton - sans explication de ce qu'on
-// attend d'y faire. "focus" (lu dans mount() ci-dessous) scrolle vers la
-// bonne sous-section, la surligne brièvement et affiche ce message.
+// Boutons "Gérer" (Équipe et sécurité) : l'explication de l'action est
+// montrée AVANT le clic, en infobulle au survol (voir .params-tooltip-btn),
+// pas après coup en toast une fois arrivé sur la vue cible. "focus" (lu
+// dans mount() ci-dessous) se contente de scroller vers la bonne
+// sous-section et de la surligner brièvement.
 const SECURITY_FOCUS_MESSAGES = {
   "2fa": "Activez l'authentification à deux facteurs pour renforcer la sécurité de votre compte.",
   "passkeys": "Ajoutez une clé d'accès (WebAuthn) pour vous connecter sans mot de passe.",
@@ -1558,15 +1559,15 @@ function equipeTemplate() {
     <div class="params-row-list">
       <div class="params-info-row">
         <span>Authentification à deux facteurs</span>
-        <div class="params-row-right"><strong id="p-sec-2fa-status">—</strong><button type="button" class="params-edit-btn" id="p-sec-nav-2fa">Gérer</button></div>
+        <div class="params-row-right"><strong id="p-sec-2fa-status">—</strong><button type="button" class="params-edit-btn params-tooltip-btn" data-tooltip="${SECURITY_FOCUS_MESSAGES["2fa"]}" id="p-sec-nav-2fa">Gérer</button></div>
       </div>
       <div class="params-info-row">
         <span>Clés d'accès (WebAuthn)</span>
-        <div class="params-row-right"><strong id="p-sec-passkeys-count">—</strong><button type="button" class="params-edit-btn" id="p-sec-nav-passkeys">Gérer</button></div>
+        <div class="params-row-right"><strong id="p-sec-passkeys-count">—</strong><button type="button" class="params-edit-btn params-tooltip-btn" data-tooltip="${SECURITY_FOCUS_MESSAGES["passkeys"]}" id="p-sec-nav-passkeys">Gérer</button></div>
       </div>
       <div class="params-info-row">
         <span>Sessions actives</span>
-        <div class="params-row-right"><strong id="p-sec-sessions-count">—</strong><button type="button" class="params-edit-btn" id="p-sec-nav-sessions">Gérer</button></div>
+        <div class="params-row-right"><strong id="p-sec-sessions-count">—</strong><button type="button" class="params-edit-btn params-tooltip-btn" data-tooltip="${SECURITY_FOCUS_MESSAGES["sessions"]}" id="p-sec-nav-sessions">Gérer</button></div>
       </div>
     </div>
   `;
@@ -2008,7 +2009,6 @@ export async function mount(container, params = {}) {
         target.classList.add("params-focus-highlight");
         setTimeout(() => target.classList.remove("params-focus-highlight"), 2200);
       }
-      if (SECURITY_FOCUS_MESSAGES[focusId]) showToast(SECURITY_FOCUS_MESSAGES[focusId]);
       history.replaceState({}, "", location.pathname);
     }
   } else {

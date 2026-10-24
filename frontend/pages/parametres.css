@@ -570,3 +570,39 @@
   70% { background: rgba(240, 180, 41, 0.25); }
   100% { background: transparent; }
 }
+
+/* Boutons "Gérer" (Équipe et sécurité) : infobulle au survol expliquant
+   l'action, affichée AVANT le clic plutôt qu'un toast après coup. */
+.params-tooltip-btn {
+  position: relative;
+}
+
+.params-tooltip-btn::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  width: 220px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .18);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: opacity .15s ease, transform .15s ease;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.params-tooltip-btn:hover::after,
+.params-tooltip-btn:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
