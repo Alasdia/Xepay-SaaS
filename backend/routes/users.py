@@ -655,6 +655,7 @@ def stripe_status(
         "stripe": {
             "charges_enabled": account.charges_enabled,
             "payouts_enabled": account.payouts_enabled,
+            "details_submitted": account.details_submitted,
             "created": datetime.fromtimestamp(account.created, tz=timezone.utc).isoformat() if account.created else None,
             "business_name": (account.business_profile.name if account.business_profile else None) or account.get("email"),
             "country": account.country,

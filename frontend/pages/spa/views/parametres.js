@@ -1189,7 +1189,7 @@ function stripeAccountRows(businessData, statusData) {
 }
 
 function stripeStatusLabel(data) {
-  if (!data || !data.stripe) return "Non configuré";
+  if (!data || !data.stripe || !data.stripe.details_submitted) return "Non configuré";
   if (data.needs_kyc) return "Vérification requise";
   if (data.future_requirements) return "Opérationnel (vérification finale en attente)";
   return "Entièrement vérifié";
@@ -1302,7 +1302,13 @@ function wireStripeActionButton() {
   if (!btn) return;
   const data = stripeStatusData;
   btn.disabled = false;
-  if (!data.stripe) {
+  if (!data.stripe || !data.stripe.details_submitted) {
+    // Compte Stripe pas encore (ou pas du tout) onboardé : passe par
+    // /onboarding (AccountLink type=account_onboarding), le vrai flux de
+    // première inscription. stripe.Account.create_login_link (branche
+    // "Compléter la vérification" ci-dessous) échoue pour un compte
+    // n'ayant encore rien soumis - Stripe exige un onboarding au moins
+    // entamé avant d'émettre un Login Link vers l'Express Dashboard.
     btn.innerText = "Configurer Stripe";
     btn.onclick = async () => {
       btn.innerText = "Chargement...";
