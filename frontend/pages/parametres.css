@@ -171,6 +171,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: 1;
 }
 
 .params-row-right input {
@@ -219,6 +220,8 @@
   font-weight: 600;
   cursor: pointer;
   padding: 4px 6px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .params-edit-btn:hover {
