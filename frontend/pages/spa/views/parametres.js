@@ -1144,11 +1144,13 @@ function stripeTemplate() {
 function infoRowsHtml(rows) {
   if (!rows || !rows.length) return `<p class="text-muted">Aucune information disponible.</p>`;
   return `
-    <div class="params-row-list" style="max-width:560px;">
-      ${rows.map(([label, value]) => `<div class="params-info-row"><span>${label}</span><strong>${value || "—"}</strong></div>`).join("")}
+    <div class="params-row-list">
+      ${rows.map(([label, value]) => `<div class="params-info-row"><span>${label}</span><strong style="margin-left:auto;">${value || "—"}</strong></div>`).join("")}
     </div>
   `;
 }
+
+const STRIPE_ACCOUNT_TYPE_LABELS = { standard: "Standard", express: "Express", custom: "Custom", none: "Non défini" };
 
 function stripeAccountRows(businessData, statusData) {
   if (!businessData && !statusData) return null;
@@ -1157,6 +1159,7 @@ function stripeAccountRows(businessData, statusData) {
   return [
     ["Nom du compte", a.name],
     ["Identifiant du compte", a.id],
+    ["Type de compte", STRIPE_ACCOUNT_TYPE_LABELS[a.type] || a.type],
     ["Adresse de l'entreprise", a.address],
     ["Nom de l'entreprise (Stripe)", s.business_name],
     ["Pays", s.country],

@@ -680,11 +680,18 @@ def stripe_business_details(
         or _safe("business_profile.name", lambda: bp.name if bp else None)
     )
     account_id = _safe("account.id", lambda: account.id)
+    # Pour les comptes Connect "standard", Stripe ne renvoie pas les détails
+    # KYC (company/individual, donc pas d'adresse) à la plateforme - le
+    # marchand gère ces informations directement dans son propre Dashboard
+    # Stripe. Exposé pour que ce soit visible/compréhensible côté
+    # Paramètres plutôt qu'un champ vide sans explication.
+    account_type = _safe("account.type", lambda: account.type)
 
     return {
         "account": {
             "name": legal_name,
             "id": account_id,
+            "type": account_type,
             "address": company_address,
         },
     }
