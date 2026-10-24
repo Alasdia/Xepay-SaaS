@@ -844,16 +844,34 @@ def delete_account(
     user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Désactivation, jamais une suppression : is_deleted=True seulement,
+    aucune ligne (paiements, factures, clients, liens...) n'est jamais
+    effacée - conservé pour les obligations comptables/légales et pour
+    pouvoir réactiver le compte. Si cet utilisateur est propriétaire d'un
+    workspace avec un compte Stripe Connect, on tente aussi de couper
+    l'accès de Xepay à ce compte côté Stripe (Account.delete) - cela ne
+    supprime jamais les données Stripe du marchand (qui restent gérées
+    depuis son propre Dashboard), et échoue silencieusement pour les
+    comptes "standard" que la plateforme ne peut pas détacher via l'API
+    (Stripe l'interdit) - la désactivation Xepay reste valide dans tous
+    les cas."""
     try:
         user.is_deleted = True
         db.commit()
+
+        profile = db.query(Profile).filter(Profile.user_id == user.id).first()
+        if profile and profile.stripe_account_id:
+            try:
+                stripe.Account.delete(profile.stripe_account_id)
+            except Exception as e:
+                print("DELETE ACCOUNT - Stripe disconnect failed:", repr(e))
 
         return {"message": "Compte désactivé"}
 
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 
 @router.get("/profile")
 def get_profile(

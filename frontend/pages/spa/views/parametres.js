@@ -1225,9 +1225,17 @@ function stripeAccountPanelHtml() {
     : infoRowsHtml(stripeAccountRows(stripeBusinessData, stripeStatusData));
   return `
     ${infoHtml}
-    <h6 class="params-subsection-title mt-5" style="color:#ef4444;">Zone dangereuse</h6>
-    <p class="params-subsection-sub">Cette action est irréversible. Procédez avec précaution.</p>
-    <button type="button" class="btn btn-outline-danger btn-sm" id="p-stripe-delete-account-btn">Supprimer mon compte</button>
+    <div class="params-subsection-header mt-5">
+      <h6 class="params-subsection-title mb-0" style="color:#ef4444;">Zone dangereuse</h6>
+      <button type="button" class="btn btn-outline-danger btn-sm" id="p-stripe-delete-account-btn">Supprimer mon compte</button>
+    </div>
+    <p class="params-subsection-sub">
+      Cette action désactive définitivement votre compte Xepay : vous ne pourrez plus vous connecter ni créer ou recevoir
+      de paiements. L'accès de Xepay à votre compte Stripe Connect est coupé en même temps, qui ne pourra donc plus non
+      plus être utilisé via Xepay. Aucune donnée (paiements, factures, clients, liens...) n'est pour autant supprimée :
+      tout est conservé pour vos obligations comptables et légales. Votre compte Stripe reste par ailleurs entièrement
+      sous votre contrôle, directement depuis votre propre Dashboard Stripe.
+    </p>
   `;
 }
 
