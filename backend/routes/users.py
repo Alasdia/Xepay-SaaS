@@ -638,7 +638,7 @@ def stripe_status(
         )
     except Exception as e:
         print("STRIPE STATUS - retrieve failed:", repr(e))
-        raise HTTPException(status_code=502, detail="Impossible de récupérer le statut Stripe")
+        raise HTTPException(status_code=502, detail=f"Impossible de récupérer le statut Stripe : {e}")
 
     # Protégé : account.requirements peut être absent/None (ex: comptes créés
     # via l'API v2 Accounts, voir /signup et _exchange_google_code) même
@@ -678,7 +678,7 @@ def stripe_status(
         }
     except Exception as e:
         print("STRIPE STATUS - shaping failed:", repr(e))
-        raise HTTPException(status_code=500, detail="Erreur lors de la lecture du statut Stripe")
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la lecture du statut Stripe : {e}")
 
 
 def _format_address(addr) -> Optional[str]:
