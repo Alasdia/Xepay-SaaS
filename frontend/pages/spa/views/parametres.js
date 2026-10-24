@@ -969,36 +969,35 @@ const NOTIFICATION_CATEGORIES = [
   },
 ];
 
-function notifChannelBtn(channel, icon, disabled) {
-  return `
-    <button type="button" class="notif-channel-btn" data-channel="${channel}" title="${disabled ? "Bientôt disponible" : channel}" ${disabled ? "disabled" : ""}>
-      <i class="${icon}"></i>
-    </button>
-  `;
-}
-
 function notificationsTemplate() {
   return `
     ${detailHeader("Paramètres de notifications")}
-    <p class="params-subsection-sub">Choisissez par événement comment être notifié. SMS et Push arrivent bientôt.</p>
-    <div class="notif-grid">
-      ${NOTIFICATION_CATEGORIES.map((cat) => `
-        <div class="notif-column">
-          <div class="notif-column-header">${cat.label}</div>
-          ${cat.events.map((ev) => `
-            <div class="notif-event-row" data-event-key="${cat.key}.${ev.key}">
-              <div class="notif-event-label">${ev.label}</div>
-              <div class="notif-channels">
-                ${notifChannelBtn("email", "fa-solid fa-envelope", false)}
-                ${notifChannelBtn("sms", "fa-solid fa-comment-sms", true)}
-                ${notifChannelBtn("push", "fa-solid fa-bell", true)}
-              </div>
-            </div>
-          `).join("")}
-        </div>
+    <p class="params-subsection-sub">Choisissez une catégorie, puis comment être notifié pour chacun de ses événements. SMS et Push arrivent bientôt.</p>
+    <div class="notif-tabs">
+      ${NOTIFICATION_CATEGORIES.map((cat, i) => `
+        <button type="button" class="notif-tab${i === 0 ? " notif-tab--active" : ""}" data-category="${cat.key}">${cat.label}</button>
       `).join("")}
     </div>
+    <div class="notif-event-list" id="p-notif-event-list"></div>
   `;
+}
+
+function notifEventListHtml(categoryKey, prefs) {
+  const category = NOTIFICATION_CATEGORIES.find((c) => c.key === categoryKey);
+  return category.events.map((ev) => {
+    const fullKey = `${category.key}.${ev.key}`;
+    const emailEnabled = prefs[fullKey] !== false;
+    return `
+      <div class="notif-event-row" data-event-key="${fullKey}">
+        <div class="notif-event-label">${ev.label}</div>
+        <div class="notif-channels">
+          <button type="button" class="notif-channel-btn${emailEnabled ? " notif-channel-btn--active" : ""}" data-channel="email" title="Email"><i class="fa-solid fa-envelope"></i></button>
+          <button type="button" class="notif-channel-btn" data-channel="sms" title="Bientôt disponible" disabled><i class="fa-solid fa-comment-sms"></i></button>
+          <button type="button" class="notif-channel-btn" data-channel="push" title="Bientôt disponible" disabled><i class="fa-solid fa-bell"></i></button>
+        </div>
+      </div>
+    `;
+  }).join("");
 }
 
 async function mountNotifications(on) {
@@ -1009,18 +1008,26 @@ async function mountNotifications(on) {
   } catch (err) {
     console.error("Erreur chargement préférences de notifications:", err);
   }
-  document.querySelectorAll(".notif-event-row").forEach((row) => {
-    const enabled = prefs[row.dataset.eventKey] !== false;
-    row.querySelector('[data-channel="email"]').classList.toggle("notif-channel-btn--active", enabled);
+
+  const listEl = document.getElementById("p-notif-event-list");
+  listEl.innerHTML = notifEventListHtml(NOTIFICATION_CATEGORIES[0].key, prefs);
+
+  on(document.querySelector(".notif-tabs"), "click", (e) => {
+    const tab = e.target.closest(".notif-tab");
+    if (!tab) return;
+    document.querySelectorAll(".notif-tab").forEach((t) => t.classList.remove("notif-tab--active"));
+    tab.classList.add("notif-tab--active");
+    listEl.innerHTML = notifEventListHtml(tab.dataset.category, prefs);
   });
 
-  on(document.querySelector(".notif-grid"), "click", async (e) => {
+  on(listEl, "click", async (e) => {
     const btn = e.target.closest(".notif-channel-btn");
     if (!btn || btn.disabled) return;
     const row = btn.closest(".notif-event-row");
     const key = row.dataset.eventKey;
     const newValue = !btn.classList.contains("notif-channel-btn--active");
     btn.classList.toggle("notif-channel-btn--active", newValue);
+    prefs[key] = newValue;
     try {
       const res = await apiFetch("/notification-preferences", {
         method: "POST",
@@ -1029,6 +1036,7 @@ async function mountNotifications(on) {
       if (!res.ok) throw new Error("Erreur");
     } catch (err) {
       btn.classList.toggle("notif-channel-btn--active", !newValue);
+      prefs[key] = !newValue;
       showToast("Erreur lors de la sauvegarde", "error");
     }
   });
