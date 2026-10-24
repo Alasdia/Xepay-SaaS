@@ -822,10 +822,15 @@ def get_security_events(
 @router.post("/change-password")
 def change_password(
     data: ChangePasswordRequest,
-    membership: WorkspaceUser = Depends(require_owner),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Action purement personnelle (le mot de passe de current_user, jamais
+    celui d'un workspace) - ne doit dépendre d'aucun rôle dans le workspace
+    actif. Dépendait à tort de require_owner (jamais lu dans le corps de la
+    fonction) : un membre invité (jamais "owner" d'aucun workspace, ou
+    simplement en train de consulter un workspace où il n'est pas owner)
+    ne pouvait tout simplement jamais changer son propre mot de passe."""
     try:
         
         user = db.query(UserDB).filter(UserDB.email == current_user.email).first()
@@ -999,6 +1004,7 @@ def delete_account(
 @router.get("/profile")
 def get_profile(
     membership: WorkspaceUser = Depends(require_manager),
+    current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     owner_id = membership.workspace_id
@@ -1014,21 +1020,29 @@ def get_profile(
     owner = db.query(UserDB).filter(UserDB.id == owner_id).first()
 
     return {
+        # Coordonnées : partagées par le workspace actif (son propriétaire),
+        # vues/modifiables par n'importe quel manager+ - comportement
+        # intentionnel (facturation/Stripe sont au nom du propriétaire).
         "full_name": profile.full_name,
         "email": owner.email,
         "phone": profile.phone,
         "phone_verified": profile.phone_verified,
-        "two_factor_enabled": owner.two_factor_enabled,
-        "two_factor_backup_code_generated_at": owner.two_factor_backup_code_generated_at,
-        "account_id": owner.account_id,
-        "last_login": owner.last_login,
         "plan": owner.plan,
         "plan_started_at": owner.plan_started_at,
         "plan_expires_at": owner.plan_expires_at,
         "subscription_status": owner.subscription_status,
         "cancel_at_period_end": owner.cancel_at_period_end,
-        "google_linked": owner.google_id is not None,
-        "google_email": owner.google_email,
+        # Personnel à current_user, jamais au propriétaire du workspace
+        # actif : un membre invité consultant un workspace dont il n'est
+        # pas propriétaire voyait/pilotait la 2FA et le compte Google du
+        # PROPRIÉTAIRE à la place des siens (Authentification, Équipe et
+        # sécurité > Sécurité du compte).
+        "two_factor_enabled": current_user.two_factor_enabled,
+        "two_factor_backup_code_generated_at": current_user.two_factor_backup_code_generated_at,
+        "google_linked": current_user.google_id is not None,
+        "google_email": current_user.google_email,
+        "account_id": current_user.account_id,
+        "last_login": current_user.last_login,
     }
 
 
