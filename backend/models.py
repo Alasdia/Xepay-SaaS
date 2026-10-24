@@ -52,18 +52,6 @@ class GoogleLinkRequest(BaseModel):
     code: str
     redirect_uri: str
 
-class CompanyUpdateRequest(BaseModel):
-    # Tous optionnels : seul un champ envoyé (non None) est modifié - voir
-    # PATCH /company (Paramètres > Entreprise, bouton "Modifier" unique).
-    company_name: Optional[str] = None
-    legal_form: Optional[str] = None
-    registration_number: Optional[str] = None
-    vat_number: Optional[str] = None
-    address: Optional[str] = None
-    postal_code: Optional[str] = None
-    city: Optional[str] = None
-    country: Optional[str] = None
-
 class NotificationPreferencesRequest(BaseModel):
     # {"<categorie>.<evenement>": true/false} - voir UserDB.notification_prefs.
     # Fusionné (pas remplacé) avec les préférences existantes, pour qu'une
@@ -278,17 +266,6 @@ class Profile(Base):
     phone = Column(String)
     phone_verified = Column(Boolean, default=False)
     stripe_account_id = Column(String, nullable=True, index=True)
-    # Informations d'entreprise (Paramètres > Entreprise) - comme full_name/
-    # phone ci-dessus, portées par le workspace (son owner), pas par chaque
-    # membre individuellement - voir GET/PATCH /company.
-    company_name = Column(String, nullable=True)
-    legal_form = Column(String, nullable=True)
-    registration_number = Column(String, nullable=True)
-    vat_number = Column(String, nullable=True)
-    address = Column(String, nullable=True)
-    postal_code = Column(String, nullable=True)
-    city = Column(String, nullable=True)
-    country = Column(String, nullable=True)
 
 class UserDB(Base):
     __tablename__ = "users"

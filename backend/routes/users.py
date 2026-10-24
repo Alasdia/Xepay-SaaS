@@ -1,7 +1,8 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from backend.database import engine, get_db
-from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, ProfileUpdateRequest, PlanUpdate, Link, SecurityAlertsRequest, GoogleCodeExchange, GoogleLinkRequest, NotificationPreferencesRequest, CompanyUpdateRequest
+from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, ProfileUpdateRequest, PlanUpdate, Link, SecurityAlertsRequest, GoogleCodeExchange, GoogleLinkRequest, NotificationPreferencesRequest
 from backend.auth import get_current_user, issue_new_session
 from backend.services.workspace_service import (
     get_workspace_owner_id
@@ -626,6 +627,82 @@ def stripe_status(
     }
 
 
+def _format_address(addr) -> Optional[str]:
+    if not addr:
+        return None
+    parts = [addr.get("line1"), addr.get("line2"), addr.get("postal_code"), addr.get("city"), addr.get("state"), addr.get("country")]
+    return ", ".join(p for p in parts if p) or None
+
+
+@router.get("/stripe/business-details")
+def stripe_business_details(
+    membership: WorkspaceUser = Depends(require_manager),
+    db: Session = Depends(get_db),
+):
+    """Paramètres > Entreprise - détail des informations déjà fournies à
+    Stripe lors de l'onboarding Connect (business_profile/company/individual/
+    représentant légal), en lecture seule - toute modification passe par le
+    flux Stripe hébergé (voir Paramètres > Compte Stripe Connect), jamais
+    réécrite depuis ici pour ne pas casser une vérification KYC déjà validée."""
+    owner_id = membership.workspace_id
+    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
+    if not profile or not profile.stripe_account_id:
+        raise HTTPException(status_code=400, detail="Aucun compte Stripe connecté")
+
+    account = stripe.Account.retrieve(profile.stripe_account_id)
+    bp = account.business_profile
+    company = getattr(account, "company", None)
+    individual = getattr(account, "individual", None)
+
+    company_address = _format_address(company.address if company else None) or _format_address(individual.address if individual else None)
+    legal_name = (company.name if company else None) or (bp.name if bp else None)
+
+    representative = None
+    if company:
+        try:
+            persons = stripe.Account.list_persons(profile.stripe_account_id, limit=20)
+            rep = next((p for p in persons.data if p.get("relationship") and p.relationship.get("representative")), None)
+        except Exception:
+            rep = None
+        if rep:
+            representative = {
+                "name": " ".join(filter(None, [rep.first_name, rep.last_name])) or None,
+                "email": rep.email,
+                "phone": rep.phone,
+                "address": _format_address(rep.address),
+            }
+    elif individual:
+        representative = {
+            "name": " ".join(filter(None, [individual.first_name, individual.last_name])) or None,
+            "email": individual.email,
+            "phone": individual.phone,
+            "address": _format_address(individual.address),
+        }
+
+    return {
+        "account": {
+            "name": legal_name,
+            "id": account.id,
+            "address": company_address,
+        },
+        "business": {
+            "website": bp.url if bp else None,
+            "public_name": bp.name if bp else None,
+            "address": company_address,
+            "tax_id_provided": bool(company.tax_id_provided) if company else None,
+            "product_description": bp.product_description if bp else None,
+            "mcc": bp.mcc if bp else None,
+        },
+        "public": {
+            "display_name": bp.name if bp else None,
+            "legal_name": legal_name,
+            "support_address": _format_address(bp.support_address) if bp else None,
+            "support_phone": bp.support_phone if bp else None,
+        },
+        "representative": representative,
+    }
+
+
 @router.post("/change-password")
 def change_password(
     data: ChangePasswordRequest,
@@ -840,63 +917,6 @@ def update_profile(
         profile.phone = data.phone.strip() or None
     db.commit()
     return {"full_name": profile.full_name, "phone": profile.phone}
-
-
-@router.get("/company")
-def get_company(
-    membership: WorkspaceUser = Depends(require_manager),
-    db: Session = Depends(get_db),
-):
-    owner_id = membership.workspace_id
-    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
-    if not profile:
-        profile = Profile(user_id=owner_id)
-        db.add(profile)
-        db.commit()
-        db.refresh(profile)
-    return {
-        "company_name": profile.company_name,
-        "legal_form": profile.legal_form,
-        "registration_number": profile.registration_number,
-        "vat_number": profile.vat_number,
-        "address": profile.address,
-        "postal_code": profile.postal_code,
-        "city": profile.city,
-        "country": profile.country,
-    }
-
-
-@router.patch("/company")
-def update_company(
-    data: CompanyUpdateRequest,
-    membership: WorkspaceUser = Depends(require_manager),
-    db: Session = Depends(get_db),
-):
-    """Mêmes règles que PATCH /profile : seul un champ envoyé (non None) est
-    modifié - voir Paramètres > Entreprise."""
-    owner_id = membership.workspace_id
-    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
-    if not profile:
-        profile = Profile(user_id=owner_id)
-        db.add(profile)
-    for field in (
-        "company_name", "legal_form", "registration_number", "vat_number",
-        "address", "postal_code", "city", "country",
-    ):
-        value = getattr(data, field)
-        if value is not None:
-            setattr(profile, field, value.strip() or None)
-    db.commit()
-    return {
-        "company_name": profile.company_name,
-        "legal_form": profile.legal_form,
-        "registration_number": profile.registration_number,
-        "vat_number": profile.vat_number,
-        "address": profile.address,
-        "postal_code": profile.postal_code,
-        "city": profile.city,
-        "country": profile.country,
-    }
 
 
 @router.get("/me/user-plan")

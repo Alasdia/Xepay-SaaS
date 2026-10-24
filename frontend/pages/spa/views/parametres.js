@@ -92,7 +92,7 @@ function overviewTemplate() {
           ${tile("stripe", "fa-brands fa-stripe", "Compte Stripe Connect", "Configuration, vérifications et événements de votre compte Connect")}
           ${tile("plans-et-frais", "fa-solid fa-crown", "Plans et frais", "Plan actuel, consommation du mois et frais Xepay sur vos paiements")}
           ${tile("equipe", "fa-solid fa-users", "Équipe et sécurité", "Membres, rôles et sécurité de votre compte")}
-          ${tile("entreprise", "fa-solid fa-building", "Entreprise", "Raison sociale, immatriculation et coordonnées de facturation")}
+          ${tile("entreprise", "fa-solid fa-building", "Entreprise", "Informations du compte, de l'entreprise, publiques et du représentant légal")}
           ${tile("zone-dangereuse", "fa-solid fa-triangle-exclamation", "Zone dangereuse", "Suppression définitive et irréversible de votre compte", true)}
         </div>
       </section>
@@ -1614,99 +1614,108 @@ function mountEquipe(on) {
 }
 
 // --- Detail : Entreprise ---
-const COMPANY_FIELDS = ["company_name", "legal_form", "registration_number", "vat_number", "address", "postal_code", "city", "country"];
-const COMPANY_LABELS = {
-  company_name: "Raison sociale",
-  legal_form: "Forme juridique",
-  registration_number: "Numéro d'immatriculation",
-  vat_number: "Numéro de TVA",
-  address: "Adresse",
-  postal_code: "Code postal",
-  city: "Ville",
-  country: "Pays",
-};
-const companyFieldValues = {};
-let companyEditing = false;
+// Colonnes cliquables (même pattern que Paramètres de notifications :
+// .notif-tabs/.notif-tab à gauche, contenu à droite), lecture seule - les
+// données viennent de ce qui a déjà été fourni à Stripe lors de
+// l'onboarding Connect (GET /stripe/business-details), jamais d'un
+// formulaire local dupliqué.
+const COMPANY_TABS = [
+  { key: "account", label: "Informations du compte" },
+  { key: "business", label: "Informations sur votre entreprise" },
+  { key: "public", label: "Informations publiques" },
+  { key: "representative", label: "Représentant légal" },
+];
 
 function entrepriseTemplate() {
   return `
     ${detailHeader("Entreprise")}
-    <div class="params-subsection-header">
-      <h6 class="params-subsection-title mb-0">Informations de l'entreprise</h6>
-      <button type="button" id="p-company-edit-btn" class="params-edit-btn">Modifier</button>
-    </div>
-    <p class="params-subsection-sub">Ces informations apparaissent sur vos factures et documents officiels.</p>
-    <div class="params-row-list" style="max-width:640px;">
-      ${COMPANY_FIELDS.map((field) => `
-        <div class="params-info-row">
-          <span>${COMPANY_LABELS[field]}</span>
-          <div class="params-row-right" id="p-company-right-${field}"></div>
-        </div>
-      `).join("")}
+    <p class="params-subsection-sub">Informations déjà fournies à Stripe lors de la vérification de votre compte Connect.</p>
+    <div id="p-company-body"><p class="text-muted">Chargement...</p></div>
+  `;
+}
+
+function companyFieldRows(tabKey, data) {
+  if (tabKey === "account") {
+    const a = data.account || {};
+    return [["Nom du compte", a.name], ["Identifiant du compte", a.id], ["Adresse de l'entreprise", a.address]];
+  }
+  if (tabKey === "business") {
+    const b = data.business || {};
+    return [
+      ["Site web", b.website],
+      ["Nom public", b.public_name],
+      ["Adresse", b.address],
+      ["Identifiant de l'entreprise (EIN)", b.tax_id_provided == null ? null : (b.tax_id_provided ? "Fourni" : "Non fourni")],
+      ["Description du produit", b.product_description],
+      ["Secteur d'activité (code MCC)", b.mcc],
+    ];
+  }
+  if (tabKey === "public") {
+    const p = data.public || {};
+    return [["Nom commercial", p.display_name], ["Raison sociale", p.legal_name], ["Adresse du service de support", p.support_address], ["Numéro de support", p.support_phone]];
+  }
+  if (tabKey === "representative") {
+    const r = data.representative;
+    return r ? [["Nom", r.name], ["Email", r.email], ["Téléphone", r.phone], ["Adresse", r.address]] : null;
+  }
+  return [];
+}
+
+function companyRowsHtml(rows) {
+  if (!rows) return `<p class="text-muted">Aucun représentant légal renseigné pour ce compte.</p>`;
+  return `
+    <div class="params-row-list" style="max-width:560px;">
+      ${rows.map(([label, value]) => `<div class="params-info-row"><span>${label}</span><strong>${value || "—"}</strong></div>`).join("")}
     </div>
   `;
 }
 
-function renderCompanyDisplay() {
-  for (const field of COMPANY_FIELDS) {
-    const container = document.getElementById(`p-company-right-${field}`);
-    const value = companyFieldValues[field];
-    container.innerHTML = value ? `<strong>${value}</strong>` : `<span class="text-muted">Non renseigné</span>`;
-  }
+function companyTabsHtml(data, activeKey) {
+  return `
+    <div class="notif-layout">
+      <div class="notif-tabs">
+        ${COMPANY_TABS.map((t) => `<button type="button" class="notif-tab${t.key === activeKey ? " notif-tab--active" : ""}" data-company-tab="${t.key}">${t.label}</button>`).join("")}
+      </div>
+      <div class="notif-event-list">${companyRowsHtml(companyFieldRows(activeKey, data))}</div>
+    </div>
+  `;
 }
 
-function renderCompanyEdit() {
-  for (const field of COMPANY_FIELDS) {
-    const container = document.getElementById(`p-company-right-${field}`);
-    container.innerHTML = `<input type="text" class="form-control form-control-sm" id="p-company-input-${field}" value="${companyFieldValues[field] || ""}" placeholder="${COMPANY_LABELS[field]}">`;
-  }
-}
+let companyData = null;
+let companyActiveTab = "account";
 
-async function toggleCompanyEdit() {
-  const btn = document.getElementById("p-company-edit-btn");
-  if (!companyEditing) {
-    renderCompanyEdit();
-    btn.innerText = "Enregistrer";
-    companyEditing = true;
-    return;
-  }
-
-  const body = {};
-  for (const field of COMPANY_FIELDS) {
-    body[field] = document.getElementById(`p-company-input-${field}`).value.trim();
-  }
-  btn.disabled = true;
-  btn.innerText = "Enregistrement...";
+async function loadCompanyDetails() {
+  const body = document.getElementById("p-company-body");
   try {
-    const res = await apiFetch("/company", { method: "PATCH", body });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Erreur");
-    for (const field of COMPANY_FIELDS) companyFieldValues[field] = data[field] || "";
-    showToast("Mis à jour");
-    renderCompanyDisplay();
-    btn.innerText = "Modifier";
-    companyEditing = false;
+    const res = await apiFetch("/stripe/business-details");
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      const message = errData.detail === "Aucun compte Stripe connecté"
+        ? "Connectez d'abord votre compte Stripe pour voir ces informations."
+        : "Impossible de charger ces informations.";
+      body.innerHTML = `<p class="text-muted">${message} <a href="javascript:void(0)" id="p-company-stripe-link">Configurer Stripe</a></p>`;
+      return;
+    }
+    companyData = await res.json();
+    companyActiveTab = "account";
+    body.innerHTML = companyTabsHtml(companyData, companyActiveTab);
   } catch (err) {
-    showToast(err.message, "error");
-    btn.innerText = "Enregistrer";
-  } finally {
-    btn.disabled = false;
+    body.innerHTML = `<p class="text-muted">Erreur de chargement.</p>`;
   }
 }
 
 function mountEntreprise(on) {
-  companyEditing = false;
-  on(document.getElementById("p-company-edit-btn"), "click", toggleCompanyEdit);
-  (async () => {
-    try {
-      const res = await apiFetch("/company");
-      const data = await res.json();
-      for (const field of COMPANY_FIELDS) companyFieldValues[field] = data[field] || "";
-      renderCompanyDisplay();
-    } catch (err) {
-      console.error("Erreur chargement entreprise:", err);
+  on(document.getElementById("p-company-body"), "click", (e) => {
+    if (e.target.closest("#p-company-stripe-link")) {
+      navigate("/parametres/stripe");
+      return;
     }
-  })();
+    const tabBtn = e.target.closest("[data-company-tab]");
+    if (!tabBtn || !companyData) return;
+    companyActiveTab = tabBtn.dataset.companyTab;
+    document.getElementById("p-company-body").innerHTML = companyTabsHtml(companyData, companyActiveTab);
+  });
+  loadCompanyDetails();
 }
 
 // --- Detail : Cartes virtuelles (Issuing) ---
