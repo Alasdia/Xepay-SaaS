@@ -3,6 +3,7 @@
 // modale upgrade partagée une seule fois pour toute la session.
 import { registerRoute, configure, start, navigate } from "./core/router.js";
 import { isAuthenticated, setSession, getWorkspaceId, setWorkspaceId } from "./core/state.js";
+import { apiFetch } from "./core/apiClient.js";
 import { initSidebar, setActiveRoute } from "./sidebar.js";
 import { ensureModalLoaded, upgrade } from "./shared/modalUpgrade.js";
 import { showToast } from "./shared/toast.js";
@@ -64,6 +65,18 @@ async function init() {
   }
 
   resolveEntryPath();
+
+  // Journalise l'accès à ce workspace une fois par chargement de l'app
+  // (pas à chaque navigation interne, trop bruyant) - couvre le cas où une
+  // session déjà ouverte reprend directement sur un workspace sans
+  // repasser par le sélecteur (Équipe et sécurité) : sans cet appel, un
+  // propriétaire ne pourrait jamais savoir qu'un membre a reconsulté son
+  // workspace ce jour-là. Le backend ignore silencieusement le cas où
+  // c'est son propre workspace. Best-effort : ne bloque jamais le reste.
+  const activeWorkspaceId = getWorkspaceId();
+  if (activeWorkspaceId && activeWorkspaceId !== WORKSPACE_PLACEHOLDER) {
+    apiFetch("/security/log-workspace-access", { method: "POST" }).catch(() => {});
+  }
 
   configure({
     isAuthenticated,

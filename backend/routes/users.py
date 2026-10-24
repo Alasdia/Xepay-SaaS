@@ -805,10 +805,15 @@ def log_workspace_access(
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Appelé par le sélecteur de workspace (Équipe et sécurité) à chaque
-    bascule - pour que le propriétaire puisse répondre à "qui a accédé à
-    mon workspace, et quand ?" (la connexion elle-même ne porte jamais ce
-    workspace précis, voir resolve_log_workspace_id)."""
+    """Appelé par le sélecteur de workspace (bascule explicite) ET une fois
+    par chargement de l'app (app.js, init) - pour que le propriétaire
+    puisse répondre à "qui a accédé à mon workspace, et quand ?", y
+    compris quand une session déjà ouverte reprend directement sur ce
+    workspace sans repasser par le sélecteur. Ignore silencieusement son
+    propre workspace : pas utile de se journaliser soi-même, et ça
+    éviterait de polluer le journal à chaque simple rechargement de page."""
+    if membership.workspace_id == current_user.id:
+        return {"ok": True}
     log_security_event(
         db, current_user.id, "workspace_accessed", "A accédé à ce workspace",
         workspace_id=membership.workspace_id,
