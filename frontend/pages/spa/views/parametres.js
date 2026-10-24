@@ -1218,7 +1218,10 @@ function stripeEtatPanelHtml() {
 }
 
 function stripeTabContentHtml(key) {
-  if (key === "account") return infoRowsHtml(stripeAccountRows(stripeBusinessData, stripeStatusData));
+  if (key === "account") {
+    if (!stripeBusinessData && stripeBusinessError) return `<p class="text-muted">${stripeBusinessError}</p>`;
+    return infoRowsHtml(stripeAccountRows(stripeBusinessData, stripeStatusData));
+  }
   if (key === "etat") return stripeEtatPanelHtml();
   return "";
 }
@@ -1237,6 +1240,7 @@ function stripeTabsHtml() {
 }
 
 let stripeBusinessData = null;
+let stripeBusinessError = null;
 let stripeStatusData = null;
 let stripeActiveTab = "account";
 
@@ -1294,6 +1298,7 @@ function wireStripeActionButton() {
 async function loadStripeDetails() {
   const body = document.getElementById("p-stripe-body");
   stripeBusinessData = null;
+  stripeBusinessError = null;
   stripeStatusData = null;
   stripeActiveTab = "account";
   try {
@@ -1301,7 +1306,16 @@ async function loadStripeDetails() {
       apiFetch("/stripe/business-details"),
       apiFetch("/stripe/status"),
     ]);
-    if (bizRes.ok) stripeBusinessData = await bizRes.json();
+    if (bizRes.ok) {
+      stripeBusinessData = await bizRes.json();
+    } else {
+      try {
+        const errData = await bizRes.json();
+        stripeBusinessError = errData.detail ? `${errData.detail} (HTTP ${bizRes.status})` : `Erreur HTTP ${bizRes.status}`;
+      } catch (e) {
+        stripeBusinessError = `Erreur HTTP ${bizRes.status}`;
+      }
+    }
     if (statusRes.ok) {
       stripeStatusData = await statusRes.json();
     } else {
