@@ -643,3 +643,54 @@
   font-weight: 600;
   color: #111827;
 }
+
+/* Variante cliquable (filtre) - KPI Équipe : mêmes états que .commerce-kpi
+   dans commerce.js (hover/active), le display-only ci-dessus restant
+   disponible ailleurs si besoin. */
+.commerce-kpi {
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+
+.commerce-kpi:hover {
+  border-color: #cbd5e1;
+  background: #fafafa;
+}
+
+.commerce-kpi.active {
+  border-color: #94a3b8;
+  background: #f8fafc;
+  box-shadow: 0 0 0 1px #94a3b8;
+}
+
+/* Sélecteur de workspace (Équipe) : profil.css/sécurité.css (chargés après
+   parametres.css sur cette vue) imposent un background !important sur
+   .form-select qui efface le chevron natif - réécrit ici, ciblé par id
+   (plus spécifique qu'une classe, donc prioritaire même en !important). */
+#p-team-workspace-switcher {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+  background-size: 14px 10px !important;
+  padding-right: 30px !important;
+}
+
+/* Tableau Équipe "dans un creux" (fond gris) avec en-tête figé pendant le
+   défilement vertical (colonnes statiques, lignes qui défilent). */
+.params-table-well {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+
+.params-table-scroll {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.params-table-scroll thead th {
+  position: sticky;
+  top: 0;
+  background: #f9fafb;
+  z-index: 1;
+}

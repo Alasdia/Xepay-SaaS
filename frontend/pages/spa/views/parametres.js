@@ -1635,35 +1635,49 @@ function teamInviteRowHtml(inv) {
   return `<tr><td>${inv.email}</td><td>${TEAM_ROLE_LABELS[inv.role] || inv.role}</td><td>${inv.days_remaining} j</td></tr>`;
 }
 
-function teamKpiHtml(users, invites) {
+// KPI cliquables (même .commerce-kpi que le reste de l'app, voir
+// parametres.css) : "Membres actifs"/"Administrateurs" filtrent le tableau
+// des membres, "Invitations en attente" fait défiler jusqu'à la table des
+// invitations (ce n'est pas un attribut d'une ligne membre, rien à
+// filtrer). Re-cliquer le filtre actif le désactive (retour à "Tous").
+function teamKpiHtml(users, invites, activeFilter) {
   const kpis = [
-    { label: "Membres actifs", count: users.filter((u) => u.status !== "suspended").length },
-    { label: "Invitations en attente", count: invites.length },
-    { label: "Administrateurs", count: users.filter((u) => u.role === "admin" || u.role === "owner").length },
+    { filter: "active", label: "Membres actifs", count: users.filter((u) => u.status !== "suspended").length },
+    { filter: "invites", label: "Invitations en attente", count: invites.length },
+    { filter: "admin", label: "Administrateurs", count: users.filter((u) => u.role === "admin" || u.role === "owner").length },
   ];
   return `
     <div class="commerce-kpi-filters">
       ${kpis.map((k) => `
-        <div class="commerce-kpi commerce-kpi-display">
+        <button type="button" class="commerce-kpi${k.filter === activeFilter ? " active" : ""}" data-team-filter="${k.filter}">
           <span class="commerce-kpi-label">${k.label}</span>
           <strong class="commerce-kpi-value">${k.count}</strong>
-        </div>
+        </button>
       `).join("")}
     </div>
   `;
 }
 
-function teamContentHtml(users, invites) {
+function filterTeamUsers(users, activeFilter) {
+  if (activeFilter === "active") return users.filter((u) => u.status !== "suspended");
+  if (activeFilter === "admin") return users.filter((u) => u.role === "admin" || u.role === "owner");
+  return users;
+}
+
+function teamContentHtml(users, invites, activeFilter) {
+  const filtered = filterTeamUsers(users, activeFilter);
   return `
-    ${teamKpiHtml(users, invites)}
-    <div class="table-wrap">
-      <table class="table params-mini-table">
-        <thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th><th>Dernière connexion</th><th></th></tr></thead>
-        <tbody>${users.map(teamMemberRowHtml).join("")}</tbody>
-      </table>
+    ${teamKpiHtml(users, invites, activeFilter)}
+    <div class="params-table-well">
+      <div class="table-wrap params-table-scroll">
+        <table class="table params-mini-table">
+          <thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th><th>Dernière connexion</th><th></th></tr></thead>
+          <tbody>${filtered.length ? filtered.map(teamMemberRowHtml).join("") : `<tr><td colspan="6" class="text-muted">Aucun membre pour ce filtre.</td></tr>`}</tbody>
+        </table>
+      </div>
     </div>
     ${invites.length ? `
-      <h6 class="params-subsection-title mt-5">Invitations en attente</h6>
+      <h6 class="params-subsection-title mt-5" id="p-team-invites-anchor">Invitations en attente</h6>
       <p class="params-subsection-sub">Invitations envoyées, pas encore acceptées.</p>
       <div class="table-wrap">
         <table class="table params-mini-table">
@@ -1676,6 +1690,8 @@ function teamContentHtml(users, invites) {
 }
 
 let teamUsers = [];
+let teamInvites = [];
+let teamActiveFilter = null;
 
 // Sélecteur de workspace (Équipe) - même logique que multiUsers.js :
 // liste les workspaces dont on est membre, présélectionne celui déjà
@@ -1721,15 +1737,21 @@ async function loadTeam() {
     }
     if (!res.ok) throw new Error("Erreur");
     teamUsers = await res.json();
-    let invites = [];
+    teamInvites = [];
     try {
       const invRes = await apiFetch("/invites");
-      if (invRes.ok) invites = await invRes.json();
+      if (invRes.ok) teamInvites = await invRes.json();
     } catch (e) {}
-    body.innerHTML = teamContentHtml(teamUsers, invites);
+    teamActiveFilter = null;
+    renderTeamContent();
   } catch (err) {
     body.innerHTML = `<p class="text-muted">Erreur de chargement.</p>`;
   }
+}
+
+function renderTeamContent() {
+  const body = document.getElementById("p-team-body");
+  if (body) body.innerHTML = teamContentHtml(teamUsers, teamInvites, teamActiveFilter);
 }
 
 async function changeTeamMemberRole(u) {
@@ -1848,6 +1870,19 @@ function mountEquipe(on) {
   on(document.getElementById("p-team-workspace-switcher"), "change", (e) => switchTeamWorkspace(e.target.value));
 
   on(document.getElementById("p-team-body"), "click", (e) => {
+    const kpiBtn = e.target.closest("[data-team-filter]");
+    if (kpiBtn) {
+      const filter = kpiBtn.dataset.teamFilter;
+      if (filter === "invites") {
+        const anchor = document.getElementById("p-team-invites-anchor");
+        if (anchor) anchor.scrollIntoView({ behavior: "smooth", block: "start" });
+        else showToast("Aucune invitation en attente");
+        return;
+      }
+      teamActiveFilter = teamActiveFilter === filter ? null : filter;
+      renderTeamContent();
+      return;
+    }
     const trigger = e.target.closest(".row-menu-trigger");
     if (trigger) {
       toggleParamsRowMenu(trigger);
