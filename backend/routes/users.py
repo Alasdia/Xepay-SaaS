@@ -655,27 +655,39 @@ def stripe_business_details(
         print("STRIPE BUSINESS DETAILS - retrieve failed:", repr(e))
         raise HTTPException(status_code=502, detail="Impossible de récupérer les informations Stripe")
 
-    # Protégé : une exception ici ne doit jamais remonter brute (sinon
-    # Starlette renvoie un 500 sans passer par CORSMiddleware, ce que le
-    # navigateur affiche à tort comme une erreur CORS).
-    try:
-        bp = account.business_profile
-        company = getattr(account, "company", None)
-        individual = getattr(account, "individual", None)
+    # Chaque champ est lu isolément : une surprise sur l'un (ex: forme de
+    # compte Stripe inattendue) ne doit jamais faire échouer les autres ni
+    # renvoyer un 500 brut (qui saute CORSMiddleware et s'affiche à tort
+    # comme une erreur CORS côté navigateur) - on préfère un champ manquant
+    # à toute la vue vide.
+    def _safe(label, fn):
+        try:
+            return fn()
+        except Exception as e:
+            print(f"STRIPE BUSINESS DETAILS - {label} failed:", repr(e))
+            return None
 
-        company_address = _format_address(company.address if company else None) or _format_address(individual.address if individual else None)
-        legal_name = (company.name if company else None) or (bp.name if bp else None)
+    bp = _safe("business_profile", lambda: account.business_profile)
+    company = _safe("company", lambda: getattr(account, "company", None))
+    individual = _safe("individual", lambda: getattr(account, "individual", None))
 
-        return {
-            "account": {
-                "name": legal_name,
-                "id": account.id,
-                "address": company_address,
-            },
-        }
-    except Exception as e:
-        print("STRIPE BUSINESS DETAILS - shaping failed:", repr(e))
-        raise HTTPException(status_code=500, detail="Erreur lors de la lecture des informations Stripe")
+    company_address = (
+        _safe("company.address", lambda: _format_address(company.address) if company else None)
+        or _safe("individual.address", lambda: _format_address(individual.address) if individual else None)
+    )
+    legal_name = (
+        _safe("company.name", lambda: company.name if company else None)
+        or _safe("business_profile.name", lambda: bp.name if bp else None)
+    )
+    account_id = _safe("account.id", lambda: account.id)
+
+    return {
+        "account": {
+            "name": legal_name,
+            "id": account_id,
+            "address": company_address,
+        },
+    }
 
 
 @router.post("/change-password")
