@@ -638,7 +638,7 @@ def stripe_status(
         )
     except Exception as e:
         print("STRIPE STATUS - retrieve failed:", repr(e))
-        raise HTTPException(status_code=502, detail=f"Impossible de récupérer le statut Stripe : {e}")
+        raise HTTPException(status_code=502, detail="Impossible de récupérer le statut Stripe")
 
     # Protégé : account.requirements peut être absent/None (ex: comptes créés
     # via l'API v2 Accounts, voir /signup et _exchange_google_code) même
@@ -662,7 +662,7 @@ def stripe_status(
                 "payouts_enabled": bool(account.payouts_enabled),
                 "details_submitted": bool(getattr(account, "details_submitted", False)),
                 "created": datetime.fromtimestamp(account.created, tz=timezone.utc).isoformat() if getattr(account, "created", None) else None,
-                "business_name": (account.business_profile.name if getattr(account, "business_profile", None) else None) or account.get("email"),
+                "business_name": (account.business_profile.name if getattr(account, "business_profile", None) else None) or getattr(account, "email", None),
                 "country": getattr(account, "country", None),
                 "requirements": {
                     "currently_due": currently_due,
@@ -678,7 +678,7 @@ def stripe_status(
         }
     except Exception as e:
         print("STRIPE STATUS - shaping failed:", repr(e))
-        raise HTTPException(status_code=500, detail=f"Erreur lors de la lecture du statut Stripe : {e}")
+        raise HTTPException(status_code=500, detail="Erreur lors de la lecture du statut Stripe")
 
 
 def _format_address(addr) -> Optional[str]:
