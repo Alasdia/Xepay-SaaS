@@ -89,9 +89,9 @@ function overviewTemplate() {
       <section class="params-section">
         ${sectionTitle("Paramètres du compte")}
         <div class="params-tiles-grid">
-          ${tile("stripe", "fa-brands fa-stripe", "Compte Stripe", "Vérification et paiements")}
-          ${tile("abonnement", "fa-solid fa-crown", "Abonnement", "Plan et facturation")}
-          ${tile("zone-dangereuse", "fa-solid fa-triangle-exclamation", "Zone dangereuse", "Suppression du compte", true)}
+          ${tile("stripe", "fa-brands fa-stripe", "Compte Stripe", "Statut de vérification, progression du profil et alertes KYC")}
+          ${tile("abonnement", "fa-solid fa-crown", "Abonnement", "Plan actuel, facturation et résiliation de l'abonnement")}
+          ${tile("zone-dangereuse", "fa-solid fa-triangle-exclamation", "Zone dangereuse", "Suppression définitive et irréversible de votre compte", true)}
         </div>
       </section>
 
