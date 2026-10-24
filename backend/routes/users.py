@@ -1439,9 +1439,12 @@ def accept_invite(
         db.commit()
 
         # Plus de jeton dans l'URL de redirection : cookie de session posé
-        # directement ici, comme pour /auth/google/callback.
+        # directement ici, comme pour /auth/google/callback. multi-users.html
+        # est l'ancienne page retirée - next=parametres/equipe fait
+        # atterrir directement sur Équipe et sécurité (voir app.js,
+        # consumeOAuthBootstrap) plutôt que sur le tableau de bord nu.
         redirect = RedirectResponse(
-            url=f"https://alasdia.com/multi-users.html?workspace_id={invite.workspace_id}"
+            url=f"https://alasdia.com/dashboard.html?workspace_id={invite.workspace_id}&next=parametres/equipe"
         )
         issue_new_session(db, redirect, existing_user, request=request)
         return redirect

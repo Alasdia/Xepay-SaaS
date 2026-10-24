@@ -34,6 +34,14 @@ function consumeOAuthBootstrap() {
   if (!workspaceId) return;
   localStorage.clear();
   setSession({ workspaceId });
+  // "next" optionnel (ex: acceptation d'invitation -> next=parametres/equipe)
+  // pour atterrir directement sur une sous-page plutôt que sur le tableau
+  // de bord nu. Réécrit tout de suite au format applicatif : resolveEntryPath
+  // ne touchera plus à l'URL puisqu'elle commence déjà par /dash/.
+  const next = params.get("next");
+  if (next) {
+    window.history.replaceState({}, document.title, `/dash/workspace/${encodeURIComponent(workspaceId)}/${next}`);
+  }
 }
 
 // Normalise l'URL d'entrée vers le schéma applicatif /dash/workspace/{id}/...
