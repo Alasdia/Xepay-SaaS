@@ -648,6 +648,12 @@ async function loadWorkspaces() {
     const res = await apiFetch("/workspaces/me");
     const list = await res.json();
     if (!res.ok) throw new Error("Erreur");
+    // Cette table liste TOUS les workspaces (comportement voulu, pas
+    // filtré sur l'actif) - mais sans aucune marque, rien ne distingue
+    // visuellement celui réellement sélectionné, d'où la confusion après
+    // un changement de workspace. Même pattern que "Actuelle" sur Sessions
+    // actives.
+    const activeId = getWorkspaceId();
     tbody.innerHTML = list.length
       ? list.map((w) => `
           <tr>
@@ -656,7 +662,7 @@ async function loadWorkspaces() {
             <td>${w.owner_email}</td>
             <td>${w.role}</td>
             <td>${formatSessionTime(w.created_at)}</td>
-            <td class="text-end">${workspaceRowMenuHtml(w.id, w.is_own_workspace)}</td>
+            <td class="text-end">${String(w.id) === activeId ? "Actuel" : workspaceRowMenuHtml(w.id, w.is_own_workspace)}</td>
           </tr>
         `).join("")
       : `<tr><td colspan="6" class="text-muted">Aucun workspace.</td></tr>`;
