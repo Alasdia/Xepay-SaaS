@@ -1391,7 +1391,7 @@ function plansEtFraisTemplate() {
     <p class="params-subsection-sub mb-5">Résilie votre abonnement payant. Vous conservez l'accès à vos fonctionnalités actuelles jusqu'à la fin de la période déjà payée, puis votre compte repasse automatiquement au plan Free. Aucune donnée n'est supprimée.</p>
 
     <h6 class="params-subsection-title">Frais Xepay</h6>
-    <p class="params-subsection-sub">Xepay applique des frais de plateforme sur chaque paiement reçu, en plus des frais de traitement prélevés par Stripe. Ils sont déduits automatiquement du montant transféré sur votre compte Stripe Connect, quel que soit le type de paiement (lien, abonnement ou facture) — vous n'avez rien à calculer ni à reverser vous-même.</p>
+    <p class="params-subsection-sub">Les 6% correspondent à la commission globale prélevée par Xepay sur chaque paiement reçu. Ils sont déduits automatiquement du montant transféré sur votre compte Stripe Connect, quel que soit le type de paiement (lien, abonnement ou facture) — vous n'avez rien à calculer ni à reverser vous-même.</p>
     <div class="params-row-list" style="max-width:560px;">
       <div class="params-info-row"><span>Frais Xepay sur chaque paiement reçu</span><strong>6% du montant</strong></div>
     </div>
