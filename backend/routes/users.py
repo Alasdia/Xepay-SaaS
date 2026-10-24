@@ -26,7 +26,7 @@ from fastapi.responses import FileResponse
 from fastapi import FastAPI, Request
 from backend.services.email_service import send_invitation_email, send_login_alert_email, is_notification_enabled
 from backend.services.rate_limit import allow_attempt, reset as reset_rate_limit
-from backend.services.security_log_service import log_security_event
+from backend.services.security_log_service import log_security_event, resolve_log_workspace_id
 from backend.security import hash_password, verify_password, decrypt_secret
 from math import ceil
 import requests
@@ -526,6 +526,7 @@ def google_exchange(
 @router.post("/auth/google/link")
 def link_google_account(
     payload: GoogleLinkRequest,
+    request: Request,
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -568,19 +569,20 @@ def link_google_account(
     current_user.google_id = google_id
     current_user.google_email = google_email
     db.commit()
-    log_security_event(db, current_user.id, "google_linked", f"Compte Google connecté ({google_email})")
+    log_security_event(db, current_user.id, "google_linked", f"Compte Google connecté ({google_email})", workspace_id=resolve_log_workspace_id(request, current_user.id))
     return {"google_email": google_email}
 
 
 @router.post("/auth/google/unlink")
 def unlink_google_account(
+    request: Request,
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     current_user.google_id = None
     current_user.google_email = None
     db.commit()
-    log_security_event(db, current_user.id, "google_unlinked", "Compte Google déconnecté")
+    log_security_event(db, current_user.id, "google_unlinked", "Compte Google déconnecté", workspace_id=resolve_log_workspace_id(request, current_user.id))
     return {"ok": True}
 
 
@@ -793,25 +795,33 @@ def stripe_business_details(
 
 @router.get("/security/events")
 def get_security_events(
-    current_user: UserDB = Depends(get_current_user),
+    membership: WorkspaceUser = Depends(require_member),
     db: Session = Depends(get_db),
 ):
-    """Paramètres > Équipe et sécurité > Historique de sécurité - journal
-    des actions sensibles effectuées PAR cet utilisateur (connexions,
-    mot de passe/2FA/clés d'accès, actions d'équipe qu'il a lui-même
-    déclenchées), les plus récentes d'abord."""
+    """Paramètres > Équipe et sécurité > Journal d'activité - événements
+    survenus DANS LE WORKSPACE ACTIF (X-Workspace-Id), pas seulement ceux
+    de l'utilisateur courant : actions personnelles de chaque membre
+    (connexion, mot de passe, 2FA, clés d'accès, compte Google) effectuées
+    en consultant ce workspace, et actions d'équipe qui s'y rapportent
+    (inviter/changer un rôle/suspendre/retirer un membre)."""
     events = (
         db.query(SecurityEvent)
-        .filter(SecurityEvent.user_id == current_user.id)
+        .filter(SecurityEvent.workspace_id == membership.workspace_id)
         .order_by(SecurityEvent.created_at.desc())
         .limit(50)
         .all()
+    )
+    actor_ids = {e.user_id for e in events}
+    actor_emails = (
+        {u.id: u.email for u in db.query(UserDB).filter(UserDB.id.in_(actor_ids)).all()}
+        if actor_ids else {}
     )
     return [
         {
             "id": e.id,
             "event_type": e.event_type,
             "description": e.description,
+            "actor_email": actor_emails.get(e.user_id),
             "ip": e.ip,
             "created_at": e.created_at,
         }
@@ -822,6 +832,7 @@ def get_security_events(
 @router.post("/change-password")
 def change_password(
     data: ChangePasswordRequest,
+    request: Request,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -852,7 +863,7 @@ def change_password(
 
         user.password = hash_password(data.new_password)
         db.commit()
-        log_security_event(db, user.id, "password_changed", "Mot de passe modifié")
+        log_security_event(db, user.id, "password_changed", "Mot de passe modifié", workspace_id=resolve_log_workspace_id(request, user.id))
 
         return {"success": True, "message": "Mot de passe mis à jour"}
 
@@ -1361,7 +1372,7 @@ def create_invite(
         inviter_email=current_user.email,
         role=role
     )
-    log_security_event(db, current_user.id, "member_invited", f"Invitation envoyée à {email} (rôle {role.capitalize()})")
+    log_security_event(db, current_user.id, "member_invited", f"Invitation envoyée à {email} (rôle {role.capitalize()})", workspace_id=workspace_id)
 
     return {
         "message": "Invitation créée",
@@ -1501,7 +1512,7 @@ def update_role(
     new_role = _validate_assignable_role(data.get("role"))
     target_membership.role = new_role
     db.commit()
-    log_security_event(db, membership.user_id, "member_role_changed", f"Rôle de {user.email} changé en {new_role.capitalize()}")
+    log_security_event(db, membership.user_id, "member_role_changed", f"Rôle de {user.email} changé en {new_role.capitalize()}", workspace_id=membership.workspace_id)
 
     return {"message": "Rôle mis à jour"}
 
@@ -1534,7 +1545,7 @@ def toggle_user(
 
     db.commit()
     status_label = "suspendu" if user.status == "suspended" else "actif"
-    log_security_event(db, membership.user_id, "member_status_changed", f"Statut de {user.email} changé en « {status_label} »")
+    log_security_event(db, membership.user_id, "member_status_changed", f"Statut de {user.email} changé en « {status_label} »", workspace_id=membership.workspace_id)
 
     return {"message": "Statut modifié"}
 
@@ -1576,7 +1587,7 @@ def delete_user(
     ).delete()
 
     db.commit()
-    log_security_event(db, current_user.id, "member_removed", f"{removed_email} retiré de l'équipe")
+    log_security_event(db, current_user.id, "member_removed", f"{removed_email} retiré de l'équipe", workspace_id=workspace_id)
 
     return {"message": "Utilisateur supprimé"}
 

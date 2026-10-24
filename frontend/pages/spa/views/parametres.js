@@ -1676,7 +1676,7 @@ function equipeTemplate() {
           </div>
 
           <h6 class="params-subsection-title">Journal d'activité</h6>
-          <p class="params-subsection-sub">Historique des actions de sécurité sur votre compte (connexions, mot de passe, 2FA, clés d'accès, équipe).</p>
+          <p class="params-subsection-sub">Activité de ce workspace : connexions, mot de passe, 2FA, clés d'accès, compte Google et actions d'équipe de tous ses membres.</p>
           <div id="p-security-history-body"><p class="text-muted">Chargement...</p></div>
         </div>
       </div>
@@ -1918,7 +1918,7 @@ async function loadAccountSecuritySummary() {
 }
 
 function securityEventRowHtml(e) {
-  return `<tr><td>${e.description}</td><td>${e.ip || "—"}</td><td>${formatSessionTime(e.created_at)}</td></tr>`;
+  return `<tr><td>${e.description}</td><td>${e.actor_email || "—"}</td><td>${e.ip || "—"}</td><td>${formatSessionTime(e.created_at)}</td></tr>`;
 }
 
 async function loadSecurityHistory() {
@@ -1931,7 +1931,7 @@ async function loadSecurityHistory() {
       ? `
         <div class="table-wrap">
           <table class="table params-mini-table">
-            <thead><tr><th>Événement</th><th>Adresse IP</th><th>Date</th></tr></thead>
+            <thead><tr><th>Événement</th><th>Auteur</th><th>Adresse IP</th><th>Date</th></tr></thead>
             <tbody>${events.map(securityEventRowHtml).join("")}</tbody>
           </table>
         </div>

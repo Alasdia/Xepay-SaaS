@@ -22,7 +22,7 @@ from backend.services.refresh_token_service import (
 )
 from backend.services.email_service import send_login_alert_email, is_notification_enabled
 from backend.services.rate_limit import allow_attempt, reset as reset_rate_limit
-from backend.services.security_log_service import log_security_event
+from backend.services.security_log_service import log_security_event, resolve_log_workspace_id
 router = APIRouter()
 
 
@@ -95,7 +95,7 @@ def issue_new_session(db: Session, response: Response, user: UserDB, request: Re
     refresh_token = issue_refresh_token(db, user.id, device=device, ip=ip)
     csrf_token = generate_csrf_token()
     set_session_cookies(response, access_token, refresh_token, csrf_token)
-    log_security_event(db, user.id, "login", "Connexion réussie", ip=ip)
+    log_security_event(db, user.id, "login", "Connexion réussie", workspace_id=resolve_log_workspace_id(request, user.id), ip=ip)
 
 
 def get_current_user(
@@ -229,6 +229,7 @@ def list_sessions(
 @router.post("/sessions/{session_id}/revoke")
 def revoke_one_session(
     session_id: str,
+    request: Request,
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -247,7 +248,7 @@ def revoke_one_session(
         RefreshToken.revoked_at.is_(None),
     ).update({"revoked_at": now})
     db.commit()
-    log_security_event(db, current_user.id, "session_revoked", "Session déconnectée manuellement")
+    log_security_event(db, current_user.id, "session_revoked", "Session déconnectée manuellement", workspace_id=resolve_log_workspace_id(request, current_user.id))
     return {"ok": True}
 
 
@@ -274,7 +275,7 @@ def revoke_other_sessions(
         q = q.filter(RefreshToken.family_id != current_family)
     q.update({"revoked_at": now})
     db.commit()
-    log_security_event(db, current_user.id, "sessions_revoked_others", "Déconnexion de toutes les autres sessions")
+    log_security_event(db, current_user.id, "sessions_revoked_others", "Déconnexion de toutes les autres sessions", workspace_id=resolve_log_workspace_id(request, current_user.id))
     return {"ok": True}
 
 
@@ -304,6 +305,7 @@ def setup_2fa(
 @router.post("/2fa/verify")
 def verify_2fa(
     data: TwoFAVerifyRequest,
+    request: Request,
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -318,13 +320,14 @@ def verify_2fa(
 
     current_user.two_factor_enabled = True
     db.commit()
-    log_security_event(db, current_user.id, "2fa_enabled", "Authentification à deux facteurs activée")
+    log_security_event(db, current_user.id, "2fa_enabled", "Authentification à deux facteurs activée", workspace_id=resolve_log_workspace_id(request, current_user.id))
 
     return {"message": "2FA activée avec succès"}
 
 
 @router.post("/2fa/disable")
 def disable_2fa(
+    request: Request,
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -338,13 +341,14 @@ def disable_2fa(
     current_user.two_factor_backup_code_hash = None
     current_user.two_factor_backup_code_generated_at = None
     db.commit()
-    log_security_event(db, current_user.id, "2fa_disabled", "Authentification à deux facteurs désactivée")
+    log_security_event(db, current_user.id, "2fa_disabled", "Authentification à deux facteurs désactivée", workspace_id=resolve_log_workspace_id(request, current_user.id))
 
     return {"message": "2FA désactivée avec succès"}
 
 
 @router.post("/2fa/backup-code/generate")
 def generate_backup_code_endpoint(
+    request: Request,
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -359,7 +363,7 @@ def generate_backup_code_endpoint(
     current_user.two_factor_backup_code_hash = hash_backup_code(raw_code)
     current_user.two_factor_backup_code_generated_at = datetime.now(timezone.utc)
     db.commit()
-    log_security_event(db, current_user.id, "backup_code_generated", "Code de sauvegarde 2FA régénéré")
+    log_security_event(db, current_user.id, "backup_code_generated", "Code de sauvegarde 2FA régénéré", workspace_id=resolve_log_workspace_id(request, current_user.id))
 
     return {
         "backup_code": raw_code,

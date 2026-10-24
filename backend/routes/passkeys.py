@@ -12,7 +12,7 @@
 import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from webauthn import (
@@ -31,7 +31,7 @@ from webauthn.helpers.exceptions import InvalidRegistrationResponse
 from backend.database import get_db
 from backend.models import UserDB, PasskeyCredential, PasskeyRegisterFinishRequest, PasskeyRenameRequest
 from backend.auth import get_current_user
-from backend.services.security_log_service import log_security_event
+from backend.services.security_log_service import log_security_event, resolve_log_workspace_id
 
 router = APIRouter()
 
@@ -99,6 +99,7 @@ def start_registration(
 @router.post("/passkeys/register/finish")
 def finish_registration(
     payload: PasskeyRegisterFinishRequest,
+    request: Request,
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -133,7 +134,7 @@ def finish_registration(
     )
     db.add(row)
     db.commit()
-    log_security_event(db, current_user.id, "passkey_added", f"Clé d'accès ajoutée ({row.name})")
+    log_security_event(db, current_user.id, "passkey_added", f"Clé d'accès ajoutée ({row.name})", workspace_id=resolve_log_workspace_id(request, current_user.id))
     return {"id": row.id, "name": row.name}
 
 
@@ -158,6 +159,7 @@ def rename_passkey(
 @router.delete("/passkeys/{passkey_id}")
 def delete_passkey(
     passkey_id: str,
+    request: Request,
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -170,5 +172,5 @@ def delete_passkey(
     deleted_name = row.name
     db.delete(row)
     db.commit()
-    log_security_event(db, current_user.id, "passkey_removed", f"Clé d'accès supprimée ({deleted_name})")
+    log_security_event(db, current_user.id, "passkey_removed", f"Clé d'accès supprimée ({deleted_name})", workspace_id=resolve_log_workspace_id(request, current_user.id))
     return {"ok": True}

@@ -323,15 +323,20 @@ class UserDB(Base):
     notification_prefs = Column(JSON, nullable=True)
 
 class SecurityEvent(Base):
-    """Historique de sécurité (Paramètres > Équipe et sécurité). Une ligne
-    par action sensible sur LE COMPTE DE L'ACTEUR (user_id) - connexion,
-    changement de mot de passe/2FA/clé d'accès, et actions d'équipe qu'il
-    a lui-même effectuées (inviter/changer un rôle/suspendre/retirer un
-    membre). Jamais modifié/supprimé après coup - purement un journal."""
+    """Journal d'activité (Paramètres > Équipe et sécurité). Une ligne par
+    action sensible, rattachée à son acteur (user_id) ET au workspace actif
+    au moment de l'action (workspace_id - l'en-tête X-Workspace-Id envoyé
+    par apiFetch à chaque requête, avec repli sur user_id pour une action
+    sans contexte d'équipe). GET /security/events filtre sur workspace_id :
+    un membre consultant le workspace de quelqu'un d'autre y voit le
+    journal de CE workspace (ses propres actions ET celles du reste de
+    l'équipe), pas seulement son propre historique personnel. Jamais
+    modifié/supprimé après coup - purement un journal."""
     __tablename__ = "security_events"
 
     id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("sec"))
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    workspace_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
     event_type = Column(String, nullable=False)
     description = Column(String, nullable=False)
     ip = Column(String, nullable=True)
