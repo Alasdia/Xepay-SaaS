@@ -111,10 +111,10 @@ function overviewTemplate() {
       <section class="params-section">
         ${sectionTitle("Paramètres du compte")}
         <div class="params-tiles-grid">
-          ${tile("stripe", "fa-brands fa-stripe", "Compte Stripe Connect", "Informations du compte et état exact de la vérification Connect")}
-          ${tile("plans-et-frais", "fa-solid fa-crown", "Plans et frais", "Plan actuel, consommation du mois et frais Xepay sur vos paiements")}
-          ${tile("equipe", "fa-solid fa-users", "Équipe et sécurité", "Membres et rôles, et historique de sécurité de votre compte")}
-          ${tile("entreprise", "fa-solid fa-building", "Entreprise", "Détails d'entreprise et représentant légal, via Stripe")}
+          ${tile("stripe", "fa-brands fa-stripe", "Compte Stripe Connect", "Nom, identifiant et type de compte, statut des paiements et virements, éléments requis par Stripe, et suppression du compte")}
+          ${tile("plans-et-frais", "fa-solid fa-crown", "Plans et frais", "Plan actuel, paiements et liens consommés ce mois, résiliation de l'abonnement et frais Xepay (6%) par paiement")}
+          ${tile("equipe", "fa-solid fa-users", "Équipe et sécurité", "Membres, rôles et invitations de l'équipe, 2FA, clés d'accès et sessions, et journal d'activité du workspace")}
+          ${tile("entreprise", "fa-solid fa-building", "Entreprise", "Raison sociale, représentant légal et documents justificatifs, synchronisés directement depuis Stripe")}
         </div>
       </section>
 
