@@ -10,8 +10,17 @@
 import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
-import { clearSession } from "../core/state.js";
+import { clearSession, getWorkspaceId } from "../core/state.js";
 import { navigate } from "../core/router.js";
+
+// Les routes réelles sont /dash/workspace/:workspaceId/parametres(/:section)
+// (voir app.js) - jamais /parametres/:section seul, qui ne correspond à
+// aucune route enregistrée et laisse navigate() ne rien faire (silencieux,
+// aucune erreur). "me" reprend le même repli que app.js quand aucun
+// workspace n'est encore mémorisé.
+function navigateToSection(section) {
+  navigate(`/dash/workspace/${encodeURIComponent(getWorkspaceId() || "me")}/parametres/${section}`);
+}
 
 // Menu d'actions "..." des mini-tableaux (Clés d'accès) - même classes CSS
 // que .row-menu/.row-menu-trigger/.row-menu-dropdown de commerce.js (voir
@@ -1721,7 +1730,7 @@ function mountEquipe(on) {
       return;
     }
     if (e.target.closest("#p-team-upgrade-link")) {
-      navigate("/parametres/plans-et-frais");
+      navigateToSection("plans-et-frais");
       return;
     }
     const actionBtn = e.target.closest("[data-team-action]");
@@ -1735,9 +1744,9 @@ function mountEquipe(on) {
     else if (actionBtn.dataset.teamAction === "delete") deleteTeamMember(u);
   });
 
-  on(document.getElementById("p-sec-nav-2fa"), "click", () => navigate("/parametres/authentification"));
-  on(document.getElementById("p-sec-nav-passkeys"), "click", () => navigate("/parametres/authentification"));
-  on(document.getElementById("p-sec-nav-sessions"), "click", () => navigate("/parametres/informations-personnelles"));
+  on(document.getElementById("p-sec-nav-2fa"), "click", () => navigateToSection("authentification"));
+  on(document.getElementById("p-sec-nav-passkeys"), "click", () => navigateToSection("authentification"));
+  on(document.getElementById("p-sec-nav-sessions"), "click", () => navigateToSection("informations-personnelles"));
 
   loadTeam();
   loadAccountSecuritySummary();
