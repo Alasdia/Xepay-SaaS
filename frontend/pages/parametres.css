@@ -557,3 +557,16 @@
 .params-required-list li {
   margin-bottom: 4px;
 }
+
+/* Arrivée depuis un bouton "Gérer" (Équipe et sécurité) : surligne
+   brièvement la sous-section visée pour montrer où agir. */
+.params-focus-highlight {
+  animation: params-focus-flash 2.2s ease;
+  border-radius: 10px;
+}
+
+@keyframes params-focus-flash {
+  0% { background: rgba(240, 180, 41, 0.25); }
+  70% { background: rgba(240, 180, 41, 0.25); }
+  100% { background: transparent; }
+}

@@ -18,9 +18,20 @@ import { navigate } from "../core/router.js";
 // aucune route enregistrée et laisse navigate() ne rien faire (silencieux,
 // aucune erreur). "me" reprend le même repli que app.js quand aucun
 // workspace n'est encore mémorisé.
-function navigateToSection(section) {
-  navigate(`/dash/workspace/${encodeURIComponent(getWorkspaceId() || "me")}/parametres/${section}`);
+function navigateToSection(section, focus) {
+  const query = focus ? `?focus=${encodeURIComponent(focus)}` : "";
+  navigate(`/dash/workspace/${encodeURIComponent(getWorkspaceId() || "me")}/parametres/${section}${query}`);
 }
+
+// Au clic sur un bouton "Gérer" (Équipe et sécurité), on arrive sur une
+// section sans rien d'autre qu'un bouton - sans explication de ce qu'on
+// attend d'y faire. "focus" (lu dans mount() ci-dessous) scrolle vers la
+// bonne sous-section, la surligne brièvement et affiche ce message.
+const SECURITY_FOCUS_MESSAGES = {
+  "2fa": "Activez l'authentification à deux facteurs pour renforcer la sécurité de votre compte.",
+  "passkeys": "Ajoutez une clé d'accès (WebAuthn) pour vous connecter sans mot de passe.",
+  "sessions": "Retrouvez ici toutes vos sessions actives et déconnectez celles que vous ne reconnaissez pas.",
+};
 
 // Menu d'actions "..." des mini-tableaux (Clés d'accès) - même classes CSS
 // que .row-menu/.row-menu-trigger/.row-menu-dropdown de commerce.js (voir
@@ -203,7 +214,7 @@ function informationsPersonnellesTemplate() {
       </div>
     </div>
 
-    <div class="params-subsection-header">
+    <div class="params-subsection-header" id="params-focus-sessions">
       <h6 class="params-subsection-title">Sessions actives</h6>
       <button type="button" id="p-sessions-revoke-others-btn" class="create-client-btn">Se déconnecter de toutes les autres sessions</button>
     </div>
@@ -719,7 +730,7 @@ function authentificationTemplate() {
     </div>
     <p class="params-subsection-sub">Connectez-vous à Xepay à l'aide de votre compte Google.</p>
 
-    <div class="params-subsection-header">
+    <div class="params-subsection-header" id="params-focus-2fa">
       <h6 class="params-subsection-title">Authentification à deux facteurs</h6>
       <button type="button" id="p-twofa-toggle-btn" class="create-client-btn">Activer la 2FA</button>
     </div>
@@ -731,7 +742,7 @@ function authentificationTemplate() {
       </div>
     </div>
 
-    <div class="params-subsection-header">
+    <div class="params-subsection-header" id="params-focus-passkeys">
       <h6 class="params-subsection-title">Clés d'accès</h6>
       <button type="button" id="p-passkey-add-btn" class="create-client-btn">+ Ajouter une clé d'accès</button>
     </div>
@@ -1744,9 +1755,9 @@ function mountEquipe(on) {
     else if (actionBtn.dataset.teamAction === "delete") deleteTeamMember(u);
   });
 
-  on(document.getElementById("p-sec-nav-2fa"), "click", () => navigateToSection("authentification"));
-  on(document.getElementById("p-sec-nav-passkeys"), "click", () => navigateToSection("authentification"));
-  on(document.getElementById("p-sec-nav-sessions"), "click", () => navigateToSection("informations-personnelles"));
+  on(document.getElementById("p-sec-nav-2fa"), "click", () => navigateToSection("authentification", "2fa"));
+  on(document.getElementById("p-sec-nav-passkeys"), "click", () => navigateToSection("authentification", "passkeys"));
+  on(document.getElementById("p-sec-nav-sessions"), "click", () => navigateToSection("informations-personnelles", "sessions"));
 
   loadTeam();
   loadAccountSecuritySummary();
@@ -1988,6 +1999,18 @@ export async function mount(container, params = {}) {
     });
     const result = def.mount(on);
     if (typeof result === "function") extraCleanup = result;
+
+    const focusId = new URLSearchParams(location.search).get("focus");
+    if (focusId) {
+      const target = document.getElementById(`params-focus-${focusId}`);
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        target.classList.add("params-focus-highlight");
+        setTimeout(() => target.classList.remove("params-focus-highlight"), 2200);
+      }
+      if (SECURITY_FOCUS_MESSAGES[focusId]) showToast(SECURITY_FOCUS_MESSAGES[focusId]);
+      history.replaceState({}, "", location.pathname);
+    }
   } else {
     container.innerHTML = overviewTemplate();
     container.querySelectorAll("[data-section]").forEach((el) => {
