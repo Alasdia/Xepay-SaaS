@@ -170,7 +170,10 @@ function informationsPersonnellesTemplate() {
   return `
     ${detailHeader("Informations personnelles")}
 
-    <h6 class="params-subsection-title">Coordonnées</h6>
+    <div class="params-subsection-header">
+      <h6 class="params-subsection-title mb-0">Coordonnées</h6>
+      <button type="button" id="p-coordonnees-edit-btn" class="params-edit-btn">Modifier</button>
+    </div>
     <div class="params-row-list mb-5">
       <div class="params-info-row">
         <span>Nom complet</span>
@@ -235,30 +238,59 @@ function informationsPersonnellesTemplate() {
 }
 
 const FIELD_LABELS = { full_name: "Votre nom complet", phone: "Votre numéro de téléphone" };
-const FIELD_EMPTY_BTN = { full_name: "Ajouter votre nom", phone: "Ajouter votre téléphone" };
 const profileFieldValues = { full_name: "", phone: "" };
+let coordonneesEditing = false;
 
-// Lecture : valeur + bouton "Modifier"/"Ajouter votre ..." à l'extrême
-// droite de la ligne. L'input (avec placeholder) n'apparaît qu'au clic sur
-// ce bouton (renderFieldEdit), jamais affiché par défaut.
-function renderFieldDisplay(field) {
-  const container = document.getElementById(`p-field-right-${field}`);
-  const value = profileFieldValues[field];
-  container.innerHTML = `
-    ${value ? `<strong>${value}</strong>` : ""}
-    <button type="button" class="params-edit-btn" data-field="${field}">${value ? "Modifier" : FIELD_EMPTY_BTN[field]}</button>
-  `;
-  container.querySelector("[data-field]").addEventListener("click", () => renderFieldEdit(field));
+// Lecture : valeur simple, sans bouton par champ — le seul bouton
+// "Modifier" est celui de l'en-tête de la section Coordonnées (voir
+// toggleCoordonneesEdit), qui débloque les deux champs à la fois.
+function renderCoordonneesDisplay() {
+  for (const field of ["full_name", "phone"]) {
+    const container = document.getElementById(`p-field-right-${field}`);
+    const value = profileFieldValues[field];
+    container.innerHTML = value ? `<strong>${value}</strong>` : `<span class="text-muted">Non renseigné</span>`;
+  }
 }
 
-function renderFieldEdit(field) {
-  const container = document.getElementById(`p-field-right-${field}`);
-  container.innerHTML = `
-    <input type="${field === "phone" ? "tel" : "text"}" class="form-control form-control-sm" id="p-field-input-${field}" value="${profileFieldValues[field] || ""}" placeholder="${FIELD_LABELS[field]}">
-    <button type="button" class="create-client-btn" id="p-field-save-${field}">Enregistrer</button>
-  `;
-  document.getElementById(`p-field-input-${field}`).focus();
-  document.getElementById(`p-field-save-${field}`).addEventListener("click", () => saveProfileField(field));
+function renderCoordonneesEdit() {
+  for (const field of ["full_name", "phone"]) {
+    const container = document.getElementById(`p-field-right-${field}`);
+    container.innerHTML = `<input type="${field === "phone" ? "tel" : "text"}" class="form-control form-control-sm" id="p-field-input-${field}" value="${profileFieldValues[field] || ""}" placeholder="${FIELD_LABELS[field]}">`;
+  }
+}
+
+// Bouton unique "Modifier" de la section Coordonnées : bascule Nom
+// complet + Téléphone en inputs, puis devient "Enregistrer" pour
+// sauvegarder les deux en un seul appel PATCH /profile.
+async function toggleCoordonneesEdit() {
+  const btn = document.getElementById("p-coordonnees-edit-btn");
+  if (!coordonneesEditing) {
+    renderCoordonneesEdit();
+    btn.innerText = "Enregistrer";
+    coordonneesEditing = true;
+    return;
+  }
+
+  const full_name = document.getElementById("p-field-input-full_name").value.trim();
+  const phone = document.getElementById("p-field-input-phone").value.trim();
+  btn.disabled = true;
+  btn.innerText = "Enregistrement...";
+  try {
+    const res = await apiFetch("/profile", { method: "PATCH", body: { full_name, phone } });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Erreur");
+    profileFieldValues.full_name = full_name;
+    profileFieldValues.phone = phone;
+    showToast("Mis à jour");
+    renderCoordonneesDisplay();
+    btn.innerText = "Modifier";
+    coordonneesEditing = false;
+  } catch (err) {
+    showToast(err.message, "error");
+    btn.innerText = "Enregistrer";
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // Mot de passe : jamais de valeur affichée (masqué), juste un bouton
@@ -268,7 +300,7 @@ function renderPasswordDisplay() {
   const container = document.getElementById("p-field-right-password");
   container.innerHTML = `
     <strong>••••••••</strong>
-    <button type="button" class="params-edit-btn" id="p-password-edit-btn">Modifier</button>
+    <button type="button" class="params-edit-btn" id="p-password-edit-btn">Modifier le mot de passe</button>
   `;
   document.getElementById("p-password-edit-btn").addEventListener("click", renderPasswordEdit);
 }
@@ -315,26 +347,6 @@ function formatSessionTime(value) {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-async function saveProfileField(field) {
-  const input = document.getElementById(`p-field-input-${field}`);
-  const btn = document.getElementById(`p-field-save-${field}`);
-  const value = input.value.trim();
-  btn.disabled = true;
-  btn.innerText = "Enregistrement...";
-  try {
-    const res = await apiFetch("/profile", { method: "PATCH", body: { [field]: value } });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Erreur");
-    showToast("Mis à jour");
-    profileFieldValues[field] = value;
-    renderFieldDisplay(field);
-  } catch (err) {
-    showToast(err.message, "error");
-    btn.disabled = false;
-    btn.innerText = "Enregistrer";
-  }
 }
 
 function updateGoogleStatus(linked) {
@@ -644,6 +656,7 @@ async function leaveWorkspace(id) {
 }
 
 function mountInformationsPersonnelles(on) {
+  coordonneesEditing = false;
   on(document.getElementById("p-sessions-revoke-others-btn"), "click", revokeOtherSessions);
 
   on(document.getElementById("p-sessions-tbody"), "click", (e) => {
@@ -665,6 +678,7 @@ function mountInformationsPersonnelles(on) {
     if (actionBtn.dataset.workspaceAction === "leave") leaveWorkspace(id);
   });
 
+  on(document.getElementById("p-coordonnees-edit-btn"), "click", toggleCoordonneesEdit);
   renderPasswordDisplay();
 
   (async () => {
@@ -674,8 +688,7 @@ function mountInformationsPersonnelles(on) {
       document.getElementById("p-profile-email").innerText = data.email || "—";
       profileFieldValues.full_name = data.full_name || "";
       profileFieldValues.phone = data.phone || "";
-      renderFieldDisplay("full_name");
-      renderFieldDisplay("phone");
+      renderCoordonneesDisplay();
     } catch (err) {
       console.error("Erreur chargement profil:", err);
     }
