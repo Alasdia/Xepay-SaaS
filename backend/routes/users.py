@@ -1351,7 +1351,35 @@ def get_my_workspaces(
         workspaces.append({
             "id": membership.workspace_id,
             "name": workspace_name,
-            "role": membership.role
+            "owner_email": owner.email if owner else "—",
+            "role": membership.role,
+            "created_at": membership.created_at,
+            "is_own_workspace": membership.workspace_id == current_user.id,
         })
 
     return workspaces
+
+
+@router.post("/workspaces/{workspace_id}/leave")
+def leave_workspace(
+    workspace_id: str,
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Paramètres > Informations personnelles > Workspaces > "..." >
+    Quitter le workspace. Jamais permis sur son propre workspace (celui où
+    il est owner, workspace_id == son propre id) - il n'y a personne
+    d'autre à qui le transférer ici."""
+    if workspace_id == current_user.id:
+        raise HTTPException(400, "Impossible de quitter votre propre workspace")
+
+    membership = db.query(WorkspaceUser).filter(
+        WorkspaceUser.user_id == current_user.id,
+        WorkspaceUser.workspace_id == workspace_id,
+    ).first()
+    if not membership:
+        raise HTTPException(404, "Vous n'êtes pas membre de ce workspace")
+
+    db.delete(membership)
+    db.commit()
+    return {"ok": True}

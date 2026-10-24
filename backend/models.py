@@ -319,6 +319,10 @@ class WorkspaceUser(Base):
     user_id = Column(String, ForeignKey("users.id"))
     workspace_id = Column(String, ForeignKey("users.id"))
     role = Column(String, default="member")
+    # Date d'entree dans ce workspace (Parametres > Informations
+    # personnelles > Workspaces) - NULL pour les lignes anterieures a
+    # l'ajout de la colonne, jamais reconstitue retroactivement.
+    created_at = Column(DateTime(timezone=True), nullable=True, default=lambda: datetime.now(timezone.utc))
 
 class WorkspaceInvite(Base):
     __tablename__ = "workspace_invites"

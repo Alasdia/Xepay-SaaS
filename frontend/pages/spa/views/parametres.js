@@ -240,6 +240,26 @@ function informationsPersonnellesTemplate() {
         </tbody>
       </table>
     </div>
+
+    <h6 class="params-subsection-title mt-5">Workspaces</h6>
+    <p class="params-subsection-sub">La liste des workspaces dont vous êtes membre.</p>
+    <div class="table-wrap">
+      <table class="table params-mini-table">
+        <thead>
+          <tr>
+            <th>Nom</th>
+            <th>Id</th>
+            <th>Propriétaire</th>
+            <th>Rôle</th>
+            <th>Date</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="p-workspaces-tbody">
+          <tr><td colspan="6" class="text-muted">Chargement...</td></tr>
+        </tbody>
+      </table>
+    </div>
   `;
 }
 
@@ -554,6 +574,59 @@ async function revokeOtherSessions() {
   }
 }
 
+// --- Workspaces ---
+function workspaceRowMenuHtml(id, isOwn) {
+  // Pas d'option "Quitter" sur son propre workspace (celui où il est
+  // owner) - voir le refus côté backend (POST /workspaces/{id}/leave).
+  const leaveItem = isOwn
+    ? ""
+    : `<button type="button" class="row-menu-item row-menu-item-danger" data-workspace-action="leave">Quitter le workspace</button>`;
+  return `
+    <div class="row-menu" data-workspace-id="${id}">
+      <button type="button" class="row-menu-trigger" aria-label="Actions" aria-haspopup="true">•••</button>
+      <div class="row-menu-dropdown">
+        ${leaveItem || `<span class="row-menu-item" style="cursor:default; color:#9ca3af;">Votre workspace</span>`}
+      </div>
+    </div>
+  `;
+}
+
+async function loadWorkspaces() {
+  const tbody = document.getElementById("p-workspaces-tbody");
+  try {
+    const res = await apiFetch("/workspaces/me");
+    const list = await res.json();
+    if (!res.ok) throw new Error("Erreur");
+    tbody.innerHTML = list.length
+      ? list.map((w) => `
+          <tr>
+            <td>${w.name}</td>
+            <td>${w.id}</td>
+            <td>${w.owner_email}</td>
+            <td>${w.role}</td>
+            <td>${formatSessionTime(w.created_at)}</td>
+            <td class="text-end">${workspaceRowMenuHtml(w.id, w.is_own_workspace)}</td>
+          </tr>
+        `).join("")
+      : `<tr><td colspan="6" class="text-muted">Aucun workspace.</td></tr>`;
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-muted">Erreur de chargement.</td></tr>`;
+  }
+}
+
+async function leaveWorkspace(id) {
+  if (!confirm("Quitter ce workspace ?")) return;
+  try {
+    const res = await apiFetch(`/workspaces/${id}/leave`, { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Erreur");
+    showToast("Vous avez quitté le workspace");
+    loadWorkspaces();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
 function mountInformationsPersonnelles(on) {
   on(document.getElementById("p-google-btn"), "click", handleGoogleBtnClick);
   on(document.getElementById("p-passkey-add-btn"), "click", registerPasskey);
@@ -579,6 +652,19 @@ function mountInformationsPersonnelles(on) {
     revokeSession(logoutBtn.dataset.sessionId);
   });
 
+  on(document.getElementById("p-workspaces-tbody"), "click", (e) => {
+    const trigger = e.target.closest(".row-menu-trigger");
+    if (trigger) {
+      toggleParamsRowMenu(trigger);
+      return;
+    }
+    const actionBtn = e.target.closest("[data-workspace-action]");
+    if (!actionBtn) return;
+    const id = actionBtn.closest(".row-menu").dataset.workspaceId;
+    closeParamsRowMenu();
+    if (actionBtn.dataset.workspaceAction === "leave") leaveWorkspace(id);
+  });
+
   (async () => {
     try {
       const res = await apiFetch("/profile");
@@ -596,6 +682,7 @@ function mountInformationsPersonnelles(on) {
 
   loadPasskeys();
   loadSessions();
+  loadWorkspaces();
 }
 
 // --- Detail : Authentification (mot de passe + 2FA) ---
