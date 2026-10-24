@@ -2043,7 +2043,7 @@ async function loadCompanyWidget() {
   try {
     const res = await apiFetch("/stripe/account-session", { method: "POST" });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Erreur Stripe");
+    if (!res.ok) throw new Error(data.detail === "Permission insuffisante" ? "Seul le propriétaire du compte peut modifier ces informations" : (data.detail || "Erreur Stripe"));
     const stripeConnect = window.StripeConnect.init({
       publishableKey: window.STRIPE_PUBLISHABLE_KEY,
       fetchClientSecret: () => Promise.resolve(data.client_secret),

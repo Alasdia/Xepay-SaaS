@@ -4,7 +4,7 @@ import stripe
 
 from backend.database import get_db
 from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectSubscriptionQuantityUpdateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest, ConnectInvoiceUpdateRequest, Payment
-from backend.middleware.authorization import require_manager
+from backend.middleware.authorization import require_manager, require_owner
 from backend.services.stripe_service import (create_connect_invoice, create_connect_product, create_connect_customer, update_connect_customer)
 from backend.services.email_service import send_account_updated_email, send_payout_success_email, send_payout_failed_email, is_notification_enabled
 import stripe  
@@ -678,7 +678,12 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 @router.post("/stripe/account-session")
 def create_account_session(
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager)
+    # Owner uniquement : ce widget permet de MODIFIER les informations
+    # Stripe du compte (Paramètres > Entreprise > Informations sur votre
+    # entreprise), pas seulement les consulter - require_manager
+    # (Admin/Manager inclus) laissait n'importe quel manager+ changer la
+    # configuration Stripe du propriétaire.
+    membership: WorkspaceUser = Depends(require_owner)
 ):
     profile = db.query(Profile).filter(Profile.user_id == membership.workspace_id).first()
     if not profile or not profile.stripe_account_id:
