@@ -10,8 +10,9 @@
 import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
-import { clearSession, getWorkspaceId } from "../core/state.js";
+import { clearSession, getWorkspaceId, setWorkspaceId } from "../core/state.js";
 import { navigate } from "../core/router.js";
+import { refreshPlanBadge } from "../sidebar.js";
 
 // Les routes réelles sont /dash/workspace/:workspaceId/parametres(/:section)
 // (voir app.js) - jamais /parametres/:section seul, qui ne correspond à
@@ -1565,7 +1566,10 @@ function equipeTemplate() {
         <div data-equipe-panel="equipe">
           <div class="params-subsection-header">
             <h6 class="params-subsection-title mb-0">Membres de l'équipe</h6>
-            <button type="button" id="p-team-invite-btn" class="create-client-btn">+ Inviter un membre</button>
+            <div class="d-flex align-items-center gap-2">
+              <select id="p-team-workspace-switcher" class="form-select form-select-sm" style="width:auto;" aria-label="Changer de workspace"></select>
+              <button type="button" id="p-team-invite-btn" class="create-client-btn">+ Inviter un membre</button>
+            </div>
           </div>
           <p class="params-subsection-sub">Les personnes ayant accès à votre espace Xepay et leur rôle.</p>
           <div id="p-team-body"><p class="text-muted">Chargement...</p></div>
@@ -1621,6 +1625,7 @@ function teamMemberRowHtml(u) {
       <td>${u.email}</td>
       <td>${roleLabel}</td>
       <td>${statusLabel}</td>
+      <td>${formatSessionTime(u.last)}</td>
       <td class="text-end">${menu}</td>
     </tr>
   `;
@@ -1653,7 +1658,7 @@ function teamContentHtml(users, invites) {
     ${teamKpiHtml(users, invites)}
     <div class="table-wrap">
       <table class="table params-mini-table">
-        <thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th><th></th></tr></thead>
+        <thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th><th>Dernière connexion</th><th></th></tr></thead>
         <tbody>${users.map(teamMemberRowHtml).join("")}</tbody>
       </table>
     </div>
@@ -1671,6 +1676,37 @@ function teamContentHtml(users, invites) {
 }
 
 let teamUsers = [];
+
+// Sélecteur de workspace (Équipe) - même logique que multiUsers.js :
+// liste les workspaces dont on est membre, présélectionne celui déjà
+// mémorisé (repli sur son propre workspace sinon), et un changement
+// recharge la liste des membres pour le workspace nouvellement actif.
+async function loadTeamWorkspaces() {
+  const select = document.getElementById("p-team-workspace-switcher");
+  if (!select) return;
+  try {
+    const res = await apiFetch("/workspaces/me");
+    const workspaces = await res.json();
+    if (!res.ok || !Array.isArray(workspaces)) return;
+    select.innerHTML = workspaces.map((w) => `<option value="${w.id}">${w.name}</option>`).join("");
+    const saved = getWorkspaceId();
+    if (saved && workspaces.some((w) => String(w.id) === saved)) {
+      select.value = saved;
+    } else if (workspaces.length) {
+      const ownWorkspace = workspaces.find((w) => w.role === "owner") || workspaces[0];
+      select.value = ownWorkspace.id;
+      setWorkspaceId(ownWorkspace.id);
+    }
+  } catch (err) {
+    console.error("Erreur chargement workspaces:", err);
+  }
+}
+
+async function switchTeamWorkspace(workspaceId) {
+  setWorkspaceId(workspaceId);
+  await refreshPlanBadge();
+  loadTeam();
+}
 
 async function loadTeam() {
   const body = document.getElementById("p-team-body");
@@ -1809,6 +1845,7 @@ function mountEquipe(on) {
     bootstrap.Modal.getOrCreateInstance(document.getElementById("paramsInviteModal")).show();
   });
   on(document.getElementById("p-invite-send-btn"), "click", sendTeamInvite);
+  on(document.getElementById("p-team-workspace-switcher"), "change", (e) => switchTeamWorkspace(e.target.value));
 
   on(document.getElementById("p-team-body"), "click", (e) => {
     const trigger = e.target.closest(".row-menu-trigger");
@@ -1835,6 +1872,7 @@ function mountEquipe(on) {
   on(document.getElementById("p-sec-nav-passkeys"), "click", () => navigateToSection("authentification", "passkeys"));
   on(document.getElementById("p-sec-nav-sessions"), "click", () => navigateToSection("informations-personnelles", "sessions"));
 
+  loadTeamWorkspaces();
   loadTeam();
   loadAccountSecuritySummary();
   loadSecurityHistory();
