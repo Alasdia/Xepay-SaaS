@@ -1347,7 +1347,7 @@ def create_invite(
         inviter_email=current_user.email,
         role=role
     )
-    log_security_event(db, current_user.id, "member_invited", f"Invitation envoyée à {email} (rôle {role})")
+    log_security_event(db, current_user.id, "member_invited", f"Invitation envoyée à {email} (rôle {role.capitalize()})")
 
     return {
         "message": "Invitation créée",
@@ -1487,7 +1487,7 @@ def update_role(
     new_role = _validate_assignable_role(data.get("role"))
     target_membership.role = new_role
     db.commit()
-    log_security_event(db, membership.user_id, "member_role_changed", f"Rôle de {user.email} changé en {new_role}")
+    log_security_event(db, membership.user_id, "member_role_changed", f"Rôle de {user.email} changé en {new_role.capitalize()}")
 
     return {"message": "Rôle mis à jour"}
 
@@ -1519,7 +1519,8 @@ def toggle_user(
     user.status = "suspended" if user.status == "active" else "active"
 
     db.commit()
-    log_security_event(db, membership.user_id, "member_status_changed", f"Statut de {user.email} changé en « {user.status} »")
+    status_label = "suspendu" if user.status == "suspended" else "actif"
+    log_security_event(db, membership.user_id, "member_status_changed", f"Statut de {user.email} changé en « {status_label} »")
 
     return {"message": "Statut modifié"}
 
