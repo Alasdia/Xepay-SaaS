@@ -89,10 +89,10 @@ function overviewTemplate() {
       <section class="params-section">
         ${sectionTitle("Paramètres du compte")}
         <div class="params-tiles-grid">
-          ${tile("stripe", "fa-brands fa-stripe", "Compte Stripe Connect", "Configuration, vérifications et événements de votre compte Connect")}
+          ${tile("stripe", "fa-brands fa-stripe", "Compte Stripe Connect", "Informations du compte et état exact de la vérification Connect")}
           ${tile("plans-et-frais", "fa-solid fa-crown", "Plans et frais", "Plan actuel, consommation du mois et frais Xepay sur vos paiements")}
           ${tile("equipe", "fa-solid fa-users", "Équipe et sécurité", "Membres, rôles et sécurité de votre compte")}
-          ${tile("entreprise", "fa-solid fa-building", "Entreprise", "Informations du compte, état du compte Connect et détails d'entreprise")}
+          ${tile("entreprise", "fa-solid fa-building", "Entreprise", "Détails d'entreprise et représentant légal, via Stripe")}
           ${tile("zone-dangereuse", "fa-solid fa-triangle-exclamation", "Zone dangereuse", "Suppression définitive et irréversible de votre compte", true)}
         </div>
       </section>
@@ -1124,24 +1124,98 @@ async function mountNotifications(on) {
 }
 
 // --- Detail : Compte Stripe (KYC) ---
+// Colonnes cliquables (même pattern que Paramètres de notifications) :
+// Informations du compte (identité) et État du compte (vérification
+// Connect + action) - déplacées ici depuis Entreprise, qui ne garde que
+// le widget Stripe.
+const STRIPE_TABS = [
+  { key: "account", label: "Informations du compte" },
+  { key: "etat", label: "État du compte" },
+];
+
 function stripeTemplate() {
   return `
     ${detailHeader("Compte Stripe Connect")}
-    <div class="params-subsection-header">
-      <h6 class="params-subsection-title mb-0">Configuration</h6>
-      <button type="button" id="p-stripe-action-btn" class="create-client-btn">Configurer Stripe</button>
-    </div>
-    <p class="params-subsection-sub">Données synchronisées depuis votre compte Stripe Connect (création, capacités, vérifications).</p>
+    <p class="params-subsection-sub">Données synchronisées depuis votre compte Stripe Connect.</p>
+    <div id="p-stripe-body"><p class="text-muted">Chargement...</p></div>
+  `;
+}
+
+function infoRowsHtml(rows) {
+  if (!rows || !rows.length) return `<p class="text-muted">Aucune information disponible.</p>`;
+  return `
     <div class="params-row-list" style="max-width:560px;">
-      <div class="params-info-row"><span>Statut</span><strong id="p-stripe-row-status">—</strong></div>
-      <div class="params-info-row"><span>Paiements activés</span><strong id="p-stripe-row-charges">—</strong></div>
-      <div class="params-info-row"><span>Virements activés</span><strong id="p-stripe-row-payouts">—</strong></div>
-      <div class="params-info-row"><span>Nom de l'entreprise (Stripe)</span><strong id="p-stripe-row-name">—</strong></div>
-      <div class="params-info-row"><span>Pays</span><strong id="p-stripe-row-country">—</strong></div>
-      <div class="params-info-row"><span>Compte créé le</span><strong id="p-stripe-row-created">—</strong></div>
+      ${rows.map(([label, value]) => `<div class="params-info-row"><span>${label}</span><strong>${value || "—"}</strong></div>`).join("")}
     </div>
   `;
 }
+
+function stripeAccountRows(businessData, statusData) {
+  if (!businessData && !statusData) return null;
+  const a = (businessData && businessData.account) || {};
+  const s = (statusData && statusData.stripe) || {};
+  return [
+    ["Nom du compte", a.name],
+    ["Identifiant du compte", a.id],
+    ["Adresse de l'entreprise", a.address],
+    ["Nom de l'entreprise (Stripe)", s.business_name],
+    ["Pays", s.country],
+    ["Compte créé le", s.created ? formatSessionTime(s.created) : null],
+  ];
+}
+
+function stripeStatusLabel(data) {
+  if (!data || !data.stripe) return "Non configuré";
+  if (data.needs_kyc) return "Vérification requise";
+  if (data.future_requirements) return "Opérationnel (vérification finale en attente)";
+  return "Entièrement vérifié";
+}
+
+function stripeEtatRows(statusData) {
+  if (!statusData) return null;
+  const s = statusData.stripe || {};
+  const req = s.requirements || {};
+  return [
+    ["Statut", stripeStatusLabel(statusData)],
+    ["Paiements activés", statusData.stripe ? (s.charges_enabled ? "Oui" : "Non") : "—"],
+    ["Virements activés", statusData.stripe ? (s.payouts_enabled ? "Oui" : "Non") : "—"],
+    ["Documents requis actuellement", (req.currently_due || []).length ? req.currently_due.join(", ") : "Aucun"],
+    ["Documents requis à terme", (req.eventually_due || []).length ? req.eventually_due.join(", ") : "Aucun"],
+  ];
+}
+
+function stripeEtatPanelHtml() {
+  return `
+    <div class="params-subsection-header">
+      <h6 class="params-subsection-title mb-0">Vérification</h6>
+      <button type="button" id="p-stripe-action-btn" class="create-client-btn">Configurer Stripe</button>
+    </div>
+    ${infoRowsHtml(stripeEtatRows(stripeStatusData))}
+  `;
+}
+
+function stripeTabContentHtml(key) {
+  if (key === "account") return infoRowsHtml(stripeAccountRows(stripeBusinessData, stripeStatusData));
+  if (key === "etat") return stripeEtatPanelHtml();
+  return "";
+}
+
+function stripeTabsHtml() {
+  return `
+    <div class="notif-layout">
+      <div class="notif-tabs">
+        ${STRIPE_TABS.map((t) => `<button type="button" class="notif-tab${t.key === stripeActiveTab ? " notif-tab--active" : ""}" data-stripe-tab="${t.key}">${t.label}</button>`).join("")}
+      </div>
+      <div class="notif-event-list">
+        ${STRIPE_TABS.map((t) => `<div data-stripe-panel="${t.key}" style="${t.key === stripeActiveTab ? "" : "display:none;"}">${stripeTabContentHtml(t.key)}</div>`).join("")}
+      </div>
+    </div>
+  `;
+}
+
+let stripeBusinessData = null;
+let stripeStatusData = null;
+let stripeActiveTab = "account";
 
 async function goToStripeLoginLink() {
   const res = await apiFetch("/stripe/login-link");
@@ -1155,32 +1229,12 @@ async function goToStripeLoginLink() {
   window.location.href = d.url;
 }
 
-async function mountStripe() {
-  const statusRow = document.getElementById("p-stripe-row-status");
+function wireStripeActionButton() {
   const btn = document.getElementById("p-stripe-action-btn");
-  const res = await apiFetch("/stripe/status");
-  if (!res.ok) {
-    let message = "Impossible de charger les informations Stripe";
-    try {
-      const errData = await res.json();
-      if (errData.detail === "Permission insuffisante") message = "Seul le propriétaire du compte peut configurer Stripe";
-      else if (errData.detail) message = errData.detail;
-    } catch (e) {}
-    statusRow.innerText = message;
-    btn.innerText = "Réservé au propriétaire";
-    btn.disabled = true;
-    return;
-  }
-  const data = await res.json();
-  document.getElementById("p-stripe-row-charges").innerText = data.stripe ? (data.stripe.charges_enabled ? "Oui" : "Non") : "—";
-  document.getElementById("p-stripe-row-payouts").innerText = data.stripe ? (data.stripe.payouts_enabled ? "Oui" : "Non") : "—";
-  document.getElementById("p-stripe-row-name").innerText = data.stripe?.business_name || "—";
-  document.getElementById("p-stripe-row-country").innerText = data.stripe?.country || "—";
-  document.getElementById("p-stripe-row-created").innerText = data.stripe?.created ? formatSessionTime(data.stripe.created) : "—";
-
+  if (!btn) return;
+  const data = stripeStatusData;
   btn.disabled = false;
   if (!data.stripe) {
-    statusRow.innerText = "Non configuré";
     btn.innerText = "Configurer Stripe";
     btn.onclick = async () => {
       btn.innerText = "Chargement...";
@@ -1203,18 +1257,56 @@ async function mountStripe() {
       }
     };
   } else if (data.needs_kyc) {
-    statusRow.innerText = "Vérification requise";
     btn.innerText = "Compléter la vérification";
     btn.onclick = () => goToStripeLoginLink();
   } else if (data.future_requirements) {
-    statusRow.innerText = "Opérationnel (vérification finale en attente)";
     btn.innerText = "Compléter la vérification finale";
     btn.onclick = () => goToStripeLoginLink();
   } else {
-    statusRow.innerText = "Entièrement vérifié";
     btn.innerText = "Compte entièrement vérifié";
     btn.disabled = true;
   }
+}
+
+async function loadStripeDetails() {
+  const body = document.getElementById("p-stripe-body");
+  stripeBusinessData = null;
+  stripeStatusData = null;
+  stripeActiveTab = "account";
+  try {
+    const [bizRes, statusRes] = await Promise.all([
+      apiFetch("/stripe/business-details"),
+      apiFetch("/stripe/status"),
+    ]);
+    if (bizRes.ok) stripeBusinessData = await bizRes.json();
+    if (statusRes.ok) {
+      stripeStatusData = await statusRes.json();
+    } else {
+      let message = "Impossible de charger les informations Stripe";
+      try {
+        const errData = await statusRes.json();
+        if (errData.detail === "Permission insuffisante") message = "Seul le propriétaire du compte peut configurer Stripe";
+        else if (errData.detail) message = errData.detail;
+      } catch (e) {}
+      body.innerHTML = `<p class="text-muted">${message}</p>`;
+      return;
+    }
+    body.innerHTML = stripeTabsHtml();
+    wireStripeActionButton();
+  } catch (err) {
+    body.innerHTML = `<p class="text-muted">Erreur de chargement.</p>`;
+  }
+}
+
+function mountStripe(on) {
+  on(document.getElementById("p-stripe-body"), "click", (e) => {
+    const tabBtn = e.target.closest("[data-stripe-tab]");
+    if (!tabBtn) return;
+    stripeActiveTab = tabBtn.dataset.stripeTab;
+    document.querySelectorAll("[data-stripe-tab]").forEach((b) => b.classList.toggle("notif-tab--active", b.dataset.stripeTab === stripeActiveTab));
+    document.querySelectorAll("[data-stripe-panel]").forEach((p) => { p.style.display = p.dataset.stripePanel === stripeActiveTab ? "" : "none"; });
+  });
+  loadStripeDetails();
 }
 
 // --- Detail : Plans et frais ---
@@ -1614,58 +1706,12 @@ function mountEquipe(on) {
 }
 
 // --- Detail : Entreprise ---
-// Colonnes cliquables (même pattern que Paramètres de notifications :
-// .notif-tabs/.notif-tab à gauche, contenu à droite). Les 3 panneaux
-// restent tous dans le DOM (juste masqués) pour ne jamais détruire le
-// widget Stripe une fois chargé si on change d'onglet puis qu'on revient.
-const COMPANY_TABS = [
-  { key: "account", label: "Informations du compte" },
-  { key: "etat", label: "État du compte" },
-  { key: "widget", label: "Informations sur votre entreprise" },
-];
-
+// Un seul bloc (plus de colonnes "Informations du compte"/"État du
+// compte" - déplacées dans Compte Stripe Connect) : juste le widget
+// Stripe account_management, chargé à la demande via "Se connecter".
 function entrepriseTemplate() {
   return `
     ${detailHeader("Entreprise")}
-    <p class="params-subsection-sub">Informations de votre compte Stripe Connect.</p>
-    <div id="p-company-body"><p class="text-muted">Chargement...</p></div>
-  `;
-}
-
-function companyRowsHtml(rows) {
-  if (!rows || !rows.length) return `<p class="text-muted">Aucune information disponible.</p>`;
-  return `
-    <div class="params-row-list" style="max-width:560px;">
-      ${rows.map(([label, value]) => `<div class="params-info-row"><span>${label}</span><strong>${value || "—"}</strong></div>`).join("")}
-    </div>
-  `;
-}
-
-function companyAccountRows(data) {
-  if (!data) return null;
-  const a = data.account || {};
-  return [["Nom du compte", a.name], ["Identifiant du compte", a.id], ["Adresse de l'entreprise", a.address]];
-}
-
-function companyEtatRows(data) {
-  if (!data) return null;
-  const s = data.stripe || {};
-  const req = s.requirements || {};
-  const statusLabel = !data.stripe ? "Non connecté"
-    : data.needs_kyc ? "Vérification requise"
-    : data.future_requirements ? "Opérationnel (vérification finale en attente)"
-    : "Entièrement vérifié";
-  return [
-    ["Statut", statusLabel],
-    ["Paiements activés", data.stripe ? (s.charges_enabled ? "Oui" : "Non") : "—"],
-    ["Virements activés", data.stripe ? (s.payouts_enabled ? "Oui" : "Non") : "—"],
-    ["Documents requis actuellement", (req.currently_due || []).length ? req.currently_due.join(", ") : "Aucun"],
-    ["Documents requis à terme", (req.eventually_due || []).length ? req.eventually_due.join(", ") : "Aucun"],
-  ];
-}
-
-function companyWidgetSectionHtml() {
-  return `
     <div class="params-subsection-header">
       <h6 class="params-subsection-title mb-0">Informations sur votre entreprise</h6>
       <button type="button" id="p-company-widget-btn" class="create-client-btn">Se connecter</button>
@@ -1675,29 +1721,6 @@ function companyWidgetSectionHtml() {
   `;
 }
 
-function companyTabContentHtml(key) {
-  if (key === "account") return companyRowsHtml(companyAccountRows(companyAccountData));
-  if (key === "etat") return companyRowsHtml(companyEtatRows(companyStatusData));
-  if (key === "widget") return companyWidgetSectionHtml();
-  return "";
-}
-
-function companyTabsHtml() {
-  return `
-    <div class="notif-layout">
-      <div class="notif-tabs">
-        ${COMPANY_TABS.map((t) => `<button type="button" class="notif-tab${t.key === companyActiveTab ? " notif-tab--active" : ""}" data-company-tab="${t.key}">${t.label}</button>`).join("")}
-      </div>
-      <div class="notif-event-list">
-        ${COMPANY_TABS.map((t) => `<div data-company-panel="${t.key}" style="${t.key === companyActiveTab ? "" : "display:none;"}">${companyTabContentHtml(t.key)}</div>`).join("")}
-      </div>
-    </div>
-  `;
-}
-
-let companyAccountData = null;
-let companyStatusData = null;
-let companyActiveTab = "account";
 let companyWidgetLoaded = false;
 
 async function loadCompanyWidget() {
@@ -1725,46 +1748,9 @@ async function loadCompanyWidget() {
   }
 }
 
-async function loadCompanyDetails() {
-  const body = document.getElementById("p-company-body");
-  companyAccountData = null;
-  companyStatusData = null;
-  companyActiveTab = "account";
-  companyWidgetLoaded = false;
-  try {
-    const [accRes, statusRes] = await Promise.all([
-      apiFetch("/stripe/business-details"),
-      apiFetch("/stripe/status"),
-    ]);
-    if (accRes.ok) companyAccountData = await accRes.json();
-    if (statusRes.ok) companyStatusData = await statusRes.json();
-    if (!accRes.ok && !statusRes.ok) {
-      body.innerHTML = `<p class="text-muted">Connectez d'abord votre compte Stripe pour voir ces informations. <a href="javascript:void(0)" id="p-company-stripe-link">Configurer Stripe</a></p>`;
-      return;
-    }
-    body.innerHTML = companyTabsHtml();
-  } catch (err) {
-    body.innerHTML = `<p class="text-muted">Erreur de chargement.</p>`;
-  }
-}
-
 function mountEntreprise(on) {
-  on(document.getElementById("p-company-body"), "click", (e) => {
-    if (e.target.closest("#p-company-stripe-link")) {
-      navigate("/parametres/stripe");
-      return;
-    }
-    if (e.target.closest("#p-company-widget-btn")) {
-      loadCompanyWidget();
-      return;
-    }
-    const tabBtn = e.target.closest("[data-company-tab]");
-    if (!tabBtn) return;
-    companyActiveTab = tabBtn.dataset.companyTab;
-    document.querySelectorAll("[data-company-tab]").forEach((b) => b.classList.toggle("notif-tab--active", b.dataset.companyTab === companyActiveTab));
-    document.querySelectorAll("[data-company-panel]").forEach((p) => { p.style.display = p.dataset.companyPanel === companyActiveTab ? "" : "none"; });
-  });
-  loadCompanyDetails();
+  companyWidgetLoaded = false;
+  on(document.getElementById("p-company-widget-btn"), "click", loadCompanyWidget);
 }
 
 // --- Detail : Cartes virtuelles (Issuing) ---
@@ -1910,7 +1896,7 @@ const SECTIONS = {
   "informations-personnelles": { title: "Informations personnelles", template: informationsPersonnellesTemplate, mount: (on) => mountInformationsPersonnelles(on) },
   "authentification": { title: "Authentification", template: authentificationTemplate, mount: (on) => mountAuthentification(on) },
   "notifications": { title: "Paramètres de notifications", template: notificationsTemplate, mount: (on) => mountNotifications(on) },
-  "stripe": { title: "Compte Stripe Connect", template: stripeTemplate, mount: (on) => mountStripe() },
+  "stripe": { title: "Compte Stripe Connect", template: stripeTemplate, mount: (on) => mountStripe(on) },
   "plans-et-frais": { title: "Plans et frais", template: plansEtFraisTemplate, mount: (on) => mountPlansEtFrais(on) },
   "equipe": { title: "Équipe et sécurité", template: equipeTemplate, mount: (on) => mountEquipe(on) },
   "entreprise": { title: "Entreprise", template: entrepriseTemplate, mount: (on) => mountEntreprise(on) },
