@@ -11,7 +11,8 @@ from backend.services.email_service import (
     send_payment_email,
     send_merchant_notification,
     send_payment_failed_email,
-    send_payment_refunded_email
+    send_payment_refunded_email,
+    is_notification_enabled
 )
 from backend.services.webhook_service import send_webhook_event
 import traceback
@@ -241,7 +242,8 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
         try:
             pdf_path = generate_invoice_pdf(payment, user.email)
             send_payment_email(email_client, pdf_path)
-            send_merchant_notification(user.email, payment)
+            if is_notification_enabled(user, "paiements.payment_received"):
+                send_merchant_notification(user.email, payment)
         except Exception as e:
             print(f"⚠️ Erreur génération PDF/Email: {e}")
         print("💰 AVANT CREDIT WALLET")
@@ -335,7 +337,7 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
                 db.commit()
                 if tx:
                     user = db.query(UserDB).filter(UserDB.id == tx.user_id).first()
-                    if user and user.email:
+                    if user and user.email and is_notification_enabled(user, "paiements.payment_failed"):
                         send_payment_failed_email(user.email)
                     if user:
                         background_tasks.add_task(send_webhook_event, user.id, "payment.failed", {
@@ -438,7 +440,7 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
             if just_refunded:
                 db.refresh(tx)
                 user = db.query(UserDB).filter(UserDB.id == tx.user_id).first()
-                if user and user.email:
+                if user and user.email and is_notification_enabled(user, "paiements.payment_refunded"):
                     send_payment_refunded_email(user.email, tx.amount)
                 if user:
                     background_tasks.add_task(send_webhook_event, user.id, "refund.issued", {

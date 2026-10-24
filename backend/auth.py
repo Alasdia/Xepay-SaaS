@@ -19,7 +19,7 @@ from backend.security import (
 from backend.services.refresh_token_service import (
     issue_refresh_token, rotate_refresh_token, revoke_refresh_token,
 )
-from backend.services.email_service import send_login_alert_email
+from backend.services.email_service import send_login_alert_email, is_notification_enabled
 from backend.services.rate_limit import allow_attempt, reset as reset_rate_limit
 router = APIRouter()
 
@@ -379,7 +379,7 @@ def verify_login_2fa(
 
     issue_new_session(db, response, user, request=request)
 
-    if user.alert_login:
+    if is_notification_enabled(user, "compte.new_device_login", legacy_flag=user.alert_login):
         device = request.headers.get("user-agent", "Appareil inconnu")
         send_login_alert_email(
             email=user.email,

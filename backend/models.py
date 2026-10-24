@@ -52,6 +52,12 @@ class GoogleLinkRequest(BaseModel):
     code: str
     redirect_uri: str
 
+class NotificationPreferencesRequest(BaseModel):
+    # {"<categorie>.<evenement>": true/false} - voir UserDB.notification_prefs.
+    # Fusionné (pas remplacé) avec les préférences existantes, pour qu'une
+    # sauvegarde partielle (un seul switch changé) n'efface pas les autres.
+    prefs: dict[str, bool]
+
 class PasskeyRegisterFinishRequest(BaseModel):
     credential: dict
     name: Optional[str] = None
@@ -295,6 +301,14 @@ class UserDB(Base):
     # repli si l'email ne correspond a aucun compte.
     google_id = Column(String, nullable=True, unique=True, index=True)
     google_email = Column(String, nullable=True)
+    # Préférences de notification granulaires (Paramètres > Notifications) :
+    # {"<categorie>.<evenement>": true/false}. Clé absente = active par
+    # defaut, sauf pour "compte.new_device_login" qui retombe sur l'ancien
+    # alert_login (voir services/email_service.is_notification_enabled) -
+    # pour ne pas reactiver silencieusement l'alerte des utilisateurs qui
+    # l'avaient deja desactivee via alert_login/payment/suspect ci-dessus
+    # (jamais lus ailleurs desormais, conserves pour compat descendante).
+    notification_prefs = Column(JSON, nullable=True)
 
 class PasskeyCredential(Base):
     """Clé d'accès WebAuthn (Paramètres > Informations personnelles). Le

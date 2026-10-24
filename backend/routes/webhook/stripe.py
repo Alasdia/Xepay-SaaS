@@ -6,7 +6,7 @@ from backend.database import get_db
 from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectSubscriptionQuantityUpdateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest, ConnectInvoiceUpdateRequest, Payment
 from backend.middleware.authorization import require_manager
 from backend.services.stripe_service import (create_connect_invoice, create_connect_product, create_connect_customer, update_connect_customer)
-from backend.services.email_service import send_account_updated_email, send_payout_success_email, send_payout_failed_email
+from backend.services.email_service import send_account_updated_email, send_payout_success_email, send_payout_failed_email, is_notification_enabled
 import stripe  
 import os
 
@@ -512,7 +512,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                     UserDB.id == profile.user_id
                 ).first()
 
-                if user and user.email:
+                if user and user.email and is_notification_enabled(user, "compte.account_updated"):
                     send_account_updated_email(user.email)
 
         # --------------------------------------------------
@@ -567,13 +567,15 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 
                 if merchant and merchant.email:
                     if event_type == "payout.paid":
-                        send_payout_success_email(
-                            merchant.email, wd.amount
-                        )
+                        if is_notification_enabled(merchant, "virement.payout_success"):
+                            send_payout_success_email(
+                                merchant.email, wd.amount
+                            )
                     else:
-                        send_payout_failed_email(
-                            merchant.email, wd.amount
-                        )
+                        if is_notification_enabled(merchant, "virement.payout_failed"):
+                            send_payout_failed_email(
+                                merchant.email, wd.amount
+                            )
         # --------------------------------------------------
         # FACTURES CONNECT
         # --------------------------------------------------

@@ -902,70 +902,135 @@ function mountAuthentification(on) {
 }
 
 // --- Detail : Paramètres de notifications ---
+// Clé de préférence = "<categorie>.<evenement>" (voir
+// UserDB.notification_prefs / is_notification_enabled côté backend).
+// SMS/Push : aucune infra (pas de Twilio/Firebase) - colonnes affichées
+// mais désactivées, "bientôt disponible", jamais de case qui prétend
+// fonctionner sans rien faire derrière.
+const NOTIFICATION_CATEGORIES = [
+  {
+    key: "compte",
+    label: "Compte",
+    events: [
+      { key: "new_device_login", label: "Connexion depuis un nouvel appareil" },
+      { key: "account_updated", label: "Modification des informations du compte" },
+      { key: "suspicious_activity", label: "Activité suspecte détectée" },
+    ],
+  },
+  {
+    key: "paiements",
+    label: "Paiements",
+    events: [
+      { key: "payment_received", label: "Paiement reçu" },
+      { key: "payment_failed", label: "Paiement échoué" },
+      { key: "payment_refunded", label: "Paiement remboursé" },
+    ],
+  },
+  {
+    key: "virement",
+    label: "Virement",
+    events: [
+      { key: "payout_success", label: "Virement réussi" },
+      { key: "payout_failed", label: "Virement échoué" },
+    ],
+  },
+  {
+    key: "solde",
+    label: "Solde",
+    events: [
+      { key: "balance_updated", label: "Solde mis à jour" },
+    ],
+  },
+  {
+    key: "produits",
+    label: "Produits",
+    events: [
+      { key: "subscription_created", label: "Abonnement créé" },
+      { key: "subscription_updated", label: "Abonnement mis à jour" },
+      { key: "subscription_canceled", label: "Abonnement annulé" },
+      { key: "subscription_payment_failed", label: "Paiement d'abonnement échoué" },
+      { key: "invoice_paid", label: "Facture payée" },
+      { key: "invoice_overdue", label: "Facture en retard" },
+    ],
+  },
+  {
+    key: "client",
+    label: "Client",
+    events: [
+      { key: "new_client", label: "Nouveau client" },
+    ],
+  },
+  {
+    key: "mises_a_jour_xepay",
+    label: "Mises à jour de Xepay",
+    events: [
+      { key: "product_updates", label: "Nouvelles fonctionnalités" },
+    ],
+  },
+];
+
+function notifChannelBtn(channel, icon, disabled) {
+  return `
+    <button type="button" class="notif-channel-btn" data-channel="${channel}" title="${disabled ? "Bientôt disponible" : channel}" ${disabled ? "disabled" : ""}>
+      <i class="${icon}"></i>
+    </button>
+  `;
+}
+
 function notificationsTemplate() {
   return `
     ${detailHeader("Paramètres de notifications")}
-    <div class="card-epay p-4" style="max-width:480px;">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-          <div style="font-size:0.9rem;">Email à chaque connexion</div>
-          <small class="text-muted">Soyez alerté de toute connexion</small>
+    <p class="params-subsection-sub">Choisissez par événement comment être notifié. SMS et Push arrivent bientôt.</p>
+    <div class="notif-grid">
+      ${NOTIFICATION_CATEGORIES.map((cat) => `
+        <div class="notif-column">
+          <div class="notif-column-header">${cat.label}</div>
+          ${cat.events.map((ev) => `
+            <div class="notif-event-row" data-event-key="${cat.key}.${ev.key}">
+              <div class="notif-event-label">${ev.label}</div>
+              <div class="notif-channels">
+                ${notifChannelBtn("email", "fa-solid fa-envelope", false)}
+                ${notifChannelBtn("sms", "fa-solid fa-comment-sms", true)}
+                ${notifChannelBtn("push", "fa-solid fa-bell", true)}
+              </div>
+            </div>
+          `).join("")}
         </div>
-        <div class="form-check form-switch mb-0">
-          <input id="p-alert-login" class="form-check-input" type="checkbox" checked style="cursor:pointer; width:44px; height:22px;">
-        </div>
-      </div>
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-          <div style="font-size:0.9rem;">Alerte nouveau paiement</div>
-          <small class="text-muted">Notification à chaque paiement reçu</small>
-        </div>
-        <div class="form-check form-switch mb-0">
-          <input id="p-alert-payment" class="form-check-input" type="checkbox" checked style="cursor:pointer; width:44px; height:22px;">
-        </div>
-      </div>
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <div style="font-size:0.9rem;">Alerte tentative suspecte</div>
-          <small class="text-muted">Si quelqu'un tente d'accéder</small>
-        </div>
-        <div class="form-check form-switch mb-0">
-          <input id="p-alert-suspect" class="form-check-input" type="checkbox" checked style="cursor:pointer; width:44px; height:22px;">
-        </div>
-      </div>
+      `).join("")}
     </div>
   `;
 }
 
-async function sauvegarderAlertes() {
-  try {
-    const res = await apiFetch("/security/alerts", {
-      method: "POST",
-      body: {
-        alert_login: document.getElementById("p-alert-login").checked,
-        alert_payment: document.getElementById("p-alert-payment").checked,
-        alert_suspect: document.getElementById("p-alert-suspect").checked,
-      },
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Erreur");
-  } catch (error) {
-    console.error("Erreur sauvegarde alertes :", error);
-  }
-}
-
 async function mountNotifications(on) {
+  let prefs = {};
   try {
-    const res = await apiFetch("/security/alerts");
-    const data = await res.json();
-    document.getElementById("p-alert-login").checked = data.alert_login;
-    document.getElementById("p-alert-payment").checked = data.alert_payment;
-    document.getElementById("p-alert-suspect").checked = data.alert_suspect;
+    const res = await apiFetch("/notification-preferences");
+    prefs = await res.json();
   } catch (err) {
-    console.error("Erreur chargement alertes:", err);
+    console.error("Erreur chargement préférences de notifications:", err);
   }
-  ["p-alert-login", "p-alert-payment", "p-alert-suspect"].forEach((id) => {
-    on(document.getElementById(id), "change", sauvegarderAlertes);
+  document.querySelectorAll(".notif-event-row").forEach((row) => {
+    const enabled = prefs[row.dataset.eventKey] !== false;
+    row.querySelector('[data-channel="email"]').classList.toggle("notif-channel-btn--active", enabled);
+  });
+
+  on(document.querySelector(".notif-grid"), "click", async (e) => {
+    const btn = e.target.closest(".notif-channel-btn");
+    if (!btn || btn.disabled) return;
+    const row = btn.closest(".notif-event-row");
+    const key = row.dataset.eventKey;
+    const newValue = !btn.classList.contains("notif-channel-btn--active");
+    btn.classList.toggle("notif-channel-btn--active", newValue);
+    try {
+      const res = await apiFetch("/notification-preferences", {
+        method: "POST",
+        body: { prefs: { [key]: newValue } },
+      });
+      if (!res.ok) throw new Error("Erreur");
+    } catch (err) {
+      btn.classList.toggle("notif-channel-btn--active", !newValue);
+      showToast("Erreur lors de la sauvegarde", "error");
+    }
   });
 }
 

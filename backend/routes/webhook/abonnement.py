@@ -8,11 +8,12 @@ from backend.models import UserDB, WorkspaceUser, Profile
 from backend.middleware.authorization import require_manager
 from backend.routes.webhook.stripe import get_authorized_connect_profile
 from backend.database import get_db
-from backend.services.email_service import ( 
+from backend.services.email_service import (
     send_subscription_email,
     send_subscription_updated_email,
     send_subscription_canceled_email,
-    send_payment_failed_subscription_email
+    send_payment_failed_subscription_email,
+    is_notification_enabled
 )
 
 router = APIRouter()
@@ -74,7 +75,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                     user.subscription_status = subscription.get("status", "active")
                     user.cancel_at_period_end = subscription.get("cancel_at_period_end", False)
                     db.commit()
-                    if user.email:
+                    if user.email and is_notification_enabled(user, "produits.subscription_created"):
                         send_subscription_email(
                             user.email,
                             plan,
@@ -107,7 +108,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                         )
                         user.plan_expires_at = current_period_end
                 db.commit()
-                if user and user.email:
+                if user and user.email and is_notification_enabled(user, "produits.subscription_updated"):
                     send_subscription_updated_email(user.email, plan, status)
         elif event_type == "customer.subscription.deleted":
             subscription = event["data"]["object"].to_dict()
@@ -120,7 +121,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                 user.stripe_subscription_id = None
                 db.commit()
                 print("⚠️ ABONNEMENT RÉSILIÉ -> RETOUR AU PLAN FREE")
-                if user and user.email:
+                if user and user.email and is_notification_enabled(user, "produits.subscription_canceled"):
                     send_subscription_canceled_email(user.email)
         elif event_type == "invoice.payment_failed":
             invoice = event["data"]["object"].to_dict()
@@ -131,7 +132,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                 user.subscription_status = "past_due"
                 db.commit()
                 target_email = customer_email or user.email
-                if target_email:
+                if target_email and is_notification_enabled(user, "produits.subscription_payment_failed"):
                     send_payment_failed_subscription_email(target_email)
     except Exception as e:
         db.rollback()

@@ -7,6 +7,22 @@ load_dotenv()
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 
+
+def is_notification_enabled(user, event_key: str, legacy_flag: bool | None = None) -> bool:
+    """Paramètres > Notifications (granulaire, voir UserDB.notification_prefs).
+    Clé absente -> `legacy_flag` si fourni (ancien alert_login/payment/
+    suspect, pour ne pas réactiver silencieusement une alerte déjà
+    désactivée par un utilisateur existant), sinon True (opt-out)."""
+    if not user:
+        return True
+    prefs = user.notification_prefs or {}
+    if event_key in prefs:
+        return bool(prefs[event_key])
+    if legacy_flag is not None:
+        return bool(legacy_flag)
+    return True
+
+
 def send_payment_email(to_email, pdf_path):
 
     print("PDF PATH:", pdf_path)

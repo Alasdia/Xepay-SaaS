@@ -343,3 +343,79 @@
 .row-menu-item-danger:hover {
   background: #fef2f2;
 }
+
+/* Paramètres de notifications : une colonne par catégorie (Compte,
+   Paiements, Virement, Solde, Produits, Client, Mises à jour Xepay),
+   chacune listant ses événements avec 3 cases Email/SMS/Push - largeur
+   fixe par colonne + scroll horizontal plutôt qu'un retour à la ligne qui
+   casserait l'alignement demandé. */
+.notif-grid {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.notif-column {
+  flex: 0 0 170px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.notif-column-header {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(17, 24, 39, 0.85);
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.notif-event-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notif-event-label {
+  font-size: 12.5px;
+  color: #374151;
+  line-height: 1.35;
+}
+
+.notif-channels {
+  display: flex;
+  gap: 6px;
+}
+
+.notif-channel-btn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #9ca3af;
+  font-size: 11px;
+  cursor: pointer;
+  transition: .15s;
+}
+
+.notif-channel-btn:hover:not(:disabled) {
+  border-color: #9ca3af;
+}
+
+.notif-channel-btn--active {
+  background: #fff7e0;
+  border-color: #f0b429;
+  color: #b45309;
+}
+
+.notif-channel-btn:disabled {
+  background: #f9fafb;
+  color: #d1d5db;
+  cursor: not-allowed;
+}

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from backend.database import engine, get_db
-from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, ProfileUpdateRequest, PlanUpdate, Link, SecurityAlertsRequest, GoogleCodeExchange, GoogleLinkRequest
+from backend.models import UserDB, User, UserLogin, Wallet, ChangePasswordRequest, Payment, Profile, ProfileRequest, ProfileUpdateRequest, PlanUpdate, Link, SecurityAlertsRequest, GoogleCodeExchange, GoogleLinkRequest, NotificationPreferencesRequest
 from backend.auth import get_current_user, issue_new_session
 from backend.services.workspace_service import (
     get_workspace_owner_id
@@ -23,7 +23,7 @@ from fastapi.responses import RedirectResponse
 import os, shutil
 from fastapi.responses import FileResponse
 from fastapi import FastAPI, Request
-from backend.services.email_service import send_invitation_email, send_login_alert_email
+from backend.services.email_service import send_invitation_email, send_login_alert_email, is_notification_enabled
 from backend.services.rate_limit import allow_attempt, reset as reset_rate_limit
 from backend.security import hash_password, verify_password, decrypt_secret
 from math import ceil
@@ -194,7 +194,7 @@ def login(
     user.last_login = datetime.now(timezone.utc)
     db.commit()
     issue_new_session(db, response, user, request=request)
-    if user.alert_login:
+    if is_notification_enabled(user, "compte.new_device_login", legacy_flag=user.alert_login):
         send_login_alert_email(email=user.email, device=device, ip=ip)
     return {
         "workspace_id": workspace_user.workspace_id,
@@ -225,6 +225,29 @@ def update_security_alerts(
     return {
         "message": "Préférences de sécurité mises à jour"
     }
+
+
+@router.get("/notification-preferences")
+def get_notification_preferences(
+    current_user: UserDB = Depends(get_current_user)
+):
+    """Paramètres > Notifications (grille Compte/Paiements/Virement/Solde/
+    Produits/Client/Mises à jour Xepay). Clé absente côté frontend = case
+    cochée par défaut (voir is_notification_enabled, même logique opt-out)."""
+    return current_user.notification_prefs or {}
+
+
+@router.post("/notification-preferences")
+def update_notification_preferences(
+    data: NotificationPreferencesRequest,
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    merged = dict(current_user.notification_prefs or {})
+    merged.update(data.prefs)
+    current_user.notification_prefs = merged
+    db.commit()
+    return {"prefs": merged}
 
 
 CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
