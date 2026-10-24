@@ -316,48 +316,90 @@ def _exchange_google_code(code: str, db: Session, redirect_uri: str) -> dict:
         user = db.query(UserDB).filter(UserDB.google_id == google_id).first()
 
     if not user:
-
-        stripe_account = stripe.Account.create(
-            type="express",
-            email=email,
-            capabilities={
-                "transfers": {"requested": True},
-                "card_payments": {"requested": True},
-            }
-        )
-
-        user = UserDB(
-            email=email,
-        )
-
+        user = UserDB(email=email)
         db.add(user)
-        db.commit()
-        db.refresh(user)
+        db.flush()
 
         membership = WorkspaceUser(
             user_id=user.id,
             workspace_id=user.id,
             role="owner"
         )
-
         db.add(membership)
-        db.commit()
 
-        profile = Profile(
-            user_id=user.id,
-            stripe_account_id=stripe_account.id
-        )
+        # Même création de compte Stripe que /signup (client.v2.core.accounts,
+        # pas l'ancien stripe.Account.create(type="express", ...) qui était
+        # utilisé ici jusque-là - cohérence avec la plateforme Stripe
+        # actuelle, et surtout : jamais exercé en prod avant que signup.js
+        # soit corrigé (l'inscription Google a toujours redirigé vers une
+        # URL cassée), donc jamais remarqué que cette version plantait.
+        # Toute erreur ici annule la création du compte (rollback) plutôt
+        # que de laisser passer un 500 brut qui saute CORSMiddleware et
+        # s'affiche à tort comme "Failed to fetch" côté navigateur.
+        try:
+            client = stripe.StripeClient(os.getenv("STRIPE_SECRET_KEY"))
+            account_configuration = {
+                "merchant": {
+                    "capabilities": {
+                        "card_payments": {"requested": True}
+                    }
+                },
+                "recipient": {
+                    "capabilities": {
+                        "stripe_balance": {
+                            "stripe_transfers": {"requested": True}
+                        }
+                    }
+                }
+            }
+            account = client.v2.core.accounts.create(
+                params={
+                    "contact_email": user.email,
+                    "identity": {"country": "US"},
+                    "dashboard": "express",
+                    "configuration": account_configuration,
+                    "defaults": {
+                        "responsibilities": {
+                            "fees_collector": "application",
+                            "losses_collector": "application"
+                        }
+                    }
+                }
+            )
+            stripe.Account.modify(
+                account.id,
+                settings={
+                    "payouts": {
+                        "schedule": {
+                            "interval": "manual"
+                        }
+                    }
+                }
+            )
+            try:
+                stripe.Account.modify(
+                    account.id,
+                    capabilities={
+                        "card_issuing": {"requested": True}
+                    }
+                )
+            except stripe.error.StripeError as e:
+                print("❌ ERREUR ISSUING (google signup):", repr(e))
 
-        db.add(profile)
-        db.commit()
+            profile = Profile(user_id=user.id, stripe_account_id=account.id)
+            db.add(profile)
 
-        wallet = Wallet(
-            user_id=user.id,
-            balance=0
-        )
+            wallet = Wallet(user_id=user.id, balance=0)
+            db.add(wallet)
 
-        db.add(wallet)
-        db.commit()
+            db.commit()
+            db.refresh(user)
+        except Exception as e:
+            print("❌ ERREUR CRITIQUE (google signup):", repr(e))
+            import traceback
+            traceback.print_exc()
+            db.rollback()
+            raise HTTPException(status_code=500, detail="Impossible de créer le compte Stripe pour cette inscription")
 
     user.last_login = datetime.now(timezone.utc)
     db.commit()
