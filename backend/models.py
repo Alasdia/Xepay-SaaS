@@ -266,6 +266,11 @@ class Profile(Base):
     phone = Column(String)
     phone_verified = Column(Boolean, default=False)
     stripe_account_id = Column(String, nullable=True, index=True)
+    # Évite de renvoyer l'email "compte.account_updated" à chaque webhook
+    # account.updated reçu pendant l'onboarding (Stripe en envoie un par
+    # champ rempli) - un seul envoi, au moment où le compte devient
+    # pleinement opérationnel (voir webhook/stripe.py).
+    verification_email_sent = Column(Boolean, default=False)
 
 class UserDB(Base):
     __tablename__ = "users"

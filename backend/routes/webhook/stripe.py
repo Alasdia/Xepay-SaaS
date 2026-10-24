@@ -512,8 +512,20 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                     UserDB.id == profile.user_id
                 ).first()
 
-                if user and user.email and is_notification_enabled(user, "compte.account_updated"):
+                # Stripe envoie un account.updated par champ rempli pendant
+                # l'onboarding - un email à chaque fois serait un spam
+                # ("chaque clic -> un mail"). On ne notifie qu'une fois,
+                # au moment où le compte devient réellement opérationnel.
+                is_ready = bool(account.charges_enabled) and bool(account.payouts_enabled)
+                if (
+                    is_ready
+                    and not profile.verification_email_sent
+                    and user and user.email
+                    and is_notification_enabled(user, "compte.account_updated")
+                ):
                     send_account_updated_email(user.email)
+                    profile.verification_email_sent = True
+                    db.commit()
 
         # --------------------------------------------------
         # RETRAITS CONNECT

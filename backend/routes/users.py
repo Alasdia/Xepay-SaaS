@@ -734,18 +734,33 @@ def stripe_business_details(
         or _safe("business_profile.name", lambda: bp.name if bp else None)
     )
     account_id = _safe("account.id", lambda: account.id)
-    # Pour les comptes Connect "standard", Stripe ne renvoie pas les détails
-    # KYC (company/individual, donc pas d'adresse) à la plateforme - le
-    # marchand gère ces informations directement dans son propre Dashboard
-    # Stripe. Exposé pour que ce soit visible/compréhensible côté
-    # Paramètres plutôt qu'un champ vide sans explication.
-    account_type = _safe("account.type", lambda: account.type)
+    # Pour les comptes créés via l'API v2 Accounts (voir /signup et
+    # _exchange_google_code), le champ legacy account.type vaut toujours
+    # "none" - le vrai type de dashboard est sous
+    # account.controller.stripe_dashboard.type ("express"/"full"/"none").
+    # Repli sur account.type pour les comptes legacy qui l'ont encore.
+    def _controller_dashboard_type():
+        controller = getattr(account, "controller", None)
+        dashboard = getattr(controller, "stripe_dashboard", None) if controller else None
+        return getattr(dashboard, "type", None) if dashboard else None
+
+    account_type = (
+        _safe("controller.stripe_dashboard.type", _controller_dashboard_type)
+        or _safe("account.type", lambda: account.type if account.type != "none" else None)
+    )
+    # business_type (company/individual/non_profit/government_entity/null) :
+    # exposé pour diagnostiquer pourquoi l'adresse peut rester vide (ex: si
+    # Stripe considère encore le compte "individual" alors que l'adresse
+    # d'entreprise a été saisie côté "company" lors de l'onboarding, ou
+    # inversement) plutôt que de deviner à l'aveugle.
+    business_type = _safe("account.business_type", lambda: account.business_type)
 
     return {
         "account": {
             "name": legal_name,
             "id": account_id,
             "type": account_type,
+            "business_type": business_type,
             "address": company_address,
         },
     }

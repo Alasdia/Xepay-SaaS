@@ -1171,7 +1171,8 @@ function infoRowsHtml(rows) {
   `;
 }
 
-const STRIPE_ACCOUNT_TYPE_LABELS = { standard: "Standard", express: "Express", custom: "Custom", none: "Non défini" };
+const STRIPE_ACCOUNT_TYPE_LABELS = { standard: "Standard", express: "Express", full: "Dashboard complet", custom: "Custom" };
+const STRIPE_BUSINESS_TYPE_LABELS = { company: "Société", individual: "Particulier", non_profit: "Association", government_entity: "Organisme public" };
 
 function stripeAccountRows(businessData, statusData) {
   if (!businessData && !statusData) return null;
@@ -1181,6 +1182,7 @@ function stripeAccountRows(businessData, statusData) {
     ["Nom du compte", a.name],
     ["Identifiant du compte", a.id],
     ["Type de compte", STRIPE_ACCOUNT_TYPE_LABELS[a.type] || a.type],
+    ["Type d'entreprise", STRIPE_BUSINESS_TYPE_LABELS[a.business_type] || a.business_type],
     ["Adresse de l'entreprise", a.address],
     ["Nom de l'entreprise (Stripe)", s.business_name],
     ["Pays", s.country],
