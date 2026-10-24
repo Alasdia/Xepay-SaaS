@@ -131,6 +131,7 @@ class PlanUpdate(BaseModel):
 class GoogleCodeExchange(BaseModel):
     code: str
     redirect_uri: str
+    invite_token: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: str

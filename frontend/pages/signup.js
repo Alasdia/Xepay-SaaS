@@ -114,6 +114,14 @@ function toggleTerms(){
   if(termsAccepted)check.classList.add('checked');
   else check.classList.remove('checked');
 }
+// Jeton d'invitation (?token=... dans l'URL, voir GET /invites/accept qui
+// redirige ici pour un email pas encore inscrit) - jamais lu/transmis
+// avant, donc une invitation acceptée via cette page ne rejoignait jamais
+// le workspace de l'inviteur (ni classique, ni Google) : nouveau compte
+// "owner" de son propre workspace à la place, et l'invitation restait
+// "en attente" pour toujours.
+const INVITE_TOKEN=new URLSearchParams(window.location.search).get('token')||null;
+
 async function signup(){
   const btn=document.getElementById('btnSignup');
   const email=document.getElementById('email').value.trim();
@@ -141,7 +149,7 @@ async function signup(){
     const response=await fetch('https://aws.api.alasdia.com/signup',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({email,password})
+      body:JSON.stringify(INVITE_TOKEN?{email,password,invite_token:INVITE_TOKEN}:{email,password})
     });
     let data=null;
     try{data=await response.json()}catch(e){console.error('JSON error',e)}
@@ -231,7 +239,7 @@ async function handleGoogleCodeResponse(response){
       method:'POST',
       credentials:'include',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({code:response.code,redirect_uri:window.location.origin}),
+      body:JSON.stringify(INVITE_TOKEN?{code:response.code,redirect_uri:window.location.origin,invite_token:INVITE_TOKEN}:{code:response.code,redirect_uri:window.location.origin}),
     });
     const data=await res.json();
     if(!res.ok){

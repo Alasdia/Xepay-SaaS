@@ -270,7 +270,7 @@ from fastapi.responses import RedirectResponse
 from fastapi import HTTPException
 import requests
 
-def _exchange_google_code(code: str, db: Session, redirect_uri: str) -> dict:
+def _exchange_google_code(code: str, db: Session, redirect_uri: str, invite_token: str = None) -> dict:
     """Logique partagée par le callback GET (redirect_uri = GOOGLE_REDIRECT_URI)
     et l'endpoint POST /auth/google/exchange (redirect_uri = origine de la
     page qui a appelé initCodeClient). Retourne un dict, jamais de réponse
@@ -320,12 +320,37 @@ def _exchange_google_code(code: str, db: Session, redirect_uri: str) -> dict:
         db.add(user)
         db.flush()
 
-        membership = WorkspaceUser(
-            user_id=user.id,
-            workspace_id=user.id,
-            role="owner"
-        )
-        db.add(membership)
+        # Invitation d'équipe acceptée via Google (voir GET /invites/accept,
+        # qui redirige vers signup.html?token=... pour un email pas encore
+        # inscrit - signup.js transmet ce token jusqu'ici désormais) :
+        # rejoint le workspace de l'inviteur avec le rôle prévu, au lieu de
+        # créer un nouveau workspace "owner" - jamais fait avant que
+        # signup.js ne transmette le token (l'invitation restait "en
+        # attente" pour toujours, même après inscription).
+        invite = None
+        if invite_token:
+            token_hash = hashlib.sha256(invite_token.encode()).hexdigest()
+            invite = db.query(WorkspaceInvite).filter(
+                WorkspaceInvite.token_hash == token_hash,
+                WorkspaceInvite.used == False,
+                WorkspaceInvite.email == email,
+            ).first()
+
+        if invite:
+            membership = WorkspaceUser(
+                user_id=user.id,
+                workspace_id=invite.workspace_id,
+                role=invite.role
+            )
+            db.add(membership)
+            invite.used = True
+        else:
+            membership = WorkspaceUser(
+                user_id=user.id,
+                workspace_id=user.id,
+                role="owner"
+            )
+            db.add(membership)
 
         # Même création de compte Stripe que /signup (client.v2.core.accounts,
         # pas l'ancien stripe.Account.create(type="express", ...) qui était
@@ -480,7 +505,7 @@ def google_exchange(
     if payload.redirect_uri not in ALLOWED_GOOGLE_EXCHANGE_ORIGINS:
         raise HTTPException(400, "Origine non autorisée")
 
-    result = _exchange_google_code(payload.code, db, redirect_uri=payload.redirect_uri)
+    result = _exchange_google_code(payload.code, db, redirect_uri=payload.redirect_uri, invite_token=payload.invite_token)
 
     if result["requires_2fa"]:
         return {
@@ -1339,7 +1364,11 @@ def get_invites(
 
     invites = db.query(WorkspaceInvite).filter(
         WorkspaceInvite.workspace_id == workspace_id,
-        WorkspaceInvite.used == False
+        WorkspaceInvite.used == False,
+        # Sans ce filtre, une invitation expirée (7 jours) restait affichée
+        # "en attente" indéfiniment - elle n'est jamais marquée used=True
+        # tant que personne ne clique dessus, expirée ou pas.
+        WorkspaceInvite.expires_at >= datetime.utcnow(),
     ).all()
     result = []
 
