@@ -146,22 +146,19 @@
 
 /* En-tête de sous-section avec action à l'extrême droite (Connecter un
    compte Google, + Ajouter une clé d'accès, Se déconnecter des autres
-   sessions) - titre/sous-titre à gauche, bouton aligné à droite. */
+   sessions) - titre à gauche, bouton aligné à droite ; le sous-titre suit
+   en dessous, sur sa propre ligne pleine largeur (jamais dans ce flex, pour
+   ne jamais pousser/cacher le bouton quelle que soit sa longueur). */
 .params-subsection-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
+  margin-bottom: 8px;
+}
+
+.params-subsection-header + .params-subsection-sub {
   margin-bottom: 28px;
-}
-
-.params-subsection-header .params-subsection-sub {
-  margin-bottom: 0;
-  white-space: nowrap;
-}
-
-.params-subsection-header .create-client-btn {
-  margin-top: 2px;
 }
 
 /* Liste de lignes sans bordure/encadré (pas de card-epay - jamais un

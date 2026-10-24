@@ -191,12 +191,10 @@ function informationsPersonnellesTemplate() {
     </div>
 
     <div class="params-subsection-header">
-      <div>
-        <h6 class="params-subsection-title">Sessions actives</h6>
-        <p class="params-subsection-sub">Tous les lieux où vous êtes connecté à Xepay.</p>
-      </div>
+      <h6 class="params-subsection-title">Sessions actives</h6>
       <button type="button" id="p-sessions-revoke-others-btn" class="create-client-btn">Se déconnecter de toutes les autres sessions</button>
     </div>
+    <p class="params-subsection-sub">Tous les lieux où vous êtes connecté à Xepay.</p>
     <div class="table-wrap">
       <table class="table params-mini-table">
         <thead>
@@ -693,20 +691,16 @@ function authentificationTemplate() {
     ${detailHeader("Authentification")}
 
     <div class="params-subsection-header">
-      <div>
-        <h6 class="params-subsection-title">Compte Google</h6>
-        <p class="params-subsection-sub">Connectez-vous à Xepay à l'aide de votre compte Google.</p>
-      </div>
+      <h6 class="params-subsection-title">Compte Google</h6>
       <button type="button" id="p-google-btn" class="create-client-btn">Connecter un compte Google</button>
     </div>
+    <p class="params-subsection-sub">Connectez-vous à Xepay à l'aide de votre compte Google.</p>
 
     <div class="params-subsection-header">
-      <div>
-        <h6 class="params-subsection-title">Authentification à deux facteurs</h6>
-        <p class="params-subsection-sub">Renforcez la sécurité de votre compte en utilisant plusieurs méthodes d'authentification pour vérifier votre identité. Vérifiez que vous avez bien votre code de sauvegarde à 24 caractères. Vous pouvez générer un nouveau code de sauvegarde et invalider l'ancien si vous ne l'avez plus.</p>
-      </div>
+      <h6 class="params-subsection-title">Authentification à deux facteurs</h6>
       <button type="button" id="p-twofa-toggle-btn" class="create-client-btn">Activer la 2FA</button>
     </div>
+    <p class="params-subsection-sub">Renforcez la sécurité de votre compte en utilisant plusieurs méthodes d'authentification pour vérifier votre identité. Vérifiez que vous avez bien votre code de sauvegarde à 24 caractères. Vous pouvez générer un nouveau code de sauvegarde et invalider l'ancien si vous ne l'avez plus.</p>
     <div class="params-row-list mb-5">
       <div class="params-info-row">
         <span>Code de sauvegarde</span>
@@ -715,12 +709,10 @@ function authentificationTemplate() {
     </div>
 
     <div class="params-subsection-header">
-      <div>
-        <h6 class="params-subsection-title">Clés d'accès</h6>
-        <p class="params-subsection-sub">Connectez-vous en toute sécurité à l'aide de vos données biométriques, du code PIN de votre appareil ou de votre clé de sécurité.</p>
-      </div>
+      <h6 class="params-subsection-title">Clés d'accès</h6>
       <button type="button" id="p-passkey-add-btn" class="create-client-btn">+ Ajouter une clé d'accès</button>
     </div>
+    <p class="params-subsection-sub">Connectez-vous en toute sécurité à l'aide de vos données biométriques, du code PIN de votre appareil ou de votre clé de sécurité.</p>
     <div class="table-wrap">
       <table class="table params-mini-table">
         <thead>
