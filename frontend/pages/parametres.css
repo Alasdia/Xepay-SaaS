@@ -152,7 +152,7 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
-  margin-bottom: 14px;
+  margin-bottom: 28px;
 }
 
 .params-subsection-header .params-subsection-sub {
@@ -192,6 +192,24 @@
 
 .params-pwd-edit .input-wrapper input {
   width: 100%;
+}
+
+/* Code de sauvegarde 2FA révélé une seule fois à la génération. */
+.params-backup-code-reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  text-align: right;
+}
+
+.params-backup-code-reveal code {
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: #111827;
+  background: #f3f4f6;
+  padding: 4px 8px;
+  border-radius: 6px;
 }
 
 /* Bouton "Modifier"/"Ajouter votre ..." à l'extrême droite de la ligne -

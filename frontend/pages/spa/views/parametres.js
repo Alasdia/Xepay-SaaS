@@ -707,6 +707,12 @@ function authentificationTemplate() {
       </div>
       <button type="button" id="p-twofa-toggle-btn" class="create-client-btn">Activer la 2FA</button>
     </div>
+    <div class="params-row-list mb-5">
+      <div class="params-info-row">
+        <span>Code de sauvegarde</span>
+        <div class="params-row-right" id="p-backup-code-right"></div>
+      </div>
+    </div>
 
     <div class="params-subsection-header">
       <div>
@@ -859,6 +865,53 @@ function handleTwoFaToggle() {
   else setup2FA();
 }
 
+// --- Code de sauvegarde 2FA ---
+let backupCodeGeneratedAt = null;
+
+function renderBackupCodeDisplay() {
+  const container = document.getElementById("p-backup-code-right");
+  if (!container) return;
+  container.innerHTML = `
+    <strong>${backupCodeGeneratedAt ? `Généré le ${formatSessionTime(backupCodeGeneratedAt)}` : "Non généré"}</strong>
+    <button type="button" class="create-client-btn" id="p-backup-code-generate-btn">${backupCodeGeneratedAt ? "Générer un nouveau code" : "Générer un code de sauvegarde"}</button>
+  `;
+  document.getElementById("p-backup-code-generate-btn").addEventListener("click", generateBackupCode);
+}
+
+function renderBackupCodeReveal(code) {
+  const container = document.getElementById("p-backup-code-right");
+  container.innerHTML = `
+    <div class="params-backup-code-reveal">
+      <code>${code}</code>
+      <button type="button" class="params-edit-btn" id="p-backup-code-copy-btn">Copier</button>
+      <small class="text-muted d-block mt-1">Notez ce code, il ne sera plus jamais affiché.</small>
+      <button type="button" class="create-client-btn mt-2" id="p-backup-code-done-btn">J'ai noté mon code</button>
+    </div>
+  `;
+  document.getElementById("p-backup-code-copy-btn").addEventListener("click", () => {
+    navigator.clipboard.writeText(code);
+    showToast("Code copié");
+  });
+  document.getElementById("p-backup-code-done-btn").addEventListener("click", renderBackupCodeDisplay);
+}
+
+async function generateBackupCode() {
+  if (!twoFaCurrentlyEnabled) {
+    showToast("Activez d'abord la 2FA", "error");
+    return;
+  }
+  if (backupCodeGeneratedAt && !confirm("Générer un nouveau code invalidera l'ancien. Continuer ?")) return;
+  try {
+    const res = await apiFetch("/2fa/backup-code/generate", { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Erreur");
+    backupCodeGeneratedAt = data.generated_at;
+    renderBackupCodeReveal(data.backup_code);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
 function mountAuthentification(on) {
   document.body.insertAdjacentHTML("beforeend", TWOFA_MODAL_HTML);
   on(document.getElementById("p-google-btn"), "click", handleGoogleBtnClick);
@@ -885,6 +938,8 @@ function mountAuthentification(on) {
       const res = await apiFetch("/profile");
       const data = await res.json();
       updateGoogleStatus(data.google_linked);
+      backupCodeGeneratedAt = data.two_factor_backup_code_generated_at || null;
+      renderBackupCodeDisplay();
     } catch (err) {
       console.error("Erreur chargement profil:", err);
     }

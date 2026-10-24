@@ -804,6 +804,7 @@ def get_profile(
         "phone": profile.phone,
         "phone_verified": profile.phone_verified,
         "two_factor_enabled": owner.two_factor_enabled,
+        "two_factor_backup_code_generated_at": owner.two_factor_backup_code_generated_at,
         "account_id": owner.account_id,
         "last_login": owner.last_login,
         "plan": owner.plan,

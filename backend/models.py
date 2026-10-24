@@ -275,7 +275,13 @@ class UserDB(Base):
     email = Column(String, index=True, unique=True)
     password = Column(String)
     two_factor_enabled = Column(Boolean, default=False)
-    two_factor_secret = Column(String, nullable=True) 
+    two_factor_secret = Column(String, nullable=True)
+    # Code de sauvegarde 2FA (Authentification > Authentification à deux
+    # facteurs) - un seul code persistant (pas à usage unique), hashé
+    # (voir security.hash_backup_code), jamais stocké/affiché en clair
+    # après sa génération. Effacé par /2fa/disable.
+    two_factor_backup_code_hash = Column(String, nullable=True)
+    two_factor_backup_code_generated_at = Column(DateTime(timezone=True), nullable=True) 
     status = Column(String, default="active")
     last_login = Column(DateTime, nullable=True)
     is_deleted = Column(Boolean, default=False)

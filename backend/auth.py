@@ -12,6 +12,7 @@ from backend.security import (
     decode_token, create_access_token,
     encrypt_secret, decrypt_secret, decode_2fa_pending_token,
     generate_csrf_token, hash_refresh_token,
+    generate_backup_code, hash_backup_code,
     ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS,
     ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME, CSRF_COOKIE_NAME,
     CSRF_COOKIE_DOMAIN,
@@ -327,9 +328,36 @@ def disable_2fa(
 
     current_user.two_factor_enabled = False
     current_user.two_factor_secret = None
+    # Un code de sauvegarde n'a de sens que tant que la 2FA est active -
+    # réactiver la 2FA plus tard exige d'en régénérer un.
+    current_user.two_factor_backup_code_hash = None
+    current_user.two_factor_backup_code_generated_at = None
     db.commit()
 
     return {"message": "2FA désactivée avec succès"}
+
+
+@router.post("/2fa/backup-code/generate")
+def generate_backup_code_endpoint(
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Authentification > Authentification à deux facteurs > "Générer un
+    code de sauvegarde". Remplace (invalide) un éventuel code précédent -
+    affiché en clair une seule fois ici, jamais stocké tel quel (seul le
+    hash l'est)."""
+    if not current_user.two_factor_enabled:
+        raise HTTPException(status_code=400, detail="Activez d'abord la 2FA avant de générer un code de sauvegarde")
+
+    raw_code = generate_backup_code()
+    current_user.two_factor_backup_code_hash = hash_backup_code(raw_code)
+    current_user.two_factor_backup_code_generated_at = datetime.now(timezone.utc)
+    db.commit()
+
+    return {
+        "backup_code": raw_code,
+        "generated_at": current_user.two_factor_backup_code_generated_at,
+    }
 
 
 @router.post("/auth/2fa/verify-login")
@@ -360,7 +388,11 @@ def verify_login_2fa(
     decrypted = decrypt_secret(user.two_factor_secret)
     totp = pyotp.TOTP(decrypted)
 
-    if not totp.verify(data.code, valid_window=1):
+    code_valid = totp.verify(data.code, valid_window=1)
+    if not code_valid and user.two_factor_backup_code_hash:
+        code_valid = hash_backup_code(data.code) == user.two_factor_backup_code_hash
+
+    if not code_valid:
         raise HTTPException(status_code=400, detail="Code incorrect")
 
     reset_rate_limit(email_ip_key)

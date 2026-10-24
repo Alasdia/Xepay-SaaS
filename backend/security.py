@@ -126,6 +126,27 @@ def generate_csrf_token() -> str:
     return secrets.token_urlsafe(32)
 
 # =========================
+# 🔑 CODE DE SAUVEGARDE 2FA (Authentification > Authentification à deux
+# facteurs) - un seul code persistant par utilisateur (pas à usage unique),
+# régénérable (invalide l'ancien) - voir UserDB.two_factor_backup_code_hash.
+# =========================
+
+def generate_backup_code() -> str:
+    """24 caractères hexadécimaux (12 octets, ~96 bits d'entropie) - affiché
+    une seule fois à la génération, jamais stocké en clair ensuite."""
+    return secrets.token_hex(12)
+
+
+def _normalize_backup_code(raw_code: str) -> str:
+    return raw_code.strip().lower().replace("-", "").replace(" ", "")
+
+
+def hash_backup_code(raw_code: str) -> str:
+    """SHA-256 simple : même raisonnement que hash_refresh_token, l'entropie
+    du code (96 bits) rend un hash lent par itération inutile ici."""
+    return hashlib.sha256(_normalize_backup_code(raw_code).encode()).hexdigest()
+
+# =========================
 # 🔐 PRE-AUTH TOKEN (étape 1 -> étape 2 du login 2FA)
 # =========================
 
