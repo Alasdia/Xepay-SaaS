@@ -316,6 +316,21 @@ class UserDB(Base):
     # (jamais lus ailleurs desormais, conserves pour compat descendante).
     notification_prefs = Column(JSON, nullable=True)
 
+class SecurityEvent(Base):
+    """Historique de sécurité (Paramètres > Équipe et sécurité). Une ligne
+    par action sensible sur LE COMPTE DE L'ACTEUR (user_id) - connexion,
+    changement de mot de passe/2FA/clé d'accès, et actions d'équipe qu'il
+    a lui-même effectuées (inviter/changer un rôle/suspendre/retirer un
+    membre). Jamais modifié/supprimé après coup - purement un journal."""
+    __tablename__ = "security_events"
+
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("sec"))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    event_type = Column(String, nullable=False)
+    description = Column(String, nullable=False)
+    ip = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
 class PasskeyCredential(Base):
     """Clé d'accès WebAuthn (Paramètres > Informations personnelles). Le
     challenge de la cérémonie d'enregistrement n'est jamais persisté ici -

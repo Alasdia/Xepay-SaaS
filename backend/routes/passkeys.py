@@ -31,6 +31,7 @@ from webauthn.helpers.exceptions import InvalidRegistrationResponse
 from backend.database import get_db
 from backend.models import UserDB, PasskeyCredential, PasskeyRegisterFinishRequest, PasskeyRenameRequest
 from backend.auth import get_current_user
+from backend.services.security_log_service import log_security_event
 
 router = APIRouter()
 
@@ -132,6 +133,7 @@ def finish_registration(
     )
     db.add(row)
     db.commit()
+    log_security_event(db, current_user.id, "passkey_added", f"Clé d'accès ajoutée ({row.name})")
     return {"id": row.id, "name": row.name}
 
 
@@ -165,6 +167,8 @@ def delete_passkey(
     ).first()
     if not row:
         raise HTTPException(404, "Clé d'accès introuvable")
+    deleted_name = row.name
     db.delete(row)
     db.commit()
+    log_security_event(db, current_user.id, "passkey_removed", f"Clé d'accès supprimée ({deleted_name})")
     return {"ok": True}

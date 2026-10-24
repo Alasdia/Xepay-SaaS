@@ -112,7 +112,7 @@ function overviewTemplate() {
         <div class="params-tiles-grid">
           ${tile("stripe", "fa-brands fa-stripe", "Compte Stripe Connect", "Informations du compte et état exact de la vérification Connect")}
           ${tile("plans-et-frais", "fa-solid fa-crown", "Plans et frais", "Plan actuel, consommation du mois et frais Xepay sur vos paiements")}
-          ${tile("equipe", "fa-solid fa-users", "Équipe et sécurité", "Membres, rôles et sécurité de votre compte")}
+          ${tile("equipe", "fa-solid fa-users", "Équipe et sécurité", "Membres et rôles, et historique de sécurité de votre compte")}
           ${tile("entreprise", "fa-solid fa-building", "Entreprise", "Détails d'entreprise et représentant légal, via Stripe")}
         </div>
       </section>
@@ -1544,30 +1544,54 @@ const TEAM_INVITE_MODAL_HTML = `
 </div>
 `;
 
+// Colonnes cliquables (même pattern que Paramètres de notifications/
+// Entreprise/Compte Stripe Connect) : Équipe (invitation, tableau des
+// membres, KPI) et Historique de sécurité (statut 2FA/clés/sessions +
+// journal des événements). Les 2 panneaux restent dans le DOM
+// (display:none) pour ne jamais perdre l'état d'un onglet à l'autre.
+const EQUIPE_TABS = [
+  { key: "equipe", label: "Équipe" },
+  { key: "historique", label: "Historique de sécurité" },
+];
+
 function equipeTemplate() {
   return `
     ${detailHeader("Équipe et sécurité")}
-    <div class="params-subsection-header">
-      <h6 class="params-subsection-title mb-0">Membres de l'équipe</h6>
-      <button type="button" id="p-team-invite-btn" class="create-client-btn">+ Inviter un membre</button>
-    </div>
-    <p class="params-subsection-sub">Les personnes ayant accès à votre espace Xepay et leur rôle.</p>
-    <div id="p-team-body"><p class="text-muted">Chargement...</p></div>
+    <div class="notif-layout">
+      <div class="notif-tabs" id="p-equipe-tabs">
+        ${EQUIPE_TABS.map((t, i) => `<button type="button" class="notif-tab${i === 0 ? " notif-tab--active" : ""}" data-equipe-tab="${t.key}">${t.label}</button>`).join("")}
+      </div>
+      <div class="notif-event-list">
+        <div data-equipe-panel="equipe">
+          <div class="params-subsection-header">
+            <h6 class="params-subsection-title mb-0">Membres de l'équipe</h6>
+            <button type="button" id="p-team-invite-btn" class="create-client-btn">+ Inviter un membre</button>
+          </div>
+          <p class="params-subsection-sub">Les personnes ayant accès à votre espace Xepay et leur rôle.</p>
+          <div id="p-team-body"><p class="text-muted">Chargement...</p></div>
+        </div>
+        <div data-equipe-panel="historique" style="display:none;">
+          <h6 class="params-subsection-title">Sécurité du compte</h6>
+          <p class="params-subsection-sub">Aperçu des protections actives sur votre compte.</p>
+          <div class="params-row-list mb-5">
+            <div class="params-info-row">
+              <span>Authentification à deux facteurs</span>
+              <div class="params-row-right"><strong id="p-sec-2fa-status">—</strong><button type="button" class="params-edit-btn params-tooltip-btn" data-tooltip="${SECURITY_FOCUS_MESSAGES["2fa"]}" id="p-sec-nav-2fa">Gérer</button></div>
+            </div>
+            <div class="params-info-row">
+              <span>Clés d'accès (WebAuthn)</span>
+              <div class="params-row-right"><strong id="p-sec-passkeys-count">—</strong><button type="button" class="params-edit-btn params-tooltip-btn" data-tooltip="${SECURITY_FOCUS_MESSAGES["passkeys"]}" id="p-sec-nav-passkeys">Gérer</button></div>
+            </div>
+            <div class="params-info-row">
+              <span>Sessions actives</span>
+              <div class="params-row-right"><strong id="p-sec-sessions-count">—</strong><button type="button" class="params-edit-btn params-tooltip-btn" data-tooltip="${SECURITY_FOCUS_MESSAGES["sessions"]}" id="p-sec-nav-sessions">Gérer</button></div>
+            </div>
+          </div>
 
-    <h6 class="params-subsection-title mt-5">Sécurité du compte</h6>
-    <p class="params-subsection-sub">Aperçu des protections actives sur votre compte.</p>
-    <div class="params-row-list">
-      <div class="params-info-row">
-        <span>Authentification à deux facteurs</span>
-        <div class="params-row-right"><strong id="p-sec-2fa-status">—</strong><button type="button" class="params-edit-btn params-tooltip-btn" data-tooltip="${SECURITY_FOCUS_MESSAGES["2fa"]}" id="p-sec-nav-2fa">Gérer</button></div>
-      </div>
-      <div class="params-info-row">
-        <span>Clés d'accès (WebAuthn)</span>
-        <div class="params-row-right"><strong id="p-sec-passkeys-count">—</strong><button type="button" class="params-edit-btn params-tooltip-btn" data-tooltip="${SECURITY_FOCUS_MESSAGES["passkeys"]}" id="p-sec-nav-passkeys">Gérer</button></div>
-      </div>
-      <div class="params-info-row">
-        <span>Sessions actives</span>
-        <div class="params-row-right"><strong id="p-sec-sessions-count">—</strong><button type="button" class="params-edit-btn params-tooltip-btn" data-tooltip="${SECURITY_FOCUS_MESSAGES["sessions"]}" id="p-sec-nav-sessions">Gérer</button></div>
+          <h6 class="params-subsection-title">Journal d'activité</h6>
+          <p class="params-subsection-sub">Historique des actions de sécurité sur votre compte (connexions, mot de passe, 2FA, clés d'accès, équipe).</p>
+          <div id="p-security-history-body"><p class="text-muted">Chargement...</p></div>
+        </div>
       </div>
     </div>
   `;
@@ -1606,8 +1630,27 @@ function teamInviteRowHtml(inv) {
   return `<tr><td>${inv.email}</td><td>${TEAM_ROLE_LABELS[inv.role] || inv.role}</td><td>${inv.days_remaining} j</td></tr>`;
 }
 
+function teamKpiHtml(users, invites) {
+  const kpis = [
+    { label: "Membres actifs", count: users.filter((u) => u.status !== "suspended").length },
+    { label: "Invitations en attente", count: invites.length },
+    { label: "Administrateurs", count: users.filter((u) => u.role === "admin" || u.role === "owner").length },
+  ];
+  return `
+    <div class="commerce-kpi-filters">
+      ${kpis.map((k) => `
+        <div class="commerce-kpi commerce-kpi-display">
+          <span class="commerce-kpi-label">${k.label}</span>
+          <strong class="commerce-kpi-value">${k.count}</strong>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
 function teamContentHtml(users, invites) {
   return `
+    ${teamKpiHtml(users, invites)}
     <div class="table-wrap">
       <table class="table params-mini-table">
         <thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th><th></th></tr></thead>
@@ -1727,8 +1770,40 @@ async function loadAccountSecuritySummary() {
   } catch (err) {}
 }
 
+function securityEventRowHtml(e) {
+  return `<tr><td>${e.description}</td><td>${e.ip || "—"}</td><td>${formatSessionTime(e.created_at)}</td></tr>`;
+}
+
+async function loadSecurityHistory() {
+  const body = document.getElementById("p-security-history-body");
+  try {
+    const res = await apiFetch("/security/events");
+    if (!res.ok) throw new Error("Erreur");
+    const events = await res.json();
+    body.innerHTML = events.length
+      ? `
+        <div class="table-wrap">
+          <table class="table params-mini-table">
+            <thead><tr><th>Événement</th><th>Adresse IP</th><th>Date</th></tr></thead>
+            <tbody>${events.map(securityEventRowHtml).join("")}</tbody>
+          </table>
+        </div>
+      `
+      : `<p class="text-muted">Aucun événement enregistré pour le moment.</p>`;
+  } catch (err) {
+    body.innerHTML = `<p class="text-muted">Erreur de chargement.</p>`;
+  }
+}
+
 function mountEquipe(on) {
   document.body.insertAdjacentHTML("beforeend", TEAM_INVITE_MODAL_HTML);
+
+  on(document.getElementById("p-equipe-tabs"), "click", (e) => {
+    const tabBtn = e.target.closest("[data-equipe-tab]");
+    if (!tabBtn) return;
+    document.querySelectorAll("[data-equipe-tab]").forEach((b) => b.classList.toggle("notif-tab--active", b === tabBtn));
+    document.querySelectorAll("[data-equipe-panel]").forEach((p) => { p.style.display = p.dataset.equipePanel === tabBtn.dataset.equipeTab ? "" : "none"; });
+  });
 
   on(document.getElementById("p-team-invite-btn"), "click", () => {
     bootstrap.Modal.getOrCreateInstance(document.getElementById("paramsInviteModal")).show();
@@ -1762,6 +1837,7 @@ function mountEquipe(on) {
 
   loadTeam();
   loadAccountSecuritySummary();
+  loadSecurityHistory();
 
   return () => {
     const modalEl = document.getElementById("paramsInviteModal");

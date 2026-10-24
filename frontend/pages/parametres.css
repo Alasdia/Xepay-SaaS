@@ -606,3 +606,40 @@
   visibility: visible;
   transform: translateY(0);
 }
+
+/* KPI (Équipe) - même style que .commerce-kpi de commerce.js/commerce.css,
+   dupliqué ici pour ne pas charger tout commerce.css (même raison que
+   .create-client-btn/.row-menu ci-dessus). Lecture seule (pas de filtre),
+   donc sans les états hover/active de la version cliquable. */
+.commerce-kpi-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.commerce-kpi {
+  width: 100%;
+  min-height: 58px;
+  padding: 9px 13px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  text-align: left;
+}
+
+.commerce-kpi-label {
+  display: block;
+  font-size: 12px;
+  line-height: 16px;
+  color: #6b7280;
+  margin-bottom: 2px;
+}
+
+.commerce-kpi-value {
+  display: block;
+  font-size: 19px;
+  line-height: 21px;
+  font-weight: 600;
+  color: #111827;
+}
