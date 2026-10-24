@@ -973,12 +973,14 @@ function notificationsTemplate() {
   return `
     ${detailHeader("Paramètres de notifications")}
     <p class="params-subsection-sub">Choisissez une catégorie, puis comment être notifié pour chacun de ses événements. SMS et Push arrivent bientôt.</p>
-    <div class="notif-tabs">
-      ${NOTIFICATION_CATEGORIES.map((cat, i) => `
-        <button type="button" class="notif-tab${i === 0 ? " notif-tab--active" : ""}" data-category="${cat.key}">${cat.label}</button>
-      `).join("")}
+    <div class="notif-layout">
+      <div class="notif-tabs">
+        ${NOTIFICATION_CATEGORIES.map((cat, i) => `
+          <button type="button" class="notif-tab${i === 0 ? " notif-tab--active" : ""}" data-category="${cat.key}">${cat.label}</button>
+        `).join("")}
+      </div>
+      <div class="notif-event-list" id="p-notif-event-list"></div>
     </div>
-    <div class="notif-event-list" id="p-notif-event-list"></div>
   `;
 }
 

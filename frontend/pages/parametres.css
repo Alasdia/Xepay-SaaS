@@ -344,42 +344,48 @@
   background: #fef2f2;
 }
 
-/* Paramètres de notifications : onglets par catégorie (Compte, Paiements,
-   Virement, Solde, Produits, Client, Mises à jour Xepay) - le clic sur un
-   onglet affiche la liste de ses événements, chacun avec ses 3 cases
-   Email/SMS/Push alignées à droite. */
-.notif-tabs {
+/* Paramètres de notifications : colonnes cliquables à gauche (Compte,
+   Paiements, Virement, Solde, Produits, Client, Mises à jour Xepay), liste
+   des événements de la catégorie sélectionnée à droite, chacun avec ses 3
+   cases Email/SMS/Push alignées à l'extrême droite. */
+.notif-layout {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 20px;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+.notif-tabs {
+  flex: 0 0 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .notif-tab {
   background: transparent;
-  border: 1px solid #e5e7eb;
-  border-radius: 20px;
-  padding: 7px 16px;
-  font-size: 13px;
+  border: none;
+  border-radius: 10px;
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 13.5px;
   font-weight: 600;
   color: #6b7280;
   cursor: pointer;
   transition: .15s;
-  white-space: nowrap;
 }
 
 .notif-tab:hover {
-  border-color: #9ca3af;
+  background: rgba(17, 24, 39, 0.05);
   color: #111827;
 }
 
 .notif-tab--active {
   background: #fff7e0;
-  border-color: #f0b429;
   color: #b45309;
 }
 
 .notif-event-list {
+  flex: 1 1 auto;
   max-width: 560px;
   display: flex;
   flex-direction: column;
