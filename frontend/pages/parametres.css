@@ -251,6 +251,30 @@
   color: #111827;
 }
 
+/* Même forme que .create-client-btn, mais fond rouge plein / texte blanc -
+   pour les actions destructrices (Supprimer mon compte). */
+.params-danger-btn {
+  background: #ef4444;
+  border: 1px solid #ef4444;
+  color: #ffffff;
+  border-radius: 8px;
+  height: 32px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: .2s;
+  flex-shrink: 0;
+}
+
+.params-danger-btn:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
 .create-client-btn:active {
   transform: translateY(1px);
 }

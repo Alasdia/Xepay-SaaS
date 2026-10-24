@@ -1227,7 +1227,7 @@ function stripeAccountPanelHtml() {
     ${infoHtml}
     <div class="params-subsection-header mt-5">
       <h6 class="params-subsection-title mb-0" style="color:#ef4444;">Zone dangereuse</h6>
-      <button type="button" class="btn btn-outline-danger btn-sm" id="p-stripe-delete-account-btn">Supprimer mon compte</button>
+      <button type="button" class="params-danger-btn" id="p-stripe-delete-account-btn">Supprimer mon compte</button>
     </div>
     <p class="params-subsection-sub">
       Cette action désactive définitivement votre compte Xepay : vous ne pourrez plus vous connecter ni créer ou recevoir
