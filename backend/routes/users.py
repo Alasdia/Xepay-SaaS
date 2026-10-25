@@ -27,6 +27,7 @@ from fastapi import FastAPI, Request
 from backend.services.email_service import send_invitation_email, send_login_alert_email, is_notification_enabled
 from backend.services.rate_limit import allow_attempt, reset as reset_rate_limit
 from backend.services.security_log_service import log_security_event, resolve_log_workspace_id
+from backend.services import commission_service
 from backend.security import hash_password, verify_password, decrypt_secret
 from math import ceil
 import requests
@@ -1198,6 +1199,14 @@ def get_plan(
 
     default_status = "none" if plan == "free" else "active"
 
+    # Commission dégressive par volume mensuel (voir
+    # backend/services/commission_service.py) - exposée ici plutôt que
+    # dupliquée en dur côté frontend, pour que la section Plans et frais
+    # (Paramètres) ne puisse jamais afficher un barème différent de celui
+    # réellement appliqué aux paiements de ce workspace.
+    commission_volume_this_month = commission_service.workspace_volume_this_month(db, owner_id)
+    commission_rate = commission_service.resolve_commission_rate(db, owner_id, now=now)
+
     return {
         "plan": plan if not is_expired else "free",
         "subscription_status": getattr(workspace_user, "subscription_status", None) or default_status,
@@ -1212,6 +1221,11 @@ def get_plan(
             "links_limit": limits["links"],
             "paid_count": paid_count,
             "paid_limit": limits["paid"]
+        },
+        "commission": {
+            "current_rate": float(commission_rate),
+            "volume_this_month": float(commission_volume_this_month),
+            "tiers": commission_service.commission_tiers_public(),
         }
     }
 @router.post("/me/plan/cancel")

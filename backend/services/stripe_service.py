@@ -1,6 +1,8 @@
 import stripe
 import os
+from decimal import Decimal
 from backend.models import Link, UserDB, Profile
+from backend.services import commission_service
 import stripe
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
@@ -29,11 +31,26 @@ def create_checkout_session(
         if not profile or not profile.stripe_account_id:
             raise Exception("Merchant Stripe account not found")
         stripe_account_id = profile.stripe_account_id
+        amount_cents = int(amount * 100)
+        # Commission dégressive par volume mensuel du marchand (voir
+        # backend/services/commission_service.py) - résolue ICI, avant que
+        # ce paiement n'existe en base, pour qu'il ne compte jamais dans son
+        # propre volume. Le taux est dupliqué dans la metadata
+        # (commission_rate_applied) : c'est la seule trace de "quel taux a
+        # réellement été appliqué à CETTE transaction" - indispensable au
+        # webhook de règlement (routes/webhook/paiement.py), qui normalise
+        # tout en USD via la balance_transaction Stripe et ne peut donc pas
+        # relire application_fee_amount directement (il reste dans la
+        # devise d'origine du lien) ni se contenter de ré-appeler
+        # resolve_commission_rate (le volume du mois aurait pu bouger entre
+        # la création de cette session et le règlement du paiement).
+        commission_rate = commission_service.resolve_commission_rate(db, merchant.id)
+        application_fee_amount = int(Decimal(amount_cents) * commission_rate)
         session = stripe.checkout.Session.create(
             mode=mode,
             customer_email=None,
             payment_intent_data={
-                "application_fee_amount": int(amount * 0.06 * 100),  
+                "application_fee_amount": application_fee_amount,
                 "transfer_data": {
                     "destination": stripe_account_id
                 },
@@ -44,7 +61,8 @@ def create_checkout_session(
                     "link_id": str(link.id),
                     "merchant_id": str(merchant.id),
                     "user_id": str(user_id),
-                    "stripe_account_id": str(stripe_account_id)
+                    "stripe_account_id": str(stripe_account_id),
+                    "commission_rate_applied": str(commission_rate),
                 }
             },
             metadata={
@@ -61,7 +79,7 @@ def create_checkout_session(
                     "product_data": {
                         "name": "Paiement Xepay",
                     },
-                    "unit_amount": int(amount * 100),
+                    "unit_amount": amount_cents,
                 },
                 "quantity": 1,
             }],

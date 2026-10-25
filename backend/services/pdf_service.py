@@ -18,7 +18,13 @@ def generate_invoice_pdf(payment, merchant_email):
     width, height = letter
     formatted_amount = f"{payment.amount:,.2f} USD"
 
-    fee_amount = payment.amount * 0.06
+    # Commission RÉELLEMENT appliquée à ce paiement (palier dégressif, voir
+    # backend/services/commission_service.py), pas un taux recalculé ici -
+    # application_fee_requested est déterministe et toujours posé à la
+    # création du Payment (voir process_checkout_session_payment dans
+    # routes/webhook/paiement.py). Repli sur 6% uniquement pour une ligne
+    # créée avant le déploiement de ce champ.
+    fee_amount = payment.application_fee_requested if payment.application_fee_requested is not None else payment.amount * 0.06
     merchant_amount = payment.amount - fee_amount
 
     formatted_fee = f"{fee_amount:,.2f} USD"

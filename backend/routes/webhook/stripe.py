@@ -6,6 +6,7 @@ from backend.database import get_db
 from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectSubscriptionQuantityUpdateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest, ConnectInvoiceUpdateRequest, Payment
 from backend.middleware.authorization import require_manager, require_owner
 from backend.services.stripe_service import (create_connect_invoice, create_connect_product, create_connect_customer, update_connect_customer)
+from backend.services import commission_service
 from backend.services.email_service import send_account_updated_email, send_payout_success_email, send_payout_failed_email, is_notification_enabled
 import stripe  
 import os
@@ -782,11 +783,19 @@ def create_merchant_invoice(
     )
 
     amount = price.unit_amount * data.quantity
-    # 6% comme les liens de paiement (anciennement 1%, insuffisant : le
-    # StripeFee réel dépasse souvent ce taux sur ce flux, ce qui faisait
-    # perdre de l'argent à la plateforme sur chaque facture, voir
-    # process_invoice_paid_event).
-    application_fee_amount = int(amount * 0.06)
+    # Commission dégressive par volume mensuel du marchand (voir
+    # backend/services/commission_service.py), résolue AVANT la création de
+    # cette facture pour qu'elle ne compte jamais dans son propre volume -
+    # palier 0 (6%) par défaut pour un marchand neuf (anciennement fixé à
+    # 1%, insuffisant : le StripeFee réel dépasse souvent ce taux sur ce
+    # flux, ce qui faisait perdre de l'argent à la plateforme sur chaque
+    # facture, voir process_invoice_paid_event). `amount` est déjà en
+    # centimes (price.unit_amount) - contrairement au flux lien de paiement
+    # (stripe_service.create_checkout_session), aucune conversion de devise
+    # ultérieure ne dépend de ce calcul (voir process_invoice_paid_event qui
+    # relit directement intent.application_fee_amount), donc aucun besoin de
+    # dupliquer le taux dans une metadata ici.
+    application_fee_amount = int(amount * commission_service.resolve_commission_rate(db, membership.workspace_id))
 
     try:
         invoice = create_connect_invoice(
@@ -977,6 +986,17 @@ def create_merchant_subscription(
             "quantity": str(data.quantity),
             "xepay_type": "merchant_subscription",
         }
+        # Commission dégressive par volume mensuel du marchand (voir
+        # backend/services/commission_service.py), résolue UNE SEULE FOIS
+        # ici, à la création de l'abonnement - Stripe applique ensuite ce
+        # même application_fee_percent à CHAQUE facture future générée
+        # automatiquement par cet abonnement, sans recalcul possible par
+        # cycle sans logique webhook supplémentaire (voir la limite connue
+        # documentée dans le docstring du module commission_service). Le
+        # taux de ce marchand n'est donc réévalué qu'à la création d'un
+        # NOUVEL abonnement, pas à chaque renouvellement d'un abonnement
+        # existant.
+        commission_rate = commission_service.resolve_commission_rate(db, membership.workspace_id)
         session = stripe.checkout.Session.create(
             mode="subscription",
             customer=data.customer_id,
@@ -988,9 +1008,7 @@ def create_merchant_subscription(
             ],
             metadata=metadata,
             subscription_data={
-                # 6% comme les liens de paiement/factures (anciennement 1%,
-                # voir le commentaire équivalent dans create_merchant_invoice).
-                "application_fee_percent": 6.0,
+                "application_fee_percent": float(commission_rate * 100),
                 "metadata": metadata,
             },
             success_url="https://alasdia.com/signup",

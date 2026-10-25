@@ -118,41 +118,50 @@
   <div class="commission-card">
     <div class="comm-grid">
       <div class="comm-rate-wrap">
-        <div class="comm-rate">6%</div>
-        <div class="comm-rate-label">PAR PAIEMENT RÉUSSI</div>
+        <div class="comm-rate">6% → 3%</div>
+        <div class="comm-rate-label">COMMISSION DÉGRESSIVE SELON VOTRE VOLUME</div>
       </div>
       <div class="comm-info">
-        <h3>UNE SEULE <span>COMMISSION.</span><br>TOUT INCLUS.</h3>
-        <p>Les 6% couvrent l'intégralité des frais. Aucune surprise, aucun frais caché. Vous ne payez que lorsqu'un paiement est encaissé.</p>
+        <h3>PLUS VOUS ENCAISSEZ, <span>MOINS VOUS PAYEZ.</span></h3>
+        <p>Votre commission baisse automatiquement avec votre volume encaissé chaque mois — 6% pour démarrer, jusqu'à 3% sur les plus gros volumes. Elle couvre l'intégralité des frais (Stripe Connect inclus). Aucune surprise, aucun frais caché. Vous ne payez que lorsqu'un paiement est encaissé.</p>
         <div class="comm-breakdown">
           <div class="cb-row">
             <div class="cb-dot" style="background:rgba(99,91,255,.8)"></div>
             <div>
-              <div class="cb-label">Frais Stripe Connect</div>
-              <div class="cb-sub">Traitement, sécurité, infrastructure de paiement</div>
+              <div class="cb-label">0 – 5 000 $ encaissés / mois</div>
+              <div class="cb-sub">Palier de départ</div>
             </div>
-            <div class="cb-value" style="color:rgba(148,138,255,.9)">Inclus</div>
+            <div class="cb-value" style="color:rgba(148,138,255,.9)">6%</div>
           </div>
           <div class="cb-row">
             <div class="cb-dot" style="background:var(--cyan)"></div>
             <div>
-              <div class="cb-label">Application fee Xepay</div>
-              <div class="cb-sub">Dashboard, liens, monitoring, notifications</div>
+              <div class="cb-label">5 000 – 20 000 $ / mois</div>
+              <div class="cb-sub">&nbsp;</div>
             </div>
-            <div class="cb-value" style="color:var(--cyan)">Inclus</div>
+            <div class="cb-value" style="color:var(--cyan)">5%</div>
+          </div>
+          <div class="cb-row">
+            <div class="cb-dot" style="background:var(--gold)"></div>
+            <div>
+              <div class="cb-label">20 000 – 75 000 $ / mois</div>
+              <div class="cb-sub">&nbsp;</div>
+            </div>
+            <div class="cb-value" style="color:var(--gold)">4%</div>
           </div>
           <div class="cb-row" style="border-color:rgba(0,255,163,.15)">
             <div class="cb-dot" style="background:var(--green)"></div>
             <div>
-              <div class="cb-label">Votre revenu net</div>
-              <div class="cb-sub">Versé directement sur votre compte Stripe Connect</div>
+              <div class="cb-label">75 000 $+ / mois</div>
+              <div class="cb-sub">Plancher</div>
             </div>
-            <div class="cb-value" style="color:var(--green)">94%</div>
+            <div class="cb-value" style="color:var(--green)">3%</div>
           </div>
         </div>
+        <p style="font-size:12px;color:var(--muted);margin-top:8px;">Palier par palier, comme une tranche d'impôt : seul le montant au-dessus d'un seuil profite du taux inférieur — jamais de recalcul rétroactif sur ce qui est déjà encaissé.</p>
 
         <div class="comm-example">
-          <div class="ce-title">EXEMPLE — PAIEMENT DE 100 $</div>
+          <div class="ce-title">EXEMPLE — PAIEMENT DE 100 $ (PALIER DE DÉPART)</div>
           <div class="ce-row">
             <div class="ce-label">Montant encaissé</div>
             <div class="ce-val">100 $</div>
@@ -178,7 +187,7 @@
   <div class="plans-header reveal">
     <div class="section-eyebrow">Abonnements SaaS</div>
     <h2>CHOISISSEZ VOTRE<br><span>PLAN DE GESTION</span></h2>
-    <p>La commission de 6% s'applique à tous les plans. L'abonnement détermine vos outils de gestion et vos limites opérationnelles.</p>
+    <p>La commission dégressive (6% à 3% selon votre volume, voir ci-dessus) s'applique à tous les plans. L'abonnement détermine vos outils de gestion et vos limites opérationnelles.</p>
   </div>
 
   <div class="plans-grid">
@@ -192,7 +201,7 @@
         <div class="currency">xof</div>
         <div class="period">/ mois</div>
       </div>
-      <div class="plan-price-note">+ 6% par paiement réussi</div>
+      <div class="plan-price-note">+ 6% à 3% selon volume</div>
       <div class="plan-divider"></div>
       <ul class="plan-features">
         <li>
@@ -223,7 +232,7 @@
         <div class="currency" style="color:var(--cyan)">xof</div>
         <div class="period">/ mois</div>
       </div>
-      <div class="plan-price-note">+ 6% par paiement réussi</div>
+      <div class="plan-price-note">+ 6% à 3% selon volume</div>
       <div class="plan-divider" style="background:rgba(0,229,255,.15)"></div>
       <ul class="plan-features">
         <li>
@@ -253,7 +262,7 @@
         <div class="currency" style="color:var(--gold)">xof</div>
         <div class="period">/ mois</div>
       </div>
-      <div class="plan-price-note">+ 6% par paiement réussi</div>
+      <div class="plan-price-note">+ 6% à 3% selon volume</div>
       <div class="plan-divider" style="background:rgba(240,180,41,.15)"></div>
       <ul class="plan-features">
         <li>
@@ -298,9 +307,9 @@
       <tr><td class="ct-category" colspan="4">PAIEMENTS</td></tr>
       <tr>
         <td class="ct-row-label">Commission par paiement</td>
-        <td><span class="ct-lim">6%</span></td>
-        <td class="col-pro"><span class="ct-lim">6%</span></td>
-        <td><span class="ct-lim">6%</span></td>
+        <td><span class="ct-lim">6% → 3%</span></td>
+        <td class="col-pro"><span class="ct-lim">6% → 3%</span></td>
+        <td><span class="ct-lim">6% → 3%</span></td>
       </tr>
       <tr>
         <td class="ct-row-label">Liens de paiement actifs</td>
@@ -450,13 +459,13 @@
   </div>
 
   <div class="faq-item reveal">
-    <div class="faq-q">Que couvrent les 6% de commission ?<div class="faq-q-icon">+</div></div>
-    <div class="faq-a">Les 6% couvrent l'intégralité des frais : frais Stripe Connect (traitement, sécurité, infrastructure), l'application fee Xepay, ainsi que la marge opérationnelle. Aucun frais supplémentaire n'est appliqué sur les paiements. Vous recevez 94% de chaque montant encaissé.</div>
+    <div class="faq-q">Que couvre la commission, et pourquoi baisse-t-elle ?<div class="faq-q-icon">+</div></div>
+    <div class="faq-a">Elle couvre l'intégralité des frais : frais Stripe Connect (traitement, sécurité, infrastructure), l'application fee Xepay, ainsi que la marge opérationnelle — aucun frais supplémentaire n'est appliqué sur les paiements. Elle commence à 6% puis baisse automatiquement avec votre volume encaissé chaque mois (5% à partir de 5 000$, 4% à partir de 20 000$, 3% à partir de 75 000$), palier par palier comme une tranche d'impôt : seul le montant au-dessus d'un seuil profite du taux inférieur.</div>
   </div>
 
   <div class="faq-item reveal">
     <div class="faq-q">Dois-je payer l'abonnement ET la commission ?<div class="faq-q-icon">+</div></div>
-    <div class="faq-a">Oui, les deux sont indépendants. L'abonnement SaaS (0F cfa, 15500F ou 36000F/mois) détermine vos outils de gestion et vos limites. La commission de 6% s'applique à chaque paiement réussi, quel que soit votre plan. Le plan Starter est gratuit — vous ne payez que la commission.</div>
+    <div class="faq-a">Oui, les deux sont indépendants. L'abonnement SaaS (0F cfa, 15500F ou 36000F/mois) détermine vos outils de gestion et vos limites. La commission (dégressive, 6% à 3% selon votre volume) s'applique à chaque paiement réussi, quel que soit votre plan. Le plan Starter est gratuit — vous ne payez que la commission.</div>
   </div>
 
   <div class="faq-item reveal">

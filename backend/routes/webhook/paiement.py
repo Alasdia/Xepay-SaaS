@@ -15,6 +15,7 @@ from backend.services.email_service import (
     is_notification_enabled
 )
 from backend.services.webhook_service import send_webhook_event
+from backend.services import commission_service
 import traceback
 import hmac
 import hashlib
@@ -178,6 +179,40 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
         if not balance_tx:
             raise Exception("balance_transaction_not_available_yet")
 
+        # Taux de commission réellement appliqué à CETTE transaction - lu
+        # depuis la metadata posée à la création du PaymentIntent
+        # (commission_rate_applied, voir create_checkout_session dans
+        # stripe_service.py), jamais recalculé ici : le volume mensuel du
+        # marchand a pu bouger entre temps (autres paiements en cours de
+        # règlement), ce qui donnerait un taux différent de celui
+        # réellement facturé par Stripe sur CE PaymentIntent. Repli sur
+        # resolve_commission_rate uniquement pour les intents créés avant
+        # le déploiement de ce champ (metadata absente).
+        commission_rate = None
+        raw_commission_rate = intent.metadata.get("commission_rate_applied") if intent and intent.metadata else None
+        if raw_commission_rate:
+            try:
+                commission_rate = Decimal(raw_commission_rate)
+            except Exception:
+                commission_rate = None
+        if commission_rate is None:
+            commission_rate = commission_service.resolve_commission_rate(db, user_id)
+
+        # application_fee_amount est déterministe (fixé par Xepay à la
+        # création du PaymentIntent, pas une estimation) - inutile d'
+        # attendre la confirmation asynchrone de Stripe (ApplicationFee/
+        # BalanceTransaction, voir _fetch_settled_charge_data) pour calculer
+        # le net marchand : si elle n'est pas encore disponible ici, on la
+        # déduit directement du taux ci-dessus, en USD comme amount_usd.
+        # application_fee.created corrigera ces deux champs avec la valeur
+        # Stripe confirmée dès qu'elle arrive (voir stripe_payment_webhook),
+        # sans jamais recréditer/débiter le wallet - déjà crédité ci-dessous
+        # sur la base de ce même calcul déterministe.
+        if application_fee_requested is None:
+            application_fee_requested = round(amount_usd * float(commission_rate), 2)
+        if balance_transaction_net is None:
+            balance_transaction_net = round(amount_usd - application_fee_requested, 2)
+
         currency = session_dict.get("currency", "USD").upper()
         if currency == "XOF":
             amount_local = amount_usd
@@ -189,7 +224,7 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
                 WHERE from_currency = 'USD' AND to_currency = 'XOF'
             """)).fetchone()
             rate_used = row.rate if row else 600
-            total_fee = amount_usd * 0.06
+            total_fee = amount_usd * float(commission_rate)
             merchant_amount = amount_usd - total_fee
             amount_local = int(float(merchant_amount) * float(rate_used))
             # Un lien en EUR (ou toute devise non-XOF) est converti par
