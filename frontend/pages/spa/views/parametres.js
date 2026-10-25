@@ -1484,7 +1484,7 @@ function plansEtFraisTemplate() {
       <button type="button" id="p-btn-manage-billing" class="params-edit-btn">Gérer la facturation</button>
     </div>
     <p id="p-payment-failed-alert" class="params-subsection-sub text-danger d-none mb-2">Votre dernier paiement a échoué — mettez à jour votre carte pour conserver votre accès.</p>
-    <div class="params-row-list mb-5" style="max-width:560px;">
+    <div class="params-row-list mb-5">
       <div class="params-info-row"><span>Plan</span><strong id="p-plan-row-name">—</strong></div>
       <div class="params-info-row"><span>Paiements reçus ce mois</span><strong id="p-plan-row-paid">—</strong></div>
       <div class="params-info-row"><span>Liens créés ce mois</span><strong id="p-plan-row-links">—</strong></div>
@@ -1498,7 +1498,7 @@ function plansEtFraisTemplate() {
 
     <h6 class="params-subsection-title">Frais Xepay</h6>
     <p class="params-subsection-sub">La commission Xepay baisse automatiquement avec votre volume encaissé dans le mois en cours : plus vous encaissez, plus votre taux baisse sur ce qui dépasse chaque palier — jamais rétroactivement sur ce qui est déjà encaissé. Elle est déduite automatiquement du montant transféré sur votre compte Stripe Connect, quel que soit le type de paiement (lien, abonnement ou facture) — vous n'avez rien à calculer ni à reverser vous-même. Les montants ci-dessous sont convertis dans la devise choisie dans le sélecteur de la vue Accueil. Les factures/abonnements facturés en EUR ne sont pas encore pris en compte dans ce volume (conversion à venir) — seuls vos paiements en USD, y compris tous vos liens de paiement quelle que soit leur devise d'origine, y comptent pour l'instant.</p>
-    <div class="params-row-list mb-4" style="max-width:560px;">
+    <div class="params-row-list mb-4">
       <div class="params-info-row"><span>Volume encaissé ce mois</span><strong id="p-commission-volume">—</strong></div>
       <div class="params-info-row"><span>Votre taux actuel</span><strong id="p-commission-rate">—</strong></div>
     </div>
@@ -2139,7 +2139,7 @@ function mountEntreprise(on) {
 function cartesVirtuellesTemplate() {
   return `
     ${detailHeader("Cartes virtuelles")}
-    <div class="card-epay p-4" style="max-width:480px;">
+    <div class="card-epay p-4" style="max-width:72%;">
       <p class="text-muted small mb-3">Générez et gérez des cartes virtuelles pour vos dépenses professionnelles ou celles de vos équipes.</p>
       <form id="p-virtual-card-form" class="d-flex flex-column gap-2 mb-3">
         <div class="row g-2">
@@ -2236,7 +2236,7 @@ function mountCartesVirtuelles(on) {
 function retraitsTemplate() {
   return `
     ${detailHeader("Retraits & Comptes US")}
-    <div class="card-epay p-4" style="max-width:480px;">
+    <div class="card-epay p-4" style="max-width:72%;">
       <p class="text-muted small mb-2">Les fonds sont envoyés via Stripe vers des comptes bancaires internationaux (Europe / US).</p>
       <div class="text-warning small mb-3 text-muted">
         <i class="fa-solid fa-triangle-exclamation"></i> Les méthodes locales (Mobile Money, banques africaines) ne sont pas supportées actuellement.

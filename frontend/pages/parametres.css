@@ -142,7 +142,7 @@
   color: rgba(17, 24, 39, 0.5);
   font-size: 13px;
   margin-bottom: 14px;
-  max-width: 640px;
+  max-width: 72%;
   line-height: 1.5;
 }
 
@@ -164,9 +164,12 @@
 }
 
 /* Liste de lignes sans bordure/encadré (pas de card-epay - jamais un
-   style "KPI" pour du contenu de formulaire/lecture). */
+   style "KPI" pour du contenu de formulaire/lecture). Largeur en % (pas un
+   px fixe) pour occuper ~70-75% de #main-content quelle que soit sa
+   largeur réelle, sans toucher aux boutons des .params-subsection-header
+   (eux restent en justify-content:space-between sur toute la largeur). */
 .params-row-list {
-  max-width: 560px;
+  max-width: 72%;
 }
 
 .params-row-right {
@@ -566,7 +569,7 @@
   display: flex;
   gap: 10px;
   margin-bottom: 14px;
-  max-width: 720px;
+  max-width: 72%;
 }
 
 @media (max-width: 760px) {
@@ -679,7 +682,7 @@
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  max-width: 640px;
+  max-width: 72%;
   font-size: 12.5px;
   line-height: 1.5;
   color: rgba(17, 24, 39, 0.65);
