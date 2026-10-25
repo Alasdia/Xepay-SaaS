@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import Profile, WorkspaceUser
-from backend.middleware.authorization import require_manager
+from backend.middleware.authorization import require_capability
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
@@ -14,7 +14,7 @@ router = APIRouter()
 def create_virtual_card(
     cardholder_data: dict, 
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager)
+    membership: WorkspaceUser = Depends(require_capability("manage_virtual_cards"))
 ):
     owner_id = membership.workspace_id
     profile = db.query(Profile).filter(Profile.user_id == owner_id).first()

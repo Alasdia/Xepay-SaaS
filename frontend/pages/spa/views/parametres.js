@@ -116,6 +116,7 @@ function overviewTemplate() {
           ${tile("plans-et-frais", "fa-solid fa-crown", "Plans et frais", "Plan actuel, paiements et liens consommés ce mois, résiliation de l'abonnement et commission Xepay dégressive selon votre volume")}
           ${tile("equipe", "fa-solid fa-users", "Équipe et sécurité", "Membres, rôles et invitations de l'équipe, 2FA, clés d'accès et sessions, et journal d'activité du workspace")}
           ${tile("entreprise", "fa-solid fa-building", "Entreprise", "Raison sociale, représentant légal et documents justificatifs, synchronisés directement depuis Stripe")}
+          ${tile("permissions", "fa-solid fa-user-shield", "Permissions", "Rôle minimal requis pour chaque action sensible de l'équipe - personnalisable, réservé au propriétaire du workspace")}
         </div>
       </section>
 
@@ -2135,6 +2136,116 @@ function mountEntreprise(on) {
   on(document.getElementById("p-company-widget-btn"), "click", loadCompanyWidget);
 }
 
+// --- Detail : Permissions (rôle minimal par action, configurable par le
+// owner - voir backend/services/permission_service.py) ---
+function permissionsTemplate() {
+  return `
+    ${detailHeader("Permissions")}
+    <p class="params-subsection-sub">Choisissez, pour chaque action sensible, le rôle minimal requis dans votre équipe. La configuration actuelle de Xepay est déjà appliquée par défaut ci-dessous - vous pouvez la personnaliser pour ce workspace à tout moment, et revenir au défaut en un clic. Réservé au propriétaire du workspace.</p>
+    <div id="p-permissions-body"><p class="text-muted">Chargement...</p></div>
+  `;
+}
+
+// Même ordre que ROLE_ORDER côté backend (permission_service.py) - du
+// plus privilégié au moins privilégié.
+const PERMISSION_ROLE_OPTIONS = ["owner", "admin", "manager", "membre", "lecteur"];
+
+function permissionsMessageHtml(message) {
+  return `<p class="text-muted">${message}</p>`;
+}
+
+function permissionRowHtml(cap) {
+  return `
+    <tr>
+      <td>
+        <div class="fw-semibold">${cap.label}</div>
+        <div class="text-muted" style="font-size:12.5px;">${cap.description}</div>
+      </td>
+      <td>
+        <select class="form-select form-select-sm p-permission-select" style="width:auto;" data-capability="${cap.key}">
+          ${PERMISSION_ROLE_OPTIONS.map((r) => `<option value="${r}"${r === cap.current_role ? " selected" : ""}>${TEAM_ROLE_LABELS[r]}</option>`).join("")}
+        </select>
+      </td>
+      <td class="text-end">
+        ${cap.is_overridden ? `<button type="button" class="params-edit-btn p-permission-reset" data-capability="${cap.key}">Réinitialiser</button>` : `<span class="text-muted" style="font-size:12px;">Par défaut</span>`}
+      </td>
+    </tr>
+  `;
+}
+
+function permissionsTableHtml(capabilities) {
+  return `
+    <div class="params-table-well">
+      <div class="table-wrap params-table-scroll">
+        <table class="table params-mini-table">
+          <thead><tr><th>Action</th><th>Rôle minimal</th><th></th></tr></thead>
+          <tbody>${capabilities.map(permissionRowHtml).join("")}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function mountPermissions(on) {
+  const body = document.getElementById("p-permissions-body");
+
+  function wireRows() {
+    body.querySelectorAll(".p-permission-select").forEach((select) => {
+      on(select, "change", async () => {
+        const key = select.dataset.capability;
+        const minRole = select.value;
+        select.disabled = true;
+        try {
+          const res = await apiFetch(`/workspace/permissions/${encodeURIComponent(key)}`, { method: "PUT", body: { min_role: minRole } });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || "Erreur lors de la mise à jour");
+          body.innerHTML = permissionsTableHtml(data.capabilities);
+          wireRows();
+          showToast("Permission mise à jour");
+        } catch (err) {
+          showToast(err.message, "error");
+          select.disabled = false;
+        }
+      });
+    });
+    body.querySelectorAll(".p-permission-reset").forEach((btn) => {
+      on(btn, "click", async () => {
+        const key = btn.dataset.capability;
+        btn.disabled = true;
+        try {
+          const res = await apiFetch(`/workspace/permissions/${encodeURIComponent(key)}/reset`, { method: "POST" });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || "Erreur lors de la réinitialisation");
+          body.innerHTML = permissionsTableHtml(data.capabilities);
+          wireRows();
+          showToast("Permission réinitialisée");
+        } catch (err) {
+          showToast(err.message, "error");
+          btn.disabled = false;
+        }
+      });
+    });
+  }
+
+  async function load() {
+    try {
+      const res = await apiFetch("/workspace/permissions");
+      if (res.status === 403) {
+        body.innerHTML = permissionsMessageHtml("Réservé au propriétaire du workspace.");
+        return;
+      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Erreur de chargement");
+      body.innerHTML = permissionsTableHtml(data.capabilities);
+      wireRows();
+    } catch (err) {
+      body.innerHTML = permissionsMessageHtml("Erreur de chargement.");
+    }
+  }
+
+  load();
+}
+
 // --- Detail : Cartes virtuelles (Issuing) ---
 function cartesVirtuellesTemplate() {
   return `
@@ -2282,6 +2393,7 @@ const SECTIONS = {
   "plans-et-frais": { title: "Plans et frais", template: plansEtFraisTemplate, mount: (on) => mountPlansEtFrais(on) },
   "equipe": { title: "Équipe et sécurité", template: equipeTemplate, mount: (on) => mountEquipe(on) },
   "entreprise": { title: "Entreprise", template: entrepriseTemplate, mount: (on) => mountEntreprise(on) },
+  "permissions": { title: "Permissions", template: permissionsTemplate, mount: (on) => mountPermissions(on) },
   "cartes-virtuelles": { title: "Cartes virtuelles", template: cartesVirtuellesTemplate, mount: (on) => mountCartesVirtuelles(on) },
   "retraits": { title: "Retraits & Comptes US", template: retraitsTemplate, mount: (on) => {} },
   "infos-stripe": { title: "Infos compte Stripe", template: infosStripeTemplate, mount: (on) => mountInfosStripe().catch(console.error) },

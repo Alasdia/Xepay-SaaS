@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import Profile, WorkspaceUser
-from backend.middleware.authorization import require_manager, require_pro_or_business
+from backend.middleware.authorization import require_pro_or_business, require_capability
 import os
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
@@ -19,7 +19,7 @@ def download_financial_report(
     start_date: str,
     end_date: str,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("export_reports")),
     _=Depends(require_pro_or_business)
 ):
     owner_id = membership.workspace_id
@@ -69,7 +69,7 @@ def download_financial_report(
 @router.post("/reports/connect-session")
 def create_connect_session(
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("export_reports")),
     _=Depends(require_pro_or_business)
 ):
     owner_id = membership.workspace_id

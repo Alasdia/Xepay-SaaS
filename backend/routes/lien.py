@@ -15,7 +15,7 @@ from backend.database import get_db, SessionLocal
 from backend.models import LinkCreate
 from backend.models import Link, Payment
 from backend.models import PaymentResponse
-from backend.middleware.authorization import require_admin, require_owner, require_member, require_manager
+from backend.middleware.authorization import require_capability
 from backend.models import Link, WorkspaceUser, generate_prefixed_id
 from backend.services.stripe_service import create_checkout_session
 from backend.routes.webhook.stripe import _emails_by_user_id, _enrich_metadata
@@ -51,7 +51,7 @@ def create_link(
     data: LinkCreate, 
     db: Session = Depends(get_db),
     user: UserDB = Depends(get_current_user),
-    membership: WorkspaceUser = Depends(require_manager)
+    membership: WorkspaceUser = Depends(require_capability("create_payment_links"))
 
 ):
     owner_id = membership.workspace_id

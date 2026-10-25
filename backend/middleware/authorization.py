@@ -5,6 +5,7 @@ from backend.database import get_db
 from backend.models import UserDB, WorkspaceUser
 from backend.auth import get_current_user
 from backend.services.workspace_service import get_workspace_owner_id
+from backend.services import permission_service
 
 
 def normalize_role(role: str) -> str:
@@ -49,6 +50,26 @@ require_admin   = require_role("owner", "admin")
 require_manager = require_role("owner", "admin", "manager")
 require_membre  = require_role("owner", "admin", "manager", "membre")
 require_member  = require_role("owner", "admin", "manager", "membre", "lecteur")
+
+
+def require_capability(capability_key: str):
+    """Fabrique une dependency qui exige le rôle minimal CONFIGURÉ pour
+    cette capacité dans le workspace actif (voir
+    backend/services/permission_service.py) - par défaut, exactement ce
+    que require_owner/require_admin/require_manager imposaient déjà
+    (CAPABILITY_DEFAULTS reflète le comportement d'origine), mais le owner
+    du workspace peut l'avoir redéfini pour SON workspace (jamais pour les
+    autres, voir GET/PUT /workspace/permissions dans routes/users.py)."""
+    def checker(
+        membership: WorkspaceUser = Depends(get_membership),
+        db: Session = Depends(get_db),
+    ) -> WorkspaceUser:
+        min_role = permission_service.get_effective_min_role(db, membership.workspace_id, capability_key)
+        if not permission_service.role_satisfies(membership.role, min_role):
+            raise HTTPException(403, "Permission insuffisante")
+        return membership
+
+    return checker
 
 
 def require_plan(*allowed_plans: str):

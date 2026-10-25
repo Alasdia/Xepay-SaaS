@@ -8,7 +8,7 @@ from backend.services.workspace_service import (
     get_workspace_owner_id
 )
 from backend.security import verify_password, create_2fa_pending_token
-from backend.middleware.authorization import require_admin, require_owner, require_member, require_manager, normalize_role, require_business
+from backend.middleware.authorization import require_member, require_owner, normalize_role, require_business, require_capability
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import text
 from datetime import datetime, timezone
@@ -28,6 +28,7 @@ from backend.services.email_service import send_invitation_email, send_login_ale
 from backend.services.rate_limit import allow_attempt, reset as reset_rate_limit
 from backend.services.security_log_service import log_security_event, resolve_log_workspace_id
 from backend.services import commission_service
+from backend.services import permission_service
 from backend.security import hash_password, verify_password, decrypt_secret
 from math import ceil
 import requests
@@ -595,7 +596,7 @@ def unlink_google_account(
 
 @router.post("/onboarding")
 def create_onboarding_link(
-    membership: WorkspaceUser = Depends(require_owner),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_account_config")),
     db: Session = Depends(get_db),
 ):
     owner_id = membership.workspace_id
@@ -632,7 +633,7 @@ def create_onboarding_link(
 
 @router.get("/stripe/login-link")
 def get_login_link(
-    membership: WorkspaceUser = Depends(require_owner), 
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_account_config")),
     db: Session = Depends(get_db),
 ):
 
@@ -651,7 +652,7 @@ def get_login_link(
     
 @router.get("/stripe/status")
 def stripe_status(
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("view_stripe_account_info")),
     db: Session = Depends(get_db),
 ):
     owner_id = membership.workspace_id
@@ -724,7 +725,7 @@ def _format_address(addr) -> Optional[str]:
 
 @router.get("/stripe/business-details")
 def stripe_business_details(
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("view_stripe_account_info")),
     db: Session = Depends(get_db),
 ):
     """Paramètres > Entreprise > Informations du compte - identité de base
@@ -1043,7 +1044,7 @@ def delete_account(
 
 @router.get("/profile")
 def get_profile(
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("manage_workspace_profile")),
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1089,7 +1090,7 @@ def get_profile(
 @router.patch("/profile")
 def update_profile(
     data: ProfileUpdateRequest,
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("manage_workspace_profile")),
     db: Session = Depends(get_db),
 ):
     """Seuls full_name/phone sont modifiables ici (email/compte géré par
@@ -1136,8 +1137,8 @@ def get_my_plan(
 @router.get("/me/plan")
 def get_plan(
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
-    
+    membership: WorkspaceUser = Depends(require_capability("view_billing_plan")),
+
 ):
     owner_id = membership.workspace_id
     
@@ -1231,10 +1232,18 @@ def get_plan(
 @router.post("/me/plan/cancel")
 def cancel_user_subscription(
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_owner),
-    current_user: UserDB = Depends(get_current_user) 
+    membership: WorkspaceUser = Depends(require_capability("manage_billing_subscription")),
 ):
-    stripe_sub_id = current_user.stripe_subscription_id
+    # L'abonnement/le client Stripe appartiennent au PROPRIÉTAIRE du
+    # workspace, jamais à qui appelle cette route - current_user suffisait
+    # tant que cette route était figée à require_owner (role=="owner" =>
+    # current_user.id == membership.workspace_id, toujours), mais pas
+    # maintenant que manage_billing_subscription peut être ouverte à un
+    # rôle plus large par le owner (voir permission_service.py) : un
+    # manager appelant cette route doit résilier L'ABONNEMENT DU
+    # WORKSPACE, pas chercher un abonnement sur son propre compte.
+    owner = db.query(UserDB).filter(UserDB.id == membership.workspace_id).first()
+    stripe_sub_id = owner.stripe_subscription_id if owner else None
 
     if not stripe_sub_id:
         raise HTTPException(status_code=400, detail="Aucun abonnement actif trouvé")
@@ -1245,7 +1254,7 @@ def cancel_user_subscription(
             cancel_at_period_end=True
         )
 
-        current_user.cancel_at_period_end = True
+        owner.cancel_at_period_end = True
         db.commit()
 
         return {"message": "Abonnement résilié avec succès pour la fin de période"}
@@ -1256,14 +1265,16 @@ def cancel_user_subscription(
 @router.post("/me/create-portal-session")
 def create_portal_session(
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_owner),
-    current_user: UserDB = Depends(get_current_user)
+    membership: WorkspaceUser = Depends(require_capability("manage_billing_subscription")),
 ):
-    if not current_user.stripe_customer_id:
+    # Même principe que cancel_user_subscription ci-dessus : le client
+    # Stripe facturé est celui du PROPRIÉTAIRE du workspace.
+    owner = db.query(UserDB).filter(UserDB.id == membership.workspace_id).first()
+    if not owner or not owner.stripe_customer_id:
         raise HTTPException(status_code=400, detail="Aucun identifiant client Stripe trouvé")
     try:
         session = stripe.billing_portal.Session.create(
-            customer=current_user.stripe_customer_id,
+            customer=owner.stripe_customer_id,
             return_url=f"{PUBLIC_API_URL}/profil.html",
         )
         return {"url": session.url}
@@ -1312,7 +1323,7 @@ def get_users(
 @router.post("/users")
 def create_user(
     data: dict,
-    membership: WorkspaceUser = Depends(require_admin),
+    membership: WorkspaceUser = Depends(require_capability("manage_team")),
     db: Session = Depends(get_db),
     _: UserDB = Depends(require_business)
 ):
@@ -1361,7 +1372,7 @@ def create_user(
 @router.post("/invites")
 def create_invite(
     data: dict,
-    membership: WorkspaceUser = Depends(require_admin),
+    membership: WorkspaceUser = Depends(require_capability("manage_team")),
     db: Session = Depends(get_db),
     current_user: UserDB = Depends(get_current_user),
     _: UserDB = Depends(require_business)
@@ -1423,7 +1434,7 @@ def create_invite(
 
 @router.get("/invites")
 def get_invites(
-    membership: WorkspaceUser = Depends(require_admin),
+    membership: WorkspaceUser = Depends(require_capability("manage_team")),
     db: Session = Depends(get_db),
     _: UserDB = Depends(require_business)
 ):
@@ -1529,7 +1540,7 @@ def update_role(
     user_id: str,
     data: dict,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_admin),
+    membership: WorkspaceUser = Depends(require_capability("manage_team")),
     _: UserDB = Depends(require_business)
 ):
 
@@ -1563,7 +1574,7 @@ def update_role(
 def toggle_user(
     user_id: str,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_admin),
+    membership: WorkspaceUser = Depends(require_capability("manage_team")),
     _: UserDB = Depends(require_business)
 ):
     user = db.query(UserDB).filter(UserDB.id == user_id).first()
@@ -1596,7 +1607,7 @@ def toggle_user(
 def delete_user(
     user_id: str,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_admin),
+    membership: WorkspaceUser = Depends(require_capability("manage_team")),
     current_user: UserDB = Depends(get_current_user),
     _: UserDB = Depends(require_business)
 ):
@@ -1633,6 +1644,64 @@ def delete_user(
     log_security_event(db, current_user.id, "member_removed", f"{removed_email} retiré de l'équipe", workspace_id=workspace_id)
 
     return {"message": "Utilisateur supprimé"}
+
+
+# --- Permissions par rôle (configurables par le owner, voir
+# backend/services/permission_service.py) - delibérément require_owner
+# en dur ici (jamais require_capability) : ce sont les routes qui
+# DÉCIDENT des permissions des autres rôles, les laisser elles-mêmes
+# configurables ouvrirait une escalade de privilèges (un rôle à qui on
+# aurait ouvert cette route pourrait s'accorder n'importe quelle autre
+# capacité, y compris manage_team ou withdraw_funds).
+@router.get("/workspace/permissions")
+def get_workspace_permissions(
+    membership: WorkspaceUser = Depends(require_owner),
+    db: Session = Depends(get_db),
+):
+    return {"capabilities": permission_service.list_capabilities(db, membership.workspace_id)}
+
+
+@router.put("/workspace/permissions/{capability_key}")
+def update_workspace_permission(
+    capability_key: str,
+    data: dict,
+    membership: WorkspaceUser = Depends(require_owner),
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    min_role = data.get("min_role")
+    try:
+        permission_service.set_override(db, membership.workspace_id, capability_key, min_role)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    label = permission_service.CAPABILITY_LABELS.get(capability_key, (capability_key,))[0]
+    role_label = permission_service.ROLE_LABELS.get(permission_service.normalize_role(min_role), min_role)
+    log_security_event(
+        db, current_user.id, "permission_updated",
+        f"Permission « {label} » définie sur « {role_label} »",
+        workspace_id=membership.workspace_id,
+    )
+    return {"capabilities": permission_service.list_capabilities(db, membership.workspace_id)}
+
+
+@router.post("/workspace/permissions/{capability_key}/reset")
+def reset_workspace_permission(
+    capability_key: str,
+    membership: WorkspaceUser = Depends(require_owner),
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if capability_key not in permission_service.CAPABILITY_DEFAULTS:
+        raise HTTPException(400, f"Capacité inconnue : {capability_key}")
+    permission_service.reset_override(db, membership.workspace_id, capability_key)
+    label = permission_service.CAPABILITY_LABELS.get(capability_key, (capability_key,))[0]
+    log_security_event(
+        db, current_user.id, "permission_updated",
+        f"Permission « {label} » réinitialisée (par défaut)",
+        workspace_id=membership.workspace_id,
+    )
+    return {"capabilities": permission_service.list_capabilities(db, membership.workspace_id)}
+
 
 @router.get("/workspaces/me")
 def get_my_workspaces(

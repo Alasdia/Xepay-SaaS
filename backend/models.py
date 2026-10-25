@@ -377,6 +377,33 @@ class WorkspaceUser(Base):
     # l'ajout de la colonne, jamais reconstitue retroactivement.
     created_at = Column(DateTime(timezone=True), nullable=True, default=lambda: datetime.now(timezone.utc))
 
+# Permissions par rôle, configurables par le owner d'un workspace (voir
+# backend/services/permission_service.py pour la liste des capacités et
+# leur rôle minimal par défaut, et backend/middleware/authorization.py
+# pour require_capability qui les applique). Une ligne par capacité
+# EXPLICITEMENT redéfinie par ce workspace - l'absence de ligne pour une
+# capacité donnée signifie "comportement par défaut", jamais recréée pour
+# toutes les capacités à chaque workspace (la config actuelle de l'app EST
+# le défaut, voir la conversation produit du 2026-10-25 : "tout la
+# configuration actuelle... est considérée comme la configuration par
+# défaut").
+class WorkspacePermissionOverride(Base):
+    __tablename__ = "workspace_permission_overrides"
+
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("wkpo"))
+    workspace_id = Column(String, ForeignKey("users.id"), nullable=False)
+    capability_key = Column(String, nullable=False)
+    # Rôle minimal requis pour cette capacité dans ce workspace - une des
+    # valeurs de permission_service.ROLE_ORDER ("owner", "admin",
+    # "manager", "membre", "lecteur").
+    min_role = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("idx_wkpo_workspace_capability", "workspace_id", "capability_key", unique=True),
+    )
+
 class WorkspaceInvite(Base):
     __tablename__ = "workspace_invites"
 

@@ -5,7 +5,7 @@ import uuid
 from backend.database import get_db
 from backend.models import Wallet, Withdrawal, WithdrawRequest, WalletTransaction, WebhookDeliveryLog, Webhook, RefundRequest
 from backend.services.webhook_service import send_webhook_event
-from backend.middleware.authorization import require_owner, require_pro_or_business
+from backend.middleware.authorization import require_pro_or_business, require_capability
 from backend.models import WorkspaceUser
 from backend.auth import get_current_user
 from backend.services.workspace_service import (
@@ -265,7 +265,7 @@ def get_wallet_history(
 def withdraw(
     req: WithdrawRequest, 
     db: Session = Depends(get_db), 
-    membership: WorkspaceUser = Depends(require_owner)
+    membership: WorkspaceUser = Depends(require_capability("withdraw_funds"))
 ):
     owner_id = membership.workspace_id
 
@@ -369,7 +369,7 @@ def process_withdraw(
     id: str,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_owner)
+    membership: WorkspaceUser = Depends(require_capability("withdraw_funds"))
 ):
     wd = db.query(Withdrawal)\
         .filter(Withdrawal.id == id, Withdrawal.user_id == membership.workspace_id)\
@@ -441,7 +441,7 @@ def process_withdraw(
 @router.get("/withdrawals")
 def get_withdrawals(
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_owner)
+    membership: WorkspaceUser = Depends(require_capability("withdraw_funds"))
 ):
     owner_id = membership.workspace_id
     profile = db.query(Profile).filter(

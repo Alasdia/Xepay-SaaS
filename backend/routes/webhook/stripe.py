@@ -4,7 +4,7 @@ import stripe
 
 from backend.database import get_db
 from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectSubscriptionQuantityUpdateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest, ConnectInvoiceUpdateRequest, Payment
-from backend.middleware.authorization import require_manager, require_owner
+from backend.middleware.authorization import require_capability
 from backend.services.stripe_service import (create_connect_invoice, create_connect_product, create_connect_customer, update_connect_customer)
 from backend.services import commission_service
 from backend.services.email_service import send_account_updated_email, send_payout_success_email, send_payout_failed_email, is_notification_enabled
@@ -679,12 +679,12 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 @router.post("/stripe/account-session")
 def create_account_session(
     db: Session = Depends(get_db),
-    # Owner uniquement : ce widget permet de MODIFIER les informations
+    # Owner par défaut : ce widget permet de MODIFIER les informations
     # Stripe du compte (Paramètres > Entreprise > Informations sur votre
-    # entreprise), pas seulement les consulter - require_manager
-    # (Admin/Manager inclus) laissait n'importe quel manager+ changer la
-    # configuration Stripe du propriétaire.
-    membership: WorkspaceUser = Depends(require_owner)
+    # entreprise), pas seulement les consulter - configurable par le
+    # owner du workspace (voir permission_service.CAPABILITY_DEFAULTS,
+    # "manage_stripe_account_config"), jamais pour les autres workspaces.
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_account_config"))
 ):
     profile = db.query(Profile).filter(Profile.user_id == membership.workspace_id).first()
     if not profile or not profile.stripe_account_id:
@@ -719,7 +719,7 @@ def get_authorized_connect_profile(
 def create_connect_activity_session(
     account_id: str,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager)
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_billing"))
 ):
     get_authorized_connect_profile(account_id, db, membership)
     try:
@@ -766,7 +766,7 @@ def create_connect_activity_session(
 def create_merchant_invoice(
     data: ConnectInvoiceCreateRequest,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_billing")),
 ):
     profile = db.query(Profile).filter(
         Profile.user_id == membership.workspace_id
@@ -838,7 +838,7 @@ def update_merchant_invoice(
     invoice_id: str,
     data: ConnectInvoiceUpdateRequest,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_billing")),
 ):
     from datetime import datetime, timedelta, timezone
 
@@ -881,7 +881,7 @@ def update_merchant_invoice(
 def void_merchant_invoice(
     invoice_id: str,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_billing")),
 ):
     profile = db.query(Profile).filter(
         Profile.user_id == membership.workspace_id
@@ -926,7 +926,7 @@ def void_merchant_invoice(
 @router.get("/stripe/connect/invoices")
 def list_merchant_invoices(
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_billing")),
 ):
     profile = db.query(Profile).filter(
         Profile.user_id == membership.workspace_id
@@ -966,7 +966,7 @@ def list_merchant_invoices(
 def create_merchant_subscription(
     data: ConnectSubscriptionCreateRequest,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_billing")),
 ):
     profile = db.query(Profile).filter(
         Profile.user_id == membership.workspace_id
@@ -1029,7 +1029,7 @@ def create_merchant_subscription(
 def cancel_merchant_subscription(
     subscription_id: str,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_billing")),
 ):
     profile = db.query(Profile).filter(
         Profile.user_id == membership.workspace_id
@@ -1058,7 +1058,7 @@ def update_merchant_subscription_quantity(
     subscription_id: str,
     data: ConnectSubscriptionQuantityUpdateRequest,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_billing")),
 ):
     profile = db.query(Profile).filter(
         Profile.user_id == membership.workspace_id
@@ -1094,7 +1094,7 @@ def update_merchant_subscription_quantity(
 @router.get("/stripe/connect/subscriptions")
 def list_merchant_subscriptions(
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_billing")),
 ):
     profile = db.query(Profile).filter(
         Profile.user_id == membership.workspace_id
@@ -1159,7 +1159,7 @@ def list_merchant_subscriptions(
 def create_merchant_customer(
     data: ConnectCustomerCreateRequest,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_billing")),
 ):
     profile = db.query(Profile).filter(
         Profile.user_id == membership.workspace_id
@@ -1201,7 +1201,7 @@ def update_merchant_customer(
     customer_id: str,
     data: ConnectCustomerCreateRequest,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_billing")),
 ):
     profile = db.query(Profile).filter(
         Profile.user_id == membership.workspace_id
@@ -1270,7 +1270,7 @@ def _enrich_metadata(metadata: dict | None, emails_by_id: dict[str, str]) -> dic
 @router.get("/stripe/connect/customers")
 def list_merchant_customers(
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_billing")),
 ):
     profile = db.query(Profile).filter(
         Profile.user_id == membership.workspace_id
@@ -1447,7 +1447,7 @@ def list_merchant_customers(
 @router.get("/stripe/connect/products")
 def list_merchant_products(
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_billing")),
 ):
     profile = db.query(Profile).filter(
         Profile.user_id == membership.workspace_id
@@ -1497,7 +1497,7 @@ def list_merchant_products(
 def create_merchant_product(
     data: ConnectProductCreateRequest,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_billing")),
 ):
     profile = db.query(Profile).filter(
         Profile.user_id == membership.workspace_id
@@ -1588,7 +1588,7 @@ def _set_merchant_product_active(
 def archive_merchant_product(
     product_id: str,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_billing")),
 ):
     return _set_merchant_product_active(product_id, False, db, membership)
 
@@ -1596,14 +1596,14 @@ def archive_merchant_product(
 def unarchive_merchant_product(
     product_id: str,
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_billing")),
 ):
     return _set_merchant_product_active(product_id, True, db, membership)
 
 @router.get("/stripe/connect/payment-methods")
 def list_merchant_payment_methods(
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_billing")),
 ):
     profile = db.query(Profile).filter(
         Profile.user_id == membership.workspace_id
@@ -1634,7 +1634,7 @@ def list_merchant_payment_methods(
 @router.get("/stripe/connect/risk")
 def list_merchant_risk(
     db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_manager),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_billing")),
 ):
     """Vue Risque complète pour le compte connecté. Un Dispute (litige) ne
     représente qu'une contestation déjà déposée par la banque du client -
