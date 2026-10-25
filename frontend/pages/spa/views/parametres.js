@@ -1498,15 +1498,16 @@ function plansEtFraisTemplate() {
 
     <h6 class="params-subsection-title">Frais Xepay</h6>
     <p class="params-subsection-sub">La commission Xepay baisse automatiquement avec votre volume encaissé dans le mois en cours : plus vous encaissez, plus votre taux baisse sur ce qui dépasse chaque palier — jamais rétroactivement sur ce qui est déjà encaissé. Elle est déduite automatiquement du montant transféré sur votre compte Stripe Connect, quel que soit le type de paiement (lien, abonnement ou facture) — vous n'avez rien à calculer ni à reverser vous-même. Les montants ci-dessous sont convertis dans la devise choisie dans le sélecteur de la vue Accueil. Les factures/abonnements facturés en EUR ne sont pas encore pris en compte dans ce volume (conversion à venir) — seuls vos paiements en USD, y compris tous vos liens de paiement quelle que soit leur devise d'origine, y comptent pour l'instant.</p>
-    <div class="params-row-list mb-3" style="max-width:560px;">
+    <div class="params-row-list mb-4" style="max-width:560px;">
       <div class="params-info-row"><span>Volume encaissé ce mois</span><strong id="p-commission-volume">—</strong></div>
       <div class="params-info-row"><span>Votre taux actuel</span><strong id="p-commission-rate">—</strong></div>
     </div>
-    <div class="table-wrap" style="max-width:560px;">
-      <table class="table params-mini-table">
-        <thead><tr><th>Volume encaissé ce mois</th><th>Commission</th></tr></thead>
-        <tbody id="p-commission-tiers-tbody"><tr><td colspan="2" class="text-muted">Chargement...</td></tr></tbody>
-      </table>
+    <div class="commission-stairs" id="p-commission-stairs">
+      <p class="text-muted">Chargement...</p>
+    </div>
+    <div class="commission-legend">
+      <i class="fa-solid fa-circle-info"></i>
+      <span>Comme une tranche d'impôt : chaque palier ne s'applique qu'au montant encaissé <strong>au-dessus</strong> de son seuil — jamais à la totalité de votre volume, et jamais rétroactivement sur ce que vous avez déjà encaissé plus tôt dans le mois. Le palier se réinitialise au 1er de chaque mois.</span>
     </div>
   `;
 }
@@ -1521,21 +1522,41 @@ function formatAmountUsd(usdValue) {
   return formatMoney(usdValue * getRate("USD", currency), currency);
 }
 
-// Barème affiché tel que renvoyé par /me/plan (commission.tiers) - jamais
-// dupliqué en dur ici, pour ne jamais pouvoir afficher un taux différent de
-// celui réellement appliqué (voir backend/services/commission_service.py).
-// Seuils en USD (voir la limite de devise documentée côté backend).
-function commissionTiersRowsHtml(tiers, currentRate) {
-  if (!tiers || !tiers.length) return `<tr><td colspan="2" class="text-muted">Indisponible</td></tr>`;
+// Visualisation "escalier" du barème renvoyé par /me/plan (commission.
+// tiers) - jamais dupliqué en dur ici, pour ne jamais pouvoir afficher un
+// taux différent de celui réellement appliqué (voir backend/services/
+// commission_service.py). Chaque palier affiche sa plage et son taux ;
+// celui déjà dépassé ce mois-ci est rempli en entier, le palier actuel
+// affiche sa progression réelle vers le suivant (jamais 0% ni 100% sauf
+// vraiment atteint), les paliers à venir restent vides. volumeUsd et les
+// seuils des paliers sont tous en USD (même base, voir la limite de devise
+// documentée côté backend) - seule la conversion d'affichage change.
+function commissionStairsHtml(tiers, currentRate, volumeUsd) {
+  if (!tiers || !tiers.length) return `<p class="text-muted">Indisponible</p>`;
+  const currentIndex = tiers.findIndex((t) => t.rate === currentRate);
   return tiers.map((t, i) => {
     const next = tiers[i + 1];
-    const label = next ? `${formatAmountUsd(t.from)} – ${formatAmountUsd(next.from)}` : `${formatAmountUsd(t.from)}+`;
-    const isCurrent = t.rate === currentRate;
+    const rangeLabel = next ? `${formatAmountUsd(t.from)} – ${formatAmountUsd(next.from)}` : `${formatAmountUsd(t.from)}+`;
+    const state = i < currentIndex ? "is-passed" : i === currentIndex ? "is-current" : "is-upcoming";
+    let fillPct = 0;
+    if (state === "is-passed") fillPct = 100;
+    else if (state === "is-current") fillPct = next ? Math.min(100, Math.max(0, ((volumeUsd - t.from) / (next.from - t.from)) * 100)) : 100;
+    let caption = "";
+    if (state === "is-current") {
+      caption = next
+        ? `<div class="commission-step-caption">Encore ${formatAmountUsd(Math.max(0, next.from - volumeUsd))} avant de passer à ${Math.round(next.rate * 100)}%</div>`
+        : `<div class="commission-step-caption">Palier le plus bas déjà atteint ce mois-ci</div>`;
+    }
     return `
-      <tr${isCurrent ? ' class="fw-bold"' : ""}>
-        <td>${label}${isCurrent ? ' <span class="badge bg-success-subtle text-success ms-1" style="font-size:11px;">Palier actuel</span>' : ""}</td>
-        <td>${Math.round(t.rate * 100)}%</td>
-      </tr>
+      <div class="commission-step ${state}">
+        <div class="commission-step-top">
+          <span class="commission-step-rate">${Math.round(t.rate * 100)}%</span>
+          ${state === "is-current" ? '<span class="commission-step-badge">Vous êtes ici</span>' : ""}
+        </div>
+        <div class="commission-step-range">${rangeLabel}</div>
+        <div class="commission-step-track"><div class="commission-step-fill" style="width:${fillPct}%"></div></div>
+        ${caption}
+      </div>
     `;
   }).join("");
 }
@@ -1585,7 +1606,7 @@ async function mountPlansEtFraisData() {
     if (commission) {
       document.getElementById("p-commission-volume").innerText = formatAmountUsd(commission.volume_this_month);
       document.getElementById("p-commission-rate").innerText = `${Math.round(commission.current_rate * 100)}%`;
-      document.getElementById("p-commission-tiers-tbody").innerHTML = commissionTiersRowsHtml(commission.tiers, commission.current_rate);
+      document.getElementById("p-commission-stairs").innerHTML = commissionStairsHtml(commission.tiers, commission.current_rate, commission.volume_this_month);
     }
   } catch (err) {
     console.error("Erreur chargement plan:", err);
