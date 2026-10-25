@@ -7,6 +7,7 @@ import { showToast } from "../shared/toast.js";
 import { showUpgradeModal } from "../shared/modalUpgrade.js";
 import { navigate } from "../core/router.js";
 import { getWorkspaceId } from "../core/state.js";
+import { getCurrency, getRate, formatMoney } from "../core/currency.js";
 import { renderCommerceKpis, ensureCommerceKpiStyles, renderMetadataSection } from "./commerce.js";
 import { initDetailsDrawer } from "../shared/detailsDrawer.js";
 
@@ -988,7 +989,12 @@ export async function mount(container, params = {}) {
   }
 
   function renderStats(stats) {
-    document.getElementById("total-xof").innerText = (stats.total_received || 0).toLocaleString("fr-FR") + " XOF";
+    // stats.total_received est stocké en XOF côté backend - converti vers
+    // la devise choisie dans le sélecteur de la vue Accueil (core/
+    // currency.js, lu ici au montage ; cette vue n'a pas son propre
+    // sélecteur, voir la conversation produit du 2026-10-25).
+    const currency = getCurrency();
+    document.getElementById("total-xof").innerText = formatMoney((stats.total_received || 0) * getRate("XOF", currency), currency);
     document.getElementById("success-rate").innerText = (stats.success_rate || 0) + "%";
     renderStatusChart(stats.paid_links || 0, stats.pending_links || 0, stats.failed_links || 0);
   }

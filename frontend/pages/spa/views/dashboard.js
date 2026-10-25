@@ -12,6 +12,7 @@ import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { navigate } from "../core/router.js";
 import { getWorkspaceId } from "../core/state.js";
+import { getCurrency, setCurrency, getRate as sharedGetRate, formatMoney as sharedFormatMoney } from "../core/currency.js";
 
 const TEMPLATE = `
 <div class="hero-stat mb-4" id="hero-stat">
@@ -231,7 +232,12 @@ export async function mount(container) {
 
   let activityRaw = null;
   let activityPeriodKey = "month";
-  let activityCurrency = "USD";
+  // Devise d'affichage partagée par toute la SPA (voir core/currency.js) -
+  // ce bloc "Votre aperçu" reste le SEUL endroit qui l'écrit (setCurrency,
+  // voir le sélecteur plus bas) ; initialisée ici depuis la préférence déjà
+  // enregistrée, pour refléter un changement fait lors d'une session
+  // précédente dès le premier rendu, sans attendre un clic.
+  let activityCurrency = getCurrency();
   let activityNetMode = "gross";
 
   function currentActivityPeriod() {
@@ -239,18 +245,7 @@ export async function mount(container) {
   }
   const activityCharts = {};
 
-  // Taux fixes vers XOF, alignés sur ceux déjà utilisés ailleurs dans
-  // l'app (ex: USD_RATE dans backend/routes/payout.py) plutôt qu'un taux
-  // de marché en direct. EUR/XOF = parité officielle UEMOA/CEMAC.
-  const FIXED_RATES_TO_XOF = { XOF: 1, USD: 577.325, EUR: 655.957 };
-
-  function getRate(from, to) {
-    if (from === to) return 1;
-    const fromToXof = FIXED_RATES_TO_XOF[from];
-    const toToXof = FIXED_RATES_TO_XOF[to];
-    if (!fromToXof || !toToXof) return 1;
-    return fromToXof / toToXof;
-  }
+  const getRate = sharedGetRate;
 
   function activityCardId(cat, kind) {
     return `${cat.key}-${kind}`;
@@ -931,9 +926,7 @@ export async function mount(container) {
     };
   }
 
-  function formatMoney(value, currency) {
-    return value.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " " + currency;
-  }
+  const formatMoney = sharedFormatMoney;
 
   function formatCount(value) {
     return Math.round(value).toLocaleString("fr-FR");
@@ -1898,11 +1891,24 @@ export async function mount(container) {
       if (e.target.id === "activity-add-modal-overlay") closeActivityAddModal();
     });
 
+    // Synchronise le popup (classe active) et le libellé affiché avec la
+    // préférence déjà enregistrée (activityCurrency, lue via getCurrency()
+    // à l'ouverture de cette vue) - le TEMPLATE statique ci-dessus affiche
+    // toujours USD par défaut, ce bloc le corrige si l'utilisateur avait
+    // choisi une autre devise lors d'une session précédente.
+    document.querySelectorAll("#activity-currency-popup .activity-filter-item").forEach((item) => {
+      item.classList.toggle("active", item.dataset.currency === activityCurrency);
+    });
+    setText("activity-currency-label", activityCurrency);
+
     wireActivityFilter("activity-currency-btn", "activity-currency-popup", (item) => {
       activityCurrency = item.dataset.currency;
+      setCurrency(activityCurrency);
       setText("activity-currency-label", item.dataset.currency);
       // Seul sélecteur de devise restant (le bloc héro n'a plus le sien) :
-      // le rafraîchir aussi ici.
+      // le rafraîchir aussi ici. setCurrency persiste le choix pour les
+      // autres vues de la SPA (voir core/currency.js) - elles le lisent
+      // chacune à leur propre montage, sans sélecteur dupliqué.
       renderHeroStat();
     });
     wireActivityFilter("activity-period-btn", "activity-period-popup", (item) => {

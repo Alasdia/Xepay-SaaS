@@ -40,6 +40,7 @@ import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
 import { navigate } from "../core/router.js";
 import { getWorkspaceId } from "../core/state.js";
+import { getCurrency, getRate, formatMoney } from "../core/currency.js";
 
 function ensureSoldeStyles() {
   if (document.querySelector("#solde-balance-style")) return;
@@ -399,7 +400,7 @@ const TEMPLATE = `
         <div class="balance-card-label" id="balance-card-label">Solde disponible</div>
         <div class="balance-card-amount" id="wallet-balance">0 XOF</div>
         <div class="balance-source-meta">
-          <span>Commission Xepay (1%) : <strong id="balanceSourceFee">0 USD</strong></span>
+          <span>Commission Xepay prélevée : <strong id="balanceSourceFee">0 USD</strong></span>
           <span id="balanceSourceAvailability"></span>
         </div>
       </div>
@@ -651,11 +652,14 @@ export async function mount(container) {
     return result;
   }
 
-  const formatAmount = (n) => Number(n || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " XOF";
+  // Convertis vers la devise choisie dans le sélecteur de la vue Accueil
+  // (core/currency.js, lu ici au montage - cette vue n'a pas son propre
+  // sélecteur, voir la conversation produit du 2026-10-25). wallet.balance
+  // et tous les montants dérivés sont stockés en XOF côté backend ;
   // fee_amount (commission Xepay) reste dans la devise d'origine du
-  // paiement (USD), jamais convertie en XOF côté backend — formatAmount
-  // ajoute toujours "XOF", donc ne pas l'utiliser pour cette valeur.
-  const formatAmountUSD = (n) => Number(n || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " USD";
+  // paiement (USD) — chacun converti depuis SA PROPRE devise de stockage.
+  const formatAmount = (n) => formatMoney(Number(n || 0) * getRate("XOF", getCurrency()), getCurrency());
+  const formatAmountUSD = (n) => formatMoney(Number(n || 0) * getRate("USD", getCurrency()), getCurrency());
   const formatDate = (d) =>
     new Date(d).toLocaleString("fr-FR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
@@ -752,7 +756,7 @@ export async function mount(container) {
           return `
           <div class="wallet-item" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px;">
             <div class="wallet-row"><span class="wallet-label">Type :</span><span class="wallet-value">${typeLabel}</span></div>
-            <div class="wallet-row"><span class="wallet-label">Montant :</span><span class="wallet-value ${montantClass}">${montantSigne}${Number(tx.amount).toLocaleString("fr-FR")} XOF</span></div>
+            <div class="wallet-row"><span class="wallet-label">Montant :</span><span class="wallet-value ${montantClass}">${montantSigne}${formatAmount(tx.amount)}</span></div>
             <div class="wallet-row"><span class="wallet-label">Date :</span><span class="wallet-value">${new Date(tx.created_at).toLocaleString("fr-FR")}</span></div>
             <div class="wallet-row"><span class="wallet-label">Référence :</span><span class="wallet-value">${reference || "N/A"}</span></div>
             <div class="wallet-row"><span class="wallet-label">Note :</span><span class="wallet-value">${note || "-"}</span></div>
