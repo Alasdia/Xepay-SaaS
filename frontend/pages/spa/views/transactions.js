@@ -416,10 +416,16 @@ export async function mount(container, params = {}) {
     `;
   }
 
+  // `currency` = devise D'ORIGINE de `value` (celle du paiement/retrait,
+  // voir les appelants) - converti ici vers la devise choisie dans le
+  // sélecteur de la vue Accueil (core/currency.js), partagée par toute la
+  // SPA. Utilisé à la fois par le tableau (renderPaymentRow/
+  // renderWithdrawalRow) et par la modale de détail rapide
+  // (showPaymentDetails) : les deux se mettent à jour ensemble.
   function formatMontant(value, currency) {
-    return value === null || value === undefined
-      ? "-"
-      : `${Number(value).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+    if (value === null || value === undefined) return "-";
+    const target = getCurrency();
+    return formatMoney(Number(value) * getRate(currency, target), target);
   }
 
   // Part Xepay réelle = commission globale (t.commission_xepay, qui inclut
@@ -558,8 +564,13 @@ export async function mount(container, params = {}) {
   }
 
   function renderGenericRow(t, i) {
-    const amount = t.amount_local ?? t.amount;
-    const currency = t.currency_local ?? t.currency;
+    const sourceAmount = t.amount_local ?? t.amount;
+    const sourceCurrency = t.currency_local ?? t.currency;
+    // Converti depuis SA PROPRE devise (déjà normalisée en XOF côté
+    // backend pour ce champ, voir GET /activity) vers la devise choisie
+    // dans le sélecteur de la vue Accueil (core/currency.js).
+    const target = getCurrency();
+    const amount = Number(sourceAmount || 0) * getRate(sourceCurrency, target);
     const displayName = t.type === "payment" ? t.label || "Client" : t.label || "Retrait";
     const color = avatarColor(displayName || "x");
     return `
@@ -570,7 +581,7 @@ export async function mount(container, params = {}) {
             <div><div class="fw-semibold">${displayName}</div><small style="color: #9ca3af; font-size:0.75rem;">${t.type === "payment" ? "Client" : "Retrait"}</small></div>
           </div>
         </td>
-        <td><span class="amount-cell">${amount.toLocaleString("fr-FR")}</span><span class="amount-currency">${currency}</span></td>
+        <td><span class="amount-cell">${amount.toLocaleString("fr-FR")}</span><span class="amount-currency">${target}</span></td>
         <td><span class="status-pill ${statusBadgeClass(t.status)}">${statusMap[t.status] || t.status}</span></td>
         <td style="color: #6b7280; font-size: 0.85rem;">${t.date && !isNaN(new Date(t.date)) ? new Date(t.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "N/A"}</td>
       </tr>

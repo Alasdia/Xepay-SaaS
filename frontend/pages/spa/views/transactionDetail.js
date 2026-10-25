@@ -10,6 +10,7 @@ import { setViewStyles } from "../core/styleLoader.js";
 import { navigate } from "../core/router.js";
 import { getWorkspaceId } from "../core/state.js";
 import { showUpgradeModal } from "../shared/modalUpgrade.js";
+import { getCurrency, getRate, formatMoney } from "../core/currency.js";
 
 const statusMap = { paid: "Réussi", pending: "En attente", expired: "Échoué" };
 
@@ -48,17 +49,26 @@ function renderRows(rows) {
     .join("");
 }
 
+// Toute devise d'origine (item.currency pour le montant crédité,
+// d.currency_origin pour le montant brut/les frais) est convertie ici vers
+// la devise choisie dans le sélecteur de la vue Accueil (core/currency.js,
+// partagée par toute la SPA) - même mécanique que le tableau et la modale
+// de détail rapide de transactions.js (formatMontant).
+function formatInSelectedCurrency(value, sourceCurrency) {
+  const target = getCurrency();
+  return formatMoney(Number(value || 0) * getRate(sourceCurrency || "USD", target), target);
+}
+
 function renderPayment(item) {
   const d = item.details || {};
-  const amount = Number(item.amount || 0);
   return {
     title: item.label || "Client",
     sub: "Paiement · " + (statusMap[item.status] || item.status),
     rows: [
-      ["Montant reçu", `${amount.toLocaleString("fr-FR")} ${item.currency}`],
-      ["Montant d'origine", `${d.amount_origin ?? "-"} ${d.currency_origin ?? ""}`],
+      ["Montant reçu", formatInSelectedCurrency(item.amount, item.currency)],
+      ["Montant d'origine", d.amount_origin != null ? formatInSelectedCurrency(d.amount_origin, d.currency_origin) : "-"],
       ["Taux utilisé", d.rate_used ?? "-"],
-      ["Frais", `${d.fee_amount ?? 0}`],
+      ["Frais", d.fee_amount != null ? formatInSelectedCurrency(d.fee_amount, d.currency_origin) : "-"],
       ["Carte", `${d.card_brand ?? "-"} •••• ${d.card_last4 ?? "----"}`],
       ["Expiration carte", d.card_exp_month && d.card_exp_year ? `${d.card_exp_month}/${d.card_exp_year}` : "-"],
       ["Session Stripe", d.stripe_session_id ?? "-"],
@@ -71,12 +81,11 @@ function renderPayment(item) {
 
 function renderWithdrawal(item) {
   const d = item.details || {};
-  const amount = Number(item.amount || 0);
   return {
     title: item.label || "Retrait",
     sub: "Retrait · " + (statusMap[item.status] || item.status),
     rows: [
-      ["Montant", `${amount.toLocaleString("fr-FR")} ${item.currency}`],
+      ["Montant", formatInSelectedCurrency(item.amount, item.currency)],
       ["Référence", d.reference ?? "-"],
       ["Payout Stripe", d.stripe_payout_id ?? "-"],
       ["Traité le", d.processed_at ? new Date(d.processed_at).toLocaleString("fr-FR") : "-"],
