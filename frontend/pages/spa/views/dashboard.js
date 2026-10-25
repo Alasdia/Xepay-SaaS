@@ -551,6 +551,13 @@ export async function mount(container) {
         customerId: i.customer || null,
         productId: extractLineProductId(i.lines?.data?.[0]),
         subscriptionId: extractInvoiceSubscriptionId(i),
+        // Commission Xepay RÉELLEMENT appliquée à cette facture (voir
+        // netRatioForItem) - Stripe renvoie application_fee_amount tel que
+        // posé à la création (create_connect_invoice/
+        // create_merchant_subscription, routes/webhook/stripe.py), jamais
+        // un taux fixe recalculé ici : la commission est dégressive par
+        // volume mensuel (backend/services/commission_service.py).
+        feeAmount: i.application_fee_amount != null ? i.application_fee_amount / 100 : null,
       })),
       // status conservé ici (utilisé par le bloc "Nombre" des liens pour
       // les distinguer payé/en attente/expiré, et par le bloc héro pour
@@ -563,6 +570,14 @@ export async function mount(container) {
         value: l.amount || 0,
         status: l.status,
         currency: (l.currency || "USD").toUpperCase(),
+        // Commission Xepay RÉELLEMENT appliquée à ce paiement (voir
+        // netRatioForItem) - exposée par GET /links (LinkDashboardResponse.
+        // fee_amount, routes/lien.py), lue depuis Payment.
+        // application_fee_requested, jamais un taux fixe : la commission
+        // est dégressive par volume mensuel
+        // (backend/services/commission_service.py). null pour un lien pas
+        // encore payé (pas de Payment associé).
+        feeAmount: l.fee_amount != null ? l.fee_amount : null,
       })),
       // status/source : utilisés par les blocs "Remboursements" (voir
       // computeRefundStats) — un remboursement n'est pas une transaction
@@ -639,14 +654,22 @@ export async function mount(container) {
   // se règle via une Invoice à chaque cycle (déjà comptée ci-dessus), sa
   // "value" nominale ne représente aucun paiement réel — l'ajouter en plus
   // compterait ce revenu deux fois.
-  // Commission Xepay par source, appliquée quand le filtre "Revenus" de
-  // "Votre aperçu" est sur "net" : 6% sur les liens, 1% sur les factures/
-  // abonnements — mêmes taux que heroNetMultiplier (backend : routes/
-  // payments.py pour les liens, application_fee_percent dans
-  // routes/webhook/stripe.py pour les factures/abonnements).
-  function activityNetMultiplier(source) {
-    if (activityNetMode !== "net") return 1;
-    return source === "link" ? 0.94 : 0.99;
+  // Ratio net/brut RÉEL d'un paiement (lien ou facture/abonnement) - dérivé
+  // de la commission RÉELLEMENT appliquée à CET élément (item.feeAmount,
+  // voir fetchActivityRawData), jamais d'un taux fixe par source : la
+  // commission Xepay est dégressive par volume mensuel du marchand (voir
+  // backend/services/commission_service.py), donc deux paiements de même
+  // source peuvent avoir deux taux différents selon le mois. Repli sur le
+  // palier de départ (6%, jamais l'ancien 1% - déjà faux avant ce
+  // correctif, les factures/abonnements sont au même barème que les liens
+  // depuis le backend) uniquement si l'élément n'expose pas sa vraie
+  // commission (lien pas encore payé, ou vieille Invoice Stripe sans
+  // application_fee_amount).
+  function netRatioForItem(item) {
+    if (item && item.value > 0 && item.feeAmount != null) {
+      return Math.max(0, (item.value - item.feeAmount) / item.value);
+    }
+    return 0.94;
   }
 
   function computeEntityCohortRevenue(entities, paymentKeyField, count) {
@@ -668,7 +691,6 @@ export async function mount(container) {
     // taux net applicable à Clients/Produits est donc toujours celui des
     // factures/abonnements.
     addPayments(activityRaw.invoices, (status) => status === "paid");
-    const multiplier = activityNetMultiplier("invoice");
 
     function revenueForWindow(entitiesInWindow, windowStart) {
       const daily = new Array(count).fill(0);
@@ -678,7 +700,8 @@ export async function mount(container) {
         const idx = Math.min(count - 1, Math.max(0, Math.floor((e.ts - windowStart) / bucketMs)));
         payments.forEach((p) => {
           if (p.ts < windowStart || p.ts >= windowStart + count * bucketMs) return;
-          const amount = p.value * multiplier * getRate(p.currency || "USD", activityCurrency);
+          const ratio = activityNetMode === "net" ? netRatioForItem(p) : 1;
+          const amount = p.value * ratio * getRate(p.currency || "USD", activityCurrency);
           daily[idx] += amount;
           total += amount;
         });
@@ -717,12 +740,12 @@ export async function mount(container) {
     const bucketMs = currentActivityPeriod().bucketMs;
     const now = Date.now();
     const currentStart = now - count * bucketMs;
-    const multiplier = activityNetMultiplier("invoice");
     const totals = new Map();
     (activityRaw.invoices || []).forEach((p) => {
       const key = p[paymentKeyField];
       if (!key || p.status !== "paid" || p.ts == null || p.ts < currentStart || p.ts > now) return;
-      const amount = p.value * multiplier * getRate(p.currency || "USD", activityCurrency);
+      const ratio = activityNetMode === "net" ? netRatioForItem(p) : 1;
+      const amount = p.value * ratio * getRate(p.currency || "USD", activityCurrency);
       totals.set(key, (totals.get(key) || 0) + amount);
     });
     let topKey = null;
@@ -785,17 +808,17 @@ export async function mount(container) {
     let previousTotal = 0;
     const breakdown = { links: 0, invoices: 0, subscriptions: 0 };
 
-    function addItem(ts, value, currency, source, breakdownKey) {
-      if (ts == null) return;
-      const multiplier = activityNetMultiplier(source);
-      const amount = value * multiplier * getRate(currency || "USD", activityCurrency);
-      if (ts >= currentStart && ts <= now) {
-        const idx = Math.min(count - 1, Math.max(0, Math.floor((ts - currentStart) / bucketMs)));
+    function addItem(item, breakdownKey) {
+      if (item.ts == null) return;
+      const ratio = activityNetMode === "net" ? netRatioForItem(item) : 1;
+      const amount = item.value * ratio * getRate(item.currency || "USD", activityCurrency);
+      if (item.ts >= currentStart && item.ts <= now) {
+        const idx = Math.min(count - 1, Math.max(0, Math.floor((item.ts - currentStart) / bucketMs)));
         currentRevenueDaily[idx] += amount;
         currentTotal += amount;
         breakdown[breakdownKey] += amount;
-      } else if (ts >= previousStart && ts < currentStart) {
-        const idx = Math.min(count - 1, Math.max(0, Math.floor((ts - previousStart) / bucketMs)));
+      } else if (item.ts >= previousStart && item.ts < currentStart) {
+        const idx = Math.min(count - 1, Math.max(0, Math.floor((item.ts - previousStart) / bucketMs)));
         previousRevenueDaily[idx] += amount;
         previousTotal += amount;
       }
@@ -803,11 +826,11 @@ export async function mount(container) {
 
     (activityRaw.links || []).forEach((l) => {
       if (l.status !== "paid") return;
-      addItem(l.ts, l.value, l.currency, "link", "links");
+      addItem(l, "links");
     });
     (activityRaw.invoices || []).forEach((i) => {
       if (i.status !== "paid") return;
-      addItem(i.ts, i.value, i.currency, "invoice", i.subscriptionId != null ? "subscriptions" : "invoices");
+      addItem(i, i.subscriptionId != null ? "subscriptions" : "invoices");
     });
 
     return { currentRevenueDaily, previousRevenueDaily, currentTotal, previousTotal, breakdown };
@@ -839,10 +862,11 @@ export async function mount(container) {
   // factures, "active" pour les abonnements), avec conversion par devise
   // propre à chaque élément (une facture/un abonnement peut être en USD ou
   // EUR, voir fetchActivityRawData) — contrairement à computeActivityStats,
-  // qui applique un taux fixe par catégorie et ne filtre aucun statut.
-  // "source" détermine le taux de commission appliqué en mode "net" (voir
-  // activityNetMultiplier) ; ignoré en mode "brut".
-  function computeFilteredRevenueStats(items, count, isEligible, source) {
+  // qui applique un taux fixe par catégorie et ne filtre aucun statut. Le
+  // taux de commission appliqué en mode "net" vient de item.feeAmount (voir
+  // netRatioForItem), jamais d'un taux fixe par catégorie ; ignoré en mode
+  // "brut".
+  function computeFilteredRevenueStats(items, count, isEligible) {
     const bucketMs = currentActivityPeriod().bucketMs;
     const now = Date.now();
     const currentStart = now - count * bucketMs;
@@ -851,11 +875,12 @@ export async function mount(container) {
     const previousRevenueDaily = new Array(count).fill(0);
     let currentTotal = 0;
     let previousTotal = 0;
-    const multiplier = activityNetMultiplier(source);
 
-    items.forEach(({ ts, value, currency, status }) => {
+    items.forEach((item) => {
+      const { ts, value, currency, status } = item;
       if (ts == null || !isEligible(status)) return;
-      const amount = value * multiplier * getRate(currency || "USD", activityCurrency);
+      const ratio = activityNetMode === "net" ? netRatioForItem(item) : 1;
+      const amount = value * ratio * getRate(currency || "USD", activityCurrency);
       if (ts >= currentStart && ts <= now) {
         const idx = Math.min(count - 1, Math.max(0, Math.floor((ts - currentStart) / bucketMs)));
         currentRevenueDaily[idx] += amount;
@@ -1130,7 +1155,7 @@ export async function mount(container) {
       return cat.key === "clients" ? computeClientCohortRevenue(days) : computeProductRevenue(days);
     }
     if (cat.key === "invoices") {
-      return computeFilteredRevenueStats(items, days, (status) => status === "paid", "invoice");
+      return computeFilteredRevenueStats(items, days, (status) => status === "paid");
     }
     if (cat.key === "subscriptions") {
       // La "value" nominale d'un abonnement n'est pas un paiement réel : on
@@ -1139,12 +1164,12 @@ export async function mount(container) {
       // par leur propre date de règlement, pas la date de création de
       // l'abonnement.
       const subscriptionInvoices = (activityRaw.invoices || []).filter((i) => i.subscriptionId != null);
-      return computeFilteredRevenueStats(subscriptionInvoices, days, (status) => status === "paid", "invoice");
+      return computeFilteredRevenueStats(subscriptionInvoices, days, (status) => status === "paid");
     }
     // "links" : un lien en attente/expiré n'est pas un revenu, et chaque
     // lien a sa propre devise (USD/EUR, jamais XOF — voir
     // fetchActivityRawData) plutôt qu'un taux fixe par catégorie.
-    return computeFilteredRevenueStats(items, days, (status) => status === "paid", "link");
+    return computeFilteredRevenueStats(items, days, (status) => status === "paid");
   }
 
   async function renderCategory(cat, days) {
@@ -1370,22 +1395,14 @@ export async function mount(container) {
     return (items || []).filter(({ ts }) => ts != null && ts >= start && ts <= end).length;
   }
 
-  // "Volume net" = montant payé moins la commission Xepay — 6% sur les
-  // liens (voir le 0.94 déjà appliqué côté backend, routes/payments.py),
-  // 1% sur les factures/abonnements (application_fee_percent/amount dans
-  // routes/webhook/stripe.py) : le taux dépend de la source de l'item,
-  // pas de la métrique elle-même.
-  function heroNetMultiplier(source) {
-    return source === "link" ? 0.94 : 0.99;
-  }
-
   // Données brutes derrière chaque métrique héro : liens payés + factures
   // payées — toutes des sources de revenu réelles, contrairement à un lien
   // en attente/expiré ou une facture jamais payée. Pas de source "abonnement"
   // séparée : un abonnement se règle via une Invoice à chaque cycle, donc son
   // paiement réel est déjà dans paidInvoices (ajouter en plus la valeur
-  // nominale de l'abonnement compterait ce revenu deux fois). "source"
-  // distingue le taux de commission (heroNetMultiplier).
+  // nominale de l'abonnement compterait ce revenu deux fois). "Volume net"
+  // (metric === "net") utilise la commission RÉELLE de chaque item
+  // (feeAmount, voir netRatioForItem) - jamais un taux fixe par source.
   function heroSourceItems(metric) {
     if (!activityRaw) return [];
     if (metric === "gross" || metric === "successful" || metric === "net") {
@@ -1404,10 +1421,11 @@ export async function mount(container) {
   function computeHeroValue(metric, start, end) {
     const items = heroSourceItems(metric);
     if (HERO_METRICS[metric].unit !== "currency") return countInRange(items, start, end);
-    return items.reduce((sum, { ts, value, currency, source }) => {
+    return items.reduce((sum, item) => {
+      const { ts, value, currency } = item;
       if (ts == null || ts < start || ts > end) return sum;
-      const multiplier = metric === "net" ? heroNetMultiplier(source) : 1;
-      return sum + value * multiplier * getRate(currency || "USD", activityCurrency);
+      const ratio = metric === "net" ? netRatioForItem(item) : 1;
+      return sum + value * ratio * getRate(currency || "USD", activityCurrency);
     }, 0);
   }
 
@@ -1453,10 +1471,11 @@ export async function mount(container) {
     const previousEnd = prevMs[0] + DAY_MS;
     const isCount = HERO_METRICS[metric].unit !== "currency";
 
-    heroSourceItems(metric).forEach(({ ts, value, currency, source }) => {
+    heroSourceItems(metric).forEach((item) => {
+      const { ts, value, currency } = item;
       if (ts == null) return;
-      const multiplier = metric === "net" ? heroNetMultiplier(source) : 1;
-      const amount = isCount ? 1 : value * multiplier * getRate(currency || "USD", activityCurrency);
+      const ratio = metric === "net" ? netRatioForItem(item) : 1;
+      const amount = isCount ? 1 : value * ratio * getRate(currency || "USD", activityCurrency);
       if (ts >= curMs[0] && ts <= now) {
         const idx = findBucketIndex(curMs, ts);
         if (idx !== -1) currentData[idx] += amount;

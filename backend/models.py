@@ -107,6 +107,13 @@ class LinkDashboardResponse(BaseModel):
     expires_at: datetime
     created_at: datetime
     metadata: Optional[dict] = None
+    # Commission Xepay RÉELLEMENT appliquée au paiement de ce lien (None
+    # pour un lien pas encore payé) - voir GET /links dans routes/lien.py,
+    # qui la lit sur Payment.application_fee_requested. Utilisée par le
+    # tableau de bord (dashboard.js) pour calculer un "Volume net" exact,
+    # jamais un taux fixe par source : la commission est dégressive par
+    # volume mensuel (backend/services/commission_service.py).
+    fee_amount: Optional[float] = None
 
     class Config:
         from_attributes = True

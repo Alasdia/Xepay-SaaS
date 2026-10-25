@@ -206,14 +206,22 @@ def get_links(
             amount = payment.amount
             currency = payment.currency
             status = "paid"
+            # Même devise que `amount` ci-dessus (USD, voir
+            # process_checkout_session_payment) - toujours renseigné pour
+            # un paiement par lien depuis l'introduction de la commission
+            # dégressive (backend/services/commission_service.py), jamais
+            # une estimation recalculée ici.
+            fee_amount = payment.application_fee_requested
         elif link.expires_at < now:
             amount = link.amount
             currency = link.currency
             status = "expired"
+            fee_amount = None
         else:
             amount = link.amount
             currency = link.currency
             status = "pending"
+            fee_amount = None
         is_active = link.expires_at > now
         result.append(LinkDashboardResponse(
             id=link.id,
@@ -226,7 +234,8 @@ def get_links(
             url=link.url,
             expires_at=link.expires_at,
             created_at=link.created_at,
-            metadata=_enrich_metadata(link.link_metadata, emails_by_id)
+            metadata=_enrich_metadata(link.link_metadata, emails_by_id),
+            fee_amount=fee_amount,
         ))
     return result
 

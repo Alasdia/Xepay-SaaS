@@ -158,13 +158,22 @@ def export_pdf(
         if total_links > 0 else 0
     )
 
-    total_volume = sum(
-        t.amount_local for t in transactions
-    )
-
-    fee_total = total_volume * 0.06
-
-    merchant_net = total_volume - fee_total
+    # Volume/commission/net calculés à partir des montants RÉELLEMENT
+    # réglés par Stripe (Payment.amount = brut dans sa devise d'origine,
+    # Payment.rate_used = taux appliqué vers XOF, Payment.amount_local =
+    # net de commission déjà en XOF - voir process_checkout_session_payment
+    # et process_invoice_paid_event) - jamais un taux de commission supposé
+    # ici : la commission est dégressive par volume mensuel du marchand
+    # (backend/services/commission_service.py), un taux unique en dur ne
+    # représenterait ni la vraie commission d'un marchand donné, ni celle
+    # réellement déjà déduite de amount_local. Seuls les paiements RÉGLÉS
+    # comptent comme volume - un paiement en attente/échoué/remboursé n'a
+    # jamais été réellement crédité au wallet, l'inclure aurait surestimé
+    # le volume et le net affichés.
+    paid_transactions = [t for t in transactions if t.status == "paid"]
+    merchant_net = sum(t.amount_local or 0 for t in paid_transactions)
+    total_volume = sum((t.amount or 0) * (t.rate_used or 1) for t in paid_transactions)
+    fee_total = total_volume - merchant_net
 
     wallet_balance = (
         wallet.available if wallet else 0

@@ -213,9 +213,24 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
         if balance_transaction_net is None:
             balance_transaction_net = round(amount_usd - application_fee_requested, 2)
 
+        # merchant_amount = net de commission, dans la MÊME devise que
+        # amount_usd (USD) - calculé une seule fois, puis converti en XOF
+        # selon la branche. Les deux branches doivent soustraire la même
+        # commission : un lien directement libellé en XOF n'est pas un
+        # cas "sans commission", juste un cas "sans taux de change à
+        # appliquer" (voir _convert_merchant_amount_to_xof dans
+        # webhook/stripe.py pour le même principe sur les factures/
+        # abonnements) - avant ce correctif, cette branche créditait le
+        # montant BRUT, faisant disparaître la commission du wallet
+        # marchand sur ce cas (en pratique inatteignable aujourd'hui :
+        # create_checkout_session n'accepte que usd/eur - gardé correct
+        # par cohérence si une devise XOF directe est réintroduite).
+        total_fee = amount_usd * float(commission_rate)
+        merchant_amount = amount_usd - total_fee
+
         currency = session_dict.get("currency", "USD").upper()
         if currency == "XOF":
-            amount_local = amount_usd
+            amount_local = int(merchant_amount)
             rate_used = 1
             payment_currency = "XOF"
         else:
@@ -224,8 +239,6 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
                 WHERE from_currency = 'USD' AND to_currency = 'XOF'
             """)).fetchone()
             rate_used = row.rate if row else 600
-            total_fee = amount_usd * float(commission_rate)
-            merchant_amount = amount_usd - total_fee
             amount_local = int(float(merchant_amount) * float(rate_used))
             # Un lien en EUR (ou toute devise non-XOF) est converti par
             # Stripe en USD au règlement : amount_usd est donc déjà en USD,
