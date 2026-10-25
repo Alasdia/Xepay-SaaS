@@ -1496,32 +1496,33 @@ function plansEtFraisTemplate() {
     <p class="params-subsection-sub mb-5">Résilie votre abonnement payant. Vous conservez l'accès à vos fonctionnalités actuelles jusqu'à la fin de la période déjà payée, puis votre compte repasse automatiquement au plan Free. Aucune donnée n'est supprimée.</p>
 
     <h6 class="params-subsection-title">Frais Xepay</h6>
-    <p class="params-subsection-sub">La commission Xepay baisse automatiquement avec votre volume encaissé dans le mois en cours : plus vous encaissez, plus votre taux baisse sur ce qui dépasse chaque palier — jamais rétroactivement sur ce qui est déjà encaissé. Elle est déduite automatiquement du montant transféré sur votre compte Stripe Connect, quel que soit le type de paiement (lien, abonnement ou facture) — vous n'avez rien à calculer ni à reverser vous-même.</p>
+    <p class="params-subsection-sub">La commission Xepay baisse automatiquement avec votre volume encaissé dans le mois en cours (en dollars US) : plus vous encaissez, plus votre taux baisse sur ce qui dépasse chaque palier — jamais rétroactivement sur ce qui est déjà encaissé. Elle est déduite automatiquement du montant transféré sur votre compte Stripe Connect, quel que soit le type de paiement (lien, abonnement ou facture) — vous n'avez rien à calculer ni à reverser vous-même. Les factures/abonnements facturés en EUR ne sont pas encore pris en compte dans ce volume (conversion à venir) — seuls vos paiements en USD, y compris tous vos liens de paiement quelle que soit leur devise d'origine, y comptent pour l'instant.</p>
     <div class="params-row-list mb-3" style="max-width:560px;">
-      <div class="params-info-row"><span>Volume encaissé ce mois</span><strong id="p-commission-volume">—</strong></div>
+      <div class="params-info-row"><span>Volume encaissé ce mois (USD)</span><strong id="p-commission-volume">—</strong></div>
       <div class="params-info-row"><span>Votre taux actuel</span><strong id="p-commission-rate">—</strong></div>
     </div>
     <div class="table-wrap" style="max-width:560px;">
       <table class="table params-mini-table">
-        <thead><tr><th>Volume encaissé ce mois</th><th>Commission</th></tr></thead>
+        <thead><tr><th>Volume encaissé ce mois (USD)</th><th>Commission</th></tr></thead>
         <tbody id="p-commission-tiers-tbody"><tr><td colspan="2" class="text-muted">Chargement...</td></tr></tbody>
       </table>
     </div>
   `;
 }
 
-function formatAmountPlain(value) {
-  return Math.round(value).toLocaleString("fr-FR");
+function formatAmountUsd(value) {
+  return `${Math.round(value).toLocaleString("fr-FR")} $`;
 }
 
 // Barème affiché tel que renvoyé par /me/plan (commission.tiers) - jamais
 // dupliqué en dur ici, pour ne jamais pouvoir afficher un taux différent de
 // celui réellement appliqué (voir backend/services/commission_service.py).
+// Seuils en USD (voir la limite de devise documentée côté backend).
 function commissionTiersRowsHtml(tiers, currentRate) {
   if (!tiers || !tiers.length) return `<tr><td colspan="2" class="text-muted">Indisponible</td></tr>`;
   return tiers.map((t, i) => {
     const next = tiers[i + 1];
-    const label = next ? `${formatAmountPlain(t.from)} – ${formatAmountPlain(next.from)}` : `${formatAmountPlain(t.from)}+`;
+    const label = next ? `${formatAmountUsd(t.from)} – ${formatAmountUsd(next.from)}` : `${formatAmountUsd(t.from)}+`;
     const isCurrent = t.rate === currentRate;
     return `
       <tr${isCurrent ? ' class="fw-bold"' : ""}>
@@ -1575,7 +1576,7 @@ async function mountPlansEtFraisData() {
 
     const commission = data.commission;
     if (commission) {
-      document.getElementById("p-commission-volume").innerText = `${formatAmountPlain(commission.volume_this_month)}`;
+      document.getElementById("p-commission-volume").innerText = formatAmountUsd(commission.volume_this_month);
       document.getElementById("p-commission-rate").innerText = `${Math.round(commission.current_rate * 100)}%`;
       document.getElementById("p-commission-tiers-tbody").innerHTML = commissionTiersRowsHtml(commission.tiers, commission.current_rate);
     }

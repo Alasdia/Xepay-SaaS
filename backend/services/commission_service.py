@@ -48,13 +48,19 @@ du palier où elle démarre - imprécision mineure et délibérément acceptée 
 Stripe ne permet pas de scinder un seul application_fee_amount/
 application_fee_percent en deux taux au sein d'une même transaction.
 
-Limite connue sur la devise : workspace_volume_this_month additionne
-Payment.amount tel quel, sans conversion - correct pour un marchand qui
-facture dans une seule devise (le cas de tous les marchands à l'écriture de
-ce module), mais sommerait des devises différentes sans conversion pour un
-marchand qui encaisserait à la fois en EUR et en USD par exemple. Pas une
-conversion de change ajoutée ici tant qu'aucun marchand réel n'en a
-besoin - à traiter si/quand ce cas apparaît.
+Limite connue sur la devise : les seuils de COMMISSION_TIERS sont en USD
+(cohérent avec Payment.amount pour un paiement par lien, TOUJOURS normalisé
+en USD par process_checkout_session_payment, quelle que soit la devise
+d'origine du lien - voir backend/routes/webhook/paiement.py). Les factures
+et abonnements marchands, eux, gardent Payment.amount dans leur devise
+Stripe d'origine (jamais normalisés, voir process_invoice_paid_event dans
+backend/routes/webhook/stripe.py) - workspace_volume_this_month ne somme
+donc QUE les paiements effectivement en USD (Payment.currency == "USD",
+voir plus bas), pour ne jamais additionner des devises différentes sans
+taux de change. Une facture/un abonnement en EUR ne contribue donc PAS
+encore au volume mensuel (sous-estimation, jamais une addition erronée) -
+à corriger par une vraie conversion si des marchands facturent
+significativement hors USD.
 
 Limite connue sur les abonnements marchands (factures récurrentes qu'un
 marchand envoie à SES propres clients, voir create_merchant_subscription
@@ -80,7 +86,7 @@ from decimal import Decimal
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from backend.models import Payment, Link
+from backend.models import Payment
 
 # Paliers de commission dégressive, par volume ENCAISSÉ dans le mois
 # calendaire en cours (montant en unité principale - euros/dollars, pas en
@@ -115,17 +121,34 @@ def _month_bounds(now: datetime | None = None) -> tuple[datetime, datetime]:
 
 def workspace_volume_this_month(db: Session, workspace_id: str, now: datetime | None = None) -> Decimal:
     """Volume déjà encaissé (paiements réussis uniquement) par ce workspace
-    depuis le début du mois calendaire en cours. À appeler AVANT
-    d'enregistrer la transaction dont on calcule la commission - voir le
-    docstring du module, sinon cette transaction se compterait elle-même.
+    depuis le début du mois calendaire en cours, TOUTES sources confondues
+    (liens, factures ponctuelles, abonnements marchands) - voir
+    Payment.user_id, posé au marchand dans les 3 flux (process_
+    checkout_session_payment pour les liens, process_invoice_paid_event
+    pour les factures/abonnements), jamais au client. Filtrer sur
+    Payment.user_id directement, PAS en passant par un join sur Link :
+    les factures/abonnements n'ont pas de link_id (Payment.link_id est
+    NULL pour eux) - un join sur Link les exclurait silencieusement du
+    volume, faussant le palier de TOUTES les commissions de ce marchand à
+    la baisse (constaté : une facture ne poussait jamais vers un palier
+    inférieur, pas même pour elle-même sur un renouvellement suivant).
+
+    À appeler AVANT d'enregistrer la transaction dont on calcule la
+    commission - voir le docstring du module, sinon cette transaction se
+    compterait elle-même.
 
     Même filtre de statut que le plafond de plan déjà en place (voir
-    paid_count dans backend/routes/lien.py) : ["paid", "success"]."""
+    paid_count dans backend/routes/lien.py) : ["paid", "success"].
+
+    Filtré sur Payment.currency == "USD" - voir la limite documentée dans
+    le docstring du module : une facture/un abonnement en EUR n'est pas
+    encore normalisé en USD, et serait sommé à tort (pas "en moins", "en
+    plus" sans aucun taux de change) si on l'incluait tel quel."""
     start, end = _month_bounds(now)
     total = (
         db.query(func.coalesce(func.sum(Payment.amount), 0))
-        .join(Link, Payment.link_id == Link.id)
-        .filter(Link.user_id == workspace_id)
+        .filter(Payment.user_id == workspace_id)
+        .filter(Payment.currency == "USD")
         .filter(Payment.status.in_(["paid", "success"]))
         .filter(Payment.created_at >= start)
         .filter(Payment.created_at <= end)
