@@ -267,72 +267,74 @@ function ensureSoldeStyles() {
         color: #6b7280;
         transition: border-color .15s ease;
     }
-    /* Sélecteur de sous-solde — même mécanique chevron que .nav-toggle/
-       .nav-submenu dans la sidebar (sidebar.css) : glyphe dédié
-       fa-chevron-right/fa-chevron-down plutôt qu'une rotation CSS, liste
-       dépliée via max-height plutôt qu'un overlay, pour un rendu cohérent
-       avec les sous-menus Commerce/Transactions. */
-    .balance-source-select {
-      width: fit-content;
-      max-width: 100%;
-    }
-    .balance-source-toggle {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 14px;
+    /* Liste des soldes (remplace l'ancien sélecteur déroulant) : un seul
+       container gris, même largeur que .balance-card (posé juste au-dessus
+       dans .main-dashboard-content, pas en pleine largeur de page), avec 4
+       lignes blanches cliquables - cliquer une ligne sélectionne cette
+       source (même logique qu'avant, applySource), le survol révèle juste
+       une flèche comme indice visuel au lieu d'un changement de fond trop
+       discret. */
+    .balance-list-well {
       background: #f3f4f6;
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      color: #111827;
-      font-size: 13px;
-      cursor: pointer;
+      border-radius: 12px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
     }
-    .balance-source-toggle:hover {
-      border-color: #cbd5e1;
-    }
-    .balance-source-toggle-label strong {
-      font-weight: 700;
-    }
-    .balance-source-toggle i {
-      color: #6b7280;
-      font-size: 12px;
-    }
-    .balance-source-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      max-height: 0;
-      transition: max-height .25s ease;
-    }
-    .balance-source-list.open {
-      max-height: 240px;
-      margin-top: 6px;
-    }
-    .balance-source-item {
+    .balance-list-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
       width: 100%;
-      padding: 10px 14px;
-      border: none;
+      background: #ffffff;
+      border: 1px solid transparent;
       border-radius: 8px;
-      background: transparent;
-      color: #374151;
-      font-size: 13px;
-      font-weight: 600;
-      text-align: left;
+      padding: 14px 16px;
       cursor: pointer;
+      text-align: left;
+      transition: box-shadow .15s ease, border-color .15s ease;
     }
-    .balance-source-item:hover {
-      background: #f8f9fb;
+    .balance-list-row:hover {
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
     }
-    .balance-source-item.active {
-      background: #eef2ff;
+    .balance-list-row.active {
+      border-color: #cbd5e1;
+    }
+    .balance-list-row-label {
+      font-size: 13.5px;
+      font-weight: 600;
       color: #111827;
     }
+    .balance-list-row-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .balance-list-row-amount {
+      font-size: 14px;
+      font-weight: 700;
+      color: #111827;
+      font-variant-numeric: tabular-nums;
+    }
+    .balance-list-row-action {
+      display: flex;
+      align-items: center;
+      color: #9ca3af;
+      font-size: 12px;
+      opacity: 0;
+      transform: translateX(-4px);
+      transition: opacity .15s ease, transform .15s ease;
+    }
+    .balance-list-row:hover .balance-list-row-action,
+    .balance-list-row.active .balance-list-row-action {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    /* Ligne commission/disponibilité sous le montant principal de
+       .balance-card (sans rapport avec .balance-list-* ci-dessus). */
     .balance-source-meta {
       display: flex;
       flex-wrap: wrap;
@@ -345,11 +347,6 @@ function ensureSoldeStyles() {
       color: #374151;
       font-weight: 600;
     }
-    @media (max-width: 576px) {
-      .balance-source-select {
-        width: 100%;
-      }
-    }
   `;
   document.head.appendChild(style);
 }
@@ -361,38 +358,38 @@ const TEMPLATE = `
     <div class="page-subtitle">Votre solde disponible et vos fonds verrouillés</div>
   </div>
 </div>
-<div class="balance-source-select mb-4" id="balanceSourceSelect">
-  <button
-    type="button"
-    class="balance-source-toggle"
-    id="balanceSourceToggle"
-    aria-expanded="false"
-    aria-controls="balanceSourceList"
-  >
-    <span class="balance-source-toggle-label">Afficher : <strong id="balanceSourceLabel">Tous les soldes</strong></span>
-    <i class="fa-solid fa-chevron-right"></i>
-  </button>
-  <div class="balance-source-list" id="balanceSourceList">
-    <button type="button" class="balance-source-item active" data-source="all" data-source-label="Tous les soldes">
-      <span>Tous les soldes</span>
-      <strong id="balance-source-amount-all">0 XOF</strong>
-    </button>
-    <button type="button" class="balance-source-item" data-source="payment_link" data-source-label="Liens de paiement">
-      <span>Liens de paiement</span>
-      <strong id="balance-source-amount-payment_link">0 XOF</strong>
-    </button>
-    <button type="button" class="balance-source-item" data-source="invoice" data-source-label="Factures">
-      <span>Factures</span>
-      <strong id="balance-source-amount-invoice">0 XOF</strong>
-    </button>
-    <button type="button" class="balance-source-item" data-source="subscription" data-source-label="Abonnements">
-      <span>Abonnements</span>
-      <strong id="balance-source-amount-subscription">0 XOF</strong>
-    </button>
-  </div>
-</div>
 <div class="dashboard-layout">
 <div class="main-dashboard-content">
+<div class="balance-list-well" id="balanceListWell">
+  <button type="button" class="balance-list-row active" data-source="all" data-source-label="Solde principal">
+    <span class="balance-list-row-label">Solde principal</span>
+    <div class="balance-list-row-right">
+      <strong class="balance-list-row-amount" id="balance-source-amount-all">0 XOF</strong>
+      <span class="balance-list-row-action"><i class="fa-solid fa-chevron-right"></i></span>
+    </div>
+  </button>
+  <button type="button" class="balance-list-row" data-source="payment_link" data-source-label="Solde des paiements par liens">
+    <span class="balance-list-row-label">Solde des paiements par liens</span>
+    <div class="balance-list-row-right">
+      <strong class="balance-list-row-amount" id="balance-source-amount-payment_link">0 XOF</strong>
+      <span class="balance-list-row-action"><i class="fa-solid fa-chevron-right"></i></span>
+    </div>
+  </button>
+  <button type="button" class="balance-list-row" data-source="subscription" data-source-label="Solde des paiements d'abonnements">
+    <span class="balance-list-row-label">Solde des paiements d'abonnements</span>
+    <div class="balance-list-row-right">
+      <strong class="balance-list-row-amount" id="balance-source-amount-subscription">0 XOF</strong>
+      <span class="balance-list-row-action"><i class="fa-solid fa-chevron-right"></i></span>
+    </div>
+  </button>
+  <button type="button" class="balance-list-row" data-source="invoice" data-source-label="Solde des paiements par facture">
+    <span class="balance-list-row-label">Solde des paiements par facture</span>
+    <div class="balance-list-row-right">
+      <strong class="balance-list-row-amount" id="balance-source-amount-invoice">0 XOF</strong>
+      <span class="balance-list-row-action"><i class="fa-solid fa-chevron-right"></i></span>
+    </div>
+  </button>
+</div>
 <div class="balance-card" id="balance-global-view">
   <div class="balance-subcard">
     <div class="balance-block-header">
@@ -483,12 +480,8 @@ export async function mount(container) {
     target.addEventListener(type, fn);
     boundListeners.push({ target, type, fn });
   }
-  const sourceSelect = container.querySelector("#balanceSourceSelect");
-  const sourceToggle = container.querySelector("#balanceSourceToggle");
-  const sourceList = container.querySelector("#balanceSourceList");
-  const sourceLabelEl = container.querySelector("#balanceSourceLabel");
   const sourceItems = Array.from(
-    container.querySelectorAll(".balance-source-item")
+    container.querySelectorAll(".balance-list-row")
   );
   const cardLabelEl = container.querySelector("#balance-card-label");
   const walletBalanceEl = container.querySelector("#wallet-balance");
@@ -515,11 +508,6 @@ export async function mount(container) {
   // par source pour filtrer l'affichage sans appel dédié par source.
   let lockedItemsAll = [];
   let lockedCountdownInterval = null;
-
-  function closeSourceList() {
-    sourceList.classList.remove("open");
-    sourceToggle.setAttribute("aria-expanded", "false");
-  }
 
   function updateSourceListAmounts() {
     sourceItems.forEach((item) => {
@@ -615,25 +603,14 @@ export async function mount(container) {
     if (!item) return;
     currentSource = source;
     sourceItems.forEach((el) => el.classList.toggle("active", el === item));
-    sourceLabelEl.textContent = item.dataset.sourceLabel;
     cardLabelEl.textContent = source === "all" ? "Solde disponible" : item.dataset.sourceLabel;
     walletBalanceEl.innerText = formatAmount(sourceAmounts[source] || 0);
     renderSourceMeta();
     renderBalanceSection();
   }
 
-  on(sourceToggle, "click", () => {
-    const isOpen = sourceList.classList.toggle("open");
-    sourceToggle.setAttribute("aria-expanded", String(isOpen));
-  });
   sourceItems.forEach((item) => {
-    on(item, "click", () => {
-      applySource(item.dataset.source);
-      closeSourceList();
-    });
-  });
-  on(document, "click", (event) => {
-    if (!sourceSelect.contains(event.target)) closeSourceList();
+    on(item, "click", () => applySource(item.dataset.source));
   });
   function formatCountdown(targetDate) {
     const now = new Date();
