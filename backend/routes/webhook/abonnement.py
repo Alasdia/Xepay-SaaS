@@ -70,7 +70,12 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
                     user.plan = plan
                     user.plan_started_at = datetime.now(timezone.utc)
                     user.plan_expires_at = current_period_end
-                    user.stripe_customer_id = session.get("customer")
+                    # stripe_customer_id n'est plus renseigné : la session
+                    # est désormais facturée via customer_account (le MÊME
+                    # compte v2 que Profile.stripe_account_id, voir
+                    # account_configuration dans /signup) - session.get
+                    # ("customer") reste None sur ce flux, le dupliquer ici
+                    # n'apporterait rien.
                     user.stripe_subscription_id = subscription_id
                     user.subscription_status = subscription.get("status", "active")
                     user.cancel_at_period_end = subscription.get("cancel_at_period_end", False)
@@ -87,7 +92,6 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
             sub_meta = subscription.get("metadata") or {}
             user_id = sub_meta.get("user_id")
             stripe_sub_id = subscription.get("id")
-            customer_id = subscription.get("customer")
             user = None
             if user_id:
                 user = db.query(UserDB).filter(UserDB.id == user_id).first()
@@ -126,8 +130,30 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
         elif event_type == "invoice.payment_failed":
             invoice = event["data"]["object"].to_dict()
             customer_id = invoice.get("customer")
+            customer_account_id = invoice.get("customer_account")
             customer_email = invoice.get("customer_email")
-            user = db.query(UserDB).filter(UserDB.stripe_customer_id == customer_id).first() if customer_id else None
+            user = None
+            # 1) user_id directement (metadata de l'abonnement, snapshotée
+            # sur la facture via subscription_details) - indépendant de la
+            # version d'API négociée par ce point de terminaison webhook,
+            # contrairement à customer_account ci-dessous (champ preview,
+            # pas garanti présent sur CE webhook selon sa version
+            # configurée côté Dashboard Stripe).
+            sub_details_meta = (invoice.get("subscription_details") or {}).get("metadata") or {}
+            user_id = sub_details_meta.get("user_id")
+            if user_id:
+                user = db.query(UserDB).filter(UserDB.id == user_id).first()
+            # 2) customer_account (compte v2, voir account_configuration
+            # dans /signup) - cas normal pour tout nouvel abonnement.
+            if not user and customer_account_id:
+                profile = db.query(Profile).filter(Profile.stripe_account_id == customer_account_id).first()
+                if profile:
+                    user = db.query(UserDB).filter(UserDB.id == profile.user_id).first()
+            # 3) customer_id (Customer v1, stripe_customer_id) - utile
+            # uniquement pour un éventuel abonnement créé avant ce
+            # changement.
+            if not user and customer_id:
+                user = db.query(UserDB).filter(UserDB.stripe_customer_id == customer_id).first()
             if user:
                 user.subscription_status = "past_due"
                 db.commit()

@@ -105,6 +105,20 @@ def signup(
                             }
                         }
                     }
+                },
+                # Facturation de l'abonnement Xepay (Free/Pro/Business) sur
+                # ce MÊME compte v2, au lieu d'un Customer v1 séparé
+                # (ancien `customer_email=` dans create_checkout_session) -
+                # voir stripe_service.py, qui facture désormais via
+                # `customer_account=` sur ce compte. Vérifié disponible pour
+                # cette plateforme le 2026-10-25 (coexiste sans conflit avec
+                # merchant/recipient sur un même compte).
+                "customer": {
+                    "capabilities": {
+                        "automatic_indirect_tax": {
+                            "requested": True
+                        }
+                    }
                 }
             }
             account = client.v2.core.accounts.create(
@@ -121,7 +135,14 @@ def signup(
                             "losses_collector": "application"
                         }
                     }
-                }
+                },
+                # "customer"/"card_creator" restent des fonctionnalités
+                # preview chez Stripe à ce jour - un appel sans cette
+                # version échoue avec "You did not provide an API version"
+                # (confirmé en direct). Pas de réglage global
+                # (stripe.api_version) pour ne pas affecter tous les autres
+                # appels Stripe du reste du code.
+                options={"stripe_version": "2025-09-30.preview"}
             )
             stripe.Account.modify(
                 account.id,
@@ -381,6 +402,16 @@ def _exchange_google_code(code: str, db: Session, redirect_uri: str, invite_toke
                             "stripe_transfers": {"requested": True}
                         }
                     }
+                },
+                # Même principe que /signup : facturation de l'abonnement
+                # Xepay sur ce compte v2 directement (customer_account=,
+                # voir stripe_service.py), pas un Customer v1 séparé.
+                "customer": {
+                    "capabilities": {
+                        "automatic_indirect_tax": {
+                            "requested": True
+                        }
+                    }
                 }
             }
             account = client.v2.core.accounts.create(
@@ -395,7 +426,8 @@ def _exchange_google_code(code: str, db: Session, redirect_uri: str, invite_toke
                             "losses_collector": "application"
                         }
                     }
-                }
+                },
+                options={"stripe_version": "2025-09-30.preview"}
             )
             stripe.Account.modify(
                 account.id,
@@ -1268,14 +1300,18 @@ def create_portal_session(
     membership: WorkspaceUser = Depends(require_capability("manage_billing_subscription")),
 ):
     # Même principe que cancel_user_subscription ci-dessus : le client
-    # Stripe facturé est celui du PROPRIÉTAIRE du workspace.
-    owner = db.query(UserDB).filter(UserDB.id == membership.workspace_id).first()
-    if not owner or not owner.stripe_customer_id:
-        raise HTTPException(status_code=400, detail="Aucun identifiant client Stripe trouvé")
+    # facturé est celui du PROPRIÉTAIRE du workspace - via customer_account
+    # (configuration "customer" du compte v2, voir account_configuration
+    # dans /signup et l'inscription Google), plus un Customer v1 séparé
+    # (stripe_customer_id, devenu obsolète pour tout nouveau compte).
+    profile = db.query(Profile).filter(Profile.user_id == membership.workspace_id).first()
+    if not profile or not profile.stripe_account_id:
+        raise HTTPException(status_code=400, detail="Compte Stripe introuvable")
     try:
         session = stripe.billing_portal.Session.create(
-            customer=owner.stripe_customer_id,
+            customer_account=profile.stripe_account_id,
             return_url=f"{PUBLIC_API_URL}/profil.html",
+            stripe_version="2025-09-30.preview",
         )
         return {"url": session.url}
     except Exception as e:

@@ -95,9 +95,23 @@ def create_checkout_session(
         price_id = price_map.get(plan)
         if not price_id:
             raise Exception("Plan invalide")
+        # L'abonnement Xepay (facturation SaaS) est désormais porté par la
+        # configuration "customer" du MÊME compte v2 que le marchand utilise
+        # déjà comme "merchant"/"recipient" (voir account_configuration dans
+        # /signup et l'inscription Google, backend/routes/users.py) - un seul
+        # objet Stripe par marchand au lieu d'un Customer v1 séparé.
+        # customer_account remplace donc customer_email : Stripe n'auto-crée
+        # plus de Customer, il facture directement ce compte. stripe_version
+        # requis par appel (pas de réglage global) car "customer"/
+        # customer_account restent une fonctionnalité preview chez Stripe à
+        # ce jour - voir la vérification faite en direct sur l'API le
+        # 2026-10-25 (confirmée disponible pour cette plateforme).
+        profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+        if not profile or not profile.stripe_account_id:
+            raise Exception("Merchant Stripe account not found")
         session = stripe.checkout.Session.create(
             mode="subscription",
-            customer_email=email,
+            customer_account=profile.stripe_account_id,
             metadata={
                 "user_id": str(user_id),
                 "plan": plan
@@ -114,6 +128,7 @@ def create_checkout_session(
             }],
             success_url="https://alasdia.com/success.html",
             cancel_url="https://alasdia.com/cancel.html",
+            stripe_version="2025-09-30.preview",
         )
         return session.url
 
