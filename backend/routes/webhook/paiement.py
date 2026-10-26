@@ -189,7 +189,7 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
         # resolve_commission_rate uniquement pour les intents créés avant
         # le déploiement de ce champ (metadata absente).
         commission_rate = None
-        raw_commission_rate = intent.metadata.get("commission_rate_applied") if intent and intent.metadata else None
+        raw_commission_rate = intent.metadata.commission_rate_applied if intent and intent.metadata else None
         if raw_commission_rate:
             try:
                 commission_rate = Decimal(raw_commission_rate)
