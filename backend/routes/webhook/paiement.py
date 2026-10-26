@@ -596,7 +596,6 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
                 process_checkout_session_payment,
                 session_dict, user_id, link_id, reference_key, pi_id, event_type
             )
-            db.commit()
             return {"status": "ok"}
     except Exception as e:
         db.rollback()
