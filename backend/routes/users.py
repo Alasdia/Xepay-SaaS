@@ -291,7 +291,7 @@ REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
 # (backend/main.py) : seules ces origines sont de toute façon autorisées à
 # appeler cet endpoint depuis un navigateur ; cette liste protège aussi les
 # appels directs hors navigateur (non soumis au CORS).
-ALLOWED_GOOGLE_EXCHANGE_ORIGINS = {"https://www.alasdia.com", "https://alasdia.com"}
+ALLOWED_GOOGLE_EXCHANGE_ORIGINS = {"https://www.xepay.finance", "https://xepay.finance", "https://app.xepay.finance"}
 
 from fastapi.responses import RedirectResponse
 from fastapi import HTTPException

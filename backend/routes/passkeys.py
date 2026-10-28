@@ -35,12 +35,12 @@ from backend.services.security_log_service import log_security_event, resolve_lo
 
 router = APIRouter()
 
-# alasdia.com couvre alasdia.com ET www.alasdia.com (la SPA, qui appelle
-# navigator.credentials.create) - jamais api.alasdia.com, qui ne fait que
-# vérifier la cérémonie côté serveur.
-RP_ID = "alasdia.com"
+# xepay.finance couvre xepay.finance, www.xepay.finance ET app.xepay.finance
+# (la SPA, qui appelle navigator.credentials.create) - jamais api.xepay.finance,
+# qui ne fait que vérifier la cérémonie côté serveur.
+RP_ID = "xepay.finance"
 RP_NAME = "Xepay"
-ALLOWED_ORIGINS = {"https://www.alasdia.com", "https://alasdia.com"}
+ALLOWED_ORIGINS = {"https://www.xepay.finance", "https://xepay.finance", "https://app.xepay.finance"}
 
 _pending_challenges: dict[str, bytes] = {}
 
