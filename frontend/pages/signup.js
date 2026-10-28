@@ -265,7 +265,7 @@ async function handleGoogleCodeResponse(response){
     `;
     showToast('success','COMPTE CRÉÉ','Bienvenue sur Xepay !',3000);
     setTimeout(()=>{
-      window.location.href=data.account_id?`dashboard.html?account_id=${data.account_id}`:'dashboard.html';
+      window.location.href=data.account_id?`https://app.xepay.finance/dashboard.html?account_id=${data.account_id}`:'https://app.xepay.finance/dashboard.html';
     },1200);
   }catch(err){
     resetGoogleBtn();

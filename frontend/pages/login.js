@@ -251,8 +251,8 @@ function finalizeLogin(email, workspaceId, accountId) {
   showToast('success', 'CONNEXION RÉUSSIE', 'Bienvenue sur votre dashboard Xepay.', 3000);
   setTimeout(() => {
     window.location.href = accountId
-      ? `dashboard.html?account_id=${accountId}`
-      : `dashboard.html`;
+      ? `https://app.xepay.finance/dashboard.html?account_id=${accountId}`
+      : `https://app.xepay.finance/dashboard.html`;
   }, 1200);
 }
 document.addEventListener('keydown', e => { if (e.key === 'Enter') handleSubmit(); });
