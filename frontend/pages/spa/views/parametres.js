@@ -125,7 +125,6 @@ function overviewTemplate() {
         <div class="params-tiles-grid">
           ${tile("cartes-virtuelles", "fa-solid fa-credit-card", "Cartes virtuelles", "Issuing")}
           ${tile("retraits", "fa-solid fa-building-columns", "Retraits & Comptes US", "LLC et comptes bancaires")}
-          ${tile("infos-stripe", "fa-brands fa-stripe", "Infos compte Stripe", "Widget de gestion Stripe")}
         </div>
       </section>
     </div>
@@ -2344,45 +2343,49 @@ function mountCartesVirtuelles(on) {
 }
 
 // --- Detail : Retraits & Comptes US ---
+// Deux sections distinctes (plus un simple bloc unique type KPI) : les
+// virements internationaux eux-mêmes, puis la formation de société US
+// avec deux prestataires au choix - Firstbase (déjà en place) et Stripe
+// Atlas (ajouté à la demande). Les deux restent de simples liens externes
+// (comme Firstbase l'était déjà) : Atlas n'a pas d'API d'intégration pour
+// qu'une plateforme Connect déclenche la création de société de SES
+// marchands - c'est un produit auto-service côté fondateur, pas un
+// endpoint qu'on peut appeler ici.
 function retraitsTemplate() {
   return `
     ${detailHeader("Retraits & Comptes US")}
-    <div class="card-epay p-4" style="max-width:72%;">
+
+    <div class="params-subsection-header">
+      <h6 class="params-subsection-title mb-0">Virements internationaux</h6>
+    </div>
+    <div class="card-epay p-4 mb-4">
       <p class="text-muted small mb-2">Les fonds sont envoyés via Stripe vers des comptes bancaires internationaux (Europe / US).</p>
-      <div class="text-warning small mb-3 text-muted">
+      <div class="text-warning small text-muted">
         <i class="fa-solid fa-triangle-exclamation"></i> Les méthodes locales (Mobile Money, banques africaines) ne sont pas supportées actuellement.
       </div>
-      <div class="p-3 mb-3" style="background: rgba(240, 180, 41, 0.08); border: 1px dashed rgba(240, 180, 41, 0.4); border-radius: 12px;">
-        <small class="d-block fw-bold text-dark mb-1">🚀 Vous n'avez pas d'entreprise enregistrée aux US ?</small>
-        <small class="text-muted d-block" style="font-size: 0.8rem; line-height: 1.3;">Créez votre LLC et obtenez votre compte bancaire professionnel en quelques jours pour activer vos retraits.</small>
+    </div>
+
+    <div class="params-subsection-header">
+      <h6 class="params-subsection-title mb-0">Créer votre société et compte bancaire US</h6>
+    </div>
+    <p class="params-subsection-sub">Vous n'avez pas d'entreprise enregistrée aux US ? Choisissez un prestataire pour créer votre LLC et obtenir votre compte bancaire professionnel, puis activer vos retraits.</p>
+    <div class="d-flex flex-column gap-3">
+      <div class="card-epay p-4">
+        <small class="d-block fw-bold text-dark mb-1">🚀 Firstbase</small>
+        <small class="text-muted d-block mb-3" style="font-size: 0.8rem; line-height: 1.3;">Création de LLC et compte bancaire professionnel en quelques jours.</small>
+        <a href="https://get.firstbase.io/lzqmlclh3nr9" target="_blank" rel="noopener noreferrer" class="btn btn-warning w-100 fw-bold text-dark text-decoration-none d-flex align-items-center justify-content-center gap-2">
+          Créer ma LLC avec Firstbase <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.8rem;"></i>
+        </a>
       </div>
-      <a href="https://get.firstbase.io/lzqmlclh3nr9" target="_blank" rel="noopener noreferrer" class="btn btn-warning w-100 fw-bold text-dark text-decoration-none d-flex align-items-center justify-content-center gap-2 text-muted">
-        Créer ma LLC & Compte US <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.8rem;"></i>
-      </a>
+      <div class="card-epay p-4">
+        <small class="d-block fw-bold text-dark mb-1"><i class="fa-brands fa-stripe"></i> Stripe Atlas</small>
+        <small class="text-muted d-block mb-3" style="font-size: 0.8rem; line-height: 1.3;">Formation de société, EIN et compte bancaire directement via Stripe.</small>
+        <a href="https://stripe.com/atlas" target="_blank" rel="noopener noreferrer" class="btn w-100 fw-bold text-white text-decoration-none d-flex align-items-center justify-content-center gap-2" style="background:#635bff;">
+          Créer ma société avec Stripe Atlas <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.8rem;"></i>
+        </a>
+      </div>
     </div>
   `;
-}
-
-// --- Detail : Infos compte Stripe (widget embarqué) ---
-function infosStripeTemplate() {
-  return `
-    ${detailHeader("Infos compte Stripe")}
-    <div class="card-epay p-4">
-      <div id="p-stripe-account-management"></div>
-    </div>
-  `;
-}
-
-async function mountInfosStripe() {
-  const res = await apiFetch("/stripe/account-session", { method: "POST" });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.detail || "Erreur Stripe");
-  const stripeConnect = window.StripeConnect.init({
-    publishableKey: window.STRIPE_PUBLISHABLE_KEY,
-    fetchClientSecret: () => Promise.resolve(data.client_secret),
-  });
-  const component = stripeConnect.create("account-management");
-  document.getElementById("p-stripe-account-management").appendChild(component);
 }
 
 const SECTIONS = {
@@ -2396,7 +2399,6 @@ const SECTIONS = {
   "permissions": { title: "Permissions", template: permissionsTemplate, mount: (on) => mountPermissions(on) },
   "cartes-virtuelles": { title: "Cartes virtuelles", template: cartesVirtuellesTemplate, mount: (on) => mountCartesVirtuelles(on) },
   "retraits": { title: "Retraits & Comptes US", template: retraitsTemplate, mount: (on) => {} },
-  "infos-stripe": { title: "Infos compte Stripe", template: infosStripeTemplate, mount: (on) => mountInfosStripe().catch(console.error) },
 };
 
 export async function mount(container, params = {}) {
