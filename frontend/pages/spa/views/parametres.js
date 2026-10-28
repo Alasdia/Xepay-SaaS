@@ -2364,23 +2364,19 @@ function retraitsTemplate() {
 
     <div class="params-subsection-header" style="margin-top: 32px;">
       <h6 class="params-subsection-title mb-0">🚀 Créer votre société US avec Firstbase</h6>
-    </div>
-    <p class="params-subsection-sub">Firstbase s'occupe de la création complète de votre LLC américaine à distance : constitution de la société, numéro EIN (identifiant fiscal fédéral), agent enregistré obligatoire, et ouverture d'un compte bancaire professionnel partenaire. Le dossier se remplit entièrement en ligne (pièce d'identité et justificatif d'adresse), et la société est généralement opérationnelle en quelques jours. Une fois votre LLC et son compte bancaire actifs, renseignez ce compte dans vos paramètres de retrait Stripe pour débloquer vos virements.</p>
-    <div class="d-flex justify-content-end">
       <a href="https://get.firstbase.io/lzqmlclh3nr9" target="_blank" rel="noopener noreferrer" class="create-client-btn text-decoration-none">
         Créer ma LLC avec Firstbase <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.75rem;"></i>
       </a>
     </div>
+    <p class="params-subsection-sub">Firstbase s'occupe de la création complète de votre LLC américaine à distance : constitution de la société, numéro EIN (identifiant fiscal fédéral), agent enregistré obligatoire, et ouverture d'un compte bancaire professionnel partenaire. Le dossier se remplit entièrement en ligne (pièce d'identité et justificatif d'adresse), et la société est généralement opérationnelle en quelques jours. Une fois votre LLC et son compte bancaire actifs, renseignez ce compte dans vos paramètres de retrait Stripe pour débloquer vos virements.</p>
 
     <div class="params-subsection-header" style="margin-top: 32px;">
       <h6 class="params-subsection-title mb-0"><i class="fa-brands fa-stripe"></i> Créer votre société US avec Stripe Atlas</h6>
-    </div>
-    <p class="params-subsection-sub">Stripe Atlas est le produit officiel de Stripe pour former une société américaine, directement depuis l'écosystème que vous utilisez déjà pour encaisser vos paiements. Atlas gère la constitution de la société, l'obtention du numéro EIN et l'ouverture d'un compte bancaire associé, avec une intégration native à votre compte Stripe existant — une alternative utile si vous préférez centraliser la gestion de votre activité et de votre société chez un seul prestataire plutôt que d'en ajouter un second. Des frais de dossier Stripe s'appliquent à la constitution ; le détail actualisé est disponible sur leur page.</p>
-    <div class="d-flex justify-content-end">
       <a href="https://stripe.com/atlas" target="_blank" rel="noopener noreferrer" class="create-client-btn text-decoration-none">
         Créer ma société avec Stripe Atlas <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.75rem;"></i>
       </a>
     </div>
+    <p class="params-subsection-sub">Stripe Atlas est le produit officiel de Stripe pour former une société américaine, directement depuis l'écosystème que vous utilisez déjà pour encaisser vos paiements. Atlas gère la constitution de la société, l'obtention du numéro EIN et l'ouverture d'un compte bancaire associé, avec une intégration native à votre compte Stripe existant — une alternative utile si vous préférez centraliser la gestion de votre activité et de votre société chez un seul prestataire plutôt que d'en ajouter un second. Des frais de dossier Stripe s'appliquent à la constitution ; le détail actualisé est disponible sur leur page.</p>
   `;
 }
 
