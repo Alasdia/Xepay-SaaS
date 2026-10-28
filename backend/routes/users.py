@@ -40,7 +40,7 @@ import secrets
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 # Voir backend/routes/lien.py pour le même principe - jamais en dur.
-PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "https://api.alasdia.com")
+PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "https://api.xepay.finance")
 
 router = APIRouter()
 
@@ -518,14 +518,14 @@ def google_callback(
 
     if result["requires_2fa"]:
         return RedirectResponse(
-            url=f"https://alasdia.com/login.html?requires_2fa=true&email={result['email']}&workspace_id={result['workspace_id']}"
+            url=f"https://www.xepay.finance/login.html?requires_2fa=true&email={result['email']}&workspace_id={result['workspace_id']}"
         )
 
     # Plus aucun jeton dans l'URL de redirection (ni dans les logs du
     # navigateur/serveur) : le cookie de session est posé directement sur
     # cette RedirectResponse, avant de renvoyer vers le dashboard.
     redirect = RedirectResponse(
-        url=f"https://alasdia.com/dashboard.html?workspace_id={result['workspace_id']}"
+        url=f"https://app.xepay.finance/dashboard.html?workspace_id={result['workspace_id']}"
     )
     issue_new_session(db, redirect, result["user"], request=request)
     return redirect
@@ -656,8 +656,8 @@ def create_onboarding_link(
 
     account_link = stripe.AccountLink.create(
         account=account.id,
-        refresh_url="http://alasdia.com/profil.html",
-        return_url="http://alasdia.com/profil.html",
+        refresh_url="https://app.xepay.finance/profil.html",
+        return_url="https://app.xepay.finance/profil.html",
         type="account_onboarding",
     )
 
@@ -1517,7 +1517,7 @@ def accept_invite(
 
     if not invite:
         return RedirectResponse(
-            url="https://alasdia.com/login.html"
+            url="https://www.xepay.finance/login.html"
         )
 
     if invite.expires_at < datetime.utcnow():
@@ -1559,7 +1559,7 @@ def accept_invite(
         # atterrir directement sur Équipe et sécurité (voir app.js,
         # consumeOAuthBootstrap) plutôt que sur le tableau de bord nu.
         redirect = RedirectResponse(
-            url=f"https://alasdia.com/dashboard.html?workspace_id={invite.workspace_id}&next=parametres/equipe"
+            url=f"https://app.xepay.finance/dashboard.html?workspace_id={invite.workspace_id}&next=parametres/equipe"
         )
         issue_new_session(db, redirect, existing_user, request=request)
         return redirect
@@ -1568,7 +1568,7 @@ def accept_invite(
     # ==================================================
 
     return RedirectResponse(
-        url=f"https://alasdia.com/signup.html?token={token}"
+        url=f"https://www.xepay.finance/signup.html?token={token}"
     )
 
 @router.put("/users/{user_id}/role")

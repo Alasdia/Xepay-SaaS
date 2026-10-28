@@ -1011,8 +1011,8 @@ def create_merchant_subscription(
                 "application_fee_percent": float(commission_rate * 100),
                 "metadata": metadata,
             },
-            success_url="https://alasdia.com/signup",
-            cancel_url="https://alasdia.com/signup",
+            success_url="https://www.xepay.finance/signup",
+            cancel_url="https://www.xepay.finance/signup",
             stripe_account=profile.stripe_account_id,
         )
         return {

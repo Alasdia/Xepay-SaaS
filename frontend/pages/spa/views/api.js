@@ -90,7 +90,7 @@ const TEMPLATE = `
   <h3><i class="fa-solid fa-location-dot"></i>  Endpoint</h3>
   <div class="code-block">
     <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-    <pre><code class="language-http">POST https://api.alasdia.com/webhooks</code></pre>
+    <pre><code class="language-http">POST https://api.xepay.finance/webhooks</code></pre>
   </div>
   <h3><i class="fa-solid fa-box"></i> Headers</h3>
   <div class="code-block">

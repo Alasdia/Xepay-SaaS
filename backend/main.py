@@ -44,7 +44,7 @@ app.add_middleware(LogMiddleware)
 
 allowed_origins = os.getenv(
     "CORS_ALLOWED_ORIGINS",
-    "https://www.alasdia.com,https://alasdia.com"
+    "https://www.xepay.finance,https://xepay.finance,https://app.xepay.finance"
 ).split(",")
 
 app.add_middleware(

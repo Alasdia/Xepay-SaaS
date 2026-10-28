@@ -31,22 +31,23 @@ router = APIRouter()
 # jeton exposé dans un corps JSON "sensible côté stockage" ni dans une URL.
 #
 # access_token / refresh_token restent host-only (pas de Domain) : HttpOnly,
-# jamais lus en JS, ils n'ont besoin que d'être ENVOYÉS vers api.alasdia.com
+# jamais lus en JS, ils n'ont besoin que d'être ENVOYÉS vers api.xepay.finance
 # (ce qui fonctionne déjà sans Domain, l'envoi suit le host ciblé par la
 # requête, pas l'origine de la page) — host-only est la portée la plus
 # restrictive possible, ne pas l'élargir.
 #
-# csrf_token DOIT en revanche porter Domain="alasdia.com" : non-HttpOnly par
+# csrf_token DOIT en revanche porter Domain="xepay.finance" : non-HttpOnly par
 # construction (pattern double-submit cookie), il doit être lisible via
-# document.cookie par le JS de la SPA, qui tourne sur alasdia.com/
-# www.alasdia.com — un host DIFFÉRENT d'api.alasdia.com. Un cookie est
-# ENVOYÉ en fonction du host ciblé par la requête (host-only suffisait pour
-# ça), mais il n'est LU en JS que sur les hosts couverts par son attribut
-# Domain — sans cette ligne, document.cookie ne retourne jamais csrf_token
-# sur les pages de la SPA, et aucune requête mutative ne peut jamais poser
-# un X-CSRF-Token correct (trouvé en revue finale). Domain="alasdia.com"
-# couvre alasdia.com, www.alasdia.com ET api.alasdia.com (sous-domaine) :
-# aucune des trois cookies n'est donc envoyée à un host hors de ce domaine.
+# document.cookie par le JS de la SPA, qui tourne sur xepay.finance/
+# www.xepay.finance/app.xepay.finance — un host DIFFÉRENT d'api.xepay.finance.
+# Un cookie est ENVOYÉ en fonction du host ciblé par la requête (host-only
+# suffisait pour ça), mais il n'est LU en JS que sur les hosts couverts par
+# son attribut Domain — sans cette ligne, document.cookie ne retourne jamais
+# csrf_token sur les pages de la SPA, et aucune requête mutative ne peut
+# jamais poser un X-CSRF-Token correct (trouvé en revue finale).
+# Domain="xepay.finance" couvre xepay.finance, www.xepay.finance,
+# app.xepay.finance ET api.xepay.finance (sous-domaine) : aucune des trois
+# cookies n'est donc envoyée à un host hors de ce domaine.
 def set_session_cookies(response: Response, access_token: str, refresh_token: str, csrf_token: str) -> None:
     response.set_cookie(
         key=ACCESS_COOKIE_NAME, value=access_token,
@@ -72,7 +73,7 @@ def clear_session_cookies(response: Response) -> None:
     # Le Domain doit être identique à celui posé par set_cookie ci-dessus,
     # sinon le navigateur ne reconnaît pas la même cookie et ne la supprime
     # pas (il en créerait même une seconde, host-only, avec Max-Age=0 —
-    # inoffensif mais n'efface pas l'originale à Domain=alasdia.com).
+    # inoffensif mais n'efface pas l'originale à Domain=xepay.finance).
     response.delete_cookie(key=CSRF_COOKIE_NAME, path="/", domain=CSRF_COOKIE_DOMAIN)
 
 

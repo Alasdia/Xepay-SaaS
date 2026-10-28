@@ -40,7 +40,7 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 # /pay/{token} incluse) - jamais en dur, pour pouvoir basculer vers une
 # autre instance (ex: AWS pendant une panne Railway) sans recasser les
 # liens déjà générés avec l'ancien domaine à chaque changement.
-PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "https://api.alasdia.com")
+PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "https://api.xepay.finance")
 
 router = APIRouter()
 

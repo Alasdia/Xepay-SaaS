@@ -16,7 +16,7 @@
 
 import { getWorkspaceId, clearSession } from "./state.js";
 
-const BASE_URL = "https://aws.api.alasdia.com";
+const BASE_URL = "https://api.xepay.finance";
 const CSRF_COOKIE_NAME = "csrf_token";
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 

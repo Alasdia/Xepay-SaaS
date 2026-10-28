@@ -1,7 +1,7 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
-const BASE_URL = __ENV.BASE_URL || 'https://api.alasdia.com';
+const BASE_URL = __ENV.BASE_URL || 'https://api.xepay.finance';
 const TOKEN = __ENV.TOKEN;
 
 const params = {

@@ -126,7 +126,7 @@ async function submitForgotPassword() {
   btn.innerHTML = '<span class="spin"></span>Réinitialisation...';
   btn.disabled = true;
   try {
-    const res = await fetch('https://aws.api.alasdia.com/reset-password', {
+    const res = await fetch('https://api.xepay.finance/reset-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -166,7 +166,7 @@ async function login() {
     const formData = new URLSearchParams();
     formData.append('username', email);
     formData.append('password', password);
-    const response = await fetch('https://aws.api.alasdia.com/login', {
+    const response = await fetch('https://api.xepay.finance/login', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -215,7 +215,7 @@ async function verifyTwoFaCode() {
   btn.innerHTML = '<span class="spin"></span>Vérification...';
   btn.disabled = true;
   try {
-    const response = await fetch('https://aws.api.alasdia.com/auth/2fa/verify-login', {
+    const response = await fetch('https://api.xepay.finance/auth/2fa/verify-login', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -317,7 +317,7 @@ async function handleGoogleCodeResponse(response) {
     return;
   }
   try {
-    const res = await fetch('https://aws.api.alasdia.com/auth/google/exchange', {
+    const res = await fetch('https://api.xepay.finance/auth/google/exchange', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

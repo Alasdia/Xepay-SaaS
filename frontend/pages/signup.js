@@ -146,7 +146,7 @@ async function signup(){
   btn.innerHTML='<span class="spin"></span>Création en cours...';
   btn.disabled=true;
   try{
-    const response=await fetch('https://aws.api.alasdia.com/signup',{
+    const response=await fetch('https://api.xepay.finance/signup',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(INVITE_TOKEN?{email,password,invite_token:INVITE_TOKEN}:{email,password})
@@ -235,7 +235,7 @@ async function handleGoogleCodeResponse(response){
     return;
   }
   try{
-    const res=await fetch('https://aws.api.alasdia.com/auth/google/exchange',{
+    const res=await fetch('https://api.xepay.finance/auth/google/exchange',{
       method:'POST',
       credentials:'include',
       headers:{'Content-Type':'application/json'},

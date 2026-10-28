@@ -83,8 +83,8 @@ def create_checkout_session(
                 },
                 "quantity": 1,
             }],
-            success_url="https://alasdia.com/success.html",
-            cancel_url="https://alasdia.com/cancel.html",
+            success_url="https://app.xepay.finance/success.html",
+            cancel_url="https://app.xepay.finance/cancel.html",
         )
         return session.url
     elif mode == "subscription":
@@ -126,8 +126,8 @@ def create_checkout_session(
                 "price": price_id,
                 "quantity": 1,
             }],
-            success_url="https://alasdia.com/success.html",
-            cancel_url="https://alasdia.com/cancel.html",
+            success_url="https://app.xepay.finance/success.html",
+            cancel_url="https://app.xepay.finance/cancel.html",
             stripe_version="2025-09-30.preview",
         )
         return session.url

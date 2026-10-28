@@ -45,11 +45,12 @@ CSRF_COOKIE_NAME = "csrf_token"
 
 # Domain explicite pour le seul cookie non-HttpOnly (csrf_token) : il doit
 # être lisible via document.cookie par le JS de la SPA, servie depuis
-# alasdia.com/www.alasdia.com — un host différent d'api.alasdia.com où ce
-# cookie est posé. "alasdia.com" couvre ses propres sous-domaines
-# (alasdia.com, www.alasdia.com, api.alasdia.com), même convention que les
-# URLs de redirection déjà en dur ailleurs dans ce fichier/routes/users.py.
-CSRF_COOKIE_DOMAIN = os.getenv("CSRF_COOKIE_DOMAIN", "alasdia.com")
+# xepay.finance/www.xepay.finance/app.xepay.finance — un host différent
+# d'api.xepay.finance où ce cookie est posé. "xepay.finance" couvre ses
+# propres sous-domaines (xepay.finance, www.xepay.finance, app.xepay.finance,
+# api.xepay.finance), même convention que les URLs de redirection déjà en
+# dur ailleurs dans ce fichier/routes/users.py.
+CSRF_COOKIE_DOMAIN = os.getenv("CSRF_COOKIE_DOMAIN", "xepay.finance")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
