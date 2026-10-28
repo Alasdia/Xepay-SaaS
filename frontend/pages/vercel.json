@@ -1,9 +1,9 @@
 {
   "rewrites": [
     { "source": "/dash/(.*)", "destination": "/dashboard.html" },
-    { "source": "/accueil(/)?", "destination": "/accueil.html" },
-    { "source": "/fonctionnalite(/)?", "destination": "/fonctionnalite.html" },
-    { "source": "/tarif(/)?", "destination": "/tarif.html" },
+    { "source": "/accueil(/)?", "destination": "/marketing.html" },
+    { "source": "/fonctionnalite(/)?", "destination": "/marketing.html" },
+    { "source": "/tarif(/)?", "destination": "/marketing.html" },
     { "source": "/login(/)?", "destination": "/login.html" },
     { "source": "/signup(/)?", "destination": "/signup.html" },
     { "source": "/politique-confidentialite(/)?", "destination": "/politique-confidentialite.html" },

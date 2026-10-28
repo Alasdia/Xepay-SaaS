@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Xepay — Paiements fintech, de l'Afrique de l'Ouest au monde</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/responsive.css">
+<link rel="stylesheet" href="/marketing.css">
+</head>
+<body class="home-page">
+
+<!-- ─── NAVBAR (partagée, le routeur ne touche jamais à ceci) ─── -->
+<nav>
+  <a href="/accueil" class="logo" style="text-decoration:none;">Xe<span>pay</span></a>
+
+  <button class="nav-hamburger">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+
+  <div class="nav-links">
+    <a href="/accueil" data-route>Accueil</a>
+    <a href="/fonctionnalite" data-route>Fonctionnalités</a>
+    <a href="/tarif" data-route>Tarifs</a>
+    <a href="/login" class="btn-nav-outline">Connexion</a>
+    <a href="/signup" class="btn-nav-primary">Créer un compte</a>
+  </div>
+</nav>
+
+<!-- ─── VUE COURANTE (remplie par le routeur SPA) ─── -->
+<main id="marketing-view"></main>
+
+<!-- ─── FOOTER (partagé) ─── -->
+<footer>
+  <div class="logo">XE<span>PAY</span></div>
+  <div class="footer-links">
+    <a href="/fonctionnalite">Fonctionnalités</a>
+    <a href="/tarif">Tarifs</a>
+    <a href="mailto:support@alasdia.com">Support</a>
+    <a href="/politique-confidentialite">Politique de confidentialité</a>
+    <a href="/conditions-utilisation">Conditions d'utilisation</a>
+  </div>
+  <div class="footer-copy">© 2026 Xepay — ALL RIGHTS RESERVED</div>
+</footer>
+
+<script type="module" src="/marketing/router.js"></script>
+</body>
+</html>
