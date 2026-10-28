@@ -70,7 +70,7 @@
   <div class="feat-card fc-span2 fc-accent-cyan reveal" style="transition-delay:.04s">
     <div class="fc-tag tag-cyan">Paiements</div>
     <h3>LIENS DE PAIEMENT</h3>
-    <p class="fc-sub">Créez un lien en 30 secondes, partagez-le par WhatsApp, email ou SMS. Votre client paie sans compte, sans app. Vous encaissez instantanément en XOF, USD ou EUR.</p>
+    <p class="fc-sub">Créez un lien en 30 secondes, partagez-le où vous voulez — WhatsApp, email, réseaux sociaux. Votre client paie sans compte, sans app. Vous encaissez instantanément en XOF, USD ou EUR.</p>
     <ul class="fc-list">
       <li>Lien avec montant fixe ou libre</li>
       <li>Expiration configurable (ex. 24h, 72h, sans limite)</li>
@@ -78,28 +78,28 @@
       <li>Copie du lien en un clic + partage direct</li>
     </ul>
     <div class="fc-mockup">
-      <div class="fm-bar"><div class="fm-dots"><span></span><span></span><span></span></div><div class="fm-label">xepay.io / mes liens de paiement</div><div class="fm-status">En ligne</div></div>
+      <div class="fm-bar"><div class="fm-dots"><span></span><span></span><span></span></div><div class="fm-label">app.xepay.finance / mes liens de paiement</div><div class="fm-status">En ligne</div></div>
       <div class="fm-body">
         <div class="pl-quota"><div class="pl-quota-label">LIENS UTILISÉS</div><div class="pl-quota-val">1 / 10 <span style="font-size:9px;color:var(--muted)">— Plan Free</span></div></div>
         <div class="pl-progress"><div class="pl-progress-bar"></div></div>
         <div class="pl-row">
           <div>
             <div class="pl-name">Fournisseur — Import textile</div>
-            <div class="pl-meta"><div class="pl-url">xepay.io/pay/1de9d79e…</div><div class="pl-exp">· expire dans 10 min</div></div>
+            <div class="pl-meta"><div class="pl-url">app.xepay.finance/pay/1de9d79e…</div><div class="pl-exp">· expire dans 10 min</div></div>
           </div>
           <div class="pl-right"><div class="pl-amt">390 USD</div><div class="pl-badge badge-pend">EN ATTENTE</div></div>
         </div>
         <div class="pl-row">
           <div>
             <div class="pl-name">Prestation conseil juridique</div>
-            <div class="pl-meta"><div class="pl-url">xepay.io/pay/a9f2c1b4…</div><div class="pl-exp">· expire dans 2j</div></div>
+            <div class="pl-meta"><div class="pl-url">app.xepay.finance/pay/a9f2c1b4…</div><div class="pl-exp">· expire dans 2j</div></div>
           </div>
           <div class="pl-right"><div class="pl-amt">150 000 XOF</div><div class="pl-badge badge-on">Payé</div></div>
         </div>
         <div class="pl-row">
           <div>
             <div class="pl-name">Abonnement mensuel client</div>
-            <div class="pl-meta"><div class="pl-url">xepay.io/pay/7bc88fa1…</div><div class="pl-exp">· sans expiration</div></div>
+            <div class="pl-meta"><div class="pl-url">app.xepay.finance/pay/7bc88fa1…</div><div class="pl-exp">· sans expiration</div></div>
           </div>
           <div class="pl-right"><div class="pl-amt">36000 xof</div><div class="pl-badge badge-on">ACTIF</div></div>
         </div>
@@ -264,42 +264,15 @@
     </div>
   </div>
 
-  <!-- 7. API ACCESS -->
-  <div class="feat-card fc-span2 fc-accent-cyan reveal" style="transition-delay:.04s">
-    <div class="fc-tag tag-cyan">Développeurs</div>
-    <h3>API REST & WEBHOOKS</h3>
-    <p class="fc-sub">Intégrez Xepay à votre site ou app. SDK Node.js disponible. Accès API réservé aux plans Pro et Business.</p>
-    <div class="code-block">
-      <span class="cm">// Créer un lien de paiement — Node.js SDK</span><br>
-      <span class="ck">const</span> <span class="cw">xepay</span> <span class="cv">=</span> <span class="ck">require</span>(<span class="cs">'xepay-node'</span>);<br><br>
-      <span class="ck">const</span> <span class="cw">link</span> <span class="cv">=</span> <span class="ck">await</span> <span class="cw">xepay</span>.<span class="cs">paymentLinks</span>.<span class="cn">create</span>({<br>
-      &nbsp;&nbsp;<span class="cs">amount</span>: <span class="cv">390</span>,<br>
-      &nbsp;&nbsp;<span class="cs">currency</span>: <span class="cv">'usd'</span>, <span class="cm">// 'xof' | 'usd' | 'eur'</span><br>
-      &nbsp;&nbsp;<span class="cs">description</span>: <span class="cv">'Fournisseur — Import textile'</span>,<br>
-      &nbsp;&nbsp;<span class="cs">expires_in</span>: <span class="cv">'24h'</span>,<br>
-      &nbsp;&nbsp;<span class="cs">notify_url</span>: <span class="cv">'https://monsite.sn/webhook'</span>,<br>
-      });<br><br>
-      <span class="cm">// → { id: '1de9d79e...', url: 'xepay.io/pay/...', status: 'pending' }</span>
-    </div>
-    <div style="margin-top:16px">
-      <div style="font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:.1em;margin-bottom:10px">ÉVÉNEMENTS WEBHOOK</div>
-      <span class="event-pill"><span class="event-dot" style="background:var(--green)"></span>payment.succeeded</span>
-      <span class="event-pill"><span class="event-dot" style="background:var(--red)"></span>payment.failed</span>
-      <span class="event-pill"><span class="event-dot" style="background:var(--gold)"></span>link.expired</span>
-      <span class="event-pill"><span class="event-dot" style="background:var(--cyan)"></span>link.created</span>
-      <span class="event-pill"><span class="event-dot" style="background:var(--violet)"></span>withdrawal.processed</span>
-    </div>
-  </div>
-
   <!-- 10. NOTIFICATIONS -->
   <div class="feat-card fc-accent-gold reveal" style="transition-delay:.08s">
     <div class="fc-tag tag-gold">Notifications</div>
     <h3>ALERTES INSTANTANÉES</h3>
-    <p class="fc-sub">Soyez notifié sur WhatsApp, par SMS ou email dès qu'un paiement est reçu — même hors connexion.</p>
+    <p class="fc-sub">Soyez notifié par email dès qu'un paiement est reçu, qu'un lien expire ou qu'un retrait est traité.</p>
     <div style="margin-top:16px">
-      <div class="notif-r"><div class="notif-ic">💰</div><div><div class="notif-title">Paiement reçu</div><div class="notif-body">+390 USD de Diallo Textiles — lien #1de9d…</div><div class="notif-time">Il y a 2 min · Email • SMS</div></div></div>
+      <div class="notif-r"><div class="notif-ic">💰</div><div><div class="notif-title">Paiement reçu</div><div class="notif-body">+390 USD de Diallo Textiles — lien #1de9d…</div><div class="notif-time">Il y a 2 min · Email</div></div></div>
       <div class="notif-r"><div class="notif-ic">⏰</div><div><div class="notif-title">Lien sur le point d'expirer</div><div class="notif-body">150 000 XOF — Conseil juridique · dans 1h</div><div class="notif-time">Il y a 5 min · Email</div></div></div>
-      <div class="notif-r"><div class="notif-ic">✅</div><div><div class="notif-title">Retrait traité</div><div class="notif-body">Disponible sous 1j</div><div class="notif-time">Hier · SMS</div></div></div>
+      <div class="notif-r"><div class="notif-ic">✅</div><div><div class="notif-title">Retrait traité</div><div class="notif-body">Disponible sous 1j</div><div class="notif-time">Hier · Email</div></div></div>
     </div>
   </div>
 
@@ -312,8 +285,8 @@
   <h2>LANCEZ-VOUS<br><span>SANS FRAIS INITIAUX</span></h2>
   <p>Démarrez gratuitement avec le plan Free. Upgradez quand votre business grandit. Aucune carte bancaire requise pour commencer.</p>
   <div class="cta-btns">
-    <a href="#" class="btn-primary">Créer un compte gratuit</a>
-    <a href="#" class="btn-ghost">Voir les tarifs →</a>
+    <a href="/signup" class="btn-primary">Créer un compte gratuit</a>
+    <a href="/tarif" class="btn-ghost">Voir les tarifs →</a>
   </div>
 </section>
 
@@ -321,14 +294,13 @@
 <footer>
   <div class="logo">XEPAY</div>
   <div class="footer-links">
-    <a href="#">Fonctionnalités</a>
-    <a href="#">Tarifs</a>
-    <a href="#">API Docs</a>
-    <a href="#">Support</a>
+    <a href="/fonctionnalite">Fonctionnalités</a>
+    <a href="/tarif">Tarifs</a>
+    <a href="mailto:support@alasdia.com">Support</a>
     <a href="/politique-confidentialite">Confidentialité</a>
     <a href="/conditions-utilisation">CGU</a>
   </div>
-  <div class="footer-copy">© 2025 XEPAY — UEMOA</div>
+  <div class="footer-copy">© 2026 XEPAY — UEMOA</div>
 </footer>
 <script src="fonctionnalite.js" defer></script>
 </body>
