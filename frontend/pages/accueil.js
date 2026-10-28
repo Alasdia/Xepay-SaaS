@@ -13,12 +13,12 @@ document.querySelectorAll('a,button').forEach(el => {
   el.addEventListener('mouseenter', () => {
     cursor.style.width = '20px'; cursor.style.height = '20px';
     ring.style.width = '54px'; ring.style.height = '54px';
-    ring.style.borderColor = 'rgba(0,229,255,0.6)';
+    ring.style.borderColor = 'rgba(245,158,11,0.6)';
   });
   el.addEventListener('mouseleave', () => {
     cursor.style.width = '10px'; cursor.style.height = '10px';
     ring.style.width = '36px'; ring.style.height = '36px';
-    ring.style.borderColor = 'rgba(0,229,255,0.4)';
+    ring.style.borderColor = 'rgba(245,158,11,0.4)';
   });
 });
 const canvas = document.getElementById('bg-canvas');
@@ -52,7 +52,7 @@ function drawBg() {
     if (gridFlash[i] > 0) {
       ctx.beginPath();
       ctx.rect(col * cw, row * ch, cw, ch);
-      ctx.fillStyle = `rgba(0,229,255,${gridFlash[i] * 0.04})`;
+      ctx.fillStyle = `rgba(245,158,11,${gridFlash[i] * 0.04})`;
       ctx.fill();
     }
   }
@@ -69,7 +69,7 @@ function drawBg() {
     if (p.x < 0) p.x = canvas.width; if (p.x > canvas.width) p.x = 0;
     if (p.y < 0) p.y = canvas.height; if (p.y > canvas.height) p.y = 0;
     ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(0,229,255,${p.opacity})`;
+    ctx.fillStyle = `rgba(245,158,11,${p.opacity})`;
     ctx.fill();
   });
   for (let i = 0; i < particles.length; i++) {
@@ -81,7 +81,7 @@ function drawBg() {
         ctx.beginPath();
         ctx.moveTo(particles[i].x, particles[i].y);
         ctx.lineTo(particles[j].x, particles[j].y);
-        ctx.strokeStyle = `rgba(0,229,255,${(1 - dist/120) * 0.12})`;
+        ctx.strokeStyle = `rgba(245,158,11,${(1 - dist/120) * 0.12})`;
         ctx.lineWidth = 0.5;
         ctx.stroke();
       }
