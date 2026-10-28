@@ -60,13 +60,14 @@ function ensureSoldeStyles() {
     .balance-subcard {
         position: relative;
         background: #ffffff;
-        border: 1px solid #e5e7eb;
+        border: none;
         border-radius: 10px;
         padding: 20px;
-        transition: border-color .15s ease;
+        transition: box-shadow .15s ease, transform .15s ease;
     }
     .balance-subcard:hover {
-        border-color: #cbd5e1;
+        box-shadow: 0 6px 16px rgba(17, 24, 39, .1);
+        transform: translateY(-3px);
     }
     .balance-block-header {
         position: relative;
@@ -275,12 +276,12 @@ function ensureSoldeStyles() {
        une flèche comme indice visuel au lieu d'un changement de fond trop
        discret. */
     .balance-list-well {
-      background: #f3f4f6;
+      background: linear-gradient(135deg, rgba(251, 191, 36, .14) 0%, #f3f4f6 20%);
       border-radius: 12px;
-      padding: 8px;
+      padding: 10px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 14px;
       margin-bottom: 16px;
     }
     .balance-list-row {
@@ -295,10 +296,11 @@ function ensureSoldeStyles() {
       padding: 14px 16px;
       cursor: pointer;
       text-align: left;
-      transition: box-shadow .15s ease, border-color .15s ease;
+      transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
     }
     .balance-list-row:hover {
-      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      box-shadow: 0 6px 16px rgba(17, 24, 39, .1);
+      transform: translateY(-3px);
     }
     .balance-list-row.active {
       border-color: #cbd5e1;
