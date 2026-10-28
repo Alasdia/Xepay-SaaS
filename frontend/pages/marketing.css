@@ -34,7 +34,11 @@ nav { position: sticky; top: 0; left: 0; right: 0; z-index: 100; display: flex; 
 nav::before, nav::after { content: ""; position: absolute; top: 100%; width: 12px; height: 12px; z-index: 200; }
 nav::before { left: 0; background: radial-gradient(circle at 100% 100%, transparent 12px, #facc15 12px); }
 nav::after { right: 0; background: radial-gradient(circle at 0 100%, transparent 12px, #facc15 12px); }
-.logo-mark { display: flex; align-items: center; height: 100%; }
+/* Reprend exactement sidebar.html:9-10 : conteneur à hauteur fixe +
+   overflow:hidden qui RECADRE l'image zoomée (scale 1.4 sur l'img),
+   pour que le fond blanc arrondi du PNG sorte du cadre - sans ce
+   conteneur, scale() agrandit juste tout, bords compris. */
+.logo-mark { height: 36px; overflow: hidden; display: flex; align-items: center; }
 /* Même zoom que le vrai logo de la sidebar (sidebar.html:10) : 36px de
    base, scale(1.4). */
 .logo-mark img { height: 36px; width: auto; display: block; transform: scale(1.4) translateX(6%); transform-origin: center; }
