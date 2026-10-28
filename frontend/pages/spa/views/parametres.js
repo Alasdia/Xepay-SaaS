@@ -2343,14 +2343,15 @@ function mountCartesVirtuelles(on) {
 }
 
 // --- Detail : Retraits & Comptes US ---
-// Deux sections distinctes (plus un simple bloc unique type KPI) : les
-// virements internationaux eux-mêmes, puis la formation de société US
-// avec deux prestataires au choix - Firstbase (déjà en place) et Stripe
-// Atlas (ajouté à la demande). Les deux restent de simples liens externes
-// (comme Firstbase l'était déjà) : Atlas n'a pas d'API d'intégration pour
-// qu'une plateforme Connect déclenche la création de société de SES
-// marchands - c'est un produit auto-service côté fondateur, pas un
-// endpoint qu'on peut appeler ici.
+// Trois sections distinctes, chacune indépendante (pas de card-epay —
+// voir la règle en commentaire dans parametres.css) : virements
+// internationaux, puis un prestataire par section pour la formation de
+// société US - Firstbase (déjà en place) et Stripe Atlas (ajouté à la
+// demande), avec un contenu explicite plutôt qu'une ligne résumée. Les
+// deux restent de simples liens externes : ni Firstbase ni Atlas n'ont
+// d'API permettant à une plateforme Connect de déclencher la création de
+// société de SES marchands - ce sont des produits auto-service côté
+// fondateur, pas des endpoints qu'on peut appeler ici.
 function retraitsTemplate() {
   return `
     ${detailHeader("Retraits & Comptes US")}
@@ -2358,22 +2359,24 @@ function retraitsTemplate() {
     <div class="params-subsection-header">
       <h6 class="params-subsection-title mb-0">Virements internationaux</h6>
     </div>
-    <p class="params-subsection-sub">Les fonds sont envoyés via Stripe vers des comptes bancaires internationaux (Europe / US). <span class="text-warning"><i class="fa-solid fa-triangle-exclamation"></i> Les méthodes locales (Mobile Money, banques africaines) ne sont pas supportées actuellement.</span></p>
+    <p class="params-subsection-sub">Les fonds collectés sur Xepay sont reversés par Stripe directement vers un compte bancaire, en zone Europe ou aux États-Unis. Une fois ce compte bancaire ajouté à votre compte Stripe Connect, les virements se font automatiquement selon le calendrier standard de Stripe, sans action supplémentaire de votre part à chaque paiement.</p>
+    <p class="params-subsection-sub"><span class="text-warning"><i class="fa-solid fa-triangle-exclamation"></i> Les méthodes locales (Mobile Money, banques africaines) ne sont pas supportées actuellement</span> — seul un compte bancaire domicilié en zone Europe ou aux États-Unis peut recevoir vos virements. C'est pour cette raison que les deux options ci-dessous existent, si vous n'avez pas encore de structure éligible.</p>
 
-    <div class="params-subsection-header">
-      <h6 class="params-subsection-title mb-0">Créer votre société et compte bancaire US</h6>
+    <div class="params-subsection-header" style="margin-top: 32px;">
+      <h6 class="params-subsection-title mb-0">🚀 Créer votre société US avec Firstbase</h6>
     </div>
-    <p class="params-subsection-sub">Vous n'avez pas d'entreprise enregistrée aux US ? Choisissez un prestataire pour créer votre LLC et obtenir votre compte bancaire professionnel, puis activer vos retraits.</p>
-    <div class="params-row-list">
-      <div class="params-info-row">
-        <span>🚀 Firstbase — LLC et compte bancaire professionnel en quelques jours</span>
-        <a href="https://get.firstbase.io/lzqmlclh3nr9" target="_blank" rel="noopener noreferrer" class="params-edit-btn text-decoration-none">Créer ma LLC →</a>
-      </div>
-      <div class="params-info-row">
-        <span><i class="fa-brands fa-stripe"></i> Stripe Atlas — Formation de société, EIN et compte bancaire via Stripe</span>
-        <a href="https://stripe.com/atlas" target="_blank" rel="noopener noreferrer" class="params-edit-btn text-decoration-none">Créer ma société →</a>
-      </div>
+    <p class="params-subsection-sub">Firstbase s'occupe de la création complète de votre LLC américaine à distance : constitution de la société, numéro EIN (identifiant fiscal fédéral), agent enregistré obligatoire, et ouverture d'un compte bancaire professionnel partenaire. Le dossier se remplit entièrement en ligne (pièce d'identité et justificatif d'adresse), et la société est généralement opérationnelle en quelques jours. Une fois votre LLC et son compte bancaire actifs, renseignez ce compte dans vos paramètres de retrait Stripe pour débloquer vos virements.</p>
+    <a href="https://get.firstbase.io/lzqmlclh3nr9" target="_blank" rel="noopener noreferrer" class="create-client-btn text-decoration-none">
+      Créer ma LLC avec Firstbase <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.75rem;"></i>
+    </a>
+
+    <div class="params-subsection-header" style="margin-top: 32px;">
+      <h6 class="params-subsection-title mb-0"><i class="fa-brands fa-stripe"></i> Créer votre société US avec Stripe Atlas</h6>
     </div>
+    <p class="params-subsection-sub">Stripe Atlas est le produit officiel de Stripe pour former une société américaine, directement depuis l'écosystème que vous utilisez déjà pour encaisser vos paiements. Atlas gère la constitution de la société, l'obtention du numéro EIN et l'ouverture d'un compte bancaire associé, avec une intégration native à votre compte Stripe existant — une alternative utile si vous préférez centraliser la gestion de votre activité et de votre société chez un seul prestataire plutôt que d'en ajouter un second. Des frais de dossier Stripe s'appliquent à la constitution ; le détail actualisé est disponible sur leur page.</p>
+    <a href="https://stripe.com/atlas" target="_blank" rel="noopener noreferrer" class="create-client-btn text-decoration-none">
+      Créer ma société avec Stripe Atlas <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.75rem;"></i>
+    </a>
   `;
 }
 
