@@ -107,30 +107,27 @@ export function render() {
   </div>
 </section>
 
-<!-- ─── CHIFFRES + BARRE DE CONFIANCE ─── -->
+<!-- ─── STATS BAR ─── -->
 <div class="stats-bar">
-  <div class="counters-row reveal">
-    <div class="counter-item">
-      <div class="counter-num"><span class="counter-value" data-target="8">0</span></div>
-      <div class="counter-label">pays UEMOA</div>
+  <div class="stats-inner">
+    <div class="stat-item">
+      <div class="stat-num">Stripe <span class="accent">Connect</span></div>
+      <div class="stat-label">Infrastructure paiements</div>
     </div>
-    <div class="counter-item">
-      <div class="counter-num"><span class="counter-value" data-target="3">0</span></div>
-      <div class="counter-label">devises — XOF · USD · EUR</div>
+
+    <div class="stat-item">
+      <div class="stat-num">KYC <span class="accent">Automatisé</span></div>
+      <div class="stat-label">Vérification intégrée</div>
     </div>
-    <div class="counter-item">
-      <div class="counter-num"><span class="counter-value" data-target="13">0</span></div>
-      <div class="counter-label">moyens de paiement</div>
+
+    <div class="stat-item">
+      <div class="stat-num">Exports <span class="accent">Comptables</span></div>
+      <div class="stat-label">CSV / PDF</div>
     </div>
-  </div>
-  <div class="trust-bar">
-    <span class="trust-label">Propulsé par <strong>Stripe</strong></span>
-    <div class="trust-logos">
-      <img src="/assets/visa.svg" alt="Visa" class="trust-logo">
-      <img src="/assets/mastercard.svg" alt="Mastercard" class="trust-logo">
-      <img src="/assets/apple-pay.svg" alt="Apple Pay" class="trust-logo">
-      <img src="/assets/google-pay.svg" alt="Google Pay" class="trust-logo">
-      <img src="/assets/cashapp.svg" alt="Cash App" class="trust-logo">
+
+    <div class="stat-item">
+      <div class="stat-num">Support <span class="accent">International</span></div>
+      <div class="stat-label">Paiements globaux</div>
     </div>
   </div>
 </div>
@@ -447,35 +444,7 @@ function updateCodeSnippet(root, amount, currency) {
 });`;
 }
 
-// Compteur animé des chiffres sous le hero - se déclenche une seule
-// fois, au moment où la ligne entre dans le viewport.
-function animateCounters(root) {
-  const items = root.querySelectorAll(".counter-value");
-  if (!items.length) return;
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (!entry.isIntersecting) return;
-      const el = entry.target;
-      const target = parseInt(el.dataset.target, 10) || 0;
-      const duration = 900;
-      const start = performance.now();
-      function step(now) {
-        const t = Math.min((now - start) / duration, 1);
-        const eased = 1 - Math.pow(1 - t, 3);
-        el.textContent = Math.round(eased * target);
-        if (t < 1) requestAnimationFrame(step);
-        else el.textContent = target;
-      }
-      requestAnimationFrame(step);
-      io.unobserve(el);
-    });
-  }, { threshold: 0.4 });
-  items.forEach((el) => io.observe(el));
-}
-
 export function mount(root) {
-  animateCounters(root);
-
   const form = root.querySelector("#lnk-demo-form");
   const amountInput = root.querySelector("#lnk-amount");
   const currencySelect = root.querySelector("#lnk-currency");
