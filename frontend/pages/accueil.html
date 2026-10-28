@@ -181,41 +181,30 @@
   <div class="feature-mockup">
     <div class="feature-mockup-inner">
       <div class="fmock-header">
-        <div class="fmock-title">LIENS DE PAIEMENT</div>
-        <div class="fmock-status">En ligne</div>
+        <div class="fmock-title">MES LIENS DE PAIEMENT</div>
+        <div class="fmock-status">3 / 10</div>
       </div>
       <div class="fmock-body">
-        <div class="plink-row">
-          <div class="plink-info">
-            <div class="plink-name">Studio Noé — Facture #42</div>
-            <div class="plink-url">app.xepay.finance/pay/studio-noe-42</div>
-          </div>
-          <div class="plink-right">
-            <div class="plink-amount">€1 500</div>
-            <div class="plink-badge badge-active">ACTIF</div>
-          </div>
+        <div class="lnk-quota">
+          <div class="lnk-quota-top"><span>Liens utilisés</span><strong>3/10</strong></div>
+          <div class="lnk-quota-bar"><div class="lnk-quota-fill" style="width:30%"></div></div>
         </div>
-        <div class="plink-row">
-          <div class="plink-info">
-            <div class="plink-name">Abonnement Pro — Mars</div>
-            <div class="plink-url">app.xepay.finance/pay/abonnement-pro</div>
-          </div>
-          <div class="plink-right">
-            <div class="plink-amount">15500/mo</div>
-            <div class="plink-badge badge-active">ACTIF</div>
-          </div>
+        <div class="lnk-row lnk-pending">
+          <span class="lnk-dot"></span>
+          <span class="lnk-url">app.xepay.finance/pay/pl_vbl0qzddig7i…</span>
+          <i class="lnk-chevron">›</i>
         </div>
-        <div class="plink-row">
-          <div class="plink-info">
-            <div class="plink-name">Formation UX — Pack</div>
-            <div class="plink-url">app.xepay.finance/pay/ux-formation</div>
-          </div>
-          <div class="plink-right">
-            <div class="plink-amount">€650</div>
-            <div class="plink-badge badge-paused">PAUSE</div>
-          </div>
+        <div class="lnk-row lnk-paid">
+          <span class="lnk-dot"></span>
+          <span class="lnk-url">app.xepay.finance/pay/pl_qi4x1zhg3m5…</span>
+          <i class="lnk-chevron">›</i>
         </div>
-        <div class="fmock-add-btn">+ Nouveau lien de paiement</div>
+        <div class="lnk-row lnk-pending">
+          <span class="lnk-dot"></span>
+          <span class="lnk-url">app.xepay.finance/pay/pl_1dqmll3jqlf…</span>
+          <i class="lnk-chevron">›</i>
+        </div>
+        <div class="fmock-add-btn">+ Nouveau lien</div>
       </div>
     </div>
   </div>
@@ -242,52 +231,36 @@
     <a href="/signup" class="btn-ghost" style="display:inline-flex">Voir un rapport →</a>
   </div>
   <div class="feature-mockup reverse-p">
-    <div class="feature-mockup-inner" style="border-color:rgba(107,114,128,0.25);box-shadow:0 60px 120px rgba(0,0,0,0.7), 0 0 60px rgba(107,114,128,0.12)">
+    <div class="feature-mockup-inner">
       <div class="fmock-header">
-        <div class="fmock-title">TRANSACTIONS — MAI 2025</div>
-        <div class="fmock-status" style="color:#92400e">€ 84,392</div>
+        <div class="fmock-title">PAIEMENTS</div>
+        <div class="fmock-status">8 transactions</div>
       </div>
       <div class="fmock-body">
-        <div class="txn-chart-bar">
-          <div class="bar-col"><div class="bar" style="height:40%"></div><div class="bar-label">L</div></div>
-          <div class="bar-col"><div class="bar" style="height:65%"></div><div class="bar-label">M</div></div>
-          <div class="bar-col"><div class="bar" style="height:50%"></div><div class="bar-label">M</div></div>
-          <div class="bar-col"><div class="bar" style="height:80%"></div><div class="bar-label">J</div></div>
-          <div class="bar-col"><div class="bar" style="height:60%"></div><div class="bar-label">V</div></div>
-          <div class="bar-col"><div class="bar" style="height:35%"></div><div class="bar-label">S</div></div>
-          <div class="bar-col"><div class="bar" style="height:25%"></div><div class="bar-label">D</div></div>
-          <div class="bar-col"><div class="bar" style="height:90%"></div><div class="bar-label">L</div></div>
-          <div class="bar-col"><div class="bar" style="height:70%"></div><div class="bar-label">M</div></div>
-          <div class="bar-col"><div class="bar" style="height:55%"></div><div class="bar-label">M</div></div>
+        <div class="txn-kpis">
+          <div class="txn-kpi active"><span>Tous</span><strong>8</strong></div>
+          <div class="txn-kpi"><span>Réussis</span><strong>8</strong></div>
+          <div class="txn-kpi"><span>En échec</span><strong>0</strong></div>
         </div>
-        <div class="txn-list">
-          <div class="txn-row">
-            <div class="txn-row-left">
-              <div class="txn-dot" style="background:var(--green);box-shadow:0 0 5px var(--green)"></div>
-              <div><div class="txn-from">Marie Dupont</div><div class="txn-date">Aujourd'hui 14:23</div></div>
-            </div>
-            <div class="txn-amt amt-green">+€2,100.00</div>
+        <div class="txn-table">
+          <div class="txn-thead"><span>Client</span><span>Moyen</span><span>Brut</span><span>Net</span></div>
+          <div class="txn-trow">
+            <span class="txn-client">alasndia04@gmail.com</span>
+            <span class="txn-method"><span class="txn-card txn-card-mc"></span>···4444</span>
+            <span class="txn-amount">23,00 USD</span>
+            <span class="txn-net">21,62 USD</span>
           </div>
-          <div class="txn-row">
-            <div class="txn-row-left">
-              <div class="txn-dot" style="background:var(--green);box-shadow:0 0 5px var(--green)"></div>
-              <div><div class="txn-from">Agence Prism</div><div class="txn-date">Aujourd'hui 11:05</div></div>
-            </div>
-            <div class="txn-amt amt-green">+€8,500.00</div>
+          <div class="txn-trow">
+            <span class="txn-client">leona.bravo@exemple.com</span>
+            <span class="txn-method"><span class="txn-card txn-card-visa"></span>···4242</span>
+            <span class="txn-amount">180,00 USD</span>
+            <span class="txn-net">169,20 USD</span>
           </div>
-          <div class="txn-row">
-            <div class="txn-row-left">
-              <div class="txn-dot" style="background:var(--gold);box-shadow:0 0 5px var(--gold)"></div>
-              <div><div class="txn-from">Remboursement</div><div class="txn-date">Hier 09:14</div></div>
-            </div>
-            <div class="txn-amt amt-red">−€350.00</div>
-          </div>
-          <div class="txn-row">
-            <div class="txn-row-left">
-              <div class="txn-dot" style="background:var(--gold);box-shadow:0 0 5px var(--gold)"></div>
-              <div><div class="txn-from">Thomas K.</div><div class="txn-date">Hier 18:47</div></div>
-            </div>
-            <div class="txn-amt amt-green">+€4,250.00</div>
+          <div class="txn-trow">
+            <span class="txn-client">leona.bravo@exemple.com</span>
+            <span class="txn-method"><span class="txn-card txn-card-cash"></span>Cash App</span>
+            <span class="txn-amount">78,00 USD</span>
+            <span class="txn-net">73,32 USD</span>
           </div>
         </div>
       </div>
@@ -364,29 +337,33 @@
     <div class="feature-mockup-inner">
       <div class="fmock-header">
         <div class="fmock-title">CLIENTS</div>
-        <div class="fmock-status">3 actifs</div>
+        <div class="fmock-status">3 client(s)</div>
       </div>
       <div class="fmock-body">
-        <div class="com-row">
-          <div class="com-row-left">
-            <div class="com-avatar">MD</div>
-            <div><div class="com-name">Marie Dupont</div><div class="com-sub">marie@dupont.sn</div></div>
-          </div>
-          <div class="com-right"><div class="com-amount">2 400 $US</div><div class="com-badge">Payé</div></div>
+        <div class="txn-kpis">
+          <div class="txn-kpi active"><span>Tous</span><strong>3</strong></div>
+          <div class="txn-kpi"><span>Soldes restants</span><strong>0</strong></div>
         </div>
-        <div class="com-row">
-          <div class="com-row-left">
-            <div class="com-avatar">AP</div>
-            <div><div class="com-name">Agence Prism</div><div class="com-sub">Abonnement Pro — mensuel</div></div>
+        <div class="txn-table">
+          <div class="txn-thead"><span>Client</span><span>Pays</span><span>Dépensé</span><span>Paiements</span></div>
+          <div class="txn-trow">
+            <span class="txn-client">Moussa Ndiaye</span>
+            <span class="txn-method">US</span>
+            <span class="txn-amount">0,00</span>
+            <span class="txn-net">0</span>
           </div>
-          <div class="com-right"><div class="com-amount">15 500 XOF/mo</div><div class="com-badge">Actif</div></div>
-        </div>
-        <div class="com-row">
-          <div class="com-row-left">
-            <div class="com-avatar">TK</div>
-            <div><div class="com-name">Thomas K.</div><div class="com-sub">Facture #0042</div></div>
+          <div class="txn-trow">
+            <span class="txn-client">Malick Ly</span>
+            <span class="txn-method">SN</span>
+            <span class="txn-amount">0,00 USD</span>
+            <span class="txn-net">0</span>
           </div>
-          <div class="com-right"><div class="com-amount">650 €</div><div class="com-badge com-badge-pending">En attente</div></div>
+          <div class="txn-trow">
+            <span class="txn-client">Leona Bravo</span>
+            <span class="txn-method">—</span>
+            <span class="txn-amount">1 021,00 USD</span>
+            <span class="txn-net">7</span>
+          </div>
         </div>
         <div class="fmock-add-btn">+ Créer un client</div>
       </div>
