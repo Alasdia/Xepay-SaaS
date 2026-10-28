@@ -2359,7 +2359,7 @@ function retraitsTemplate() {
     <div class="params-subsection-header">
       <h6 class="params-subsection-title mb-0">Virements internationaux</h6>
     </div>
-    <p class="params-subsection-sub" style="max-width:100%;">Les fonds collectés sur Xepay sont reversés par Stripe directement vers un compte bancaire, en zone Europe ou aux États-Unis. Une fois ce compte bancaire ajouté à votre compte Stripe Connect, les virements se font automatiquement selon le calendrier standard de Stripe, sans action supplémentaire de votre part à chaque paiement.</p>
+    <p class="params-subsection-sub" style="max-width:100%;">Les fonds collectés sur Xepay sont reversés par Stripe directement vers un compte bancaire, en zone Europe ou aux États-Unis. Le virement n'est pas automatique : vous déclenchez chaque retrait vous-même depuis le bouton "Retirer des fonds" (vue Solde), qui lance un payout Stripe instantané vers le compte bancaire enregistré sur votre compte Connect. Un retrait en cours peut être annulé tant qu'il n'est pas finalisé.</p>
     <p class="params-subsection-sub" style="max-width:100%;"><span class="text-warning"><i class="fa-solid fa-triangle-exclamation"></i> Les méthodes locales (Mobile Money, banques africaines) ne sont pas supportées actuellement</span> — seul un compte bancaire domicilié en zone Europe ou aux États-Unis peut recevoir vos virements. C'est pour cette raison que les deux options ci-dessous existent, si vous n'avez pas encore de structure éligible.</p>
 
     <div class="params-subsection-header" style="margin-top: 32px;">
