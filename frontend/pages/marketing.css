@@ -44,6 +44,7 @@ nav::after { right: 0; background: radial-gradient(circle at 0 100%, transparent
 .logo-mark img { height: 36px; width: auto; display: block; transform: scale(1.4) translateX(6%); transform-origin: center; }
 .logo { font-size: 21px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
 .logo span { color: var(--gold-deep); }
+nav .logo span { color: var(--text); opacity: 0.6; }
 .nav-links { display: flex; align-items: center; gap: 2px;}
 /* Liens de nav = liens texte simples, pas des boutons/puces - seuls
    Connexion/Créer un compte doivent avoir un fond. */
