@@ -35,7 +35,9 @@ nav::before, nav::after { content: ""; position: absolute; top: 100%; width: 12p
 nav::before { left: 0; background: radial-gradient(circle at 100% 100%, transparent 12px, #facc15 12px); }
 nav::after { right: 0; background: radial-gradient(circle at 0 100%, transparent 12px, #facc15 12px); }
 .logo-mark { display: flex; align-items: center; height: 100%; }
-.logo-mark img { height: 80%; width: auto; display: block; }
+/* Même zoom que le vrai logo de la sidebar (sidebar.html:10) : 36px de
+   base, scale(1.4). */
+.logo-mark img { height: 36px; width: auto; display: block; transform: scale(1.4) translateX(6%); transform-origin: center; }
 .logo { font-size: 21px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
 .logo span { color: var(--gold-deep); }
 .nav-links { display: flex; align-items: center; gap: 2px;}
