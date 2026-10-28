@@ -148,35 +148,62 @@ export function render() {
       <li>Webhook en temps réel à chaque paiement</li>
     </ul>
     <a href="/signup" class="btn-primary" style="display:inline-flex">Créer un lien →</a>
+    <a href="/fonctionnalite" class="guide-link">Lire le guide ›</a>
   </div>
   <div class="feature-mockup">
     <div class="feature-mockup-inner">
       <div class="fmock-header">
         <div class="fmock-title">MES LIENS DE PAIEMENT</div>
-        <div class="fmock-status">3 / 10</div>
+        <div class="fmock-status" id="lnk-counter">3 / 10</div>
       </div>
       <div class="fmock-body">
+        <form class="lnk-demo-form" id="lnk-demo-form">
+          <div class="lnk-demo-field">
+            <label for="lnk-amount">Montant</label>
+            <input type="number" id="lnk-amount" inputmode="numeric" min="1" step="1" value="150000" required>
+          </div>
+          <div class="lnk-demo-field lnk-demo-field-currency">
+            <label for="lnk-currency">Devise</label>
+            <select id="lnk-currency">
+              <option value="XOF" selected>XOF</option>
+              <option value="EUR">EUR</option>
+              <option value="USD">USD</option>
+            </select>
+          </div>
+          <button type="submit" class="lnk-demo-btn" id="lnk-demo-btn">Générer</button>
+        </form>
         <div class="lnk-quota">
-          <div class="lnk-quota-top"><span>Liens utilisés</span><strong>3/10</strong></div>
-          <div class="lnk-quota-bar"><div class="lnk-quota-fill" style="width:30%"></div></div>
+          <div class="lnk-quota-top"><span>Liens utilisés</span><strong id="lnk-quota-label">3/10</strong></div>
+          <div class="lnk-quota-bar"><div class="lnk-quota-fill" id="lnk-quota-fill" style="width:30%"></div></div>
         </div>
-        <div class="lnk-row lnk-pending">
-          <span class="lnk-dot"></span>
-          <span class="lnk-url">app.xepay.finance/pay/pl_vbl0qzddig7i…</span>
-          <i class="lnk-chevron">›</i>
+        <div class="lnk-list" id="lnk-list">
+          <div class="lnk-row lnk-pending">
+            <span class="lnk-dot"></span>
+            <span class="lnk-url">app.xepay.finance/pay/pl_vbl0qzddig7i…</span>
+            <i class="lnk-chevron">›</i>
+          </div>
+          <div class="lnk-row lnk-paid">
+            <span class="lnk-dot"></span>
+            <span class="lnk-url">app.xepay.finance/pay/pl_qi4x1zhg3m5…</span>
+            <i class="lnk-chevron">›</i>
+          </div>
+          <div class="lnk-row lnk-pending">
+            <span class="lnk-dot"></span>
+            <span class="lnk-url">app.xepay.finance/pay/pl_1dqmll3jqlf…</span>
+            <i class="lnk-chevron">›</i>
+          </div>
         </div>
-        <div class="lnk-row lnk-paid">
-          <span class="lnk-dot"></span>
-          <span class="lnk-url">app.xepay.finance/pay/pl_qi4x1zhg3m5…</span>
-          <i class="lnk-chevron">›</i>
-        </div>
-        <div class="lnk-row lnk-pending">
-          <span class="lnk-dot"></span>
-          <span class="lnk-url">app.xepay.finance/pay/pl_1dqmll3jqlf…</span>
-          <i class="lnk-chevron">›</i>
-        </div>
-        <div class="fmock-add-btn">+ Nouveau lien</div>
       </div>
+    </div>
+    <div class="code-snippet">
+      <div class="code-snippet-header">
+        <span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span>
+        <span class="code-snippet-lang">JavaScript</span>
+      </div>
+      <pre class="code-snippet-body"><code id="lnk-code-body">xepay.paymentLink.create({
+  <span class="code-key">amount</span>: <span class="code-val">150000</span>,
+  <span class="code-key">currency</span>: <span class="code-str">"XOF"</span>
+});</code></pre>
     </div>
   </div>
 </section>
@@ -396,4 +423,79 @@ export function render() {
   </div>
 </section>
 `;
+}
+
+// Démo interactive de la Feature 1 (Liens) - purement côté client,
+// aucun appel réseau : génère un faux lien + met à jour le quota et
+// l'extrait de code en direct à partir du formulaire.
+const LINK_LIMIT = 10;
+let linkCount = 3;
+
+function randomLinkId() {
+  return "pl_" + Array.from({ length: 13 }, () => "0123456789abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 36)]).join("");
+}
+
+function updateCodeSnippet(root, amount, currency) {
+  const code = root.querySelector("#lnk-code-body");
+  if (!code) return;
+  code.innerHTML = `xepay.paymentLink.create({
+  <span class="code-key">amount</span>: <span class="code-val">${amount}</span>,
+  <span class="code-key">currency</span>: <span class="code-str">"${currency}"</span>
+});`;
+}
+
+export function mount(root) {
+  const form = root.querySelector("#lnk-demo-form");
+  const amountInput = root.querySelector("#lnk-amount");
+  const currencySelect = root.querySelector("#lnk-currency");
+  const btn = root.querySelector("#lnk-demo-btn");
+  const list = root.querySelector("#lnk-list");
+  const counter = root.querySelector("#lnk-counter");
+  const quotaLabel = root.querySelector("#lnk-quota-label");
+  const quotaFill = root.querySelector("#lnk-quota-fill");
+  if (!form || !list) return;
+
+  linkCount = 3;
+
+  function syncCode() {
+    const amount = amountInput.value || "0";
+    updateCodeSnippet(root, amount, currencySelect.value);
+  }
+
+  function syncQuota() {
+    const label = `${linkCount}/${LINK_LIMIT}`;
+    counter.textContent = `${linkCount} / ${LINK_LIMIT}`;
+    quotaLabel.textContent = label;
+    quotaFill.style.width = `${Math.min(100, (linkCount / LINK_LIMIT) * 100)}%`;
+    if (linkCount >= LINK_LIMIT) {
+      btn.disabled = true;
+      btn.textContent = "Limite atteinte";
+    } else {
+      btn.disabled = false;
+      btn.textContent = "Générer";
+    }
+  }
+
+  amountInput.addEventListener("input", syncCode);
+  currencySelect.addEventListener("change", syncCode);
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (linkCount >= LINK_LIMIT) return;
+
+    const row = document.createElement("div");
+    row.className = "lnk-row lnk-pending lnk-row-new";
+    row.innerHTML = `
+      <span class="lnk-dot"></span>
+      <span class="lnk-url">app.xepay.finance/pay/${randomLinkId()}…</span>
+      <i class="lnk-chevron">›</i>
+    `;
+    list.prepend(row);
+
+    linkCount += 1;
+    syncQuota();
+  });
+
+  syncCode();
+  syncQuota();
 }

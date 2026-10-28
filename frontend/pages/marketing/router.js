@@ -1,10 +1,10 @@
-import { render as renderAccueil, title as titleAccueil } from "/marketing/views/accueil.js";
+import { render as renderAccueil, title as titleAccueil, mount as mountAccueil } from "/marketing/views/accueil.js";
 import { render as renderFonc, title as titleFonc } from "/marketing/views/fonctionnalite.js";
 import { render as renderTarif, title as titleTarif } from "/marketing/views/tarif.js";
 
 const ROUTES = {
-  "/accueil": { render: renderAccueil, title: titleAccueil },
-  "/": { render: renderAccueil, title: titleAccueil },
+  "/accueil": { render: renderAccueil, title: titleAccueil, mount: mountAccueil },
+  "/": { render: renderAccueil, title: titleAccueil, mount: mountAccueil },
   "/fonctionnalite": { render: renderFonc, title: titleFonc },
   "/tarif": { render: renderTarif, title: titleTarif },
 };
@@ -42,6 +42,7 @@ function renderRoute(path, { scroll = true } = {}) {
   document.title = route.title;
   setActiveLink(normalize(path));
   observeReveals();
+  if (typeof route.mount === "function") route.mount(root);
   if (scroll) window.scrollTo(0, 0);
 }
 

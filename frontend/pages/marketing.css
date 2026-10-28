@@ -136,7 +136,9 @@ nav .logo span { color: var(--text); opacity: 0.6; }
 .feature-checklist { list-style: none; display: flex; flex-direction: column; gap: 12px; margin-bottom: 32px;}
 .feature-checklist li { display: flex; align-items: center; gap: 10px; font-size: 14.5px; color: #3a4150;}
 .feature-checklist li::before { content: '✓'; width: 20px; height: 20px; border-radius: 6px; background: var(--gold-wash); color: var(--gold-deep); font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;}
-.feature-mockup { position: relative;}
+.feature-mockup { position: relative; display: flex; flex-direction: column; gap: 16px;}
+.guide-link { display: inline-block; margin-left: 10px; font-size: 14px; font-weight: 600; color: var(--gold-deep); text-decoration: none;}
+.guide-link:hover { text-decoration: underline; }
 .feature-mockup-inner { width: 100%; border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border); background: #ffffff; box-shadow: var(--shadow-md); transition: transform 0.3s ease, box-shadow 0.3s ease;}
 .feature-mockup-inner:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg);}
 .fmock-header { padding: 13px 18px; border-bottom: 1px solid var(--border); background: var(--bg-soft); display: flex; align-items: center; justify-content: space-between;}
@@ -162,6 +164,30 @@ nav .logo span { color: var(--text); opacity: 0.6; }
 .lnk-pending .lnk-dot { background: #f87171; }
 .lnk-paid { border-left-color: var(--green); }
 .lnk-paid .lnk-dot { background: var(--green); }
+
+/* Démo interactive (formulaire + liste dynamique) */
+.lnk-demo-form { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.lnk-demo-field { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.lnk-demo-field-currency { flex: 0 0 84px; }
+.lnk-demo-field label { font-size: 10.5px; font-weight: 700; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.03em; }
+.lnk-demo-field input, .lnk-demo-field select { height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--border); background: #ffffff; color: var(--text); font-size: 13px; font-family: var(--font-body); transition: border-color 0.15s; width: 100%; }
+.lnk-demo-field input:focus, .lnk-demo-field select:focus { outline: none; border-color: var(--gold); }
+.lnk-demo-btn { height: 34px; padding: 0 16px; border-radius: 8px; border: none; background: var(--gold); color: #171310; font-weight: 700; font-size: 13px; cursor: pointer; flex-shrink: 0; transition: background 0.15s; }
+.lnk-demo-btn:hover:not(:disabled) { background: var(--gold-light); }
+.lnk-demo-btn:disabled { background: var(--border); color: var(--muted2); cursor: not-allowed; }
+.lnk-list { display: flex; flex-direction: column; }
+@keyframes lnkRowIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+.lnk-row-new { animation: lnkRowIn 0.35s ease; }
+
+/* Extrait de code (JS) accompagnant la démo */
+.code-snippet { border-radius: 14px; overflow: hidden; background: #171310; box-shadow: var(--shadow-md); }
+.code-snippet-header { display: flex; align-items: center; gap: 6px; padding: 11px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.code-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.15); }
+.code-snippet-lang { margin-left: auto; font-family: var(--font-mono); font-size: 10.5px; color: rgba(255,255,255,0.4); letter-spacing: 0.04em; }
+.code-snippet-body { margin: 0; padding: 16px; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; color: rgba(255,255,255,0.75); overflow-x: auto; }
+.code-key { color: #93c5fd; }
+.code-val { color: var(--gold-light); }
+.code-str { color: #86efac; }
 
 /* Maquette Paiements + Clients (Features 2 & 4) - reprend le vrai
    pattern "rangée de KPI puis tableau" vérifié sur app.xepay.finance
