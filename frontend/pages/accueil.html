@@ -5,16 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Xepay — Paiements fintech, de l'Afrique de l'Ouest au monde</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500;600&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="responsive.css">
 <link rel="stylesheet" href="accueil.css">
 </head>
 <body class="home-page">
-
-<div id="cursor"></div>
-<div id="cursor-ring"></div>
-<div class="noise"></div>
-<canvas id="bg-canvas"></canvas>
 
 <!-- ─── NAVBAR ─── -->
 <nav>
@@ -43,9 +38,8 @@
     <div class="hero-text reveal">
       <div class="hero-eyebrow">Né en Afrique de l'Ouest, connecté au monde</div>
       <h1>
-        <span class="line1">CENTRALISEZ</span>
-        <span class="line2">VOS FLUX.</span>
-        <span class="line3">AUTOMATISEZ.</span>
+        Centralisez vos flux.<br>
+        <mark>Automatisez</mark> le reste.
       </h1>
       <p class="hero-desc">
         Xepay donne aux marchands ouest-africains les outils d'une
@@ -171,7 +165,7 @@
 <section class="feature-section reveal">
   <div class="feature-text">
     <div class="section-tag">Paiements</div>
-    <h2>CRÉEZ VOS<br><span class="grad-cyan">LIENS</span><br>EN SECONDES.</h2>
+    <h2>Créez vos liens <mark>en secondes</mark>.</h2>
     <p>
       Générez des liens de paiement personnalisés, partagez-les 
       partout et encaissez en temps réel — sans intégration technique.
@@ -233,7 +227,7 @@
 <section class="feature-section reverse reveal">
   <div class="feature-text">
     <div class="section-tag">Transactions</div>
-    <h2>SUIVEZ VOS<br><span class="grad-violet">REVENUS</span><br>EN DIRECT.</h2>
+    <h2>Suivez vos revenus <mark>en direct</mark>.</h2>
     <p>
       Analysez chaque flux financier avec des graphiques
       dynamiques, des filtres avancés et des exports
@@ -307,7 +301,7 @@
 <section class="feature-section reveal">
   <div class="feature-text">
     <div class="section-tag">Solde</div>
-    <h2>PILOTEZ VOTRE<br><span class="grad-cyan">SOLDE</span><br>EN TEMPS RÉEL.</h2>
+    <h2>Pilotez votre solde <mark>en temps réel</mark>.</h2>
     <p>
       Visualisez vos fonds disponibles et verrouillés, détaillés par
       source de paiement, et retirez-les vers votre compte bancaire
@@ -352,7 +346,7 @@
 <section class="feature-section reverse reveal">
   <div class="feature-text">
     <div class="section-tag">Commerce</div>
-    <h2>FACTUREZ VOS<br><span class="grad-violet">PROPRES CLIENTS</span><br>COMME UN PRO.</h2>
+    <h2>Facturez vos <mark>propres clients</mark>.</h2>
     <p>
       Au-delà de votre propre abonnement Xepay, créez le vôtre pour vos
       clients : fiches clients, catalogue produits, abonnements
@@ -402,78 +396,42 @@
 
 <div class="section-glow"></div>
 
-<!-- ─── CAROUSEL ─── -->
-<section class="carousel-section">
-  <div class="carousel-label">
-    <h3>Tout ce dont vous <span>avez besoin.</span></h3>
+<!-- ─── GRILLE FONCTIONNALITÉS ─── -->
+<section class="highlights-section reveal">
+  <div class="highlights-label">
+    <div class="section-tag">Plateforme</div>
+    <h3>Tout ce dont vous avez besoin.</h3>
   </div>
-  <div class="carousel-track-wrap">
-    <!-- Edge fades -->
-    <div style="position:absolute;left:0;top:0;bottom:0;width:120px;background:linear-gradient(90deg,var(--bg),transparent);z-index:5;pointer-events:none"></div>
-    <div style="position:absolute;right:0;top:0;bottom:0;width:120px;background:linear-gradient(-90deg,var(--bg),transparent);z-index:5;pointer-events:none"></div>
-    <div class="carousel-track" id="carouselTrack">
-      <!-- Cards x2 for infinite effect -->
-      <div class="carousel-card">
-        <div class="cc-icon" style="background:rgba(245,158,11,0.12)">⚡</div>
-        <div class="cc-title">Paiements confirmés instantanément</div>
-        <div class="cc-desc">Le paiement de votre client est validé en quelques secondes. Retirez vos fonds à la demande vers votre compte bancaire.</div>
-      </div>
-      <div class="carousel-card">
-        <div class="cc-icon" style="background:rgba(107,114,128,0.12)">👥</div>
-        <div class="cc-title">Équipe & rôles</div>
-        <div class="cc-desc">Invitez votre équipe avec des rôles définis (admin, manager, lecture) — accès tracés et sécurisés.</div>
-      </div>
-      <div class="carousel-card">
-        <div class="cc-icon" style="background:rgba(107,114,128,0.12)">🔐</div>
-        <div class="cc-title">Sécurité du compte</div>
-        <div class="cc-desc">Double authentification, clés d'accès (passkeys) et connexion Google pour protéger votre compte.</div>
-      </div>
-      <div class="carousel-card">
-        <div class="cc-icon" style="background:rgba(107,114,128,0.12)">🛡️</div>
-        <div class="cc-title">Sécurité des paiements</div>
-        <div class="cc-desc">Paiements traités par Stripe, certifié PCI DSS niveau 1. 3D Secure et détection de fraude Stripe Radar.</div>
-      </div>
-      <div class="carousel-card">
-        <div class="cc-icon" style="background:rgba(245,158,11,0.12)">⚙️</div>
-        <div class="cc-title">Webhooks</div>
-        <div class="cc-desc">Recevez vos événements de paiement en temps réel pour vos propres intégrations.</div>
-      </div>
-      <div class="carousel-card">
-        <div class="cc-icon" style="background:rgba(107,114,128,0.12)">🏛️</div>
-        <div class="cc-title">Pas encore de société US ?</div>
-        <div class="cc-desc">Formez votre LLC via Firstbase ou Stripe Atlas, directement depuis vos paramètres Xepay.</div>
-      </div>
-      <!-- Duplicate for infinite loop -->
-      <div class="carousel-card">
-        <div class="cc-icon" style="background:rgba(245,158,11,0.12)">⚡</div>
-        <div class="cc-title">Paiements confirmés instantanément</div>
-        <div class="cc-desc">Le paiement de votre client est validé en quelques secondes. Retirez vos fonds à la demande vers votre compte bancaire.</div>
-      </div>
-      <div class="carousel-card">
-        <div class="cc-icon" style="background:rgba(107,114,128,0.12)">👥</div>
-        <div class="cc-title">Équipe & rôles</div>
-        <div class="cc-desc">Invitez votre équipe avec des rôles définis (admin, manager, lecture) — accès tracés et sécurisés.</div>
-      </div>
-      <div class="carousel-card">
-        <div class="cc-icon" style="background:rgba(107,114,128,0.12)">🔐</div>
-        <div class="cc-title">Sécurité du compte</div>
-        <div class="cc-desc">Double authentification, clés d'accès (passkeys) et connexion Google pour protéger votre compte.</div>
-      </div>
-      <div class="carousel-card">
-        <div class="cc-icon" style="background:rgba(107,114,128,0.12)">🛡️</div>
-        <div class="cc-title">Sécurité des paiements</div>
-        <div class="cc-desc">Paiements traités par Stripe, certifié PCI DSS niveau 1. 3D Secure et détection de fraude Stripe Radar.</div>
-      </div>
-      <div class="carousel-card">
-        <div class="cc-icon" style="background:rgba(245,158,11,0.12)">⚙️</div>
-        <div class="cc-title">Webhooks</div>
-        <div class="cc-desc">Recevez vos événements de paiement en temps réel pour vos propres intégrations.</div>
-      </div>
-      <div class="carousel-card">
-        <div class="cc-icon" style="background:rgba(107,114,128,0.12)">🏛️</div>
-        <div class="cc-title">Pas encore de société US ?</div>
-        <div class="cc-desc">Formez votre LLC via Firstbase ou Stripe Atlas, directement depuis vos paramètres Xepay.</div>
-      </div>
+  <div class="highlights-grid">
+    <div class="highlight-card">
+      <div class="hl-icon">⚡</div>
+      <div class="hl-title">Paiements confirmés instantanément</div>
+      <div class="hl-desc">Le paiement de votre client est validé en quelques secondes. Retirez vos fonds à la demande vers votre compte bancaire.</div>
+    </div>
+    <div class="highlight-card">
+      <div class="hl-icon">👥</div>
+      <div class="hl-title">Équipe & rôles</div>
+      <div class="hl-desc">Invitez votre équipe avec des rôles définis (admin, manager, lecture) — accès tracés et sécurisés.</div>
+    </div>
+    <div class="highlight-card">
+      <div class="hl-icon">🔐</div>
+      <div class="hl-title">Sécurité du compte</div>
+      <div class="hl-desc">Double authentification, clés d'accès (passkeys) et connexion Google pour protéger votre compte.</div>
+    </div>
+    <div class="highlight-card">
+      <div class="hl-icon">🛡️</div>
+      <div class="hl-title">Sécurité des paiements</div>
+      <div class="hl-desc">Paiements traités par Stripe, certifié PCI DSS niveau 1. 3D Secure et détection de fraude Stripe Radar.</div>
+    </div>
+    <div class="highlight-card">
+      <div class="hl-icon">⚙️</div>
+      <div class="hl-title">Webhooks</div>
+      <div class="hl-desc">Recevez vos événements de paiement en temps réel pour vos propres intégrations.</div>
+    </div>
+    <div class="highlight-card">
+      <div class="hl-icon">🏛️</div>
+      <div class="hl-title">Pas encore de société US ?</div>
+      <div class="hl-desc">Formez votre LLC via Firstbase ou Stripe Atlas, directement depuis vos paramètres Xepay.</div>
     </div>
   </div>
 </section>
@@ -481,7 +439,7 @@
 <!-- ─── CTA ─── -->
 <section class="cta-section">
   <div class="cta-inner reveal">
-    <h2>PRÊT À<br><span class="cta-g">ENCAISSER</span><br>LE MONDE ?</h2>
+    <h2>Prêt à <mark>encaisser le monde</mark> ?</h2>
     <p>Rejoignez les marchands qui font confiance à Xepay pour encaisser leurs paiements à travers l'UEMOA. Inscription gratuite, sans engagement.</p>
     <div class="cta-actions">
       <a href="/signup" class="btn-primary" style="font-size:15px;padding:17px 34px">Créer mon compte — Gratuit</a>
