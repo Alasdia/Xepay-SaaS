@@ -2358,31 +2358,20 @@ function retraitsTemplate() {
     <div class="params-subsection-header">
       <h6 class="params-subsection-title mb-0">Virements internationaux</h6>
     </div>
-    <div class="card-epay p-4 mb-4">
-      <p class="text-muted small mb-2">Les fonds sont envoyés via Stripe vers des comptes bancaires internationaux (Europe / US).</p>
-      <div class="text-warning small text-muted">
-        <i class="fa-solid fa-triangle-exclamation"></i> Les méthodes locales (Mobile Money, banques africaines) ne sont pas supportées actuellement.
-      </div>
-    </div>
+    <p class="params-subsection-sub">Les fonds sont envoyés via Stripe vers des comptes bancaires internationaux (Europe / US). <span class="text-warning"><i class="fa-solid fa-triangle-exclamation"></i> Les méthodes locales (Mobile Money, banques africaines) ne sont pas supportées actuellement.</span></p>
 
     <div class="params-subsection-header">
       <h6 class="params-subsection-title mb-0">Créer votre société et compte bancaire US</h6>
     </div>
     <p class="params-subsection-sub">Vous n'avez pas d'entreprise enregistrée aux US ? Choisissez un prestataire pour créer votre LLC et obtenir votre compte bancaire professionnel, puis activer vos retraits.</p>
-    <div class="d-flex flex-column gap-3">
-      <div class="card-epay p-4">
-        <small class="d-block fw-bold text-dark mb-1">🚀 Firstbase</small>
-        <small class="text-muted d-block mb-3" style="font-size: 0.8rem; line-height: 1.3;">Création de LLC et compte bancaire professionnel en quelques jours.</small>
-        <a href="https://get.firstbase.io/lzqmlclh3nr9" target="_blank" rel="noopener noreferrer" class="btn btn-warning w-100 fw-bold text-dark text-decoration-none d-flex align-items-center justify-content-center gap-2">
-          Créer ma LLC avec Firstbase <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.8rem;"></i>
-        </a>
+    <div class="params-row-list">
+      <div class="params-info-row">
+        <span>🚀 Firstbase — LLC et compte bancaire professionnel en quelques jours</span>
+        <a href="https://get.firstbase.io/lzqmlclh3nr9" target="_blank" rel="noopener noreferrer" class="params-edit-btn text-decoration-none">Créer ma LLC →</a>
       </div>
-      <div class="card-epay p-4">
-        <small class="d-block fw-bold text-dark mb-1"><i class="fa-brands fa-stripe"></i> Stripe Atlas</small>
-        <small class="text-muted d-block mb-3" style="font-size: 0.8rem; line-height: 1.3;">Formation de société, EIN et compte bancaire directement via Stripe.</small>
-        <a href="https://stripe.com/atlas" target="_blank" rel="noopener noreferrer" class="btn w-100 fw-bold text-white text-decoration-none d-flex align-items-center justify-content-center gap-2" style="background:#635bff;">
-          Créer ma société avec Stripe Atlas <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.8rem;"></i>
-        </a>
+      <div class="params-info-row">
+        <span><i class="fa-brands fa-stripe"></i> Stripe Atlas — Formation de société, EIN et compte bancaire via Stripe</span>
+        <a href="https://stripe.com/atlas" target="_blank" rel="noopener noreferrer" class="params-edit-btn text-decoration-none">Créer ma société →</a>
       </div>
     </div>
   `;
