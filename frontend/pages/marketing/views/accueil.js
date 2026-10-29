@@ -41,65 +41,11 @@ export function render() {
     <!-- MOCKUP -->
     <div class="hero-visual reveal" style="transition-delay:0.15s">
       <div class="hero-halo"></div>
-      <div class="hero-card">
-        <div class="hcard-topbar">
-          <div class="hcard-dots">
-            <span></span><span></span><span></span>
-          </div>
-          <div class="hcard-title">app.xepay.finance / dashboard</div>
-          <div style="width:60px"></div>
-        </div>
-        <div class="hcard-body">
-          <div class="hcard-balance-label">SOLDE TOTAL</div>
-          <div class="hcard-balance"><sub>xof</sub>65 300<span style="font-size:28px;font-family:var(--font-mono)"></span></div>
-          <div class="hcard-change">Disponible dans 6j</div>
-          <div class="mini-chart">
-            <svg viewBox="0 0 320 56" fill="none" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.35"/>
-                  <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
-                </linearGradient>
-              </defs>
-              <path d="M0,50 C20,45 40,42 60,30 C80,18 100,35 120,28 C140,20 160,32 180,18 C200,6 220,22 240,12 C260,4 280,16 320,8" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M0,50 C20,45 40,42 60,30 C80,18 100,35 120,28 C140,20 160,32 180,18 C200,6 220,22 240,12 C260,4 280,16 320,8 L320,56 L0,56Z" fill="url(#cg)"/>
-            </svg>
-          </div>
-          <div class="hcard-txns">
-            <div class="hcard-txn">
-              <div class="hcard-txn-left">
-                <div class="hcard-txn-icon" style="background:rgba(245,158,11,0.12)">🌍</div>
-                <div>
-                  <div class="hcard-txn-name">Paiement EU</div>
-                  <div class="hcard-txn-sub">Il y a 2 min</div>
-                </div>
-              </div>
-              <div class="hcard-txn-amount amt-green">+€1,250.00</div>
-            </div>
-            <div class="hcard-txn">
-              <div class="hcard-txn-left">
-                <div class="hcard-txn-icon" style="background:rgba(107,114,128,0.12)">🔁</div>
-                <div>
-                  <div class="hcard-txn-name">Abonnement SaaS</div>
-                  <div class="hcard-txn-sub">Il y a 18 min</div>
-                </div>
-              </div>
-              <div class="hcard-txn-amount amt-green">15500 xof</div>
-            </div>
-            <div class="hcard-txn">
-              <div class="hcard-txn-left">
-                <div class="hcard-txn-icon" style="background:rgba(245,158,11,0.12)">↗</div>
-                <div>
-                  <div class="hcard-txn-name">Virement sortant</div>
-                  <div class="hcard-txn-sub">Il y a 1h</div>
-                </div>
-              </div>
-              <div class="hcard-txn-amount amt-red">−€450.00</div>
-            </div>
-          </div>
-          <div class="link-pill">
-            <div class="link-pill-text">app.xepay.finance/pay/studio-noé</div>
-            <div class="link-pill-copy">COPIER</div>
+      <div class="phone-mockup">
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="phone-notch"></div>
+            <img src="/assets/stripe-checkout-screenshot.png" alt="Page de paiement Stripe générée par un lien Xepay, vue sur mobile">
           </div>
         </div>
       </div>

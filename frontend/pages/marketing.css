@@ -115,6 +115,16 @@ nav .logo span { color: var(--text); opacity: 0.6; }
 .link-pill-text { font-family: var(--font-mono); font-size: 11px; color: var(--gold-deep); }
 .link-pill-copy { font-size: 10px; padding: 4px 10px; border-radius: 7px; background: #ffffff; color: var(--gold-deep); font-weight: 600; letter-spacing: 0.04em; cursor: pointer; border: 1px solid rgba(245,158,11,0.22);}
 
+/* ── HERO PHONE MOCKUP (page de paiement Stripe) ── */
+.phone-mockup { display: flex; justify-content: center; perspective: 1400px;}
+.phone-frame { position: relative; width: 290px; height: 592px; background: linear-gradient(165deg, #2b2e36, #111317); border-radius: 46px; padding: 14px; box-shadow: var(--shadow-lg), 0 0 0 1px rgba(15,17,21,0.06); transform: rotateY(-22deg) rotateX(4deg); transform-style: preserve-3d; transition: transform 0.4s ease;}
+.phone-mockup:hover .phone-frame { transform: rotateY(-14deg) rotateX(2deg); }
+.phone-frame::before { content: ''; position: absolute; top: 14px; left: -2px; width: 3px; height: 70px; background: #1a1c21; border-radius: 2px 0 0 2px;}
+.phone-frame::after { content: ''; position: absolute; top: 100px; right: -2px; width: 3px; height: 46px; background: #1a1c21; border-radius: 0 2px 2px 0;}
+.phone-screen { position: relative; width: 100%; height: 100%; background: #fff; border-radius: 32px; overflow: hidden; }
+.phone-notch { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 112px; height: 24px; background: #111317; border-radius: 0 0 16px 16px; z-index: 2;}
+.phone-screen img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block;}
+
 /* ── STATS BAR ── */
 .stats-bar { position: relative; background: var(--bg-soft); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 32px 0;}
 .stats-inner { max-width:1240px; margin:0 auto; padding: 0 48px; display: grid; grid-template-columns: repeat(4,1fr);}
