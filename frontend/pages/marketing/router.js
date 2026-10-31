@@ -190,20 +190,24 @@ if (navDropdowns.length) {
   });
 }
 
-// Bouton "Dashboard" : le cookie de session est host-only sur
-// api.xepay.finance (backend/auth.py, set_session_cookies - sans attribut
-// Domain, donc envoyé au host ciblé par la requête quelle que soit
-// l'origine de la page qui l'émet), et le CORS autorise déjà les
-// requêtes avec credentials depuis www.xepay.finance (backend/main.py,
-// allow_credentials=True). On peut donc vérifier la vraie session AVANT
-// de naviguer et router directement vers le dashboard ou vers /login,
-// sans jamais passer par dashboard.html entre les deux (plus de flash
-// intermédiaire, contrairement au localStorage qui n'est lisible que sur
-// l'origine qui l'a posé). Le href de base (marketing.html) reste
-// optimiste (/dashboard.html) ; on ne le corrige que si besoin, une fois
-// la réponse connue.
+// Bouton "Dashboard" : le lien cible /dash/workspace/me/ directement (pas
+// /dashboard.html) - vercel.json réécrit tout /dash/(.*) vers
+// dashboard.html, et resolveEntryPath() (spa/app.js) ne fait son
+// history.replaceState vers /dash/workspace/{id}/ que si l'URL d'entrée
+// ne commence PAS déjà par /dash/ : cibler /dash/workspace/me/ dès le nav
+// marketing évite donc tout passage visible par /dashboard.html, même
+// pour un visiteur déjà connecté.
+//
+// Pour un visiteur NON connecté en revanche, ce routage direct n'aide pas
+// : le cookie de session est host-only sur api.xepay.finance
+// (backend/auth.py, set_session_cookies - sans attribut Domain, envoyé au
+// host ciblé par la requête quelle que soit l'origine émettrice), et le
+// CORS autorise déjà les requêtes avec credentials depuis
+// www.xepay.finance (backend/main.py, allow_credentials=True) : on
+// vérifie donc la vraie session AVANT de naviguer, pour router
+// directement vers /login plutôt que vers le dashboard dans ce cas.
 {
-  const dashboardLink = document.querySelector('a[href="https://app.xepay.finance/dashboard.html"]');
+  const dashboardLink = document.querySelector('a[href="https://app.xepay.finance/dash/workspace/me/"]');
   if (dashboardLink) {
     fetch("https://api.xepay.finance/me", { credentials: "include" })
       .then((res) => {
