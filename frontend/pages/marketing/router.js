@@ -189,3 +189,11 @@ if (navDropdowns.length) {
     if (e.key === "Escape") closeAllNavDropdowns();
   });
 }
+
+// Pas de pré-vérification de session ici pour le bouton "Dashboard" :
+// app.xepay.finance (le dashboard) est une origine différente de
+// www.xepay.finance (ce site marketing) — le localStorage de session posé
+// par spa/core/state.js sur app.xepay.finance n'est pas lisible depuis
+// cette page, sur une origine différente. Le lien pointe directement vers
+// https://app.xepay.finance/dashboard ; c'est spa/app.js, une fois chargé
+// sur la bonne origine, qui redirige vers /login si besoin.
