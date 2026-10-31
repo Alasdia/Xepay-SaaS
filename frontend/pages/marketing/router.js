@@ -17,7 +17,7 @@ function normalize(path) {
 }
 
 function setActiveLink(path) {
-  document.querySelectorAll(".nav-links a[data-route]").forEach((a) => {
+  document.querySelectorAll(".nav-links a[data-route], .nav-plain-link[data-route]").forEach((a) => {
     a.classList.toggle("active-link", a.getAttribute("href") === path);
   });
 }
@@ -36,13 +36,23 @@ function observeReveals() {
   root.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
 }
 
+let currentCleanup = null;
+
 function renderRoute(path, { scroll = true } = {}) {
+  if (typeof currentCleanup === "function") {
+    try { currentCleanup(); } catch (err) { console.error(err); }
+  }
+  currentCleanup = null;
+
   const route = ROUTES[normalize(path)] || ROUTES["/accueil"];
   root.innerHTML = route.render();
   document.title = route.title;
   setActiveLink(normalize(path));
   observeReveals();
-  if (typeof route.mount === "function") route.mount(root);
+  if (typeof route.mount === "function") {
+    const result = route.mount(root);
+    if (typeof result === "function") currentCleanup = result;
+  }
   if (scroll) window.scrollTo(0, 0);
 }
 
@@ -60,12 +70,15 @@ function isInternalRoute(href) {
 // dans le contenu des vues) - pas besoin d'un attribut dédié sur chaque
 // lien, seul le chemin compte. Les liens vers /login, /signup, mailto:,
 // pages légales etc. ne matchent aucune route et suivent leur navigation
-// normale (pages séparées, volontairement hors de ce SPA).
+// normale (pages séparées, volontairement hors de ce SPA). "#" (liens
+// "à venir" du footer/des dropdowns de nav) est explicitement ignoré :
+// sinon son pathname résout sur la page courante, qui matche souvent une
+// route connue, et déclenche un renderRoute() inutile.
 document.addEventListener("click", (e) => {
   const a = e.target.closest("a");
   if (!a) return;
   const href = a.getAttribute("href");
-  if (!href || !isInternalRoute(href)) return;
+  if (!href || href === "#" || !isInternalRoute(href)) return;
   e.preventDefault();
   const url = new URL(href, window.location.origin);
   if (url.pathname !== window.location.pathname) {
@@ -88,5 +101,91 @@ if (hamburger && navLinks) {
   hamburger.addEventListener("click", () => {
     navLinks.classList.toggle("open");
     hamburger.classList.toggle("open");
+  });
+}
+
+// Dropdowns de nav ("Produits", "Ressources") : s'ouvrent au survol
+// (clic toujours supporté, pour le tactile/clavier), un seul ouvert à la
+// fois, fermeture avec un petit délai (pour tolérer le trajet de la
+// souris entre le lien et le panneau) à la sortie, au clic en dehors,
+// à l'Échap, ou en cliquant un lien du panneau.
+const navDropdowns = Array.from(document.querySelectorAll(".nav-dropdown"));
+const CLOSE_DELAY_MS = 150;
+let closeTimeoutId = null;
+
+// Floute le reste de la page (#marketing-view, footer) tant qu'un
+// dropdown est ouvert - cf. règle CSS "body.nav-dropdown-open".
+function syncNavDropdownBlur() {
+  const anyOpen = navDropdowns.some((dropdown) => dropdown.classList.contains("is-open"));
+  document.body.classList.toggle("nav-dropdown-open", anyOpen);
+}
+
+function cancelScheduledClose() {
+  if (closeTimeoutId !== null) {
+    clearTimeout(closeTimeoutId);
+    closeTimeoutId = null;
+  }
+}
+
+function openNavDropdown(dropdown, trigger, panel) {
+  cancelScheduledClose();
+  if (dropdown.classList.contains("is-open")) return;
+  closeAllNavDropdowns();
+  dropdown.classList.add("is-open");
+  trigger.setAttribute("aria-expanded", "true");
+  panel.hidden = false;
+  syncNavDropdownBlur();
+}
+
+function closeNavDropdown(dropdown) {
+  dropdown.classList.remove("is-open");
+  dropdown.querySelector(".nav-dropdown-trigger")?.setAttribute("aria-expanded", "false");
+  const panel = dropdown.querySelector(".nav-dropdown-panel");
+  if (panel) panel.hidden = true;
+  syncNavDropdownBlur();
+}
+
+function closeAllNavDropdowns() {
+  navDropdowns.forEach(closeNavDropdown);
+}
+
+function scheduleClose(dropdown) {
+  cancelScheduledClose();
+  closeTimeoutId = setTimeout(() => {
+    closeTimeoutId = null;
+    closeNavDropdown(dropdown);
+  }, CLOSE_DELAY_MS);
+}
+
+navDropdowns.forEach((dropdown) => {
+  const trigger = dropdown.querySelector(".nav-dropdown-trigger");
+  const panel = dropdown.querySelector(".nav-dropdown-panel");
+  if (!trigger || !panel) return;
+
+  trigger.addEventListener("mouseenter", () => openNavDropdown(dropdown, trigger, panel));
+  panel.addEventListener("mouseenter", cancelScheduledClose);
+  trigger.addEventListener("mouseleave", () => scheduleClose(dropdown));
+  panel.addEventListener("mouseleave", () => scheduleClose(dropdown));
+
+  trigger.addEventListener("click", () => {
+    if (dropdown.classList.contains("is-open")) {
+      cancelScheduledClose();
+      closeNavDropdown(dropdown);
+    } else {
+      openNavDropdown(dropdown, trigger, panel);
+    }
+  });
+
+  panel.addEventListener("click", (e) => {
+    if (e.target.closest("a")) closeNavDropdown(dropdown);
+  });
+});
+
+if (navDropdowns.length) {
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".nav-dropdown")) closeAllNavDropdowns();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeAllNavDropdowns();
   });
 }

@@ -16,9 +16,11 @@
   --shadow-sm: 0 1px 2px rgba(15,17,21,0.04);
   --shadow-md: 0 16px 40px -16px rgba(15,17,21,0.18);
   --shadow-lg: 0 32px 64px -24px rgba(15,17,21,0.22);
-  --font-display: 'Manrope', sans-serif;
-  --font-mono:    'IBM Plex Mono', monospace;
-  --font-body:    'Manrope', sans-serif;
+  /* Même police que le dashboard (dashboard.css --font-d/--font-b/--font-m) :
+     DM Sans partout, y compris pour ce qui était en monospace. */
+  --font-display: 'DM Sans', sans-serif;
+  --font-mono:    'DM Sans', sans-serif;
+  --font-body:    'DM Sans', sans-serif;
 }
 *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
@@ -26,14 +28,16 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--text);
 mark { background: var(--gold-wash); color: var(--gold-deep); padding: 0 8px; border-radius: 8px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 
 /* ── NAV ── */
-/* Mécanisme repris à l'identique de #top-banner (sidebar.css:9-28),
-   le vrai bandeau de l'app : height:5vh, #facc15, et les deux coins
-   via pseudo-éléments top:100% + radial-gradient (pas un border-radius
-   sur la barre elle-même). */
-nav { position: sticky; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 5vh; background: #facc15; }
-nav::before, nav::after { content: ""; position: absolute; top: 100%; width: 12px; height: 12px; z-index: 200; }
-nav::before { left: 0; background: radial-gradient(circle at 100% 100%, transparent 12px, #facc15 12px); }
-nav::after { right: 0; background: radial-gradient(circle at 0 100%, transparent 12px, #facc15 12px); }
+/* Barre pleine largeur, blanche, 10% de la hauteur de la page. Le contenu
+   (logo, liens) est dans .nav-inner, calé sur le même conteneur
+   max-width:1240px/padding:48px que les sections (hero-inner, stats-inner,
+   grid-features-section, etc.) — la barre elle-même reste full-bleed. */
+nav { position: sticky; top: 0; left: 0; right: 0; z-index: 100; height: 10vh; background: #ffffff; border-bottom: 1px solid var(--border); }
+/* Le survol ne colore que .nav-inner (même largeur/marges que les
+   sections, max-width:1240px) — pas toute la barre, qui reste blanche
+   au-delà de cette limite. */
+.nav-inner { max-width: 1240px; margin: 0 auto; height: 100%; padding: 0 48px; display: flex; align-items: center; justify-content: space-between; transition: background-color 0.2s ease; }
+nav:hover .nav-inner { background: rgba(180,83,9,0.7); }
 /* Reprend exactement sidebar.html:9-10 : conteneur à hauteur fixe +
    overflow:hidden qui RECADRE l'image zoomée (scale 1.4 sur l'img),
    pour que le fond blanc arrondi du PNG sorte du cadre - sans ce
@@ -42,21 +46,87 @@ nav::after { right: 0; background: radial-gradient(circle at 0 100%, transparent
 /* Même zoom que le vrai logo de la sidebar (sidebar.html:10) : 36px de
    base, scale(1.4). */
 .logo-mark img { height: 36px; width: auto; display: block; transform: scale(1.4) translateX(6%); transform-origin: center; }
-.logo { font-size: 21px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
+.logo { font-size: 21px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); transition: color 0.2s ease; }
 .logo span { color: var(--gold-deep); }
-nav .logo span { color: var(--text); opacity: 0.6; }
-.nav-links { display: flex; align-items: center; gap: 2px;}
+/* Même traitement que le footer/le logo exporté : régulier, une seule
+   couleur, lettres resserrées — pas le gras/bicolore par défaut. */
+nav .logo { font-weight: 400; letter-spacing: -0.03em; color: var(--gold-deep); }
+nav .logo span { color: var(--gold-deep); opacity: 1; transition: color 0.2s ease; }
+nav:hover .logo { color: #ffffff; }
+nav:hover .logo span { color: #ffffff; opacity: 1; }
+/* Logo : icône "X" manuscrite (xepay-logo-full.png, recadrée/fond
+   transparent) + texte "Xepay" en police du site (DM Sans, déjà en gras
+   via .logo). Au survol de la nav, l'icône (unie, couleur --gold-deep)
+   passerait inaperçue sur le fond --gold-deep : filtre pour la forcer en
+   blanc, comme le texte. */
+.logo-lockup { display: inline-flex; align-items: center; gap: 7px; }
+.logo-mark-icon { height: 26px; width: auto; display: block; transition: filter 0.2s ease; }
+nav:hover .logo-mark-icon { filter: brightness(0) invert(1); }
+/* Logo + dropdowns Produits/Ressources + Tarifs collés à gauche, comme
+   chez Stripe — séparé de .nav-links (Connexion/CTA) qui reste à droite
+   via le justify-content:space-between de nav. Pas de lien Accueil :
+   xepay.finance pointe déjà sur cette vue. */
+.nav-left { display: flex; align-items: center; flex-wrap: wrap; }
+.nav-plain-link { display: inline-flex; align-items: center; margin-left: 14px; text-decoration: none; color: #171310; font-size: 13px; font-weight: 600; padding: 6px 4px; transition: color 0.2s ease; }
+nav:hover .nav-plain-link { color: #ffffff; }
+.nav-plain-link.active-link { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px; }
+.nav-links { display: flex; align-items: center; gap: 2px; height: 100%;}
 /* Liens de nav = liens texte simples, pas des boutons/puces - seuls
    Connexion/Créer un compte doivent avoir un fond. */
-.nav-links a:not(.btn-nav-outline):not(.btn-nav-primary) { text-decoration: none; color: #171310; opacity: 0.7; font-size: 13px; font-weight: 600; padding: 6px 4px; transition: opacity 0.15s;}
-.nav-links a:not(.btn-nav-outline):not(.btn-nav-primary):hover { opacity: 1; }
-.nav-links a.active-link:not(.btn-nav-outline):not(.btn-nav-primary) { opacity: 1; text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px; }
+.nav-links a:not(.btn-nav-outline):not(.btn-nav-primary) { text-decoration: none; color: #171310; font-size: 13px; font-weight: 600; padding: 6px 4px; transition: color 0.2s ease;}
+nav:hover .nav-links a:not(.btn-nav-outline):not(.btn-nav-primary) { color: #ffffff; }
+.nav-links a.active-link:not(.btn-nav-outline):not(.btn-nav-primary) { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px; }
 .nav-links a + a:not(.btn-nav-outline):not(.btn-nav-primary) { margin-left: 14px; }
+
+/* ── NAV DROPDOWNS (Produits / Ressources), comme chez Stripe : chevron,
+   panneau de liens avec description, un seul ouvert à la fois. ── */
+.nav-dropdown { position: relative; display: inline-flex; align-items: center; margin-left: 14px; }
+.nav-dropdown-trigger {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: none; border: none; font-family: inherit; cursor: pointer;
+  text-decoration: none; color: #171310; font-size: 13px; font-weight: 600; padding: 6px 4px;
+  transition: color 0.2s ease;
+}
+nav:hover .nav-dropdown-trigger { color: #ffffff; }
+.nav-chevron { font-size: 10px; display: inline-block; transition: transform 0.2s; }
+.nav-dropdown.is-open .nav-chevron { transform: rotate(180deg); }
+
+/* Panneau "modal" : 90 % de la largeur de la page, centré sous la nav
+   (position:fixed, pas ancré au trigger — trop large pour ça). */
+.nav-dropdown-panel {
+  position: fixed; top: 10vh; left: 50%; transform: translateX(-50%);
+  width: min(1240px, calc(100vw - 96px)); background: #ffffff; border: 1px solid var(--border); border-radius: 0;
+  box-shadow: var(--shadow-lg); padding: 28px; display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 28px;
+  z-index: 110;
+}
+/* display:grid ci-dessus s'applique toujours, [hidden] de l'UA ne suffit
+   pas à le masquer (une règle d'auteur prime toujours sur l'UA) : sans
+   ce override plus spécifique, le panneau reste visible en permanence et
+   "ne se ferme jamais" quoi que fasse le JS sur l'attribut hidden. */
+.nav-dropdown-panel[hidden] { display: none; }
+.nav-dropdown-panel a { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px; text-decoration: none; transition: background 0.15s; }
+.nav-dropdown-panel a:hover { background: var(--bg-soft); }
+.nav-dropdown-panel a strong { font-size: 13.5px; font-weight: 700; color: var(--gold-deep); }
+.nav-dropdown-panel a span { font-size: 12px; color: var(--muted); line-height: 1.4; }
+.nav-panel-group { display: flex; flex-direction: column; gap: 2px; }
+.nav-panel-group-title { font-size: 11px; font-weight: 700; color: var(--muted2); text-transform: capitalize; letter-spacing: 0.04em; padding: 6px 12px 4px; }
+
+/* Flou du reste de la page quand un dropdown de nav est ouvert (classe
+   posée sur body par router.js) — nav elle-même n'est jamais floutée
+   puisque le panneau est dans son sous-arbre (un filter sur nav flouterait
+   le panneau aussi, lui qui est en position:fixed). */
+body.nav-dropdown-open #marketing-view,
+body.nav-dropdown-open footer {
+  filter: blur(6px);
+  pointer-events: none;
+  transition: filter 0.2s ease;
+}
 /* Même hauteur que les vrais boutons de l'app (.create-client-btn,
    parametres.css) : 32px, radius 8px, padding horizontal 12px. */
-.btn-nav-outline { margin-left: 6px; height: 32px; padding: 0 16px; display: inline-flex; align-items: center; border-radius: 8px; border: 1px solid rgba(23,19,16,0.18); background: rgba(255,255,255,0.6); color: #171310; font-size: 13px; font-weight: 600; text-decoration: none; transition: all 0.2s;}
+.btn-nav-outline { margin-left: 6px; height: 50%; padding: 0 16px; display: inline-flex; align-items: center; border-radius: 8px; border: 1px solid rgba(23,19,16,0.18); background: rgba(255,255,255,0.6); color: #171310; font-size: 13px; font-weight: 600; text-decoration: none; transition: all 0.2s;}
 .btn-nav-outline:hover { background: #ffffff; }
-.btn-nav-primary { height: 32px; padding: 0 16px; display: inline-flex; align-items: center; border-radius: 8px; background: #171310; border: 1px solid #171310; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; transition: all 0.2s;}
+.btn-nav-primary { height: 50%; margin-left: 14px; padding: 0 16px; display: inline-flex; align-items: center; border-radius: 8px; background: #171310; border: 1px solid #171310; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; transition: all 0.2s;}
 .btn-nav-primary:hover { background: #2b241d; transform: translateY(-1px); box-shadow: var(--shadow-sm);}
 .nav-hamburger { display: none; }
 /* Surcharge locale de responsive.css (partagé avec login/signup/pages
@@ -68,6 +138,10 @@ nav .logo span { color: var(--text); opacity: 0.6; }
   .nav-hamburger span { background: var(--text); }
   .nav-links { background: #ffffff !important; border-top: 1px solid var(--border); }
   .nav-links a { color: var(--text) !important; font-size: 18px !important; padding: 14px 28px !important;}
+  .nav-dropdown { flex-direction: column; width: 100%; margin-left: 0; }
+  .nav-dropdown-trigger { width: 100%; justify-content: center; color: var(--text) !important; font-size: 18px !important; padding: 14px 28px !important; }
+  .nav-dropdown-panel { position: static; width: 100%; transform: none; margin-top: 4px; box-shadow: none; }
+  .nav-plain-link { width: 100%; justify-content: center; margin-left: 0; color: var(--text) !important; font-size: 18px !important; padding: 14px 28px !important; }
 }
 
 /* ── HERO ── */
@@ -76,13 +150,16 @@ nav .logo span { color: var(--text); opacity: 0.6; }
 .hero-inner { position: relative; max-width: 1240px; margin: 0 auto; padding: 0 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center;}
 .hero-eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-soft); font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 24px;}
 .hero-eyebrow::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--gold);}
-.hero h1 { font-weight: 800; font-size: clamp(38px, 4.2vw, 58px); line-height: 1.1; letter-spacing: -0.02em; color: var(--text); margin-bottom: 24px;}
+.hero h1 { font-weight: 800; font-size: clamp(30px, 3vw, 48px); line-height: 1.15; letter-spacing: -0.02em; color: var(--text); margin-bottom: 24px;}
 .hero-desc { font-size: 18px; line-height: 1.65; color: var(--muted); max-width: 460px; margin-bottom: 36px;}
 .hero-actions { display: flex; gap: 12px; align-items: center; margin-bottom: 48px;}
 .btn-primary { display: inline-flex; align-items: center; gap: 8px; padding: 15px 26px; border-radius: 11px; background: var(--gold); color: #171310; font-weight: 700; font-size: 15px; text-decoration: none; border: none; cursor: pointer; transition: all 0.2s; box-shadow: var(--shadow-sm);}
 .btn-primary:hover { background: var(--gold-light); transform: translateY(-2px); box-shadow: var(--shadow-md);}
 .btn-ghost { display: inline-flex; align-items: center; gap: 8px; padding: 15px 26px; border-radius: 11px; background: #ffffff; border: 1px solid var(--border); color: var(--text); font-weight: 600; font-size: 15px; text-decoration: none; cursor: pointer; transition: all 0.2s;}
 .btn-ghost:hover { border-color: #c7cbd3; transform: translateY(-2px); box-shadow: var(--shadow-sm);}
+/* Même gabarit que .btn-submit/.btn-google de l'Authentification (login.css:59-87) :
+   padding 13px, radius 12px, 13px/800/letter-spacing - couleurs Xepay conservées. */
+.hero-actions .btn-primary, .hero-actions .btn-ghost { padding: 13px 24px; border-radius: 12px; font-size: 13px; font-weight: 800; letter-spacing: 0.02em;}
 .hero-stats { display: flex; gap: 28px; padding-top: 28px; border-top: 1px solid var(--border);}
 .hero-stat .label { font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: -0.005em;}
 .hero-visual { position: relative; }
@@ -115,15 +192,14 @@ nav .logo span { color: var(--text); opacity: 0.6; }
 .link-pill-text { font-family: var(--font-mono); font-size: 11px; color: var(--gold-deep); }
 .link-pill-copy { font-size: 10px; padding: 4px 10px; border-radius: 7px; background: #ffffff; color: var(--gold-deep); font-weight: 600; letter-spacing: 0.04em; cursor: pointer; border: 1px solid rgba(245,158,11,0.22);}
 
-/* ── HERO PHONE MOCKUP (page de paiement Stripe) ── */
-.phone-mockup { display: flex; justify-content: center; perspective: 1400px;}
-.phone-frame { position: relative; width: 290px; height: 592px; background: linear-gradient(165deg, #2b2e36, #111317); border-radius: 46px; padding: 14px; box-shadow: var(--shadow-lg), 0 0 0 1px rgba(15,17,21,0.06); transform: rotateY(-22deg) rotateX(4deg); transform-style: preserve-3d; transition: transform 0.4s ease;}
-.phone-mockup:hover .phone-frame { transform: rotateY(-14deg) rotateX(2deg); }
-.phone-frame::before { content: ''; position: absolute; top: 14px; left: -2px; width: 3px; height: 70px; background: #1a1c21; border-radius: 2px 0 0 2px;}
-.phone-frame::after { content: ''; position: absolute; top: 100px; right: -2px; width: 3px; height: 46px; background: #1a1c21; border-radius: 0 2px 2px 0;}
-.phone-screen { position: relative; width: 100%; height: 100%; background: #fff; border-radius: 32px; overflow: hidden; }
-.phone-notch { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 112px; height: 24px; background: #111317; border-radius: 0 0 16px 16px; z-index: 2;}
-.phone-screen img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block;}
+/* ── LIGNES LATÉRALES : du bas de la stats-bar (paiements) à la fin du contenu de la page.
+   Alignées sur le bord du conteneur max-width:1240px des sections (grid-features-section,
+   globe-section, feature-section, highlights-section) : calc(50% - 620px), qui retombe
+   sur 0 (bord du viewport) dès que ces sections ne sont plus limitées par leur max-width. ── */
+.page-rails { position: relative; }
+.page-rails::before, .page-rails::after { content: ''; position: absolute; top: 0; bottom: 0; width: 1px; background: var(--border); pointer-events: none; z-index: 1; }
+.page-rails::before { left: max(0px, calc(50% - 620px)); }
+.page-rails::after { right: max(0px, calc(50% - 620px)); }
 
 /* ── STATS BAR ── */
 .stats-bar { position: relative; background: var(--bg-soft); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 32px 0;}
@@ -134,6 +210,14 @@ nav .logo span { color: var(--text); opacity: 0.6; }
 .stat-num .accent { color: var(--gold-deep); }
 .stat-label { font-size: 12px; color: var(--muted); letter-spacing: 0.01em;}
 
+/* Bandeau de moyens de paiement - défilement décoratif sous les stats */
+.payment-marquee { max-width: 1240px; margin: 24px auto 0; padding: 16px 0 0; border-top: 1px solid var(--border); overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);}
+.payment-marquee-track { display: flex; align-items: center; gap: 12px; width: max-content; animation: payment-marquee-scroll 26s linear infinite;}
+.payment-chip { display: inline-flex; align-items: center; gap: 12px; padding: 0 18px; color: var(--muted); font-size: 12.5px; font-weight: 600; white-space: nowrap; flex: none;}
+.payment-chip img { height: 30px; width: auto; max-width: 60px; object-fit: contain; flex: none;}
+@keyframes payment-marquee-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .payment-marquee-track { animation: none; } }
+
 /* ── FEATURE SECTIONS ── */
 .section-tag { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-soft); font-size: 12px; font-weight: 700; color: var(--gold-deep); letter-spacing: 0.02em; margin-bottom: 20px;}
 .feature-section { position: relative; max-width: 1240px; margin: 0 auto; padding: 110px 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 72px; align-items: center;}
@@ -141,7 +225,7 @@ nav .logo span { color: var(--text); opacity: 0.6; }
 .feature-section.reverse > * { direction: ltr; }
 .feature-section:nth-of-type(even) { background: var(--bg-soft); }
 .feature-text { max-width: 480px; }
-.feature-text h2 { font-weight: 800; font-size: clamp(28px, 2.6vw, 38px); line-height: 1.2; letter-spacing: -0.015em; margin-bottom: 18px; color: var(--text);}
+.feature-text h2 { font-weight: 400; font-size: clamp(28px, 2.6vw, 38px); line-height: 1.2; letter-spacing: -0.015em; margin-bottom: 18px; color: var(--text);}
 .feature-text p { font-size: 16px; line-height: 1.75; color: var(--muted); margin-bottom: 28px;}
 .feature-checklist { list-style: none; display: flex; flex-direction: column; gap: 12px; margin-bottom: 32px;}
 .feature-checklist li { display: flex; align-items: center; gap: 10px; font-size: 14.5px; color: #3a4150;}
@@ -242,19 +326,121 @@ nav .logo span { color: var(--text); opacity: 0.6; }
 .highlights-section { max-width: 1240px; margin: 0 auto; padding: 110px 48px;}
 .highlights-label { text-align: center; margin-bottom: 48px; }
 .highlights-label .section-tag { display: inline-flex; }
-.highlights-label h3 { font-size: clamp(28px, 3vw, 36px); font-weight: 800; letter-spacing: -0.015em; color: var(--text); margin-top: 12px;}
+.highlights-label h3 { font-size: clamp(28px, 3vw, 36px); font-weight: 400; letter-spacing: -0.015em; color: var(--text); margin-top: 12px;}
 .highlights-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;}
-.highlight-card { padding: 28px; border-radius: 16px; background: #ffffff; border: 1px solid var(--border); transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;}
+/* Image illustrative en haut, texte en bas, dans le même bloc (plus
+   d'icône emoji). */
+.highlight-card { display: flex; flex-direction: column; padding: 0 0 28px; border-radius: 16px; background: #ffffff; border: 1px solid var(--border); overflow: hidden; transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;}
 .highlight-card:hover { border-color: rgba(245,158,11,0.4); transform: translateY(-4px); box-shadow: var(--shadow-md);}
-.hl-icon { width: 44px; height: 44px; border-radius: 12px; margin-bottom: 18px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: var(--gold-wash);}
-.hl-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--text);}
-.hl-desc { font-size: 13.5px; color: var(--muted); line-height: 1.6; }
+/* aspect-ratio + object-fit:cover : certains médias sont des captures
+   réelles au format mobile (étroit/haut, ex. démo Stripe Checkout), pas
+   des rendus 16:9 — ce cadrage fixe garde toutes les cartes de même
+   taille quelle que soit l'orientation du média source. */
+.hl-image { width: 100%; aspect-ratio: 16 / 9; overflow: hidden; margin-bottom: 20px; background: #0f1115; }
+.hl-image img, .hl-image video { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* Capture réelle de la page de paiement Stripe (format mobile, pas 16:9) :
+   simple frame type fenêtre (barre + 3 points), pas un mockup téléphone
+   réaliste — pleine largeur du bloc, la carte s'adapte à la hauteur de la
+   frame plutôt que l'inverse. */
+.hl-image--frame { aspect-ratio: auto; padding: 24px 20px; display: flex; align-items: center; justify-content: center; background: var(--bg-soft); }
+.hl-frame {
+  width: 100%; display: flex; flex-direction: column;
+  background: #ffffff; border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: var(--shadow-md); overflow: hidden;
+}
+.hl-frame-bar { display: flex; align-items: center; gap: 6px; padding: 10px 12px; background: var(--bg-soft); border-bottom: 1px solid var(--border); flex: none; }
+.hl-frame-dot { width: 8px; height: 8px; border-radius: 50%; }
+.hl-frame-dot--red { background: #ef4444; }
+.hl-frame-dot--yellow { background: #f59e0b; }
+.hl-frame-dot--green { background: #22c55e; }
+/* aspect-ratio = ratio EXACT de la capture source (464x976, pas une
+   valeur arrondie) : container query, pour que les overlays positionnés
+   en % (curseur de clic, texte tapé) tombent pile sur les bons pixels de
+   l'image, quelle que soit la largeur réelle de la carte. */
+.hl-frame-body { position: relative; aspect-ratio: 464 / 976; container-type: inline-size; }
+
+/* Démo "cinématique" (checkoutDemo.js) : succession de 5 vraies captures
+   de la page de paiement (formulaire → carte sélectionnée → saisie →
+   traitement → confirmation), superposées et permutées en fondu — pas de
+   curseur qui glisse sur tout l'écran. */
+.hl-frame-step {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: top center; display: block;
+  opacity: 0; transition: opacity 500ms ease;
+}
+.hl-frame-step.is-active { opacity: 1; }
+
+/* Vrai curseur (flèche) qui apparaît au point cliqué, fait un petit effet
+   de clic (léger scale down), puis disparaît — pas un curseur qui glisse
+   sur tout l'écran : il se positionne directement là où ça se passe
+   (checkoutDemo.js bascule .is-at-payer pour le 2e clic). */
+.hl-frame-cursor {
+  position: absolute; width: 5.8cqw; height: 5.8cqw; left: 13.8%; top: 43.75%;
+  transform: translate(-18%, -12%) scale(1);
+  opacity: 0; pointer-events: none; z-index: 5;
+  transition: left 200ms ease, top 200ms ease, opacity 180ms ease, transform 150ms ease;
+}
+.hl-frame-cursor svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,.35)); }
+.hl-frame-cursor.is-visible { opacity: 1; }
+.hl-frame-cursor.is-at-payer { left: 49.9%; top: 66.2%; }
+.hl-frame-cursor.is-clicking { transform: translate(-18%, -12%) scale(0.8); }
+
+/* Texte tapé en direct (checkoutDemo.js) par-dessus les champs VIDES des
+   captures (step3/step4) — un vrai effet de frappe caractère par
+   caractère, pas un nombre déjà rempli. Taille en cqw (% de la largeur du
+   cadre) pour rester à l'échelle du texte déjà dans l'image. */
+.hl-frame-type {
+  position: absolute; font-family: Helvetica, Arial, sans-serif; font-size: 2.8cqw;
+  color: #78828d; letter-spacing: 0.01em; white-space: nowrap; pointer-events: none; z-index: 4;
+}
+.hl-frame-type--number { left: 7.8%; top: 51%; }
+.hl-frame-type--expiry { left: 8.2%; top: 58.6%; }
+.hl-frame-type--cvc { left: 54.3%; top: 58.6%; }
+
+/* "Équipe & rôles" : mockup de tableau de bord dessiné en CSS (vue
+   invitation + tableau des membres/rôles), pas une photo — ratio plus
+   haut que 16:9 pour se rapprocher de la hauteur du téléphone (Paiements)
+   dans la même rangée, sans forcer un format aussi extrême. */
+.hl-image--dash { aspect-ratio: 3 / 4; padding: 18px; display: flex; align-items: center; justify-content: center; background: var(--bg-soft); }
+.hl-dash { width: 100%; height: 100%; background: #ffffff; border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-md); padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+.hl-dash-top { display: flex; align-items: center; justify-content: space-between; }
+.hl-dash-title { font-size: 13px; font-weight: 800; color: var(--text); }
+.hl-dash-invite-btn { font-size: 10.5px; font-weight: 700; color: #ffffff; background: var(--gold-deep); padding: 5px 10px; border-radius: 7px; border: none; font-family: inherit; cursor: pointer; transition: background-color 0.15s; }
+.hl-dash-invite-btn:hover { background: #8a3f06; }
+.hl-dash-invite-row { display: flex; gap: 8px; }
+.hl-dash-invite-field { flex: 1; font-size: 10.5px; color: var(--muted); background: var(--bg-soft); border: 1px solid var(--border); border-radius: 7px; padding: 7px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hl-dash-invite-role { font-size: 10.5px; font-weight: 600; color: var(--text); background: var(--bg-soft); border: 1px solid var(--border); border-radius: 7px; padding: 7px 10px; white-space: nowrap; }
+.hl-dash-table { display: flex; flex-direction: column; gap: 2px; flex: 1; overflow: hidden; }
+.hl-dash-row {
+  display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px; padding: 8px 2px; border-bottom: 1px solid var(--border);
+  transition: transform 300ms cubic-bezier(.25,1,.5,1), opacity 300ms cubic-bezier(.25,1,.5,1), background-color 300ms cubic-bezier(.25,1,.5,1);
+}
+.hl-dash-row--head { font-size: 9.5px; font-weight: 700; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.04em; }
+/* Membre ajouté/supprimé/suspendu par le VISITEUR (clics, pas automatique) : hl-team.js */
+.hl-dash-row.is-entering { transform: translateY(-6px); opacity: 0; }
+.hl-dash-row.is-new { background: var(--bg-soft); }
+.hl-dash-row.is-leaving { opacity: 0; transform: translateY(6px); }
+.hl-dash-row.is-suspended { opacity: 0.45; }
+.hl-dash-actions { display: flex; align-items: center; gap: 4px; }
+.hl-dash-icon { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; border: none; background: none; color: var(--muted2); cursor: pointer; border-radius: 5px; transition: color 0.15s, background-color 0.15s; }
+.hl-dash-icon:hover { color: var(--gold-deep); background: var(--gold-wash); }
+.hl-dash-icon[data-action="delete"]:hover { color: var(--red); background: rgba(220,38,38,0.1); }
+.hl-dash-icon svg { width: 12px; height: 12px; display: block; }
+.hl-dash-member { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 600; color: var(--text); }
+.hl-dash-avatar { width: 22px; height: 22px; border-radius: 50%; background: var(--gold-wash); color: var(--gold-deep); font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex: none; }
+.hl-dash-badge { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.hl-dash-badge--admin { background: var(--gold-wash); color: var(--gold-deep); }
+.hl-dash-badge--manager { background: #e8f3ff; color: #1d6fd1; }
+.hl-dash-badge--read { background: var(--bg-soft); color: var(--muted); }
+.hl-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--text); padding: 0 28px; }
+.hl-desc { font-size: 13.5px; color: var(--muted); line-height: 1.6; padding: 0 28px; }
 
 /* ── CTA ── */
 .cta-section { position: relative; padding: 110px 48px; text-align: center; background: var(--text); overflow: hidden;}
 .cta-section::before { content: ''; position: absolute; top: -140px; left: 50%; transform: translateX(-50%); width: 640px; height: 640px; border-radius: 50%; background: radial-gradient(circle, rgba(245,158,11,0.22) 0%, rgba(245,158,11,0) 70%); pointer-events: none;}
 .cta-inner { position: relative; max-width: 680px; margin: 0 auto; }
-.cta-inner h2 { font-weight: 800; font-size: clamp(32px, 4vw, 48px); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 20px; color: #ffffff;}
+.cta-inner h2 { font-weight: 400; font-size: clamp(32px, 4vw, 48px); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 20px; color: #ffffff;}
 .cta-inner h2 mark { background: rgba(245,158,11,0.22); color: var(--gold-light); }
 .cta-inner p { font-size: 16.5px; color: rgba(255,255,255,0.65); line-height: 1.7; margin-bottom: 36px; }
 .cta-actions { display: flex; gap: 14px; justify-content: center; align-items: center; }
@@ -268,6 +454,34 @@ footer .logo { font-size: 18px; }
 .footer-links a { font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.15s; }
 .footer-links a:hover { color: var(--text); }
 .footer-copy { font-size: 12px; color: var(--muted2); }
+
+/* ── FOOTER RICHE (site-footer, .sf-*) — remplace le layout flex nu de
+   "footer" ci-dessus pour <footer class="site-footer">, via la plus
+   grande spécificité de la classe. ── */
+.site-footer { display: block; padding: 56px 48px 28px; background: rgba(180,83,9,0.05); }
+.sf-top { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr; gap: 32px; padding-bottom: 40px; border-bottom: 1px solid var(--border); }
+/* Footer : même traitement que le logo exporté (régulier, une seule
+   couleur, lettres resserrées) — pas le gras/bicolore de la nav. */
+.sf-brand .logo { font-size: 20px; margin-bottom: 10px; font-weight: 400; letter-spacing: -0.03em; color: var(--gold-deep); }
+.sf-brand .logo span { color: var(--gold-deep); }
+.sf-tagline { font-size: 13px; line-height: 1.55; color: var(--muted); max-width: 220px; }
+.sf-col { display: flex; flex-direction: column; gap: 11px; }
+.sf-col-title { font-size: 12px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+.sf-col a { font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.15s; }
+.sf-col a:hover { color: var(--gold-deep); }
+.sf-bottom { max-width: 1240px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; padding-top: 22px; }
+.sf-support { font-size: 12px; color: var(--muted2); text-decoration: none; transition: color 0.15s; }
+.sf-support:hover { color: var(--text); }
+
+@media (max-width: 860px) {
+  .sf-top { grid-template-columns: 1fr 1fr; }
+  .sf-brand { grid-column: 1 / -1; }
+}
+@media (max-width: 520px) {
+  .site-footer { padding: 44px 24px 24px; }
+  .sf-top { grid-template-columns: 1fr; gap: 28px; }
+  .sf-bottom { flex-direction: column; align-items: flex-start; gap: 10px; }
+}
 
 .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease;}
 .reveal.visible { opacity: 1; transform: translateY(0); }
@@ -397,4 +611,451 @@ footer .logo { font-size: 18px; }
   .feat-grid, .plans-grid { grid-template-columns: 1fr; }
   .feat-card.span2 { grid-column: span 1; }
   .country-grid { grid-template-columns: repeat(2,1fr); }
+}
+
+/* ── GLOBE (accueil) ── */
+.globe-section { position: relative; max-width: 1240px; margin: 0 auto; padding: 90px 48px; }
+
+/* Fond animé "réseau doré" (grille + cellules qui flashent + particules
+   reliées), même principe que le fond de login.js/signup.js mais recoloré
+   en doré (globe-bg.js) — couvre presque toute la section, derrière le
+   contenu. */
+.globe-bg-canvas { position: absolute; inset: 2%; width: 96%; height: 96%; z-index: 0; pointer-events: none; }
+
+.globe-section-inner { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+.globe-text h2 { font-weight: 400; font-size: clamp(28px, 2.6vw, 38px); line-height: 1.2; letter-spacing: -0.015em; color: var(--text); margin-bottom: 18px; }
+.globe-text p { font-size: 16px; line-height: 1.75; color: var(--muted); max-width: 440px; }
+.globe-visual { position: relative; width: 100%; max-width: 460px; aspect-ratio: 1 / 1; margin: 0 auto; }
+.globe-visual::after {
+  content: ''; position: absolute; left: 8%; right: 8%; bottom: -5%; height: 16%; z-index: -1;
+  background: radial-gradient(ellipse at center, rgba(15,17,21,0.22), transparent 70%);
+  filter: blur(7px); pointer-events: none;
+}
+.globe-canvas { width: 100%; height: 100%; display: block; touch-action: pan-y; cursor: grab; -webkit-user-select: none; user-select: none; }
+.globe-canvas.is-dragging { cursor: grabbing; }
+.globe-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.globe-label { position: absolute; top: 0; left: 0; display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; background: #ffffff; border: 1px solid var(--border); border-radius: 4px; box-shadow: 0 13.5px 27px -12.4px rgba(50,50,93,.12), 0 8.1px 16.2px -8.1px rgba(0,0,0,.05); white-space: nowrap; will-change: transform, opacity; transition: opacity 0.1s linear; }
+.globe-label-icon { height: 14px; width: auto; max-width: 26px; object-fit: contain; display: block;}
+.globe-label-amount { font-size: 12px; font-weight: 800; color: var(--text); line-height: 1.4; }
+
+@media (max-width: 960px) {
+  .globe-section-inner { grid-template-columns: 1fr; gap: 36px; }
+  .globe-visual { max-width: 320px; }
+}
+
+@media (max-width: 640px) {
+  .globe-section { padding: 60px 20px; }
+}
+
+/* ── ARCHITECTURE (hub-and-spoke Xepay ↔ clients / Stripe / marchand) ── */
+.arch-section { max-width: 1100px; margin: 0 auto; padding: 90px 48px 110px; }
+.arch-intro { max-width: 640px; margin: 0 0 56px; text-align: left; }
+.arch-intro .section-tag { display: inline-flex; }
+.arch-intro h2 { font-weight: 800; font-size: clamp(26px, 2.6vw, 36px); line-height: 1.2; letter-spacing: -0.015em; color: var(--text); margin-bottom: 14px; }
+.arch-intro p { font-size: 15.5px; line-height: 1.65; color: var(--muted); }
+
+/* Section entière teintée en couleur 2nd du site (--gold-deep à 20%
+   d'opacité) : le texte d'intro reste sur les couleurs par défaut
+   (var(--text)/var(--muted)), toujours lisibles à cette opacité.
+   Sélecteur "section.arch-section" (pas juste ".arch-section") : cette
+   classe est RÉUTILISÉE par un schéma sans rapport sur tarif.html, mais
+   celui-là vit dans un <div>, jamais un <section> — ça ne le touche pas.
+   La section est centrée (max-width:1100px, cf. règle .arch-section plus
+   bas), donc son fond n'atteindrait pas les bords de la page sur un écran
+   large : box-shadow 100vw + clip-path étendent la teinte sur toute la
+   largeur, sans élargir la boîte elle-même (le contenu reste centré). */
+section.arch-section {
+  background: rgba(180,83,9,0.1);
+  position: relative;
+  /* 2e ombre : portée vers le bas uniquement, pour détacher la section de
+     celle qui suit. clip-path élargi de -70px en bas (vs 0 avant) pour
+     laisser cette ombre se dessiner au lieu de se faire rogner par le
+     clip-path du fond plein-largeur. */
+  box-shadow: 0 0 0 100vw rgba(180,83,9,0.1), 0 24px 40px -14px rgba(0,0,0,0.18);
+  clip-path: inset(0 -100vw -70px -100vw);
+}
+
+/* Message d'intro : un seul bloc de texte, sans gras ni mise en avant
+   d'un mot (pas de <mark>) — une phrase continue, plus proche d'un ton
+   éditorial/émouvant que d'un titre + sous-titre techniques. Décalé à
+   gauche (pas centré), comme le reste du bloc .arch-intro. */
+section.arch-section .arch-intro h2 {
+  font-weight: 400; font-size: clamp(18px, 1.7vw, 21px); line-height: 1.6;
+  letter-spacing: 0; max-width: 580px; margin: 0;
+}
+
+/* Schéma en 4 niveaux (Stripe / types de traitement / Xepay / Marchand).
+   Préfixe xp-arch- (pas arch-node/arch-pill/arch-flow, déjà utilisés par
+   le schéma sans rapport de tarif.html) pour ne rien casser là-bas. Une
+   seule couleur — --gold-deep, la "2nd couleur" du site — sert à tout ;
+   seule l'opacité varie pour différencier les éléments entre eux. Boîtes
+   et cadres : rectangles francs (border-radius:0), fond blanc, ombre —
+   pas de pastille colorée. Connecteurs en pointillés fixes, sans point
+   animé. */
+.xp-arch-layers { display: flex; flex-direction: column; align-items: center; max-width: 900px; width: 100%; margin: 0 auto; }
+.xp-arch-level {
+  display: flex; flex-direction: column; align-items: center; width: 100%;
+  opacity: 0; transform: translateY(14px);
+  transition: opacity .5s cubic-bezier(.4,0,.2,1), transform .5s cubic-bezier(.4,0,.2,1);
+}
+.arch-section.is-visible .xp-arch-level { opacity: 1; transform: translateY(0); }
+
+/* Stripe / Xepay / Marchand : même rectangle plein (couleur 2nd = fond,
+   le texte passe en blanc), sans bordures arrondies, avec ombre. Xepay
+   se distingue juste par une ombre plus marquée (c'est le hub). Stripe
+   et Xepay sont un peu plus hauts que Marchand (+4px). */
+.xp-arch-box {
+  display: flex; align-items: center; justify-content: center;
+  min-width: 110px; height: 52px; padding: 0 20px;
+  background: var(--gold-deep); border: 1px solid rgba(255,255,255,0.3); border-radius: 2px;
+  box-shadow: var(--shadow-sm);
+  font-size: 14px; font-weight: 800; color: #ffffff;
+}
+.xp-arch-box--xepay, .xp-arch-box--stripe { height: 56px; }
+.xp-arch-box--xepay { box-shadow: var(--shadow-md); border-width: 1.5px; }
+.xp-arch-box--stripe { width: 120px; }
+.xp-arch-box--marchand { min-width: 0; width: 64px; height: 30px; padding: 0 10px; font-size: 11px; border-radius: 2px; }
+
+/* Connecteur Stripe -> switch : 2 bras horizontaux qui débutent à la
+   mi-hauteur du cadre Stripe (gauche & droite), puis 2 verticales qui
+   descendent vers les segments extrêmes du switch ; le segment central
+   ("Abonnements") reçoit une simple verticale sous Stripe. Repères en
+   pixels sur une largeur de référence de 480px (= largeur du switch,
+   .xp-arch-switch) : centres des 3 segments à 80 / 240 / 400 ; cadre
+   Stripe (120px, centré dans les 480px) de 180 à 300 ; mi-hauteur du
+   cadre Stripe (56px de haut) = 28px. */
+.xp-arch-connector { position: relative; width: 100%; max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
+.xp-arch-connector-spacer { height: 40px; }
+
+.xp-arch-bus-arm {
+  position: absolute; top: 28px; height: 0; width: 100px;
+  border-top: 1.5px dashed rgba(180,83,9,0.45);
+  opacity: 0; transition: opacity .4s ease;
+}
+.xp-arch-bus-arm--left { left: 80px; }
+.xp-arch-bus-arm--right { left: 300px; }
+.arch-section.is-visible .xp-arch-bus-arm { opacity: 1; }
+
+.xp-arch-bus-drop {
+  position: absolute; width: 0; border-left: 1.5px dashed rgba(180,83,9,0.45);
+  opacity: 0; transition: opacity .4s ease;
+}
+.xp-arch-bus-drop--left { top: 28px; height: 68px; left: 80px; }
+.xp-arch-bus-drop--right { top: 28px; height: 68px; left: 400px; }
+.xp-arch-bus-drop--mid { top: 56px; height: 40px; left: 240px; }
+.arch-section.is-visible .xp-arch-bus-drop { opacity: 1; }
+
+.xp-arch-vline {
+  position: relative; width: 0; height: 32px; border-left: 1.5px dashed rgba(180,83,9,0.45);
+  opacity: 0; transition: opacity .4s ease;
+}
+.arch-section.is-visible .xp-arch-vline { opacity: 1; }
+.xp-arch-vline--short { height: 20px; }
+
+/* Niveau 2 : switch plat et étiré — un rectangle blanc qui contient les
+   3 segments (Liens de paiement / Abonnements / Factures). Liens de
+   paiement et Factures ont chacun leur propre cadre (petit rectangle
+   bordé) ; Abonnements reste du texte simple, sans cadre, au centre. Le
+   segment actif s'inverse (fond --gold-deep, texte blanc), comme les
+   cadres Stripe/Xepay. */
+.xp-arch-switch {
+  display: flex; align-items: center; width: 100%; max-width: 480px; gap: 8px; padding: 8px;
+  background: var(--gold-deep); border: 1px solid rgba(255,255,255,0.3); border-radius: 2px;
+}
+.xp-arch-switch-item {
+  flex: 1; text-align: center; padding: 8px 10px; font-size: 12px; font-weight: 700;
+  color: rgba(255,255,255,0.65); white-space: nowrap;
+}
+.xp-arch-switch-item--framed {
+  background: var(--gold-deep); border: 1px solid rgba(255,255,255,0.3); border-radius: 2px; color: #ffffff;
+}
+.xp-arch-switch-item.is-active { background: var(--gold-deep); border-color: rgba(255,255,255,0.7); color: #ffffff; box-shadow: var(--shadow-sm); }
+
+/* Niveau 3 : cadre moyens de paiement tout à gauche, Xepay au centre,
+   commission globale tout à droite — les pointillés s'étirent (flex:1)
+   pour combler l'espace plutôt que d'être des traits fixes. Entre les
+   cadres et Xepay : un rectangle blanc "Moyens de paiement" / "Commission
+   globale" (pas un libellé au-dessus du cadre). */
+.xp-arch-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; width: 100%; }
+.xp-arch-row-side { display: flex; align-items: center; min-width: 0; }
+.xp-arch-row-side--left { justify-content: flex-start; }
+.xp-arch-row-side--right { justify-content: flex-end; }
+.xp-arch-label-box {
+  flex: none; padding: 4px 8px; background: var(--gold-deep); border: 1px solid rgba(255,255,255,0.3); border-radius: 2px;
+  font-size: 10.5px; font-weight: 700; color: #ffffff; text-transform: capitalize; white-space: nowrap;
+}
+.xp-arch-frame {
+  flex: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 6px;
+  border: 1px solid rgba(255,255,255,0.3); border-radius: 2px; background: var(--gold-deep);
+  margin-left: -28px;
+}
+/* Les icônes se succèdent (remplacement dynamique piloté par architecture.js) :
+   fondu bref au changement plutôt qu'un cut sec. Taille portée à 34px pour
+   occuper tout le cadre (padding/gap réduits en conséquence ci-dessus). */
+.xp-arch-frame img { width: 34px; height: 34px; object-fit: contain; transition: opacity .22s ease; }
+.xp-arch-frame img.is-swapping { opacity: 0; }
+.xp-arch-hline { flex: 1 1 auto; min-width: 20px; height: 0; border-top: 1.5px dashed rgba(180,83,9,0.45); margin: 0 8px; }
+
+/* Cadre commission : défilement vertical infini (même technique que
+   .payment-marquee-track, en vertical) — la piste contient les 4 lignes
+   dupliquées une fois ; translateY(-50%) ramène exactement au point de
+   départ pour une boucle sans accroc. Masque haut/bas pour l'effet
+   "ticker" (les lignes apparaissent/disparaissent en fondu aux bords). */
+.xp-arch-commission {
+  min-width: 190px; padding: 12px 16px; height: 68px; overflow: hidden; position: relative;
+  border: 1px solid rgba(255,255,255,0.3); border-radius: 2px; background: var(--gold-deep);
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 20%, #000 80%, transparent);
+  mask-image: linear-gradient(180deg, transparent, #000 20%, #000 80%, transparent);
+}
+.xp-arch-commission-track { display: flex; flex-direction: column; gap: 4px; animation: xp-arch-commission-scroll 11s linear infinite; }
+@keyframes xp-arch-commission-scroll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+@media (prefers-reduced-motion: reduce) { .xp-arch-commission-track { animation: none; } }
+.xp-arch-commission-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 11.5px; color: rgba(255,255,255,0.75); padding-top: 4px; border-top: 1px dashed rgba(255,255,255,0.25); }
+.xp-arch-commission-row:first-of-type { border-top: none; padding-top: 0; }
+.xp-arch-commission-row strong { color: #ffffff; font-weight: 800; }
+
+/* Niveau 4 : marchand relié à ses activités par des pointillés blancs en
+   éventail (une verticale depuis Marchand, un "bus" horizontal, puis une
+   courte verticale vers chaque tag). */
+.xp-arch-tags-wrap { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 360px; }
+.xp-arch-tags-bus { width: 100%; height: 0; border-top: 1.5px dashed rgba(180,83,9,0.45); }
+/* Grid (pas flex + space-between) : avec 3 largeurs de texte différentes
+   ("Clients" plus étroit que "Paiements"), space-between décale le tag
+   du milieu hors de l'axe central — la colonne "auto" d'une grid 1fr/
+   auto/1fr reste, elle, toujours au centre exact, quelle que soit la
+   largeur des colonnes latérales (même technique que .xp-arch-row pour
+   centrer Xepay). "Produits" (colonne du milieu) tombe ainsi exactement
+   sur l'axe vertical de Xepay/Marchand. */
+.xp-arch-tags { display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; width: 100%; }
+.xp-arch-tags .xp-arch-tag-col:first-child { justify-self: start; }
+.xp-arch-tags .xp-arch-tag-col:last-child { justify-self: end; }
+.xp-arch-tag-col { display: flex; flex-direction: column; align-items: center; }
+.xp-arch-tag-drop { width: 0; height: 14px; border-left: 1.5px dashed rgba(180,83,9,0.45); }
+.xp-arch-tag { margin-top: 8px; padding: 6px 14px; border-radius: 2px; border: 1px solid rgba(255,255,255,0.3); background: var(--gold-deep); color: #ffffff; font-size: 12px; font-weight: 700; }
+
+@media (max-width: 640px) {
+  .arch-section { padding: 60px 20px 70px; }
+  /* Les bras/descentes gauche-droite sont calés en px sur une largeur de
+     référence de 480px (= largeur du switch) ; sous 640px le switch est
+     plus étroit, donc on retombe sur une simple verticale centrée. */
+  .xp-arch-bus-arm--left, .xp-arch-bus-arm--right,
+  .xp-arch-bus-drop--left, .xp-arch-bus-drop--right { display: none; }
+  .xp-arch-bus-drop--mid { left: 50%; transform: translateX(-50%); }
+  .xp-arch-row { grid-template-columns: 1fr; gap: 14px; }
+  .xp-arch-row-side { flex-direction: column; justify-content: center; }
+  .xp-arch-hline { flex: none; width: 0; height: 24px; border-top: none; border-left: 1.5px dashed rgba(255,255,255,0.55); margin: 0; }
+  .xp-arch-switch-item { font-size: 11px; padding: 8px 6px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xp-arch-level { transition: none; opacity: 1; transform: none; }
+  .xp-arch-vline, .xp-arch-bus-arm, .xp-arch-bus-drop { transition: none; opacity: 1; }
+}
+
+/* ── GRILLE : clients/paiements (horizontal) + facturation/revenus/liens (vertical) ── */
+.grid-features-section { max-width: 1240px; margin: 0 auto; padding: 90px 48px; }
+/* Limite visible de la section globale (padding 12px avant la bordure
+   extérieure) ; gap de 20px entre les 4 blocs, qui gardent chacun leur
+   propre bordure (.gf-wide-card, .gf-vertical). */
+.gf-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; padding: 12px; border-radius: 18px; overflow: hidden; }
+
+.gf-wide { grid-column: 1 / -1; }
+
+.gf-wide-card { background: var(--bg-soft); border-radius: 16px; padding: 22px; }
+.gf-wide-title { font-weight: 400; font-size: clamp(20px, 2vw, 28px); line-height: 1.2; letter-spacing: -0.015em; color: var(--text); text-align: left; margin-bottom: 16px; }
+
+/* Visuel "Recevez les paiements" : composition dessinée à taille fixe
+   (xp-payments-stage, 1100px = largeur max réelle de .gf-wide-card sur
+   grand écran) puis réduite via transform:scale(). En fixant la largeur
+   naturelle au plafond réel du conteneur, le ratio --xp-scale calculé par
+   ResizeObserver ne dépasse jamais 1 : le visuel remplit toujours la
+   largeur disponible, sans espace mort, du mobile au desktop. */
+.xp-payments-frame { position: relative; width: 100%; aspect-ratio: 1100 / 300; overflow: hidden; }
+.xp-payments-stage { position: absolute; top: 0; left: 0; width: 1100px; transform: scale(var(--xp-scale, 1)); transform-origin: top left; }
+.xp-payments-layout { position: relative; }
+
+/* Reçu : carte flottante superposée en haut à droite du tableau de bord
+   (comme la composition de référence, où le payment-card chevauche le
+   dashboard plutôt que de partager une colonne dédiée). */
+.xp-payments-receipt-col { position: absolute; right: 32px; top: 16px; width: 260px; z-index: 2; }
+.xp-payments-receipt-backdrop {
+  position: absolute; left: 16px; right: -16px; top: -16px; bottom: 35%; z-index: 0; border-radius: 14px;
+  background:
+    repeating-linear-gradient(45deg, var(--gold) 0, var(--gold) 1px, transparent 1px, transparent 11px),
+    linear-gradient(180deg, var(--gold-wash) 0%, rgba(255,255,255,0) 75%);
+  opacity: 0.3;
+}
+.xp-receipt {
+  position: relative; z-index: 1; width: 100%;
+  background: #ffffff; border: 1px solid var(--border); border-radius: 10px; padding: 22px 24px 28px;
+  box-shadow: 0 16px 32px rgba(50,50,93,0.12);
+  transition: box-shadow 300ms cubic-bezier(.25,1,.5,1);
+}
+.xp-receipt.is-pulsing { box-shadow: 0 16px 32px rgba(50,50,93,0.12), 0 0 0 2px var(--gold-wash); }
+.xp-receipt-label { font-size: 10px; font-weight: 700; color: var(--text); letter-spacing: -0.174px; line-height: 1.4; margin-bottom: 18px; }
+.xp-receipt-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 10px; line-height: 1.45; color: var(--muted); padding-top: 13px; }
+.xp-receipt-row strong { color: var(--text); font-weight: 600; display: flex; align-items: center; gap: 5px; }
+.xp-receipt-row strong img { width: 12px; height: 12px; object-fit: contain; }
+.xp-receipt-total { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 10px; color: var(--text); font-weight: 600; }
+.xp-receipt-total strong { font-size: 12px; font-weight: 800; }
+
+/* Colonne tableau de bord : le padding haut/droite réserve la marge où le fond --gold dépasse de 16px */
+.xp-payments-dash-col { position: relative; padding: 16px 16px 0 0; }
+.xp-payments-dash-backdrop {
+  position: absolute; inset: 0; z-index: 0; border-radius: 16px;
+  background:
+    repeating-linear-gradient(45deg, var(--gold) 0, var(--gold) 1px, transparent 1px, transparent 11px),
+    linear-gradient(135deg, var(--gold-wash) 0%, rgba(255,255,255,0) 60%);
+  opacity: 0.32;
+}
+.xp-dash { position: relative; z-index: 1; width: fit-content; max-width: 100%; background: #ffffff; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; box-shadow: var(--shadow-sm); }
+.xp-dash-bar { display: flex; align-items: center; gap: 14px; padding: 9px 16px; border-bottom: 1px solid var(--border); background: var(--bg-soft); }
+.xp-dash-dots { display: flex; gap: 6px; flex: none; }
+.xp-dash-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--muted2); }
+.xp-dash-url { font-family: var(--font-mono); font-size: 11px; color: var(--muted); background: #ffffff; border: 1px solid var(--border); border-radius: 999px; padding: 3px 14px; white-space: nowrap; }
+
+.xp-dash-table { width: 100%; }
+/* Colonnes à largeur fixe (pas en fr) : du contenu court (noms, codes
+   pays, badges) étiré en fr créerait un gap énorme entre les colonnes.
+   .xp-dash est lui-même en width:fit-content (cf. plus haut) : la carte
+   se coupe à la largeur réelle du tableau, aucun espace mort à droite. */
+.xp-dash-thead, .xp-dash-row { display: grid; grid-template-columns: 210px 100px 120px 70px 100px; gap: 14px; align-items: center; }
+.xp-dash-thead { background: var(--bg-soft); font-size: 8px; font-weight: 700; color: var(--muted2); text-transform: capitalize; letter-spacing: 0.03em; line-height: 1.6; padding: 0 20px 6px; }
+.xp-dash-row {
+  position: relative; font-size: 9px; line-height: 1.45; color: var(--text);
+  border-top: 1px solid var(--border); background: #ffffff; padding: 5px 20px 6px;
+  transition: transform 300ms cubic-bezier(.25,1,.5,1), opacity 300ms cubic-bezier(.25,1,.5,1), box-shadow 300ms cubic-bezier(.25,1,.5,1);
+}
+.xp-dash-row.is-entering { transform: translateY(-8px); opacity: 0; }
+.xp-dash-row.is-new { box-shadow: 0 2px 5px 0 rgba(0,0,0,0.1); background: var(--bg-soft); }
+.xp-dash-row.is-leaving { opacity: 0; transform: translateY(8px); }
+.xp-dash-client { display: flex; align-items: center; gap: 6px; min-width: 0; font-weight: 600; }
+.xp-dash-avatar { width: 14px; height: 14px; border-radius: 50%; font-size: 6px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex: none; }
+.xp-dash-avatar-1 { background: var(--gold-wash); color: var(--gold-deep); }
+.xp-dash-avatar-2 { background: rgba(245,158,11,0.22); color: var(--gold-deep); }
+.xp-dash-avatar-3 { background: rgba(180,83,9,0.14); color: var(--gold-deep); }
+.xp-dash-client-info { display: flex; flex-direction: column; min-width: 0; }
+.xp-dash-client-name { font-size: 9px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xp-dash-client-date { font-size: 8px; color: var(--muted); }
+.xp-dash-country { color: var(--muted); font-size: 9px; white-space: nowrap; }
+.xp-dash-amount { font-size: 9px; font-weight: 600; }
+.xp-dash-method { display: flex; align-items: center; }
+.xp-dash-method img { width: 16px; height: 16px; object-fit: contain; }
+.xp-dash-status { display: flex; align-items: center; }
+.xp-dash-status-badge {
+  padding: 3px 5px; border-radius: 4px; font-size: 8px; font-weight: 700; line-height: 1; border: 1px solid transparent;
+  transition: background-color 300ms cubic-bezier(.25,1,.5,1), color 300ms cubic-bezier(.25,1,.5,1), border-color 300ms cubic-bezier(.25,1,.5,1);
+}
+.xp-dash-status-badge--reussi { color: var(--green); background: rgba(22,163,74,0.08); border-color: rgba(22,163,74,0.2); }
+.xp-dash-status-badge--conteste { color: var(--red); background: rgba(220,38,38,0.08); border-color: rgba(220,38,38,0.2); }
+
+/* Connecteur "agrafe" reçu -> ligne client : repère en pointillés gris
+   qui passe sous le reçu et la ligne (jamais à travers le tableau), "d"
+   recalculé en JS à chaque cycle (payments.js). Juste un fondu, pas
+   d'effet de tracé — seule une petite flèche marque l'arrivée sur la ligne. */
+.xp-payments-link { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 3; }
+.xp-payments-link-path {
+  fill: none; stroke: var(--muted2); stroke-width: 1.5; stroke-linecap: round;
+  stroke-dasharray: 6 5;
+  opacity: 0;
+  transition: opacity 300ms cubic-bezier(.25,1,.5,1);
+}
+.xp-payments-link-path.is-visible { opacity: 1; }
+.xp-payments-link-chevron {
+  fill: none; stroke: var(--muted2); stroke-width: 1.25; stroke-linecap: round; stroke-linejoin: round;
+  opacity: 0;
+  transition: opacity 300ms cubic-bezier(.25,1,.5,1);
+}
+.xp-payments-link-chevron.is-visible { opacity: 1; }
+
+/* Pastille montant + moyen de paiement animée le long du connecteur
+   (payments.js pilote sa position via getPointAtLength, en px naturels
+   du stage — elle hérite donc du même transform:scale()). */
+.xp-payments-flyer {
+  position: absolute; top: 0; left: 0; z-index: 4; pointer-events: none;
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px 7px; border-radius: 999px;
+  background: #ffffff; border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+  font-size: 9px; font-weight: 700; color: var(--text);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  will-change: transform;
+}
+.xp-payments-flyer img { width: 12px; height: 12px; object-fit: contain; flex: none; }
+
+.gf-vertical { display: flex; flex-direction: column; padding: 26px; border-radius: var(--radius-lg); background: #ffffff; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.gf-vertical:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
+.gf-vertical-title { font-weight: 400; font-size: 19px; line-height: 1.25; letter-spacing: -0.01em; color: var(--text); margin-bottom: 20px; }
+.gf-vertical-desc { font-size: 13px; line-height: 1.55; color: var(--muted); margin-top: -8px; margin-bottom: 16px; }
+
+/* Bloc "Suivez vos transactions en direct" : tableau animé (transactions.js),
+   colonnes en fr (contrairement à xp-dash-*, ce tableau reste dans une
+   colonne de grille déjà étroite, pas besoin de mise à l'échelle). */
+.xp-txns-table { width: 100%; }
+.xp-txns-thead, .xp-txns-row { display: grid; grid-template-columns: 1.5fr 0.6fr 1fr 0.9fr 1fr; gap: 6px; align-items: center; padding: 7px 0; }
+.xp-txns-thead { font-size: 9px; font-weight: 700; color: var(--muted2); text-transform: capitalize; letter-spacing: 0.03em; border-bottom: 1px solid var(--border); padding-bottom: 8px; white-space: nowrap; }
+.xp-txns-row {
+  position: relative; font-size: 10.5px; color: var(--text);
+  border-bottom: 1px solid var(--border);
+  transition: transform 300ms cubic-bezier(.25,1,.5,1), opacity 300ms cubic-bezier(.25,1,.5,1), background-color 300ms cubic-bezier(.25,1,.5,1);
+}
+.xp-txns-row:last-child { border-bottom: none; }
+.xp-txns-row.is-entering { transform: translateY(-6px); opacity: 0; }
+.xp-txns-row.is-new { background: var(--bg-soft); }
+.xp-txns-row.is-leaving { opacity: 0; transform: translateY(6px); }
+.xp-txns-client { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xp-txns-method { display: flex; }
+.xp-txns-method img { width: 14px; height: 14px; object-fit: contain; }
+.xp-txns-amount { white-space: nowrap; }
+.xp-txns-fee { color: var(--muted); white-space: nowrap; }
+.xp-txns-net { font-weight: 700; color: var(--green); white-space: nowrap; }
+
+/* Bloc "Téléchargez vos rapports financiers" : onglets de période +
+   carte fichier (reports.js bascule le fichier / l'état selon l'onglet). */
+.xp-reports-tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.xp-reports-tab { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: #ffffff; color: var(--muted); font-size: 11.5px; font-weight: 600; font-family: var(--font-body); cursor: pointer; transition: all 0.15s; }
+.xp-reports-tab:hover { border-color: var(--gold); color: var(--gold-deep); }
+.xp-reports-tab.is-active { background: var(--gold); border-color: var(--gold); color: #171310; }
+.xp-reports-file {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px; border-radius: 12px;
+  background: var(--bg-soft); border: 1px solid var(--border); cursor: pointer;
+  font-family: var(--font-body); text-align: left; transition: border-color 0.15s, box-shadow 0.15s;
+}
+.xp-reports-file:hover { border-color: var(--gold); box-shadow: var(--shadow-sm); }
+.xp-reports-file-icon { flex: none; width: 36px; height: 36px; border-radius: 8px; background: var(--gold-wash); color: var(--gold-deep); font-size: 10px; font-weight: 800; letter-spacing: 0.02em; display: flex; align-items: center; justify-content: center; }
+.xp-reports-file-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.xp-reports-file-name { font-size: 12.5px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xp-reports-file-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.xp-reports-file-view { flex: none; width: 32px; height: 32px; border-radius: 8px; background: var(--gold); color: #171310; display: flex; align-items: center; justify-content: center; font-weight: 800; }
+
+/* Modal d'aperçu PDF (reports.js) : données fictives, consultation en
+   place (iframe) plutôt qu'un vrai téléchargement. */
+.xp-report-modal { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.xp-report-modal[hidden] { display: none; }
+.xp-report-modal-backdrop { position: absolute; inset: 0; background: rgba(15,17,21,0.55); }
+.xp-report-modal-panel { position: relative; z-index: 1; width: 90vw; height: min(860px, 100%); background: #ffffff; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow-lg); }
+.xp-report-modal-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--bg-soft); flex: none; }
+.xp-report-modal-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.xp-report-modal-close { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border); background: #ffffff; color: var(--muted); font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.xp-report-modal-close:hover { color: var(--text); border-color: var(--muted2); }
+.xp-report-modal-frame { flex: 1; width: 100%; border: none; }
+
+.gf-mini-mock { padding: 14px; border-radius: 10px; background: var(--bg-soft); border: 1px solid var(--border); }
+.gf-mini-row { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.gf-mini-row-sub { padding-top: 10px; margin-top: 10px; margin-bottom: 0; border-top: 1px dashed var(--border); }
+.gf-mini-badge { padding: 3px 9px; border-radius: 999px; background: rgba(22,163,74,0.08); border: 1px solid rgba(22,163,74,0.2); color: var(--green); font-weight: 700; font-size: 10px; }
+.gf-mini-amount { font-size: 20px; font-weight: 800; color: var(--text); }
+
+.gf-lnk-mock { box-shadow: none; }
+.gf-lnk-mock .fmock-body { padding: 16px; }
+
+@media (max-width: 800px) {
+  .gf-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .grid-features-section { padding: 60px 20px; }
+
+  .gf-wide-card { padding: 20px; }
 }

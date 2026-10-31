@@ -4,8 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Xepay — Paiements fintech, de l'Afrique de l'Ouest au monde</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/responsive.css">
 <link rel="stylesheet" href="/marketing.css">
 </head>
@@ -13,7 +17,100 @@
 
 <!-- ─── NAVBAR (partagée, le routeur ne touche jamais à ceci) ─── -->
 <nav>
-  <a href="/accueil" class="logo" style="text-decoration:none;">Xe<span>pay</span></a>
+ <div class="nav-inner">
+  <div class="nav-left">
+    <a href="/accueil" class="logo-lockup" style="text-decoration:none;">
+      <img src="/assets/xepay-logo-full.png" alt="" class="logo-mark-icon">
+      <span class="logo">xe<span>pay</span></span>
+    </a>
+
+    <div class="nav-dropdown" data-nav-dropdown="produits">
+      <button type="button" class="nav-dropdown-trigger" aria-haspopup="true" aria-expanded="false">
+        Produits <span class="nav-chevron" aria-hidden="true">⌄</span>
+      </button>
+      <div class="nav-dropdown-panel" hidden>
+        <div class="nav-panel-group">
+          <div class="nav-panel-group-title">Paiements</div>
+          <a href="/fonctionnalite" data-route>
+            <strong>Paiement en ligne</strong>
+            <span>Encaissez vos clients en ligne</span>
+          </a>
+          <a href="/fonctionnalite" data-route>
+            <strong>Liens de paiement</strong>
+            <span>Créez un lien en quelques secondes</span>
+          </a>
+          <a href="/fonctionnalite" data-route>
+            <strong>Mode de paiement</strong>
+            <span>Carte, Apple Pay, Google Pay et plus</span>
+          </a>
+          <a href="/fonctionnalite" data-route>
+            <strong>Multi-devises</strong>
+            <span>XOF, USD et EUR</span>
+          </a>
+        </div>
+        <div class="nav-panel-group">
+          <div class="nav-panel-group-title">Revenu</div>
+          <a href="/fonctionnalite" data-route>
+            <strong>Abonnements &amp; factures</strong>
+            <span>Facturation et paiements récurrents</span>
+          </a>
+          <a href="/fonctionnalite" data-route>
+            <strong>Rapports financiers</strong>
+            <span>Vos volumes et commissions en PDF</span>
+          </a>
+          <a href="/fonctionnalite" data-route>
+            <strong>Solde &amp; retraits</strong>
+            <span>Retraits vers votre compte bancaire</span>
+          </a>
+          <a href="/fonctionnalite" data-route>
+            <strong>Transactions en direct</strong>
+            <span>Suivez chaque paiement en temps réel</span>
+          </a>
+        </div>
+        <div class="nav-panel-group">
+          <div class="nav-panel-group-title">Gestion</div>
+          <a href="/fonctionnalite" data-route>
+            <strong>Équipe &amp; rôles</strong>
+            <span>Accès définis par rôle</span>
+          </a>
+          <a href="#">
+            <strong>API &amp; webhooks</strong>
+            <span>Intégrez Xepay à vos outils</span>
+          </a>
+          <a href="/accueil" data-route>
+            <strong>Formation de société US</strong>
+            <span>LLC via Firstbase ou Stripe Atlas</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-dropdown" data-nav-dropdown="ressources">
+      <button type="button" class="nav-dropdown-trigger" aria-haspopup="true" aria-expanded="false">
+        Ressources <span class="nav-chevron" aria-hidden="true">⌄</span>
+      </button>
+      <div class="nav-dropdown-panel" hidden>
+        <a href="#">
+          <strong>Centre d'aide</strong>
+          <span>Guides et questions fréquentes</span>
+        </a>
+        <a href="#">
+          <strong>Documentation</strong>
+          <span>Référence technique de l'API</span>
+        </a>
+        <a href="#">
+          <strong>Statut</strong>
+          <span>Disponibilité de la plateforme</span>
+        </a>
+        <a href="#">
+          <strong>Sécurité</strong>
+          <span>Protection de vos paiements</span>
+        </a>
+      </div>
+    </div>
+
+    <a href="/tarif" data-route class="nav-plain-link">Tarifs</a>
+  </div>
 
   <button class="nav-hamburger">
     <span></span>
@@ -22,28 +119,65 @@
   </button>
 
   <div class="nav-links">
-    <a href="/accueil" data-route>Accueil</a>
-    <a href="/fonctionnalite" data-route>Fonctionnalités</a>
-    <a href="/tarif" data-route>Tarifs</a>
+    <a href="/dashboard" class="btn-nav-outline">Dashboard</a>
     <a href="/login" class="btn-nav-outline">Connexion</a>
     <a href="/signup" class="btn-nav-primary">Créer un compte</a>
   </div>
+ </div>
 </nav>
 
 <!-- ─── VUE COURANTE (remplie par le routeur SPA) ─── -->
 <main id="marketing-view"></main>
 
 <!-- ─── FOOTER (partagé) ─── -->
-<footer>
-  <div class="logo">XE<span>PAY</span></div>
-  <div class="footer-links">
-    <a href="/fonctionnalite">Fonctionnalités</a>
-    <a href="/tarif">Tarifs</a>
-    <a href="mailto:support@alasdia.com">Support</a>
-    <a href="/politique-confidentialite">Politique de confidentialité</a>
-    <a href="/conditions-utilisation">Conditions d'utilisation</a>
+<footer class="site-footer">
+  <div class="sf-top">
+    <div class="sf-brand">
+      <div class="logo-lockup">
+        <img src="/assets/xepay-logo-full.png" alt="" class="logo-mark-icon">
+        <span class="logo">xe<span>pay</span></span>
+      </div>
+      <p class="sf-tagline">Paiements fintech, de l'Afrique de l'Ouest au monde.</p>
+    </div>
+
+    <div class="sf-col">
+      <div class="sf-col-title">Produit</div>
+      <a href="/fonctionnalite">Liens de paiement</a>
+      <a href="/fonctionnalite">Abonnements &amp; factures</a>
+      <a href="/fonctionnalite">Rapports financiers</a>
+      <a href="/tarif">Tarifs</a>
+      <a href="#">API</a>
+    </div>
+
+    <div class="sf-col">
+      <div class="sf-col-title">Entreprise</div>
+      <a href="#">À propos</a>
+      <a href="#">Carrières</a>
+      <a href="#">Blog</a>
+      <a href="#">Presse</a>
+    </div>
+
+    <div class="sf-col">
+      <div class="sf-col-title">Ressources</div>
+      <a href="#">Centre d'aide</a>
+      <a href="#">Documentation</a>
+      <a href="#">Statut</a>
+      <a href="#">Sécurité</a>
+    </div>
+
+    <div class="sf-col">
+      <div class="sf-col-title">Légal</div>
+      <a href="/politique-confidentialite">Politique de confidentialité</a>
+      <a href="/conditions-utilisation">Conditions d'utilisation</a>
+      <a href="#">Mentions légales</a>
+      <a href="#">Cookies</a>
+    </div>
   </div>
-  <div class="footer-copy">© 2026 Xepay — ALL RIGHTS RESERVED</div>
+
+  <div class="sf-bottom">
+    <div class="footer-copy">© 2026 Xepay — ALL RIGHTS RESERVED</div>
+    <a href="mailto:support@alasdia.com" class="sf-support">support@alasdia.com</a>
+  </div>
 </footer>
 
 <script type="module" src="/marketing/router.js"></script>

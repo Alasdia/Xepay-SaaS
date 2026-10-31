@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 150" width="240" height="150">
+  <defs>
+    <radialGradient id="shield2" cx="35%" cy="25%" r="85%">
+      <stop offset="0%" stop-color="#fde6b0"/>
+      <stop offset="50%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#c2690b"/>
+    </radialGradient>
+    <linearGradient id="card2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f3eee4"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="240" height="150" fill="#fff7e6"/>
+  <ellipse cx="120" cy="132" rx="50" ry="8" fill="#e8c580" opacity="0.5"/>
+  <circle cx="60" cy="100" r="22" fill="none" stroke="#f59e0b" stroke-width="2" opacity="0.3"/>
+  <circle cx="186" cy="48" r="16" fill="none" stroke="#f59e0b" stroke-width="2" opacity="0.3"/>
+
+  <path d="M120 22 L170 38 V78 C170 107 147 122 120 130 C93 122 70 107 70 78 V38 Z" fill="url(#shield2)"/>
+  <ellipse cx="98" cy="40" rx="15" ry="8" fill="#ffffff" opacity="0.3"/>
+
+  <rect x="92" y="64" width="56" height="38" rx="7" fill="url(#card2)"/>
+  <rect x="92" y="64" width="56" height="10" rx="5" fill="#b45309"/>
+  <rect x="99" y="86" width="22" height="5" rx="2.5" fill="#e7cfa0"/>
+  <circle cx="134" cy="92" r="6" fill="#fbbf24"/>
+  <circle cx="141" cy="92" r="6" fill="#b45309" opacity="0.8"/>
+</svg>
