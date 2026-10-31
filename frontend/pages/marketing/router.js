@@ -190,10 +190,27 @@ if (navDropdowns.length) {
   });
 }
 
-// Pas de pré-vérification de session ici pour le bouton "Dashboard" :
-// app.xepay.finance (le dashboard) est une origine différente de
-// www.xepay.finance (ce site marketing) — le localStorage de session posé
-// par spa/core/state.js sur app.xepay.finance n'est pas lisible depuis
-// cette page, sur une origine différente. Le lien pointe directement vers
-// https://app.xepay.finance/dashboard ; c'est spa/app.js, une fois chargé
-// sur la bonne origine, qui redirige vers /login si besoin.
+// Bouton "Dashboard" : le cookie de session est host-only sur
+// api.xepay.finance (backend/auth.py, set_session_cookies - sans attribut
+// Domain, donc envoyé au host ciblé par la requête quelle que soit
+// l'origine de la page qui l'émet), et le CORS autorise déjà les
+// requêtes avec credentials depuis www.xepay.finance (backend/main.py,
+// allow_credentials=True). On peut donc vérifier la vraie session AVANT
+// de naviguer et router directement vers le dashboard ou vers /login,
+// sans jamais passer par dashboard.html entre les deux (plus de flash
+// intermédiaire, contrairement au localStorage qui n'est lisible que sur
+// l'origine qui l'a posé). Le href de base (marketing.html) reste
+// optimiste (/dashboard.html) ; on ne le corrige que si besoin, une fois
+// la réponse connue.
+{
+  const dashboardLink = document.querySelector('a[href="https://app.xepay.finance/dashboard.html"]');
+  if (dashboardLink) {
+    fetch("https://api.xepay.finance/me", { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) dashboardLink.setAttribute("href", "/login");
+      })
+      .catch(() => {
+        dashboardLink.setAttribute("href", "/login");
+      });
+  }
+}
