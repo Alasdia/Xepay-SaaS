@@ -2546,8 +2546,8 @@ function vertoStatusLabel(data) {
 // pour débloquer l'onboarding.
 function vertoOnboardingFormHtml() {
   return `
-    <div style="max-width:72%;">
-      <p class="params-subsection-sub">Ces informations sont transmises à Verto (notre partenaire bancaire pour les virements locaux) afin de créer et vérifier votre sous-compte. Elles n'incluent aucun document pour l'instant - Verto peut vous en demander par e-mail si nécessaire.</p>
+    <div>
+      <p class="params-subsection-sub" style="max-width:100%;">Ces informations sont transmises à Verto (notre partenaire bancaire pour les virements locaux) afin de créer et vérifier votre sous-compte. Elles n'incluent aucun document pour l'instant - Verto peut vous en demander par e-mail si nécessaire.</p>
       <form id="p-verto-onboarding-form" class="d-flex flex-column gap-2 mb-3">
         <div class="row g-2">
           <div class="col-6">
