@@ -150,7 +150,29 @@ class ChangePasswordRequest(BaseModel):
     confirm_password: str
 
 class WithdrawRequest(BaseModel):
-    amount: float  
+    amount: float
+
+class VertoOnboardingRequest(BaseModel):
+    # Champs requis par Verto POST /sub-accounts, voir verto_service.create_sub_account.
+    country: str
+    company_name: str
+    sub_category: str
+    identification_number: str
+    tax_id_or_ein: str | None = None
+    # Données KYC complémentaires (UBO 25%+, documents, adresse) - voir
+    # verto_service.submit_onboarding_data, forme exacte non figée ici
+    # (transmise telle quelle à l'API Verto).
+    kyc_payload: dict
+
+class VertoBeneficiaryRequest(BaseModel):
+    # Compte bancaire local UEMOA du marchand (destination finale des
+    # retraits) - voir verto_service.create_beneficiary.
+    iban: str
+    bank_code: str
+    bank_name: str
+    bank_country_code: str
+    beneficiary_address_line1: str
+    beneficiary_country_code: str
 
 class ConnectCustomerCreateRequest(BaseModel):
     # Aucun champ n'est obligatoire chez Stripe pour créer un Customer -
@@ -234,6 +256,12 @@ class Withdrawal(Base):
     payout_method = Column(String, nullable=True)
     payout_arrival_date = Column(DateTime(timezone=True), nullable=True)
     payout_failure_message = Column(String, nullable=True)
+    # Deuxième jambe du retrait (wallet USD Verto -> compte bancaire local
+    # UEMOA du marchand) - voir services/verto_service.py et
+    # webhook/verto.py. Rempli une fois le virement Verto initié, après
+    # que le webhook Verto "Wallet Credit" confirme l'arrivée des fonds
+    # envoyés par le Payout Stripe (voir routes/webhook/verto.py).
+    verto_transfer_id = Column(String, nullable=True, index=True)
 
 class WalletTransaction(Base):
     __tablename__ = "wallet_transactions"
@@ -279,6 +307,38 @@ class Profile(Base):
     # champ rempli) - un seul envoi, au moment où le compte devient
     # pleinement opérationnel (voir webhook/stripe.py).
     verification_email_sent = Column(Boolean, default=False)
+    # Architecture "Zero-Custody" des retraits (Stripe Connect -> Verto ->
+    # banque locale UEMOA du marchand), voir services/verto_service.py.
+    # Le sous-compte Verto (verto_company_id) est créé via l'API
+    # onboarding-data, à partir des infos KYC entreprise du marchand
+    # collectées côté Xepay - jamais via le dashboard Verto.
+    verto_company_id = Column(String, nullable=True, index=True)
+    verto_wallet_id = Column(String, nullable=True)
+    # not_started/pending/approved/rejected - voir webhook/verto.py pour
+    # la transition pending -> approved/rejected.
+    verto_onboarding_status = Column(String, default="not_started")
+    # Coordonnées du wallet USD Verto (GET /fundingMethods, autoCreate=true)
+    # - affichées dans l'UI Xepay pour que le marchand les colle lui-même
+    # dans son Dashboard Stripe Express (Stripe interdit à la plateforme de
+    # créer un external_account pour un compte Express ayant accès à son
+    # propre dashboard - voir routes/payout.py).
+    verto_usd_account_number = Column(String, nullable=True)
+    verto_usd_bank_code = Column(String, nullable=True)
+    verto_usd_bank_name = Column(String, nullable=True)
+    # ID Stripe (ba_xxx) de cet external_account, une fois que le marchand
+    # l'a ajouté lui-même et que webhook/stripe.py (account.updated) l'a
+    # détecté par rapprochement avec verto_usd_account_number. C'est CET
+    # ID qui est passé en `destination=` sur chaque Payout (payout.py),
+    # jamais déduit du external account par défaut du compte.
+    stripe_external_account_id = Column(String, nullable=True)
+    # Compte bancaire local UEMOA du marchand (destination finale, saisi
+    # par le marchand côté Xepay) - IBAN au format régional UEMOA, voir
+    # verto_service.initiate_bank_transfer.
+    beneficiary_bank_iban = Column(String, nullable=True)
+    beneficiary_bank_name = Column(String, nullable=True)
+    # ID du bénéficiaire Verto (`accounts.id` renvoyé par create_beneficiary,
+    # distinct du companyId du sous-compte) - requis par create_payment_request.
+    verto_beneficiary_id = Column(String, nullable=True)
 
     # Compte Stripe Connect DÉDIÉ à Issuing (dashboard: none), distinct de
     # stripe_account_id (Express, paiements/payouts) - Issuing n'est pas
@@ -289,6 +349,24 @@ class Profile(Base):
     # Programme Issuing (banque partenaire + réseau) créé sur ce compte -
     # nécessaire pour que la capacité card_issuing soit demandée.
     stripe_issuing_program_id = Column(String, nullable=True)
+
+    # Rechargement de la carte Issuing depuis le wallet USD Verto DÉJÀ
+    # existant du marchand (verto_usd_account_number/bank_code plus haut) -
+    # jamais un compte bancaire américain générique ni le compte UEMOA
+    # directement (Stripe ACH ne fonctionne qu'avec un compte US, voir
+    # conversation du 2026-11-06). source ach_debit créée sur le compte
+    # Issuing, vérifiée automatiquement via les webhooks Verto (montant des
+    # micro-dépôts Stripe lus dans leur notification de paiement entrant),
+    # jamais par le marchand lui-même (son wallet Verto n'a pas d'interface
+    # où il pourrait les voir).
+    stripe_issuing_bank_source_id = Column(String, nullable=True)
+    # not_started / pending_verification / verified / failed
+    stripe_issuing_bank_status = Column(String, nullable=True, default="not_started")
+    # Montants (en cents) des micro-dépôts Stripe déjà vus via webhook
+    # Verto, en attendant d'en avoir 2 pour vérifier la source auprès de
+    # Stripe - vidé une fois la vérification tentée (succès ou échec).
+    stripe_issuing_bank_pending_amounts = Column(JSON, nullable=True)
+    stripe_issuing_bank_link_started_at = Column(DateTime, nullable=True)
 
 class UserDB(Base):
     __tablename__ = "users"

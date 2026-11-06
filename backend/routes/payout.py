@@ -86,7 +86,14 @@ def get_wallet(
                     (
                         and_(
                             WalletTransaction.type == "withdraw",
-                            WalletTransaction.status.in_(("pending", "processing", "success")),
+                            # "stripe_sent"/"verto_sent" : jambes intermédiaires de
+                            # l'architecture Zero-Custody (voir webhook/stripe.py,
+                            # webhook/verto.py) - doivent compter comme "retiré" tant
+                            # que le virement final n'est pas confirmé, sinon ces
+                            # fonds en transit pourraient être retirés une 2e fois.
+                            WalletTransaction.status.in_(
+                                ("pending", "processing", "stripe_sent", "verto_sent", "success")
+                            ),
                         ),
                         WalletTransaction.amount,
                     )
@@ -377,7 +384,7 @@ def process_withdraw(
         .first()
     if not wd:
         raise HTTPException(404, "Withdrawal not found")
-    if wd.status in ["processing", "success"]:
+    if wd.status in ["processing", "stripe_sent", "verto_sent", "success"]:
         return {"error": "already processed"}
     wallet = db.query(Wallet)\
         .filter(Wallet.id == wd.wallet_id)\
@@ -389,6 +396,13 @@ def process_withdraw(
     profile = db.query(Profile).filter(Profile.user_id == user.id).first()
     if not profile or not profile.stripe_account_id:
         raise HTTPException(400, "Stripe account not connected")
+    # Architecture "Zero-Custody" (voir services/verto_service.py) : le
+    # Payout cible toujours explicitement cet external_account (ajouté par
+    # le marchand lui-même sur son Dashboard Express, jamais par Xepay -
+    # voir docs.stripe.com/connect/payouts-bank-accounts), jamais le
+    # external_account par défaut du compte.
+    if not profile.stripe_external_account_id:
+        raise HTTPException(400, "Compte bancaire Verto non relié sur le Dashboard Stripe")
     account = stripe.Account.retrieve(profile.stripe_account_id)
     if not account["payouts_enabled"]:
         raise HTTPException(400, "Payouts not enabled")
@@ -400,13 +414,25 @@ def process_withdraw(
     balance = stripe.Balance.retrieve(
         stripe_account=profile.stripe_account_id
     )
-    instant_available = sum(b["amount"] for b in balance["instant_available"])
-    if instant_available < amount_cents:
+    # "available" (pas "instant_available") : method="standard" ne pioche
+    # plus dans le bucket instant payout, cf. le changement de method
+    # ci-dessous.
+    available = sum(b["amount"] for b in balance["available"])
+    if available < amount_cents:
         raise HTTPException(400, "Insufficient Stripe balance")
     wd.status = "processing"
     db.flush()
     try:
-        payout = stripe.Payout.create(amount=amount_cents, currency="usd", stripe_account=profile.stripe_account_id, method="instant")
+        # method="standard" (pas "instant") : la sémantique "instant payout"
+        # de Stripe ne s'applique qu'à son propre réseau de cartes/comptes
+        # bancaires US - sans objet une fois le virement relayé par Verto.
+        payout = stripe.Payout.create(
+            amount=amount_cents,
+            currency="usd",
+            stripe_account=profile.stripe_account_id,
+            destination=profile.stripe_external_account_id,
+            method="standard",
+        )
         wd.status = payout.status
         wd.stripe_payout_id = payout.id
         wd.payout_method = payout.method

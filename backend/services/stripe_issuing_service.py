@@ -149,3 +149,57 @@ def create_onboarding_link(account_id: str, refresh_url: str, return_url: str) -
         type="account_onboarding",
     )
     return account_link.url
+
+
+def create_issuing_bank_source(
+    account_id: str, account_number: str, routing_number: str, account_holder_name: str
+) -> dict:
+    """Crée la source ach_debit qui alimentera le solde Issuing, à partir
+    des coordonnées DÉJÀ connues du wallet USD Verto du marchand
+    (verto_usd_account_number/verto_usd_bank_code sur Profile) - jamais
+    saisies manuellement, jamais un compte bancaire US générique. Source
+    créée en statut 'pending' : la vérification par micro-dépôts se fait
+    ensuite via le webhook Verto (voir routes/webhook/verto.py), jamais
+    par le marchand lui-même (son wallet Verto n'expose pas de relevé)."""
+    token = stripe.Token.create(
+        bank_account={
+            "country": "US",
+            "currency": "usd",
+            "account_holder_name": account_holder_name,
+            "account_holder_type": "company",
+            "routing_number": routing_number,
+            "account_number": account_number,
+        },
+        stripe_account=account_id,
+    )
+    source = stripe.Source.create(
+        type="ach_debit",
+        currency="usd",
+        token=token.id,
+        owner={"name": account_holder_name},
+        stripe_account=account_id,
+    )
+    return source.to_dict()
+
+
+def verify_issuing_bank_source(account_id: str, source_id: str, amounts: list[int]) -> dict:
+    """amounts : les deux micro-dépôts, en CENTS (ex: [32, 45]) - lus
+    automatiquement depuis les webhooks Verto, jamais saisis par le
+    marchand."""
+    source = stripe.Source.verify(source_id, values=amounts, stripe_account=account_id)
+    return source.to_dict()
+
+
+def topup_issuing_balance(account_id: str, source_id: str, amount_cents: int) -> dict:
+    """Prélève amount_cents depuis la source ach_debit déjà vérifiée
+    (wallet Verto du marchand) et l'ajoute au solde Issuing de ce compte -
+    jamais le solde de la plateforme (voir conversation du 2026-11-06,
+    règle "zéro custody")."""
+    topup = stripe.Topup.create(
+        amount=amount_cents,
+        currency="usd",
+        destination_balance="issuing",
+        source=source_id,
+        stripe_account=account_id,
+    )
+    return topup.to_dict()

@@ -1,6 +1,7 @@
 import os
 import re
 import time
+from datetime import datetime, timezone
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
@@ -270,6 +271,97 @@ def get_cardholder_defaults(
             "address": _address_dict(company.get("address")),
         },
     }
+
+
+@router.post("/issuing/bank-link")
+def start_issuing_bank_link(
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("manage_virtual_cards"))
+):
+    """Relie le wallet USD Verto DÉJÀ existant du marchand
+    (profile.verto_usd_account_number/verto_usd_bank_code, voir
+    routes/verto.py) au compte Issuing, pour pouvoir le recharger -
+    jamais un compte bancaire US saisi manuellement, jamais le compte
+    UEMOA directement (Stripe ACH ne fonctionne que sur le réseau
+    bancaire américain, voir conversation du 2026-11-06). Rien à cocher
+    côté marchand ici : la vérification par micro-dépôts se fait toute
+    seule via le webhook Verto (voir webhook/verto.py) dès qu'ils
+    arrivent sur son wallet - jamais via le solde de la plateforme
+    (règle "zéro custody")."""
+    owner_id = membership.workspace_id
+    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
+    issuing_account_id = _get_active_issuing_account(profile)
+
+    if not profile.verto_usd_account_number or not profile.verto_usd_bank_code:
+        raise HTTPException(
+            400,
+            "Wallet Verto non configuré - complétez d'abord l'onboarding "
+            "Verto (voir Paramètres produit > Retraits & Comptes US).",
+        )
+
+    try:
+        account = stripe.Account.retrieve(issuing_account_id).to_dict()
+        company_name = (account.get("company") or {}).get("name") or "Xepay Merchant"
+
+        source = stripe_issuing_service.create_issuing_bank_source(
+            issuing_account_id,
+            account_number=profile.verto_usd_account_number,
+            routing_number=profile.verto_usd_bank_code,
+            account_holder_name=company_name,
+        )
+    except stripe.error.StripeError as e:
+        raise HTTPException(400, f"Erreur Stripe Issuing : {e.user_message or str(e)} (request_id: {e.request_id})")
+
+    profile.stripe_issuing_bank_source_id = source["id"]
+    profile.stripe_issuing_bank_status = "pending_verification"
+    profile.stripe_issuing_bank_pending_amounts = []
+    profile.stripe_issuing_bank_link_started_at = datetime.now(timezone.utc)
+    db.commit()
+
+    return {"status": "pending_verification"}
+
+
+@router.get("/issuing/bank-link/status")
+def get_issuing_bank_link_status(
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("manage_virtual_cards"))
+):
+    owner_id = membership.workspace_id
+    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
+    if not profile:
+        return {"status": "not_started"}
+    return {"status": profile.stripe_issuing_bank_status or "not_started"}
+
+
+@router.post("/issuing/topup")
+def create_issuing_topup(
+    payload: dict,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("manage_virtual_cards"))
+):
+    """Recharge le solde Issuing depuis le wallet Verto déjà vérifié -
+    jamais depuis le solde de la plateforme."""
+    owner_id = membership.workspace_id
+    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
+    issuing_account_id = _get_active_issuing_account(profile)
+
+    if profile.stripe_issuing_bank_status != "verified" or not profile.stripe_issuing_bank_source_id:
+        raise HTTPException(
+            400, "Compte bancaire non vérifié - voir POST /issuing/bank-link"
+        )
+
+    amount = payload.get("amount")
+    if not isinstance(amount, (int, float)) or amount <= 0:
+        raise HTTPException(400, "Montant invalide")
+
+    try:
+        topup = stripe_issuing_service.topup_issuing_balance(
+            issuing_account_id, profile.stripe_issuing_bank_source_id, int(round(amount * 100))
+        )
+    except stripe.error.StripeError as e:
+        raise HTTPException(400, f"Erreur Stripe Issuing : {e.user_message or str(e)} (request_id: {e.request_id})")
+
+    return {"topup_id": topup["id"], "status": topup["status"]}
 
 
 @router.post("/issuing/create-virtual-card")

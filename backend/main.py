@@ -25,6 +25,8 @@ from backend.middleware.log_middleware import LogMiddleware
 from backend.routes.logs import router as logs_router
 from backend.routes.wallet import router as wallet_router
 from backend.routes.webhook.stripe import router as stripe_router
+from backend.routes.webhook.verto import router as verto_router
+from backend.routes.verto import router as verto_api_router
 from backend.routes.app import router as ai_router
 from backend.auth import router as auth_router
 from backend.routes.account_id import router as account_router
@@ -67,6 +69,8 @@ app.include_router(webhooks_api_router)
 app.include_router(logs_router)
 app.include_router(wallet_router)
 app.include_router(stripe_router)
+app.include_router(verto_router)
+app.include_router(verto_api_router)
 app.include_router(ai_router)
 app.include_router(auth_router)
 app.include_router(account_router)

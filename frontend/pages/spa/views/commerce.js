@@ -6721,6 +6721,39 @@ function ensureCardIssuingStyles() {
             grid-template-columns: 1fr 1fr;
             gap: 14px;
         }
+        .issuing-funding-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            padding: 14px 18px;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            background: #f8fafc;
+            margin-bottom: 20px;
+        }
+        .issuing-funding-box strong {
+            display: block;
+            font-size: 14px;
+            color: #111827;
+        }
+        .issuing-funding-box p {
+            margin: 2px 0 0;
+            font-size: 12.5px;
+        }
+        .issuing-funding-action {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .issuing-funding-action input {
+            width: 130px;
+            padding: 8px 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 7px;
+            font-size: 13px;
+        }
     `;
     document.head.appendChild(style);
 }
@@ -7326,6 +7359,119 @@ function wireCardDetailsModal(root) {
     });
 }
 
+/* =========================================================
+   FINANCEMENT DE LA CARTE (depuis le wallet USD Verto du marchand)
+   Jamais depuis le solde de la plateforme Xepay (règle "zéro custody",
+   voir conversation du 2026-11-06) - le pont emprunte uniquement le
+   wallet Verto déjà existant du marchand (même coordonnées que pour les
+   payouts Express). La vérification par micro-dépôts se fait toute
+   seule côté backend (webhook Verto), jamais ici : ce composant ne fait
+   qu'afficher le statut et proposer l'action suivante.
+========================================================= */
+
+function fundingSectionHtml(status) {
+    if (status === "verified") {
+        return `
+            <div class="issuing-funding-box">
+                <div>
+                    <strong>Compte bancaire relié</strong>
+                    <p class="text-muted">Rechargez votre carte depuis votre wallet Verto.</p>
+                </div>
+                <div class="issuing-funding-action">
+                    <input type="number" id="issuing-topup-amount" min="1" step="0.01" placeholder="Montant (USD)">
+                    <button type="button" class="create-client-btn" id="issuing-topup-btn">Recharger ma carte</button>
+                </div>
+            </div>
+        `;
+    }
+    if (status === "pending_verification") {
+        return `
+            <div class="issuing-funding-box">
+                <div>
+                    <strong>Vérification de votre compte bancaire en cours</strong>
+                    <p class="text-muted">Automatique, sans action de votre part - revenez dans quelques minutes.</p>
+                </div>
+                <button type="button" class="modal-cancel-btn" id="issuing-funding-refresh-btn">Actualiser</button>
+            </div>
+        `;
+    }
+    if (status === "failed") {
+        return `
+            <div class="issuing-funding-box">
+                <div>
+                    <strong>La vérification du compte bancaire a échoué</strong>
+                    <p class="text-muted">Réessayez - ça relie à nouveau votre wallet Verto.</p>
+                </div>
+                <button type="button" class="create-client-btn" id="issuing-funding-link-btn">Réessayer</button>
+            </div>
+        `;
+    }
+    return `
+        <div class="issuing-funding-box">
+            <div>
+                <strong>Carte pas encore alimentée</strong>
+                <p class="text-muted">Reliez votre wallet Verto (déjà utilisé pour vos retraits) pour recharger votre carte.</p>
+            </div>
+            <button type="button" class="create-client-btn" id="issuing-funding-link-btn">Lier mon compte bancaire</button>
+        </div>
+    `;
+}
+
+function renderFundingSection(el, status, onChanged) {
+
+    el.innerHTML = fundingSectionHtml(status);
+
+    const linkBtn = el.querySelector("#issuing-funding-link-btn");
+    if (linkBtn) {
+        linkBtn.addEventListener("click", async () => {
+            linkBtn.disabled = true;
+            linkBtn.textContent = "Liaison en cours...";
+            try {
+                const response = await apiFetch("/issuing/bank-link", { method: "POST" });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail || "Impossible de relier le compte bancaire");
+                showToast("Compte bancaire relié - vérification automatique en cours", "success");
+                await onChanged();
+            } catch (error) {
+                showToast(error.message || "Erreur lors de la liaison bancaire", "error");
+                linkBtn.disabled = false;
+                linkBtn.textContent = "Lier mon compte bancaire";
+            }
+        });
+    }
+
+    const refreshBtn = el.querySelector("#issuing-funding-refresh-btn");
+    if (refreshBtn) {
+        refreshBtn.addEventListener("click", onChanged);
+    }
+
+    const topupBtn = el.querySelector("#issuing-topup-btn");
+    if (topupBtn) {
+        topupBtn.addEventListener("click", async () => {
+            const amountEl = el.querySelector("#issuing-topup-amount");
+            const amount = Number(amountEl.value);
+            if (!amount || amount <= 0) {
+                showToast("Montant invalide", "error");
+                return;
+            }
+            topupBtn.disabled = true;
+            topupBtn.textContent = "Rechargement...";
+            try {
+                const response = await apiFetch("/issuing/topup", { method: "POST", body: { amount } });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail || "Impossible de recharger la carte");
+                showToast("Rechargement lancé", "success");
+                amountEl.value = "";
+            } catch (error) {
+                showToast(error.message || "Erreur lors du rechargement", "error");
+            } finally {
+                topupBtn.disabled = false;
+                topupBtn.textContent = "Recharger ma carte";
+            }
+        });
+    }
+}
+
 async function renderCardIssuing(container) {
 
     ensureCardIssuingStyles();
@@ -7393,15 +7539,19 @@ async function renderCardIssuing(container) {
 
     let cardsData;
     let txData;
+    let bankLinkData;
     try {
-        const [cardsRes, txRes] = await Promise.all([
+        const [cardsRes, txRes, bankLinkRes] = await Promise.all([
             apiFetch("/issuing/cards"),
             apiFetch("/issuing/transactions"),
+            apiFetch("/issuing/bank-link/status"),
         ]);
         cardsData = await cardsRes.json();
         txData = await txRes.json();
+        bankLinkData = await bankLinkRes.json();
         if (!cardsRes.ok) throw new Error(cardsData.detail || "Impossible de récupérer les cartes");
         if (!txRes.ok) throw new Error(txData.detail || "Impossible de récupérer les transactions");
+        if (!bankLinkRes.ok) throw new Error(bankLinkData.detail || "Impossible de récupérer le statut bancaire");
     } catch (error) {
         content.innerHTML = `
             <div class="commerce-card">
@@ -7421,6 +7571,11 @@ async function renderCardIssuing(container) {
                 ${(cardsData.balance_available / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
             </strong>
         </div>
+
+        <!-- FINANCEMENT : depuis le wallet USD Verto du marchand, jamais
+             depuis le solde de la plateforme Xepay (voir conversation du
+             2026-11-06 sur le risque de custodian). -->
+        <div id="issuing-funding-section"></div>
 
         <!-- SECTION 1 : CARTES -->
         <div class="issuing-section-header">
@@ -7460,4 +7615,5 @@ async function renderCardIssuing(container) {
         reload
     );
     wireCardDetailsModal(content);
+    renderFundingSection(content.querySelector("#issuing-funding-section"), bankLinkData.status, reload);
 }

@@ -1,12 +1,34 @@
 import { render as renderAccueil, title as titleAccueil, mount as mountAccueil } from "/marketing/views/accueil.js";
 import { render as renderFonc, title as titleFonc } from "/marketing/views/fonctionnalite.js";
 import { render as renderTarif, title as titleTarif } from "/marketing/views/tarif.js";
+import { render as renderApi, title as titleApi } from "/marketing/views/api.js";
+import { render as renderAPropos, title as titleAPropos } from "/marketing/views/a-propos.js";
+import { render as renderCarrieres, title as titleCarrieres } from "/marketing/views/carrieres.js";
+import { render as renderBlog, title as titleBlog } from "/marketing/views/blog.js";
+import { render as renderPresse, title as titlePresse } from "/marketing/views/presse.js";
+import { render as renderCentreAide, title as titleCentreAide } from "/marketing/views/centre-aide.js";
+import { render as renderDocumentation, title as titleDocumentation } from "/marketing/views/documentation.js";
+import { render as renderStatut, title as titleStatut } from "/marketing/views/statut.js";
+import { render as renderSecurite, title as titleSecurite } from "/marketing/views/securite.js";
+import { render as renderMentionsLegales, title as titleMentionsLegales } from "/marketing/views/mentions-legales.js";
+import { render as renderCookies, title as titleCookies } from "/marketing/views/cookies.js";
 
 const ROUTES = {
   "/accueil": { render: renderAccueil, title: titleAccueil, mount: mountAccueil },
   "/": { render: renderAccueil, title: titleAccueil, mount: mountAccueil },
   "/fonctionnalite": { render: renderFonc, title: titleFonc },
   "/tarif": { render: renderTarif, title: titleTarif },
+  "/api": { render: renderApi, title: titleApi },
+  "/a-propos": { render: renderAPropos, title: titleAPropos },
+  "/carrieres": { render: renderCarrieres, title: titleCarrieres },
+  "/blog": { render: renderBlog, title: titleBlog },
+  "/presse": { render: renderPresse, title: titlePresse },
+  "/centre-aide": { render: renderCentreAide, title: titleCentreAide },
+  "/documentation": { render: renderDocumentation, title: titleDocumentation },
+  "/statut": { render: renderStatut, title: titleStatut },
+  "/securite": { render: renderSecurite, title: titleSecurite },
+  "/mentions-legales": { render: renderMentionsLegales, title: titleMentionsLegales },
+  "/cookies": { render: renderCookies, title: titleCookies },
 };
 
 const root = document.getElementById("marketing-view");
@@ -38,7 +60,13 @@ function observeReveals() {
 
 let currentCleanup = null;
 
-function renderRoute(path, { scroll = true } = {}) {
+// `hash` (ex: "#liens-de-paiement") : fait défiler en douceur jusqu'à la
+// section correspondante une fois la vue rendue, au lieu de remonter en
+// haut de page - permet à chaque lien de nav/footer de mener vers
+// l'espace propre à sa fonctionnalité plutôt que vers le haut de
+// /fonctionnalite à chaque fois (voir marketing.html, data-nav-dropdown
+// "produits").
+function renderRoute(path, { scroll = true, hash = "" } = {}) {
   if (typeof currentCleanup === "function") {
     try { currentCleanup(); } catch (err) { console.error(err); }
   }
@@ -53,7 +81,16 @@ function renderRoute(path, { scroll = true } = {}) {
     const result = route.mount(root);
     if (typeof result === "function") currentCleanup = result;
   }
-  if (scroll) window.scrollTo(0, 0);
+  if (!scroll) return;
+  if (hash) {
+    requestAnimationFrame(() => {
+      const target = document.getElementById(hash.slice(1));
+      if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+      else window.scrollTo(0, 0);
+    });
+  } else {
+    window.scrollTo(0, 0);
+  }
 }
 
 function isInternalRoute(href) {
@@ -81,10 +118,19 @@ document.addEventListener("click", (e) => {
   if (!href || href === "#" || !isInternalRoute(href)) return;
   e.preventDefault();
   const url = new URL(href, window.location.origin);
-  if (url.pathname !== window.location.pathname) {
-    history.pushState({}, "", url.pathname);
+  const samePage = url.pathname === window.location.pathname;
+  if (!samePage || url.hash !== window.location.hash) {
+    history.pushState({}, "", url.pathname + url.hash);
   }
-  renderRoute(url.pathname);
+  // Même page, juste une ancre différente (ex: deux liens "Produits" qui
+  // mènent tous les deux vers /fonctionnalite) : la vue est déjà rendue,
+  // un simple défilement suffit - pas besoin de tout re-rendre.
+  if (samePage && url.hash) {
+    const target = document.getElementById(url.hash.slice(1));
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+  } else {
+    renderRoute(url.pathname, { hash: url.hash });
+  }
   const navLinks = document.querySelector(".nav-links");
   const hamburger = document.querySelector(".nav-hamburger");
   if (navLinks) navLinks.classList.remove("open");
@@ -93,7 +139,7 @@ document.addEventListener("click", (e) => {
 
 window.addEventListener("popstate", () => renderRoute(window.location.pathname, { scroll: false }));
 
-renderRoute(window.location.pathname);
+renderRoute(window.location.pathname, { hash: window.location.hash });
 
 const hamburger = document.querySelector(".nav-hamburger");
 const navLinks = document.querySelector(".nav-links");

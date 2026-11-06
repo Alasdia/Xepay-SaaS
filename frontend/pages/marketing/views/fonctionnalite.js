@@ -15,29 +15,50 @@ export function render() {
   </div>
 </section>
 
-<div class="feat-grid">
-  <div class="feat-card span2 reveal">
+<section id="paiement-en-ligne" class="feature-block reveal">
+  <div class="feature-inner">
+    <div class="feature-icon">🛒</div>
     <div class="section-tag">Paiements</div>
-    <h3>Liens de paiement</h3>
-    <p class="fc-sub">Créez un lien en 30 secondes, partagez-le où vous voulez — WhatsApp, email, réseaux sociaux. Votre client paie sans compte, sans app. Vous encaissez instantanément en XOF, USD ou EUR.</p>
+    <h2>Paiement en ligne</h2>
+    <p class="feature-desc">Encaissez directement sur votre propre site ou application. Vos clients paient par carte, Apple Pay ou Google Pay, en toute confiance — l'ensemble du parcours de paiement est traité et sécurisé par l'infrastructure Stripe, pendant que vous gardez le contrôle total de l'expérience d'achat.</p>
     <ul class="fc-list">
-      <li>Lien avec montant fixe ou libre</li>
-      <li>Expiration configurable (ex. 24h, 72h, sans limite)</li>
-      <li>Suivi du statut : en attente · payé · expiré</li>
-      <li>Copie du lien en un clic + partage direct</li>
+      <li>Checkout intégrable à votre site existant</li>
+      <li>Expérience fluide, pensée pour convertir</li>
+      <li>Aucune donnée bancaire qui transite ou ne reste chez Xepay</li>
     </ul>
-    <div class="lnk-quota">
-      <div class="lnk-quota-top"><span>Liens utilisés</span><strong>3/10</strong></div>
-      <div class="lnk-quota-bar"><div class="lnk-quota-fill" style="width:30%"></div></div>
-    </div>
-    <div class="lnk-row lnk-pending"><span class="lnk-dot"></span><span class="lnk-url">app.xepay.finance/pay/pl_vbl0qzddig7i…</span><i class="lnk-chevron">›</i></div>
-    <div class="lnk-row lnk-paid"><span class="lnk-dot"></span><span class="lnk-url">app.xepay.finance/pay/pl_qi4x1zhg3m5…</span><i class="lnk-chevron">›</i></div>
   </div>
+</section>
 
-  <div class="feat-card reveal">
+<section id="liens-de-paiement" class="feature-block alt reveal">
+  <div class="feature-inner">
+    <div class="feature-icon">🔗</div>
+    <div class="section-tag">Paiements</div>
+    <h2>Liens de paiement</h2>
+    <p class="feature-desc">Pas de site web ? Pas besoin. Créez un lien en 30 secondes et partagez-le où vous voulez — WhatsApp, email, réseaux sociaux. Votre client clique, paie, et vous encaissez instantanément en XOF, USD ou EUR, sans qu'il ait besoin d'un compte ni d'une application.</p>
+    <ul class="fc-list">
+      <li>Montant fixe ou libre, selon votre usage</li>
+      <li>Expiration configurable — 24h, 72h, ou sans limite</li>
+      <li>Suivi du statut en temps réel : en attente · payé · expiré</li>
+      <li>Copie et partage du lien en un clic</li>
+    </ul>
+  </div>
+</section>
+
+<section id="mode-de-paiement" class="feature-block reveal">
+  <div class="feature-inner">
+    <div class="feature-icon">💳</div>
+    <div class="section-tag">Paiements</div>
+    <h2>Mode de paiement</h2>
+    <p class="feature-desc">Chaque client a ses habitudes. Xepay s'y adapte : carte bancaire classique, Apple Pay, Google Pay, et davantage à venir — pour que personne n'abandonne son paiement simplement parce que son mode préféré n'était pas disponible.</p>
+  </div>
+</section>
+
+<section id="multi-devises" class="feature-block alt reveal">
+  <div class="feature-inner">
+    <div class="feature-icon">🌍</div>
     <div class="section-tag">UEMOA</div>
-    <h3>XOF en premier</h3>
-    <p class="fc-sub">Conçu pour la zone franc CFA. Encaissez en XOF, USD ou EUR selon le besoin de votre client ou partenaire.</p>
+    <h2>Multi-devises</h2>
+    <p class="feature-desc">Conçu en priorité pour la zone franc CFA. Encaissez en XOF, USD ou EUR selon le besoin de votre client ou de votre partenaire — une seule plateforme, trois devises, huit pays.</p>
     <div class="country-grid">
       <div class="country-item"><span class="country-flag">🇸🇳</span><div class="country-name">SÉNÉGAL</div></div>
       <div class="country-item"><span class="country-flag">🇨🇮</span><div class="country-name">CÔTE D'IVOIRE</div></div>
@@ -49,75 +70,62 @@ export function render() {
       <div class="country-item"><span class="country-flag">🇬🇼</span><div class="country-name">GUINÉE-B.</div></div>
     </div>
   </div>
+</section>
 
-  <div class="feat-card span2 reveal">
-    <div class="section-tag">Abonnements</div>
-    <h3>Free · Pro · Business</h3>
-    <p class="fc-sub">Démarrez gratuitement et upgradez selon votre volume. Chaque plan débloque plus de liens, les webhooks et la gestion multi-utilisateurs.</p>
-    <div class="plan-mini-row">
-      <div class="plan-mini-left"><div class="plan-mini-icon">🆓</div><div><div class="plan-mini-name">Free</div><div class="plan-mini-desc">Pour démarrer sans engagement</div></div></div>
-      <div class="plan-mini-badge">10 liens</div>
-    </div>
-    <div class="plan-mini-row">
-      <div class="plan-mini-left"><div class="plan-mini-icon">🚀</div><div><div class="plan-mini-name">Pro</div><div class="plan-mini-desc">Pour les marchands en croissance</div></div></div>
-      <div class="plan-mini-badge">100 liens · webhooks</div>
-    </div>
-    <div class="plan-mini-row">
-      <div class="plan-mini-left"><div class="plan-mini-icon">💼</div><div><div class="plan-mini-name">Business</div><div class="plan-mini-desc">Équipes · volumes élevés</div></div></div>
-      <div class="plan-mini-badge">Illimité · multi-users</div>
-    </div>
+<section id="abonnements-factures" class="feature-block reveal">
+  <div class="feature-inner">
+    <div class="feature-icon">🧾</div>
+    <div class="section-tag">Revenu récurrent</div>
+    <h2>Abonnements &amp; factures</h2>
+    <p class="feature-desc">Si votre activité repose sur des paiements récurrents ou sur facturation, Xepay s'en occupe pour vous : créez des abonnements pour vos propres clients et laissez la plateforme gérer les prélèvements à échéance, ou émettez des factures ponctuelles — sans tableur, sans relance manuelle.</p>
+    <ul class="fc-list">
+      <li>Abonnements récurrents pour vos clients, à votre rythme</li>
+      <li>Facturation ponctuelle en quelques clics</li>
+      <li>Relances et échéances suivies automatiquement</li>
+    </ul>
   </div>
+</section>
 
-  <div class="feat-card reveal">
-    <div class="section-tag">Conformité</div>
-    <h3>Profil & KYC</h3>
-    <p class="fc-sub">Les vérifications d'identité sont traitées via l'infrastructure sécurisée Stripe Connect pour débloquer les retraits.</p>
-    <div class="kyc-step"><div class="kyc-num kyc-done">✓</div><div class="kyc-label">Informations transmises</div><div class="kyc-status" style="color:var(--green)">Validé</div></div>
-    <div class="kyc-step"><div class="kyc-num kyc-done">✓</div><div class="kyc-label">Vérification d'identité</div><div class="kyc-status" style="color:var(--green)">Confirmé</div></div>
-    <div class="kyc-step"><div class="kyc-num kyc-curr">→</div><div class="kyc-label">Conformité activité</div><div class="kyc-status" style="color:var(--gold-deep)">En cours</div></div>
-    <div class="kyc-step"><div class="kyc-num kyc-pend">4</div><div class="kyc-label">Activation des retraits</div><div class="kyc-status" style="color:var(--muted2)">En attente</div></div>
+<section id="rapports-financiers" class="feature-block alt reveal">
+  <div class="feature-inner">
+    <div class="feature-icon">📊</div>
+    <div class="section-tag">Pilotage</div>
+    <h2>Rapports financiers</h2>
+    <p class="feature-desc">Votre activité méritait mieux qu'un export brut. Générez des rapports clairs de vos encaissements, filtrables par période ou par devise, prêts à partager avec votre comptable ou vos associés — sans reconstruction manuelle à chaque fin de mois.</p>
   </div>
+</section>
 
-  <div class="feat-card reveal">
-    <div class="section-tag">Analytics</div>
-    <h3>Transactions en direct</h3>
-    <p class="fc-sub">Visualisez chaque paiement entrant, filtrez par devise, statut ou date. Exportez pour votre comptable.</p>
-    <div class="txn-kpis">
-      <div class="txn-kpi active"><span>Tous</span><strong>8</strong></div>
-      <div class="txn-kpi"><span>Réussis</span><strong>8</strong></div>
-    </div>
-    <div class="txn-table">
-      <div class="txn-thead"><span>Client</span><span>Moyen</span><span>Brut</span><span>Net</span></div>
-      <div class="txn-trow"><span class="txn-client">alasndia04@gmail.com</span><span class="txn-method"><span class="txn-card txn-card-mc"></span>···4444</span><span class="txn-amount">23,00 USD</span><span class="txn-net">21,62 USD</span></div>
-    </div>
+<section id="solde-retraits" class="feature-block reveal">
+  <div class="feature-inner">
+    <div class="feature-icon">🏦</div>
+    <div class="section-tag">Trésorerie</div>
+    <h2>Solde &amp; retraits</h2>
+    <p class="feature-desc">Votre solde disponible, votre solde en attente, et un seul bouton pour retirer — "Retirer des fonds" déclenche un virement Stripe vers votre compte bancaire enregistré. Vous gardez la main sur chaque retrait, que vous pouvez annuler tant qu'il n'est pas finalisé.</p>
   </div>
+</section>
 
-  <div class="feat-card reveal">
+<section id="transactions-en-direct" class="feature-block alt reveal">
+  <div class="feature-inner">
+    <div class="feature-icon">⚡</div>
+    <div class="section-tag">Suivi</div>
+    <h2>Transactions en direct</h2>
+    <p class="feature-desc">Chaque paiement entrant apparaît en temps réel sur votre dashboard — filtrez par devise, statut ou date, et retrouvez l'historique complet quand vous en avez besoin. Vous êtes aussi notifié par email dès qu'un paiement arrive, qu'un lien est sur le point d'expirer, ou qu'un retrait est traité — sans avoir à garder l'œil sur l'écran en permanence.</p>
+  </div>
+</section>
+
+<section id="equipe-roles" class="feature-block reveal">
+  <div class="feature-inner">
+    <div class="feature-icon">👥</div>
     <div class="section-tag">Business</div>
-    <h3>Multi-utilisateurs</h3>
-    <p class="fc-sub">Ajoutez votre équipe avec des rôles distincts. Gérez les accès sans partager vos identifiants.</p>
-    <div class="user-row"><div class="user-av">AK</div><div><div class="user-name">Amadou Koné</div><div class="user-role">Propriétaire du compte</div></div><div class="user-badge">OWNER</div></div>
-    <div class="user-row"><div class="user-av">FD</div><div><div class="user-name">Fatou Diallo</div><div class="user-role">Gestion des liens & paiements</div></div><div class="user-badge">ADMIN</div></div>
-    <div class="user-row"><div class="user-av">MS</div><div><div class="user-name">Moussa Sarr</div><div class="user-role">Lecture seule — rapports</div></div><div class="user-badge">LECTURE</div></div>
+    <h2>Équipe &amp; rôles</h2>
+    <p class="feature-desc">Votre activité grandit, votre équipe aussi. Invitez vos collaborateurs avec des rôles distincts et des permissions définies précisément — qui peut voir les paiements, qui peut déclencher un retrait, qui n'a accès qu'en lecture — sans jamais partager vos identifiants personnels.</p>
+    <ul class="fc-list">
+      <li>Rôles Propriétaire, Admin et Lecture, personnalisables sur le plan Business</li>
+      <li>Permissions granulaires par capacité, pas tout ou rien</li>
+      <li>Chaque membre garde ses propres identifiants</li>
+    </ul>
   </div>
-
-  <div class="feat-card reveal">
-    <div class="section-tag">Sécurité</div>
-    <h3>Sécurité maximale</h3>
-    <p class="fc-sub">Chaque transaction est protégée. Votre argent ne bouge que si vous l'avez autorisé.</p>
-    <div class="sec-row"><div class="sec-ic">🔒</div><div><div class="sec-title">Double authentification & passkeys</div><div class="sec-desc">Protection avancée des accès</div></div><div class="sec-check">✓</div></div>
-    <div class="sec-row"><div class="sec-ic">🤖</div><div><div class="sec-title">Protection anti-fraude</div><div class="sec-desc">Analyse automatisée via Stripe Radar</div></div><div class="sec-check">✓</div></div>
-    <div class="sec-row"><div class="sec-ic">📋</div><div><div class="sec-title">KYC & conformité</div><div class="sec-desc">Vérification d'identité via Stripe Connect</div></div><div class="sec-check">✓</div></div>
-  </div>
-
-  <div class="feat-card reveal">
-    <div class="section-tag">Notifications</div>
-    <h3>Alertes instantanées</h3>
-    <p class="fc-sub">Soyez notifié par email dès qu'un paiement est reçu, qu'un lien expire ou qu'un retrait est traité.</p>
-    <div class="notif-row"><div class="notif-ic">💰</div><div><div class="notif-title">Paiement reçu</div><div class="notif-body">+390 USD de Diallo Textiles</div><div class="notif-time">Il y a 2 min · Email</div></div></div>
-    <div class="notif-row"><div class="notif-ic">⏰</div><div><div class="notif-title">Lien sur le point d'expirer</div><div class="notif-body">150 000 XOF · dans 1h</div><div class="notif-time">Il y a 5 min · Email</div></div></div>
-  </div>
-</div>
+</section>
 
 <section class="cta-section reveal">
   <div class="cta-inner">

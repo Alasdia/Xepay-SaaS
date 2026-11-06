@@ -54,7 +54,7 @@
 
 .params-tile-icon {
   font-size: 18px;
-  color: #f0b429;
+  color: #b45309;
   margin-top: 2px;
 }
 
@@ -72,7 +72,7 @@
 .params-tile-title {
   font-weight: 600;
   font-size: 14px;
-  color: rgba(240, 180, 41, 0.75);
+  color: rgba(180, 83, 9, 0.75);
 }
 
 .params-tile-sub {
@@ -705,8 +705,8 @@
 }
 
 @keyframes params-focus-flash {
-  0% { background: rgba(240, 180, 41, 0.25); }
-  70% { background: rgba(240, 180, 41, 0.25); }
+  0% { background: rgba(180, 83, 9, 0.25); }
+  70% { background: rgba(180, 83, 9, 0.25); }
   100% { background: transparent; }
 }
 
