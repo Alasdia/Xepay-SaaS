@@ -8,16 +8,20 @@
    bas/extérieur au lieu de le rogner. */
 #top-banner { position: fixed; top: 0; left: 0; width: 100%; height: 5vh; background: rgba(180, 83, 9, 0.9); z-index: 200; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; gap: 16px; }
 
-/* Fond par défaut (3%) de tous les modals Bootstrap de l'app n'ayant pas
-   déjà leur propre fond (voir les overrides #d1d5db -> teinte dans
-   commerce.css/dashboard.css/API.css/profil.css/multi-users.css/
-   transactions.css, qui gagnent par spécificité d'ID). Chargé une seule
-   fois dans sidebar.css car c'est le seul fichier toujours présent, quelle
-   que soit la vue SPA active (voir dashboard.html). Exclus volontairement
-   : #modalUpgrade (dark premium), le modal de partage de lien (bleu
-   #0d1b6e, liens.js) et .secret-modal-content (API.css) - thèmes
-   intentionnellement distincts, jamais ce fond générique. */
-.modal-content { background-color: rgba(180, 83, 9, 0.03); }
+/* Fond par défaut de tous les modals Bootstrap de l'app n'ayant pas déjà
+   leur propre fond (voir les overrides dans commerce.css/dashboard.css/
+   API.css/profil.css/multi-users.css/transactions.css, qui gagnent par
+   spécificité d'ID). Chargé une seule fois dans sidebar.css car c'est le
+   seul fichier toujours présent, quelle que soit la vue SPA active (voir
+   dashboard.html). Exclus volontairement : #modalUpgrade (dark premium),
+   le modal de partage de lien (bleu #0d1b6e, liens.js) et
+   .secret-modal-content (API.css) - thèmes intentionnellement distincts,
+   jamais ce fond générique.
+   #FDFAF8 = blanc + 3% de #b45309 (couleur de marque) DÉJÀ MÉLANGÉS - une
+   vraie rgba(180,83,9,0.03) comme fond de boîte de modal rendrait son
+   contenu quasi-transparent (le flou du backdrop derrière se voit à
+   travers), donc illisible - toujours une couleur opaque calculée. */
+.modal-content { background-color: #fdfaf8; }
 
 /* Zone de recherche (visuelle pour l'instant, non branchée à une recherche
    réelle) - fond blanc légèrement transparent pour rester lisible sur le

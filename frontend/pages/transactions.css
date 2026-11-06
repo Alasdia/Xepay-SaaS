@@ -143,9 +143,9 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
 .wallet-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 5px;}
 .wallet-label { font-size: 12px; color: rgba(255,255,255,0.5); font-weight: 600;}
 .wallet-value { font-size: 12px; color: white; text-align: right; flex: 1;}
-#withdrawModal .modal-content{ background:rgba(180, 83, 9, 0.03) !important; color:#111827 !important; border:1px solid #d1d5db !important; border-radius:0 !important; box-shadow:0 20px 50px rgba(0,0,0,.18) !important; }
+#withdrawModal .modal-content{ background:#fdfaf8 !important; color:#111827 !important; border:1px solid #d1d5db !important; border-radius:14px !important; box-shadow:0 20px 50px rgba(0,0,0,.18) !important; }
 /* Modal de détails (Paiements) : gris plutôt que blanc (bootstrap par défaut), coins carrés, box-shadow. */
-#detailModal .modal-content{ background:rgba(180, 83, 9, 0.03); border-radius:0; box-shadow:0 20px 50px rgba(0,0,0,.18); }
+#detailModal .modal-content{ background:#fdfaf8; border-radius:14px; box-shadow:0 20px 50px rgba(0,0,0,.18); }
 /* Centre ces modals sur #main-content (pas sur toute la fenêtre) : #sidebar
    est fixe à 18% de la largeur (voir sidebar.html) — réserver cette marge à
    gauche avant centrage évite que le modal paraisse décalé vers la sidebar.
