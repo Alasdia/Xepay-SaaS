@@ -29,6 +29,7 @@ from backend.services.rate_limit import allow_attempt, reset as reset_rate_limit
 from backend.services.security_log_service import log_security_event, resolve_log_workspace_id
 from backend.services import commission_service
 from backend.services import permission_service
+from backend.services import stripe_issuing_service
 from backend.security import hash_password, verify_password, decrypt_secret
 from math import ceil
 import requests
@@ -662,6 +663,88 @@ def create_onboarding_link(
     )
 
     return {"url": account_link.url}
+
+@router.post("/onboarding/issuing")
+def create_issuing_onboarding_link(
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_account_config")),
+    db: Session = Depends(get_db),
+):
+    """Équivalent de /onboarding, mais pour le compte Stripe Connect DÉDIÉ
+    à Issuing (dashboard: none) - voir backend/services/stripe_issuing_service.py.
+    Compte distinct de profile.stripe_account_id (Express) : Issuing n'est
+    pas compatible avec un compte Express, confirmé en sandbox le 2026-11-05."""
+    owner_id = membership.workspace_id
+
+    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
+    if not profile:
+        profile = Profile(user_id=owner_id)
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+
+    if not profile.stripe_issuing_account_id:
+        workspace_user = db.query(UserDB).filter(UserDB.id == owner_id).first()
+        try:
+            profile.stripe_issuing_account_id = stripe_issuing_service.create_issuing_account(
+                contact_email=workspace_user.email,
+                display_name=workspace_user.email,
+            )
+        except RuntimeError as e:
+            raise HTTPException(502, f"Erreur Stripe Issuing (création du compte) : {e}")
+        db.commit()
+
+    if not profile.stripe_issuing_program_id:
+        try:
+            program = stripe_issuing_service.ensure_issuing_program(profile.stripe_issuing_account_id)
+        except RuntimeError as e:
+            raise HTTPException(502, f"Erreur Stripe Issuing (programme) : {e}")
+        profile.stripe_issuing_program_id = program["id"]
+        db.commit()
+
+    try:
+        url = stripe_issuing_service.create_onboarding_link(
+            profile.stripe_issuing_account_id,
+            refresh_url="https://app.xepay.finance/profil.html",
+            return_url="https://app.xepay.finance/profil.html",
+        )
+    except stripe.error.StripeError as e:
+        raise HTTPException(400, f"Erreur Stripe : {e.user_message or str(e)}")
+
+    return {"url": url}
+
+@router.get("/stripe/issuing/status")
+def stripe_issuing_status(
+    membership: WorkspaceUser = Depends(require_capability("view_stripe_account_info")),
+    db: Session = Depends(get_db),
+):
+    """Statut réel de la capacité card_issuing (jamais exposé dans
+    account.capabilities classique - voir stripe_issuing_service). Le
+    frontend s'en sert pour savoir s'il peut appeler
+    /issuing/create-virtual-card ou doit encore renvoyer le marchand vers
+    /onboarding/issuing."""
+    owner_id = membership.workspace_id
+    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
+
+    if not profile or not profile.stripe_issuing_account_id or not profile.stripe_issuing_program_id:
+        return {"connected": False, "capability_active": False}
+
+    try:
+        platform_program = stripe_issuing_service.get_default_platform_program()
+        capability = stripe_issuing_service.get_issuing_capability_status(
+            profile.stripe_issuing_account_id, platform_program["capability"]
+        )
+    except RuntimeError as e:
+        raise HTTPException(502, f"Erreur Stripe Issuing (statut) : {e}")
+
+    requirements = capability.get("requirements", {})
+    return {
+        "connected": True,
+        "capability_active": capability.get("status") == "active",
+        "status": capability.get("status"),
+        "currently_due": requirements.get("currently_due", []),
+        "past_due": requirements.get("past_due", []),
+        "disabled_reason": requirements.get("disabled_reason"),
+    }
 
 @router.get("/stripe/login-link")
 def get_login_link(

@@ -280,6 +280,16 @@ class Profile(Base):
     # pleinement opérationnel (voir webhook/stripe.py).
     verification_email_sent = Column(Boolean, default=False)
 
+    # Compte Stripe Connect DÉDIÉ à Issuing (dashboard: none), distinct de
+    # stripe_account_id (Express, paiements/payouts) - Issuing n'est pas
+    # compatible avec un compte Express, voir
+    # backend/services/stripe_issuing_service.py. Même marchand, deux
+    # comptes Stripe séparés.
+    stripe_issuing_account_id = Column(String, nullable=True, index=True)
+    # Programme Issuing (banque partenaire + réseau) créé sur ce compte -
+    # nécessaire pour que la capacité card_issuing soit demandée.
+    stripe_issuing_program_id = Column(String, nullable=True)
+
 class UserDB(Base):
     __tablename__ = "users"
 
