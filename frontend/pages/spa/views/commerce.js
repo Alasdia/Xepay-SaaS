@@ -6925,10 +6925,21 @@ function createCardModalHtml() {
                 <form id="create-card-form">
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="card-type">Type</label>
-                            <select id="card-type">
-                                <option value="individual">Particulier</option>
-                                <option value="company">Entreprise (LLC)</option>
+                            <label for="card-source">Porteur de la carte</label>
+                            <select id="card-source">
+                                <option value="representative">Moi-même (représentant légal)</option>
+                                <!-- "Cette entreprise (LLC)" masqué temporairement : le
+                                     programme Issuing actuel de la plateforme
+                                     (card_issuing_prepaid_card_cross_river) refuse
+                                     catégoriquement type="company" ("Cardholder type
+                                     must be `individual`.", confirmé le 2026-11-06).
+                                     Logique JS (applySource, effectiveHolderType) et
+                                     endpoint backend (cardholder-defaults.company)
+                                     volontairement conservés intacts pour réactivation
+                                     immédiate dès qu'un programme adapté sera
+                                     disponible - ne pas les supprimer. -->
+                                <!-- <option value="company">Cette entreprise (LLC)</option> -->
+                                <option value="other">Une autre personne</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -6939,6 +6950,24 @@ function createCardModalHtml() {
                             </select>
                         </div>
                     </div>
+                    <!-- "Une autre personne" uniquement : aucune donnée Stripe
+                         n'existe pour quelqu'un qui n'est pas déjà enregistré
+                         sur le compte (ni représentant, ni l'entreprise elle-
+                         même) - formulaire manuel comme avant, avec le choix
+                         du type d'origine conservé. -->
+                    <div class="form-group" id="card-type-row" style="display:none;">
+                        <label for="card-type">Type de porteur</label>
+                        <select id="card-type">
+                            <option value="individual">Particulier</option>
+                            <!-- "Entreprise (LLC)" masqué temporairement, même
+                                 restriction de programme Issuing que ci-dessus -
+                                 voir commentaire sur #card-source. -->
+                            <!-- <option value="company">Entreprise (LLC)</option> -->
+                        </select>
+                    </div>
+                    <p class="form-hint" id="card-prefill-hint" style="display:none;">
+                        Champs pré-remplis depuis les informations déjà fournies à Stripe - vérifiez-les avant d'émettre la carte.
+                    </p>
                     <div class="form-group">
                         <label for="card-name">Nom du porteur / LLC</label>
                         <input type="text" id="card-name" required>
@@ -6997,25 +7026,122 @@ function wireCreateCardModal(root, openTriggers, onCreated) {
 
     const modal = root.querySelector("#create-card-modal");
     const form = root.querySelector("#create-card-form");
+    const sourceSelect = root.querySelector("#card-source");
+    const typeRow = root.querySelector("#card-type-row");
     const typeSelect = root.querySelector("#card-type");
+    const prefillHint = root.querySelector("#card-prefill-hint");
     const termsRow = root.querySelector("#card-accept-terms-row");
     const termsCheckbox = root.querySelector("#card-accept-terms");
+    const nameEl = root.querySelector("#card-name");
+    const emailEl = root.querySelector("#card-email");
+    const phoneEl = root.querySelector("#card-phone");
+    const addressEl = root.querySelector("#card-address");
+    const cityEl = root.querySelector("#card-city");
+    const stateEl = root.querySelector("#card-state");
+    const postalEl = root.querySelector("#card-postal");
+
+    // Mis en cache pour la durée de vie de cette vue (évite un appel
+    // réseau à chaque ouverture du modal) - voir GET
+    // /issuing/cardholder-defaults, jamais appelé directement depuis ce
+    // fichier sans passer par apiFetch/notre backend.
+    let cardholderDefaults = null;
+
+    // Le type Stripe réel à envoyer dépend du choix de porteur : seul
+    // "Une autre personne" laisse le marchand choisir manuellement (c'est
+    // le seul cas où Stripe n'a aucune donnée pour ce porteur).
+    function effectiveHolderType() {
+        if (sourceSelect.value === "representative") return "individual";
+        if (sourceSelect.value === "company") return "company";
+        return typeSelect.value;
+    }
 
     // Le ToS Issuing du porteur n'existe, côté Stripe, que pour les
     // porteurs individuels (voir backend/routes/issuing.py) - masqué et
-    // non obligatoire pour "Entreprise (LLC)", sinon la case bloquerait la
-    // soumission sans que le backend n'en ait besoin.
+    // non obligatoire pour un porteur "company", sinon la case bloquerait
+    // la soumission sans que le backend n'en ait besoin.
     function syncTermsRowToType() {
-        const isIndividual = typeSelect.value === "individual";
+        const isIndividual = effectiveHolderType() === "individual";
         termsRow.style.display = isIndividual ? "" : "none";
         termsCheckbox.required = isIndividual;
         if (!isIndividual) termsCheckbox.checked = false;
     }
+
+    function clearPersonalFields() {
+        [nameEl, emailEl, phoneEl, addressEl, cityEl, stateEl, postalEl].forEach(el => { el.value = ""; });
+    }
+
+    // Pré-remplit les champs visibles du formulaire à partir des données
+    // déjà fournies à Stripe - jamais une soumission silencieuse, le
+    // marchand voit et peut corriger chaque champ avant d'émettre la carte.
+    async function applySource() {
+        const source = sourceSelect.value;
+        typeRow.style.display = source === "other" ? "" : "none";
+        prefillHint.style.display = source === "other" ? "none" : "";
+
+        if (source === "other") {
+            clearPersonalFields();
+            syncTermsRowToType();
+            return;
+        }
+
+        try {
+            if (!cardholderDefaults) {
+                const response = await apiFetch("/issuing/cardholder-defaults");
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || "Impossible de récupérer les informations du compte");
+                }
+                cardholderDefaults = data;
+            }
+        } catch (error) {
+            showToast(error.message || "Erreur lors de la récupération des informations du compte", "error");
+            sourceSelect.value = "other";
+            typeRow.style.display = "";
+            prefillHint.style.display = "none";
+            clearPersonalFields();
+            syncTermsRowToType();
+            return;
+        }
+
+        const info = source === "representative" ? cardholderDefaults.representative : cardholderDefaults.company;
+
+        if (!info) {
+            // Jamais vu en pratique (un compte Issuing actif a toujours un
+            // représentant), mais si Stripe ne renvoie rien, on retombe sur
+            // la saisie manuelle plutôt que de laisser le formulaire vide
+            // sans explication.
+            showToast("Informations indisponibles pour ce choix - saisie manuelle nécessaire", "error");
+            sourceSelect.value = "other";
+            typeRow.style.display = "";
+            prefillHint.style.display = "none";
+            clearPersonalFields();
+            syncTermsRowToType();
+            return;
+        }
+
+        nameEl.value = source === "representative"
+            ? `${info.first_name || ""} ${info.last_name || ""}`.trim()
+            : (info.name || "");
+        emailEl.value = info.email || "";
+        // Le téléphone n'est pas toujours connu de Stripe (voir backend) -
+        // reste vide et obligatoire dans ce cas, comme en saisie manuelle.
+        phoneEl.value = info.phone || "";
+        const addr = info.address || {};
+        addressEl.value = addr.line1 || "";
+        cityEl.value = addr.city || "";
+        stateEl.value = addr.state || "";
+        postalEl.value = addr.postal_code || "";
+
+        syncTermsRowToType();
+    }
+
+    sourceSelect.addEventListener("change", applySource);
     typeSelect.addEventListener("change", syncTermsRowToType);
 
     function openModal() {
         form.reset();
-        syncTermsRowToType();
+        sourceSelect.value = "representative";
+        applySource();
         modal.classList.add("open");
     }
 
@@ -7037,17 +7163,17 @@ function wireCreateCardModal(root, openTriggers, onCreated) {
             const response = await apiFetch("/issuing/create-virtual-card", {
                 method: "POST",
                 body: {
-                    type: root.querySelector("#card-type").value,
+                    type: effectiveHolderType(),
                     currency: root.querySelector("#card-currency").value,
-                    name: root.querySelector("#card-name").value.trim(),
-                    email: root.querySelector("#card-email").value.trim(),
-                    phone_number: root.querySelector("#card-phone").value.trim(),
-                    accepted_terms: root.querySelector("#card-accept-terms").checked,
+                    name: nameEl.value.trim(),
+                    email: emailEl.value.trim(),
+                    phone_number: phoneEl.value.trim(),
+                    accepted_terms: termsCheckbox.checked,
                     limit_amount: Math.round(limitUnits * 100),
-                    address_line1: root.querySelector("#card-address").value.trim(),
-                    city: root.querySelector("#card-city").value.trim(),
-                    state: root.querySelector("#card-state").value.trim(),
-                    postal_code: root.querySelector("#card-postal").value.trim(),
+                    address_line1: addressEl.value.trim(),
+                    city: cityEl.value.trim(),
+                    state: stateEl.value.trim(),
+                    postal_code: postalEl.value.trim(),
                     country: "US",
                 },
             });

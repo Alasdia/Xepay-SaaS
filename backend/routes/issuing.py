@@ -188,6 +188,90 @@ def list_issuing_transactions(
     }
 
 
+def _address_dict(address: dict | None) -> dict | None:
+    """address est déjà un dict primitif ici (issu d'un .to_dict() plus
+    haut) - jamais un StripeObject brut. Un champ non collecté par Stripe
+    est carrément ABSENT du dict (pas juste null) : .get() est donc
+    obligatoire, un accès direct lèverait un KeyError."""
+    if not address:
+        return None
+    return {
+        "line1": address.get("line1"),
+        "line2": address.get("line2"),
+        "city": address.get("city"),
+        "state": address.get("state"),
+        "postal_code": address.get("postal_code"),
+        "country": address.get("country"),
+    }
+
+
+@router.get("/issuing/cardholder-defaults")
+def get_cardholder_defaults(
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("manage_virtual_cards"))
+):
+    """Pré-remplissage du modal "Émettre une carte" à partir des données
+    déjà collectées par Stripe pendant l'onboarding Issuing (KYC) - évite
+    de redemander au marchand des informations qu'il a déjà fournies.
+
+    Utilise EXCLUSIVEMENT le compte Issuing actif DE CE marchand, résolu
+    côté backend (_get_active_issuing_account) - le frontend ne fournit et
+    n'accepte jamais de stripe_account, et n'appelle jamais Stripe
+    directement : tout passe par cet endpoint.
+
+    Ne renvoie que ce qui est utile à un Cardholder (nom/email/téléphone/
+    adresse) - jamais dob, id_number, tax_id ou autre donnée sensible non
+    nécessaire ici, même si Stripe les renvoie dans les objets sous-jacents.
+
+    Important (découvert en implémentant) : un champ Stripe non collecté
+    est ABSENT de l'objet, pas juste null - un accès direct en attribut
+    (person.phone) lève une AttributeError dans ce cas précis avec le SDK
+    stripe installé ici (StripeObject n'est pas un dict, voir le bug
+    api_key corrigé plus haut dans ce fichier). On convertit donc TOUT en
+    dict primitif via .to_dict() avant la moindre lecture de champ, jamais
+    d'accès direct en attribut sur un StripeObject optionnel."""
+    owner_id = membership.workspace_id
+    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
+    issuing_account_id = _get_active_issuing_account(profile)
+
+    try:
+        account = stripe.Account.retrieve(issuing_account_id).to_dict()
+        persons = [p.to_dict() for p in stripe.Account.list_persons(issuing_account_id, limit=10).data]
+    except stripe.error.StripeError as e:
+        raise HTTPException(400, f"Erreur Stripe Issuing : {e.user_message or str(e)} (request_id: {e.request_id})")
+
+    representative = next(
+        (p for p in persons if (p.get("relationship") or {}).get("representative")),
+        None,
+    )
+    company = account.get("company") or {}
+
+    rep_email = representative.get("email") if representative else None
+    # Le téléphone du représentant n'est pas toujours collecté par
+    # l'onboarding Stripe hébergé - peut être absent, le champ reste alors
+    # vide et obligatoire côté formulaire (validation E.164 existante).
+    rep_phone = representative.get("phone") if representative else None
+
+    return {
+        "representative": {
+            "first_name": representative.get("first_name"),
+            "last_name": representative.get("last_name"),
+            "email": rep_email,
+            "phone": rep_phone,
+            "address": _address_dict(representative.get("address")),
+        } if representative else None,
+        "company": {
+            "name": company.get("name"),
+            # Repli sur l'email/téléphone du représentant si l'entreprise
+            # n'a pas le sien - jamais l'inverse (le représentant est une
+            # vraie personne, pas un repli acceptable pour un autre usage).
+            "email": account.get("email") or rep_email,
+            "phone": company.get("phone") or rep_phone,
+            "address": _address_dict(company.get("address")),
+        },
+    }
+
+
 @router.post("/issuing/create-virtual-card")
 def create_virtual_card(
     cardholder_data: dict,
