@@ -6932,7 +6932,7 @@ function createCardModalHtml() {
                                      programme Issuing actuel de la plateforme
                                      (card_issuing_prepaid_card_cross_river) refuse
                                      catégoriquement type="company" ("Cardholder type
-                                     must be `individual`.", confirmé le 2026-11-06).
+                                     must be individual.", confirmé le 2026-11-06).
                                      Logique JS (applySource, effectiveHolderType) et
                                      endpoint backend (cardholder-defaults.company)
                                      volontairement conservés intacts pour réactivation
