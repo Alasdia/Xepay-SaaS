@@ -2544,11 +2544,23 @@ function vertoStatusLabel(data) {
 // son fondateur unique, cas très majoritaire chez nos marchands UEMOA.
 // Ajouter plusieurs associés est une amélioration future, pas nécessaire
 // pour débloquer l'onboarding.
-function vertoOnboardingFormHtml() {
-  return `
-    <div>
-      <p class="params-subsection-sub" style="max-width:100%;">Ces informations sont transmises à Verto (notre partenaire bancaire pour les virements locaux) afin de créer et vérifier votre sous-compte. Elles n'incluent aucun document pour l'instant - Verto peut vous en demander par e-mail si nécessaire.</p>
-      <form id="p-verto-onboarding-form" class="d-flex flex-column gap-2 mb-3">
+//
+// Formulaire déplacé dans un modal (paramsVertoOnboardingModal, injecté
+// une fois dans document.body par mountRetraits - même pattern que
+// TWOFA_MODAL_HTML/CANCEL_SUB_MODAL_HTML) : la section elle-même ne
+// montre plus que titre/sous-titre/bouton, voir vertoBodyHtml.
+const VERTO_ONBOARDING_MODAL_HTML = `
+<div class="modal fade" id="paramsVertoOnboardingModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 14px;">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold text-dark mb-0">Démarrer mon enregistrement</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <p id="p-verto-onboarding-rejected-notice" class="text-warning small mb-3" style="display:none;"><i class="fa-solid fa-triangle-exclamation"></i> Votre précédente demande a été refusée. Vous pouvez soumettre un nouveau dossier ci-dessous.</p>
+        <p class="text-muted small mb-3">Ces informations sont transmises à Verto (notre partenaire bancaire pour les virements locaux) afin de créer et vérifier votre sous-compte. Elles n'incluent aucun document pour l'instant - Verto peut vous en demander par e-mail si nécessaire.</p>
+        <form id="p-verto-onboarding-form" class="d-flex flex-column gap-2 mb-3">
         <div class="row g-2">
           <div class="col-6">
             <label class="form-label text-dark fw-bold" style="font-size: 11px;">Pays de la société</label>
@@ -2624,11 +2636,16 @@ function vertoOnboardingFormHtml() {
             <input type="number" name="rep_ownership" min="1" max="100" value="100" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
           </div>
         </div>
-      </form>
-      <button type="button" id="p-btn-start-verto" class="create-client-btn mt-2">Démarrer mon enregistrement</button>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" id="p-btn-start-verto" class="create-client-btn">Démarrer mon enregistrement</button>
+      </div>
     </div>
-  `;
-}
+  </div>
+</div>
+`;
 
 function vertoUsdAccountHtml(data) {
   return `
@@ -2697,11 +2714,13 @@ function vertoBodyHtml() {
 
   if (status === "not_started" || status === "rejected") {
     return `
-      <div class="params-subsection-header">
-        <h6 class="params-subsection-title mb-0">Démarrer mon enregistrement</h6>
+      <div style="background: rgba(180, 83, 9, 0.1); border-radius: 12px; padding: 20px;">
+        <div class="params-subsection-header">
+          <h6 class="params-subsection-title mb-0">Démarrer mon enregistrement</h6>
+        </div>
+        <p class="params-subsection-sub" style="max-width:100%;">Ces informations sont transmises à Verto (notre partenaire bancaire pour les virements locaux) afin de créer et vérifier votre sous-compte. Elles n'incluent aucun document pour l'instant - Verto peut vous en demander par e-mail si nécessaire.</p>
+        <button type="button" id="p-btn-open-verto-onboarding" class="create-client-btn">Démarrer mon enregistrement</button>
       </div>
-      ${status === "rejected" ? `<p class="params-subsection-sub"><span class="text-warning"><i class="fa-solid fa-triangle-exclamation"></i> Votre précédente demande a été refusée.</span> Vous pouvez soumettre un nouveau dossier ci-dessous.</p>` : ""}
-      ${vertoOnboardingFormHtml()}
     `;
   }
 
@@ -2815,6 +2834,9 @@ async function startVertoOnboarding() {
     const data = await res.json();
     if (res.ok) {
       showToast("Dossier envoyé - en cours de vérification", "success");
+      const modalEl = document.getElementById("paramsVertoOnboardingModal");
+      const instance = modalEl && bootstrap.Modal.getInstance(modalEl);
+      if (instance) instance.hide();
       await loadVertoStatus();
     } else {
       showToast(data.detail || "Erreur lors de l'enregistrement", "error");
@@ -2859,9 +2881,16 @@ async function registerVertoBeneficiary() {
 }
 
 function mountRetraits(on) {
+  document.body.insertAdjacentHTML("beforeend", VERTO_ONBOARDING_MODAL_HTML);
+  on(document.getElementById("p-btn-start-verto"), "click", () => startVertoOnboarding());
+
   const body = document.getElementById("p-verto-body");
   on(body, "click", (e) => {
-    if (e.target.closest("#p-btn-start-verto")) startVertoOnboarding();
+    if (e.target.closest("#p-btn-open-verto-onboarding")) {
+      const notice = document.getElementById("p-verto-onboarding-rejected-notice");
+      if (notice) notice.style.display = vertoStatusData && vertoStatusData.status === "rejected" ? "" : "none";
+      bootstrap.Modal.getOrCreateInstance(document.getElementById("paramsVertoOnboardingModal")).show();
+    }
     if (e.target.closest("#p-btn-register-beneficiary")) registerVertoBeneficiary();
     if (e.target.closest("#p-verto-refresh-link")) loadVertoStatus();
     if (e.target.closest("#p-verto-copy-account")) {
@@ -2871,6 +2900,20 @@ function mountRetraits(on) {
     if (e.target.closest("#p-verto-open-stripe")) goToStripeLoginLink();
   });
   loadVertoStatus();
+
+  return () => {
+    const modalEl = document.getElementById("paramsVertoOnboardingModal");
+    const instance = modalEl && bootstrap.Modal.getInstance(modalEl);
+    if (instance) {
+      instance.hide();
+      instance.dispose();
+      document.body.classList.remove("modal-open");
+      document.body.style.removeProperty("overflow");
+      document.body.style.removeProperty("padding-right");
+      document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
+    }
+    modalEl?.remove();
+  };
 }
 
 // Trois sections distinctes, chacune indépendante (pas de card-epay —
