@@ -2704,38 +2704,53 @@ function vertoBodyHtml() {
   const data = vertoStatusData;
   const status = (data && data.status) || "not_started";
 
-  let stepHtml;
   if (status === "not_started" || status === "rejected") {
-    stepHtml = vertoOnboardingFormHtml();
-  } else if (status === "pending") {
-    stepHtml = `<p class="text-muted">Votre dossier est en cours de vérification par Verto. Vous recevrez une notification dès qu'il sera approuvé - généralement sous quelques jours ouvrés.</p>`;
-  } else if (status === "approved" && !data.stripe_external_account_linked) {
-    stepHtml = vertoUsdAccountHtml(data);
-  } else if (status === "approved" && !data.beneficiary_registered) {
-    stepHtml = vertoBeneficiaryFormHtml();
-  } else if (status === "approved" && data.beneficiary_registered) {
-    stepHtml = `
-      <div class="params-status-blocks">
-        <div class="params-status-box">
-          <h6>Compte bancaire local</h6>
-          <div class="params-status-value">${data.beneficiary_bank_name || "—"} •••• ${data.beneficiary_bank_iban_last4 || ""}</div>
-        </div>
+    return `
+      <div class="params-subsection-header">
+        <h6 class="params-subsection-title mb-0">Démarrer mon enregistrement</h6>
       </div>
-      <p class="text-muted small mt-2">Vos retraits locaux sont prêts : déclenchez-les depuis "Retirer des fonds" (vue Solde).</p>
+      ${status === "rejected" ? `<p class="params-subsection-sub"><span class="text-warning"><i class="fa-solid fa-triangle-exclamation"></i> Votre précédente demande a été refusée.</span> Vous pouvez soumettre un nouveau dossier ci-dessous.</p>` : ""}
+      ${vertoOnboardingFormHtml()}
     `;
-  } else {
-    stepHtml = `<p class="text-muted">Statut : ${vertoStatusLabel(data)}</p>`;
   }
 
-  return `
-    <div class="params-subsection-header">
-      <h6 class="params-subsection-title mb-0">Statut</h6>
-      <div class="params-status-box" style="min-width:160px;">
-        <div class="params-status-value">${vertoStatusLabel(data)}</div>
+  if (status === "pending") {
+    return `
+      <div class="params-subsection-header">
+        <h6 class="params-subsection-title mb-0">Vérification en cours</h6>
       </div>
-    </div>
-    <div style="margin-top:16px;">${stepHtml}</div>
-  `;
+      <p class="params-subsection-sub">Votre dossier est en cours de vérification par Verto. Vous recevrez une notification dès qu'il sera approuvé - généralement sous quelques jours ouvrés.</p>
+    `;
+  }
+
+  if (status === "approved" && !data.stripe_external_account_linked) {
+    return `
+      <div class="params-subsection-header">
+        <h6 class="params-subsection-title mb-0">Lier votre compte bancaire USD</h6>
+      </div>
+      ${vertoUsdAccountHtml(data)}
+    `;
+  }
+
+  if (status === "approved" && !data.beneficiary_registered) {
+    return `
+      <div class="params-subsection-header">
+        <h6 class="params-subsection-title mb-0">Enregistrer votre compte bancaire local</h6>
+      </div>
+      ${vertoBeneficiaryFormHtml()}
+    `;
+  }
+
+  if (status === "approved" && data.beneficiary_registered) {
+    return `
+      <div class="params-subsection-header">
+        <h6 class="params-subsection-title mb-0">Compte bancaire local prêt</h6>
+      </div>
+      <p class="params-subsection-sub">${data.beneficiary_bank_name || "—"} •••• ${data.beneficiary_bank_iban_last4 || ""} — déclenchez vos retraits locaux depuis "Retirer des fonds" (vue Solde).</p>
+    `;
+  }
+
+  return `<p class="text-muted">Statut : ${vertoStatusLabel(data)}</p>`;
 }
 
 async function loadVertoStatus() {
