@@ -92,7 +92,15 @@ def list_virtual_cards(
                 "type": card.type,
                 "cardholder_name": card.cardholder.name if card.cardholder else None,
                 "cardholder_email": card.cardholder.email if card.cardholder else None,
-                "spending_limits": card.spending_controls.spending_limits if card.spending_controls else [],
+                # Extraction explicite, champ par champ - passer les objets
+                # Stripe bruts (StripeObject) tels quels fait fuiter leur
+                # état interne lors de la sérialisation JSON, y compris la
+                # clé API utilisée pour la requête (_requestor._options.
+                # api_key) : confirmé le 2026-11-06 avec jsonable_encoder.
+                "spending_limits": [
+                    {"amount": sl.amount, "interval": sl.interval}
+                    for sl in ((card.spending_controls.spending_limits if card.spending_controls else None) or [])
+                ],
             }
             for card in cards.data
         ],

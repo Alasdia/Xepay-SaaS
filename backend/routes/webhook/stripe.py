@@ -507,6 +507,28 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                 if phone:
                     profile.phone = phone
 
+                # Détecte que le marchand a ajouté lui-même le compte
+                # bancaire Verto sur son Dashboard Express (option A, voir
+                # routes/payout.py - Xepay n'a pas le droit de le créer à
+                # sa place). Rapprochement par last4 + routing_number :
+                # Stripe ne renvoie jamais le numéro de compte complet sur
+                # un external_account bank_account, seulement `last4`.
+                if (
+                    not profile.stripe_external_account_id
+                    and profile.verto_usd_account_number
+                    and getattr(account, "external_accounts", None)
+                ):
+                    expected_last4 = profile.verto_usd_account_number[-4:]
+                    for ba in account.external_accounts.data:
+                        if ba.object != "bank_account":
+                            continue
+                        if ba.last4 == expected_last4 and (
+                            not profile.verto_usd_bank_code
+                            or ba.routing_number == profile.verto_usd_bank_code
+                        ):
+                            profile.stripe_external_account_id = ba.id
+                            break
+
                 db.commit()
 
                 user = db.query(UserDB).filter(
@@ -552,11 +574,16 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                 ).first()
 
                 if event_type == "payout.paid":
-                    wd.status = "success"
+                    # "payout.paid" confirme seulement que Stripe a envoyé
+                    # les fonds vers l'external_account Verto - PAS que le
+                    # virement final vers la banque locale du marchand a
+                    # eu lieu (voir webhook/verto.py pour la vraie
+                    # confirmation finale, "success"/"failed").
+                    wd.status = "stripe_sent"
 
                     if tx:
-                        tx.status = "success"
-                        tx.description = "Retrait réussi"
+                        tx.status = "stripe_sent"
+                        tx.description = "Retrait en cours (vers Verto)"
 
                 else:
                     wd.status = "failed"
@@ -578,17 +605,14 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                     UserDB.id == wd.user_id
                 ).first()
 
-                if merchant and merchant.email:
-                    if event_type == "payout.paid":
-                        if is_notification_enabled(merchant, "virement.payout_success"):
-                            send_payout_success_email(
-                                merchant.email, wd.amount
-                            )
-                    else:
-                        if is_notification_enabled(merchant, "virement.payout_failed"):
-                            send_payout_failed_email(
-                                merchant.email, wd.amount
-                            )
+                # L'email de succès n'est envoyé qu'à la confirmation finale
+                # du virement local (voir webhook/verto.py) - "payout.paid"
+                # n'est plus qu'une étape intermédiaire.
+                if merchant and merchant.email and event_type != "payout.paid":
+                    if is_notification_enabled(merchant, "virement.payout_failed"):
+                        send_payout_failed_email(
+                            merchant.email, wd.amount
+                        )
         # --------------------------------------------------
         # FACTURES CONNECT
         # --------------------------------------------------
@@ -1188,7 +1212,11 @@ def create_merchant_customer(
             "name": customer.name,
             "email": customer.email,
             "phone": customer.phone,
-            "address": customer.address,
+            # customer.address est un StripeObject imbriqué - passé tel
+            # quel, sa sérialisation JSON fuite _requestor._options.api_key
+            # (confirmé le 2026-11-06, même bug que spending_limits dans
+            # issuing.py). .to_dict() convertit récursivement en primitifs.
+            "address": customer.address.to_dict() if customer.address else None,
         }
     except stripe.error.StripeError as e:
         raise HTTPException(
@@ -1226,7 +1254,7 @@ def update_merchant_customer(
             "name": customer.name,
             "email": customer.email,
             "phone": customer.phone,
-            "address": customer.address,
+            "address": customer.address.to_dict() if customer.address else None,
         }
     except stripe.error.StripeError as e:
         raise HTTPException(
@@ -1409,13 +1437,17 @@ def list_merchant_customers(
                 # le KPI "Soldes restants" de la sous-vue Clients.
                 "balance": customer.balance,
 
-                "address": customer.address,
-                "shipping": customer.shipping,
+                # StripeObject imbriqués, jamais passés bruts (fuite
+                # _requestor._options.api_key à la sérialisation JSON,
+                # confirmé le 2026-11-06) - .to_dict() convertit en
+                # primitifs, comme déjà fait pour metadata ci-dessous.
+                "address": customer.address.to_dict() if customer.address else None,
+                "shipping": customer.shipping.to_dict() if customer.shipping else None,
 
                 "country": country,
 
                 "invoice_prefix": customer.invoice_prefix,
-                "invoice_settings": customer.invoice_settings,
+                "invoice_settings": customer.invoice_settings.to_dict() if customer.invoice_settings else None,
 
                 "metadata": _enrich_metadata(
                     customer.metadata.to_dict() if customer.metadata else {},
@@ -1532,7 +1564,10 @@ def create_merchant_product(
                 "id": price.id,
                 "unit_amount": price.unit_amount,
                 "currency": price.currency,
-                "recurring": price.recurring,
+                # StripeObject imbriqué (null si prix non récurrent) -
+                # jamais passé brut, voir commentaire sur customer.address
+                # plus haut dans ce fichier.
+                "recurring": price.recurring.to_dict() if price.recurring else None,
             },
         }
     except stripe.error.StripeError as e:
