@@ -12,4 +12,11 @@
    derrière la modale soit identique sur les 7 vues, sans dépendre d'une
    règle dupliquée dans le CSS de chaque vue. Le modal lui-même (au-dessus
    du backdrop, z-index 999999) n'est jamais concerné par ce flou. */
+/* Bootstrap applique sa propre opacité de fade (.modal-backdrop.show {
+   opacity: .5 } par défaut) EN PLUS de la couleur ci-dessous - sans
+   l'neutraliser à 1, le flou/la teinte réels sont deux fois plus faibles
+   que dans les overlays custom (Commerce/Dashboard/API/Multi-utilisateurs,
+   qui n'ont pas cette couche d'opacité Bootstrap), d'où l'incohérence
+   entre vues. */
 .modal-backdrop { background: rgba(107, 114, 128, 0.15) !important; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.modal-backdrop.show { opacity: 1 !important; }
