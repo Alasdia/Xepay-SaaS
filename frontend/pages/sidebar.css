@@ -6,7 +6,7 @@
    deux petits carrés sous le bandeau, masqués en quart de cercle via
    radial-gradient, pour obtenir une courbe qui prolonge le bandeau vers le
    bas/extérieur au lieu de le rogner. */
-#top-banner { position: fixed; top: 0; left: 0; width: 100%; height: 5vh; background: rgba(180, 83, 9, 0.5); z-index: 200; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; gap: 16px; }
+#top-banner { position: fixed; top: 0; left: 0; width: 100%; height: 5vh; background: rgba(180, 83, 9, 0.9); z-index: 200; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; gap: 16px; }
 
 /* Zone de recherche (visuelle pour l'instant, non branchée à une recherche
    réelle) - fond blanc légèrement transparent pour rester lisible sur le
@@ -24,8 +24,8 @@
 #top-banner #settings-gear-btn:hover { transform: rotate(20deg); }
 #top-banner::before,
 #top-banner::after { content: ""; position: absolute; top: 100%; width: 12px; height: 12px; z-index: 200; }
-#top-banner::before { left: 0; background: radial-gradient(circle at 100% 100%, transparent 12px, rgba(180, 83, 9, 0.5) 12px); }
-#top-banner::after { right: 0; background: radial-gradient(circle at 0 100%, transparent 12px, rgba(180, 83, 9, 0.5) 12px); }
+#top-banner::before { left: 0; background: radial-gradient(circle at 100% 100%, transparent 12px, rgba(180, 83, 9, 0.9) 12px); }
+#top-banner::after { right: 0; background: radial-gradient(circle at 0 100%, transparent 12px, rgba(180, 83, 9, 0.9) 12px); }
 #sidebar{ background:#ffffff !important; border-right:1px solid #e5e7eb; box-shadow:0 2px 20px rgba(0,0,0,.04); z-index: 100; }
 #sidebar h4{ color:#111827 !important; }
 #sidebar small{ color:#6b7280 !important; }
