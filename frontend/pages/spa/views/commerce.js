@@ -6582,21 +6582,27 @@ function ensureCardIssuingStyles() {
         }
         .issuing-cards-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-            gap: 16px;
+            /* Pistes de taille FIXE (pas 1fr) : une vraie carte ne s'étire
+               jamais pour remplir l'espace disponible - auto-fill laisse le
+               reste de la ligne vide plutôt que d'élargir les tuiles. */
+            grid-template-columns: repeat(auto-fill, 300px);
+            gap: 18px;
             margin-bottom: 28px;
         }
         .issuing-card-tile {
             position: relative;
+            width: 300px;
+            /* Ratio ISO/IEC 7810 ID-1 (85,60 x 53,98 mm) - le format
+               physique réel d'une carte bancaire, pas une tuile libre. */
+            aspect-ratio: 1.586 / 1;
             border-radius: 14px;
-            padding: 20px;
-            min-height: 150px;
+            padding: 18px;
             color: #ffffff;
             background: linear-gradient(135deg, #111827 0%, #1f2937 55%, #374151 100%);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            box-shadow: 0 4px 14px rgba(17,24,39,0.18);
+            box-shadow: 0 6px 16px rgba(17,24,39,0.22);
         }
         .issuing-card-tile.is-inactive {
             opacity: .55;
@@ -6607,13 +6613,34 @@ function ensureCardIssuingStyles() {
             align-items: flex-start;
         }
         .issuing-card-brand img {
-            height: 22px;
+            height: 20px;
+        }
+        .issuing-card-number-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            margin: 12px 0 10px;
         }
         .issuing-card-number {
             font-family: "Space Mono", monospace;
-            font-size: 17px;
-            letter-spacing: 2px;
-            margin: 18px 0 14px;
+            font-size: 15px;
+            letter-spacing: 1.5px;
+            white-space: nowrap;
+        }
+        .issuing-card-reveal-btn {
+            flex-shrink: 0;
+            width: 26px;
+            height: 26px;
+            border: none;
+            border-radius: 7px;
+            background: rgba(255,255,255,0.12);
+            color: #ffffff;
+            cursor: pointer;
+            transition: background .15s ease;
+        }
+        .issuing-card-reveal-btn:hover {
+            background: rgba(255,255,255,0.22);
         }
         .issuing-card-bottom {
             display: flex;
@@ -6623,8 +6650,12 @@ function ensureCardIssuingStyles() {
         }
         .issuing-card-holder {
             text-transform: uppercase;
-            font-size: 13px;
+            font-size: 12.5px;
             font-weight: 600;
+            max-width: 190px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .issuing-card-exp {
             opacity: .85;
@@ -6634,8 +6665,11 @@ function ensureCardIssuingStyles() {
             opacity: .85;
         }
         .issuing-card-limit {
-            margin-top: 10px;
-            font-size: 12px;
+            margin-top: 8px;
+            font-size: 11px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
             opacity: .85;
         }
         .issuing-chart-wrap {
@@ -6666,11 +6700,32 @@ function ensureCardIssuingStyles() {
             align-items: center;
             margin-bottom: 14px;
         }
+        .issuing-reveal-row {
+            margin-bottom: 14px;
+        }
+        .issuing-reveal-row label {
+            display: block;
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+        .issuing-reveal-field {
+            min-height: 24px;
+            padding: 10px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+        .issuing-reveal-row-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
     `;
     document.head.appendChild(style);
 }
 
-function renderCardsGrid(gridEl, cards, onCreateClick) {
+function renderCardsGrid(gridEl, cards, onCreateClick, onRevealClick) {
 
     if (!cards.length) {
         gridEl.innerHTML = `
@@ -6702,7 +6757,12 @@ function renderCardsGrid(gridEl, cards, onCreateClick) {
                             </span>
                         </div>
                         <div>
-                            <div class="issuing-card-number">•••• •••• •••• ${card.last4}</div>
+                            <div class="issuing-card-number-row">
+                                <div class="issuing-card-number">•••• •••• •••• ${card.last4}</div>
+                                <button type="button" class="issuing-card-reveal-btn" data-card-id="${card.id}" title="Voir le numéro complet et le CVC">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                            </div>
                             <div class="issuing-card-bottom">
                                 <div>
                                     <div class="issuing-card-holder">${card.cardholder_name || "—"}</div>
@@ -6722,6 +6782,10 @@ function renderCardsGrid(gridEl, cards, onCreateClick) {
             }).join("")}
         </div>
     `;
+
+    gridEl.querySelectorAll(".issuing-card-reveal-btn").forEach(btn => {
+        btn.addEventListener("click", () => onRevealClick(btn.dataset.cardId));
+    });
 }
 
 let issuingSpendChartInstance = null;
@@ -6885,9 +6949,13 @@ function createCardModalHtml() {
                             <input type="email" id="card-email" required>
                         </div>
                         <div class="form-group">
-                            <label for="card-limit">Plafond par transaction</label>
-                            <input type="number" id="card-limit" min="0" step="0.01" value="500" required>
+                            <label for="card-phone">Téléphone (format E.164)</label>
+                            <input type="tel" id="card-phone" placeholder="+14155550123" pattern="^\+[1-9]\d{6,14}$" required>
                         </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="card-limit">Plafond par transaction</label>
+                        <input type="number" id="card-limit" min="0" step="0.01" value="500" required>
                     </div>
                     <div class="form-group">
                         <label for="card-address">Adresse</label>
@@ -6908,6 +6976,13 @@ function createCardModalHtml() {
                         </div>
                     </div>
                     <p class="form-hint">Compte Stripe Issuing basé aux États-Unis - adresse requise pour le porteur.</p>
+                    <div class="form-group" id="card-accept-terms-row">
+                        <label>
+                            <input type="checkbox" id="card-accept-terms" required>
+                            Le porteur de cette carte a lu et accepte les
+                            <a href="https://stripe.com/legal/issuing/crb-authorized-user-terms" target="_blank" rel="noopener">conditions d'utilisation Stripe Issuing</a>.
+                        </label>
+                    </div>
                     <div class="customer-modal-actions">
                         <button type="button" class="modal-cancel-btn" id="cancel-create-card">Annuler</button>
                         <button type="submit" class="modal-submit-btn" id="create-card-submit-btn">Émettre la carte</button>
@@ -6922,9 +6997,25 @@ function wireCreateCardModal(root, openTriggers, onCreated) {
 
     const modal = root.querySelector("#create-card-modal");
     const form = root.querySelector("#create-card-form");
+    const typeSelect = root.querySelector("#card-type");
+    const termsRow = root.querySelector("#card-accept-terms-row");
+    const termsCheckbox = root.querySelector("#card-accept-terms");
+
+    // Le ToS Issuing du porteur n'existe, côté Stripe, que pour les
+    // porteurs individuels (voir backend/routes/issuing.py) - masqué et
+    // non obligatoire pour "Entreprise (LLC)", sinon la case bloquerait la
+    // soumission sans que le backend n'en ait besoin.
+    function syncTermsRowToType() {
+        const isIndividual = typeSelect.value === "individual";
+        termsRow.style.display = isIndividual ? "" : "none";
+        termsCheckbox.required = isIndividual;
+        if (!isIndividual) termsCheckbox.checked = false;
+    }
+    typeSelect.addEventListener("change", syncTermsRowToType);
 
     function openModal() {
         form.reset();
+        syncTermsRowToType();
         modal.classList.add("open");
     }
 
@@ -6950,6 +7041,8 @@ function wireCreateCardModal(root, openTriggers, onCreated) {
                     currency: root.querySelector("#card-currency").value,
                     name: root.querySelector("#card-name").value.trim(),
                     email: root.querySelector("#card-email").value.trim(),
+                    phone_number: root.querySelector("#card-phone").value.trim(),
+                    accepted_terms: root.querySelector("#card-accept-terms").checked,
                     limit_amount: Math.round(limitUnits * 100),
                     address_line1: root.querySelector("#card-address").value.trim(),
                     city: root.querySelector("#card-city").value.trim(),
@@ -6971,6 +7064,139 @@ function wireCreateCardModal(root, openTriggers, onCreated) {
             submitBtn.disabled = false;
             submitBtn.textContent = "Émettre la carte";
         }
+    });
+}
+
+/* =========================================================
+   AFFICHAGE SÉCURISÉ DU NUMÉRO / CVC (Stripe Issuing Elements)
+   Les données sensibles ne touchent JAMAIS notre backend ni ce fichier -
+   elles sont rendues par Stripe dans des iframes dédiées, à partir d'une
+   clé éphémère de 15 min scopée à une seule carte. Voir
+   backend/routes/issuing.py (POST /issuing/cards/{id}/ephemeral-key) et
+   stripe.com/docs/issuing/elements. Sur un compte Connect, nécessite que
+   Stripe ait explicitement activé Issuing Elements pour la plateforme
+   (demande au support Stripe) - sinon l'étape ephemeral-key échoue avec
+   une erreur d'autorisation, pas un bug de ce code.
+========================================================= */
+
+let issuingElementsStripe = null;
+let issuingElementsAccountId = null;
+let activeIssuingElements = [];
+
+function getIssuingElementsStripe(accountId) {
+    if (issuingElementsStripe && issuingElementsAccountId === accountId) {
+        return issuingElementsStripe;
+    }
+    issuingElementsStripe = Stripe(window.STRIPE_PUBLISHABLE_KEY, {
+        stripeAccount: accountId,
+        betas: ["issuing_elements_2"],
+    });
+    issuingElementsAccountId = accountId;
+    return issuingElementsStripe;
+}
+
+function destroyActiveIssuingElements() {
+    activeIssuingElements.forEach(el => {
+        try { el.destroy(); } catch (error) { /* déjà démonté */ }
+    });
+    activeIssuingElements = [];
+}
+
+function cardDetailsModalHtml() {
+    return `
+        <div class="customer-modal-overlay" id="card-details-modal">
+            <div class="customer-modal" style="max-width:420px;">
+                <div class="customer-modal-header">
+                    <div>
+                        <h3>Détails de la carte</h3>
+                        <p>Affichés de façon sécurisée par Stripe - jamais stockés ni transmis à Xepay.</p>
+                    </div>
+                    <button type="button" class="customer-modal-close" id="close-card-details">×</button>
+                </div>
+                <p id="card-details-status" class="text-muted"></p>
+                <div id="card-details-elements" style="display:none;">
+                    <div class="issuing-reveal-row">
+                        <label>Numéro de carte</label>
+                        <div id="card-details-number" class="issuing-reveal-field"></div>
+                    </div>
+                    <div class="issuing-reveal-row-group">
+                        <div class="issuing-reveal-row">
+                            <label>Expiration</label>
+                            <div id="card-details-expiry" class="issuing-reveal-field"></div>
+                        </div>
+                        <div class="issuing-reveal-row">
+                            <label>CVC</label>
+                            <div id="card-details-cvc" class="issuing-reveal-field"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+async function openCardDetailsModal(root, cardId, issuingAccountId) {
+
+    const modal = root.querySelector("#card-details-modal");
+    const statusEl = root.querySelector("#card-details-status");
+    const elementsWrap = root.querySelector("#card-details-elements");
+
+    modal.classList.add("open");
+    elementsWrap.style.display = "none";
+    statusEl.style.display = "block";
+    statusEl.textContent = "Chargement sécurisé...";
+
+    try {
+        const stripeInstance = getIssuingElementsStripe(issuingAccountId);
+        const elements = stripeInstance.elements();
+
+        const { nonce } = await stripeInstance.createEphemeralKeyNonce({ issuingCard: cardId });
+
+        const response = await apiFetch(`/issuing/cards/${cardId}/ephemeral-key`, {
+            method: "POST",
+            body: { nonce },
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.detail || "Impossible de récupérer la clé d'affichage sécurisée");
+        }
+        const ephemeralKeySecret = data.ephemeral_key_secret;
+
+        await stripeInstance.retrieveIssuingCard(cardId, { ephemeralKeySecret, nonce });
+
+        destroyActiveIssuingElements();
+
+        const style = { base: { color: "#111827", fontSize: "15px" } };
+        const fields = [
+            ["issuingCardNumberDisplay", "#card-details-number"],
+            ["issuingCardExpiryDisplay", "#card-details-expiry"],
+            ["issuingCardCvcDisplay", "#card-details-cvc"],
+        ];
+        activeIssuingElements = fields.map(([elementName, selector]) => {
+            const el = elements.create(elementName, { issuingCard: cardId, nonce, ephemeralKeySecret, style });
+            el.mount(root.querySelector(selector));
+            return el;
+        });
+
+        statusEl.style.display = "none";
+        elementsWrap.style.display = "block";
+    } catch (error) {
+        statusEl.textContent = error.message ||
+            "Impossible d'afficher les détails de la carte (accès Issuing Elements peut-être pas encore activé par Stripe pour ce compte).";
+    }
+}
+
+function wireCardDetailsModal(root) {
+    const modal = root.querySelector("#card-details-modal");
+
+    function closeModal() {
+        modal.classList.remove("open");
+        destroyActiveIssuingElements();
+    }
+
+    root.querySelector("#close-card-details").addEventListener("click", closeModal);
+    modal.addEventListener("click", (event) => {
+        if (event.target === modal) closeModal();
     });
 }
 
@@ -7087,14 +7313,17 @@ async function renderCardIssuing(container) {
         <div id="issuing-transactions-table"></div>
 
         ${createCardModalHtml()}
+        ${cardDetailsModalHtml()}
     `;
 
     const reload = () => renderCardIssuing(container);
+    const issuingAccountId = cardsData.stripe_issuing_account_id;
 
     renderCardsGrid(
         content.querySelector("#issuing-cards-grid"),
         cards,
-        () => content.querySelector("#create-card-modal").classList.add("open")
+        () => content.querySelector("#create-card-modal").classList.add("open"),
+        (cardId) => openCardDetailsModal(content, cardId, issuingAccountId)
     );
     renderSpendChart(content.querySelector("#issuing-spend-chart"), transactions);
     renderTransactionsTable(content.querySelector("#issuing-transactions-table"), transactions);
@@ -7104,4 +7333,5 @@ async function renderCardIssuing(container) {
         [content.querySelector("#issuing-create-card-btn")],
         reload
     );
+    wireCardDetailsModal(content);
 }

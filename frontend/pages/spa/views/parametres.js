@@ -2272,7 +2272,7 @@ function cartesVirtuellesFormHtml() {
         <div class="row g-2">
           <div class="col-6">
             <label class="form-label text-dark fw-bold" style="font-size: 11px;">Type</label>
-            <select name="type" class="form-select form-select-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;">
+            <select name="type" id="p-card-type" class="form-select form-select-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;">
               <option value="company">Entreprise (LLC)</option>
               <option value="individual">Particulier</option>
             </select>
@@ -2295,6 +2295,12 @@ function cartesVirtuellesFormHtml() {
             <input type="email" name="email" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="email@domain.com" required>
           </div>
           <div class="col-6">
+            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Téléphone (format E.164)</label>
+            <input type="tel" name="phone_number" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="+14155550123" pattern="^\+[1-9]\d{6,14}$" required>
+          </div>
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
             <label class="form-label text-dark fw-bold" style="font-size: 11px;">Limite (en centimes)</label>
             <input type="number" name="limit_amount" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" value="50000" required>
           </div>
@@ -2314,6 +2320,13 @@ function cartesVirtuellesFormHtml() {
           <div class="col-6">
             <input type="text" name="state" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="État (ex: DE, WY)" required>
           </div>
+        </div>
+        <div class="form-check mt-2" id="p-card-accept-terms-row" style="display:none;">
+          <input type="checkbox" name="accepted_terms" id="p-card-accept-terms" class="form-check-input">
+          <label class="form-check-label text-dark small" for="p-card-accept-terms">
+            Le porteur de cette carte a lu et accepte les
+            <a href="https://stripe.com/legal/issuing/crb-authorized-user-terms" target="_blank" rel="noopener">conditions d'utilisation Stripe Issuing</a>.
+          </label>
         </div>
       </form>
       <button type="button" id="p-btn-create-card" class="btn btn-warning w-100 fw-bold text-dark">Créer la carte virtuelle</button>
@@ -2420,6 +2433,8 @@ async function createVirtualCard() {
     currency: formData.get("currency"),
     name: formData.get("name"),
     email: formData.get("email"),
+    phone_number: formData.get("phone_number"),
+    accepted_terms: formData.get("accepted_terms") === "on",
     limit_amount: parseInt(formData.get("limit_amount") || 50000),
     address_line1: formData.get("address_line1"),
     city: formData.get("city"),
@@ -2448,8 +2463,21 @@ async function createVirtualCard() {
 }
 
 function mountCartesVirtuelles(on) {
-  on(document.getElementById("p-issuing-body"), "click", (e) => {
+  const body = document.getElementById("p-issuing-body");
+  on(body, "click", (e) => {
     if (e.target.closest("#p-btn-create-card")) createVirtualCard();
+  });
+  // Le ToS Issuing du porteur n'existe, côté Stripe, que pour les porteurs
+  // individuels (voir backend/routes/issuing.py) - masqué pour
+  // "Entreprise (LLC)" (valeur par défaut du select, donc masqué par
+  // défaut dans issuingBodyHtml()).
+  on(body, "change", (e) => {
+    if (e.target.id !== "p-card-type") return;
+    const row = document.getElementById("p-card-accept-terms-row");
+    const checkbox = document.getElementById("p-card-accept-terms");
+    const isIndividual = e.target.value === "individual";
+    if (row) row.style.display = isIndividual ? "" : "none";
+    if (checkbox && !isIndividual) checkbox.checked = false;
   });
   loadIssuingStatus();
 }

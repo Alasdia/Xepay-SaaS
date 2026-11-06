@@ -1,6 +1,8 @@
 import os
+import re
+import time
 import stripe
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import Profile, WorkspaceUser
@@ -74,6 +76,10 @@ def list_virtual_cards(
 
     return {
         "balance_available": issuing_balance,
+        # Nécessaire côté frontend pour initialiser Stripe.js en contexte
+        # Connect avant de pouvoir afficher le numéro/CVC via Issuing
+        # Elements (voir /issuing/cards/{card_id}/ephemeral-key).
+        "stripe_issuing_account_id": account_id,
         "cards": [
             {
                 "id": card.id,
@@ -91,6 +97,51 @@ def list_virtual_cards(
             for card in cards.data
         ],
     }
+
+
+@router.post("/issuing/cards/{card_id}/ephemeral-key")
+def create_card_ephemeral_key(
+    card_id: str,
+    payload: dict,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("manage_virtual_cards"))
+):
+    """Clé éphémère (15 min) pour afficher le numéro complet, la date
+    d'expiration et le CVC d'une carte via Stripe Issuing Elements - ces
+    données restent dans un iframe hébergé par Stripe, elles ne transitent
+    JAMAIS par nos serveurs ni ne sont journalisées (voir
+    stripe.com/docs/issuing/elements - seule méthode conforme PCI-DSS en
+    mode test pour des cartes virtuelles, l'API brute number/cvc n'y
+    fonctionne pas). Sur un compte Connect, nécessite que Stripe ait
+    explicitement activé Issuing Elements pour notre plateforme (demande
+    au support Stripe) - sans ça, EphemeralKey.create échoue avec une
+    erreur d'autorisation, pas un bug de ce code."""
+    owner_id = membership.workspace_id
+    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
+    issuing_account_id = _get_active_issuing_account(profile)
+
+    nonce = payload.get("nonce")
+    if not nonce:
+        raise HTTPException(400, "nonce manquant")
+
+    try:
+        # Vérifie que cette carte appartient bien au compte Issuing DE CE
+        # marchand avant d'émettre quoi que ce soit - empêche un marchand
+        # de récupérer les détails d'une carte d'un autre marchand en
+        # devinant son id (Stripe.Card.retrieve échoue sinon : la carte
+        # n'existe pas sur CE compte connecté).
+        stripe.issuing.Card.retrieve(card_id, stripe_account=issuing_account_id)
+
+        ephemeral_key = stripe.EphemeralKey.create(
+            nonce=nonce,
+            issuing_card=card_id,
+            stripe_version=stripe.api_version,
+            stripe_account=issuing_account_id,
+        )
+    except stripe.error.StripeError as e:
+        raise HTTPException(400, f"Erreur Stripe Issuing : {e.user_message or str(e)} (request_id: {e.request_id})")
+
+    return {"ephemeral_key_secret": ephemeral_key.secret}
 
 
 @router.get("/issuing/transactions")
@@ -132,6 +183,7 @@ def list_issuing_transactions(
 @router.post("/issuing/create-virtual-card")
 def create_virtual_card(
     cardholder_data: dict,
+    request: Request,
     db: Session = Depends(get_db),
     membership: WorkspaceUser = Depends(require_capability("manage_virtual_cards"))
 ):
@@ -142,13 +194,62 @@ def create_virtual_card(
     name = cardholder_data.get("name")
     if not name or not name.strip():
         raise HTTPException(400, "Le nom du porteur ou de la LLC est obligatoire.")
+
+    # Stripe exige un phone_number sur le cardholder pour pouvoir émettre une
+    # carte (3D Secure - voir stripe.com/docs/issuing/3d-secure), quel que
+    # soit le type de porteur. Format E.164 strict (+ puis 7 à 15 chiffres,
+    # premier chiffre non nul) : jamais validé côté UI avant, Stripe
+    # refusait silencieusement la création de carte sinon.
+    phone_number = (cardholder_data.get("phone_number") or "").strip()
+    if not re.match(r"^\+[1-9]\d{6,14}$", phone_number):
+        raise HTTPException(
+            400,
+            "Le numéro de téléphone du porteur est obligatoire, au format "
+            "E.164 (ex : +14155550123).",
+        )
+
     holder_type = cardholder_data.get("type", "individual")
     card_currency = cardholder_data.get("currency", "usd").lower()
+
+    client_ip = None
+    if holder_type == "individual":
+        # Conditions d'utilisation Issuing PROPRES AU PORTEUR (individual.
+        # card_issuing.user_terms_acceptance - distinctes de celles du
+        # compte, déjà gérées par l'onboarding Stripe hébergé). N'existe
+        # que pour les porteurs individuels (une entité "company" n'a pas
+        # ces conditions côté Stripe). Jamais fabriqué ici : la case doit
+        # être cochée explicitement par le soumissionnaire, qui atteste que
+        # le porteur a lu et accepté ces conditions - l'IP et la date
+        # enregistrées plus bas sont celles, réelles, de CETTE requête,
+        # jamais une valeur de test.
+        if not cardholder_data.get("accepted_terms"):
+            raise HTTPException(
+                400,
+                "Le porteur de la carte doit avoir lu et accepté les "
+                "conditions d'utilisation Stripe Issuing (case à cocher).",
+            )
+        # request.client.host seul renvoie l'IP du proxy (Cloudflare,
+        # confirmé par les logs prod : 172.69.15.150 est dans une plage
+        # Cloudflare publiée), pas celle du visiteur - inacceptable pour
+        # une preuve d'acceptation de conditions. CF-Connecting-IP (posé
+        # par Cloudflare) prioritaire, puis X-Forwarded-For (premier
+        # maillon), puis repli sur request.client.host si absent.
+        forwarded_for = request.headers.get("x-forwarded-for", "")
+        client_ip = (
+            request.headers.get("cf-connecting-ip")
+            or (forwarded_for.split(",")[0].strip() if forwarded_for else None)
+            or (request.client.host if request.client else None)
+        )
+        if not client_ip:
+            raise HTTPException(
+                502, "Impossible de déterminer l'adresse IP de la requête, nécessaire à l'acceptation des conditions."
+            )
     try:
         cardholder_params = {
             "type": holder_type,
             "name": name.strip(),
             "email": cardholder_data.get("email"),
+            "phone_number": phone_number,
             "billing": {
                 "address": {
                     "line1": cardholder_data.get("address_line1"),
@@ -162,8 +263,27 @@ def create_virtual_card(
             "stripe_account": issuing_account_id,
         }
         if holder_type == "individual":
-            cardholder_params["phone_number"] = cardholder_data.get("phone_number")
+            # Stripe exige individual.first_name/last_name en plus du nom
+            # complet au niveau racine (name) - jamais renseigné avant, la
+            # carte se créait mais restait "inactive" indéfiniment
+            # (requirements.past_due côté cardholder). Le ToS Issuing DU
+            # PORTEUR (distinct de celui du compte) se fixe au même endroit,
+            # individual.card_issuing.user_terms_acceptance - un objet plat
+            # {ip, date}, PAS un dict par banque (cette dernière forme
+            # n'existe que sous le header bêta issuing_program_beta=v2,
+            # jamais utilisé par cet appel SDK nu - vérifié empiriquement
+            # le 2026-11-06, voir conversation).
+            first_name, _, last_name = name.strip().partition(" ")
+            cardholder_params["individual"] = {
+                "first_name": first_name,
+                "last_name": last_name or first_name,
+                "card_issuing": {
+                    "user_terms_acceptance": {"ip": client_ip, "date": int(time.time())}
+                },
+            }
+
         cardholder = stripe.issuing.Cardholder.create(**cardholder_params)
+
         card = stripe.issuing.Card.create(
             cardholder=cardholder.id,
             currency=card_currency,
@@ -184,4 +304,4 @@ def create_virtual_card(
             "status": card.status
         }
     except stripe.error.StripeError as e:
-        raise HTTPException(400, f"Erreur Stripe Issuing : {e.user_message or str(e)}")
+        raise HTTPException(400, f"Erreur Stripe Issuing : {e.user_message or str(e)} (request_id: {e.request_id})")
