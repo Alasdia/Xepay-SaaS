@@ -2483,13 +2483,397 @@ function mountCartesVirtuelles(on) {
 }
 
 // --- Detail : Retraits & Comptes US ---
+// Architecture "Zero-Custody" (voir backend/services/verto_service.py) :
+// Stripe Connect Express -> wallet USD dédié Verto -> compte bancaire
+// local UEMOA du marchand, jamais un pivot détenu par Xepay. L'option US
+// (Firstbase/Atlas) reste proposée en alternative pour qui préfère un
+// compte bancaire US/EU plutôt que le virement local.
+//
+// 4 étapes, chacune débloquant la suivante (voir vertoBodyHtml) :
+//   1. Enregistrement du sous-compte Verto (onboarding KYC/KYB)
+//   2. Liaison du compte USD Verto sur le Dashboard Stripe Express du
+//      marchand (lui seul peut l'ajouter - voir routes/payout.py -
+//      détectée automatiquement par webhook, voir webhook/stripe.py)
+//   3. Enregistrement du compte bancaire local UEMOA (bénéficiaire)
+//   4. Prêt pour les retraits locaux
+//
+// Valeurs d'énumération (pays, type d'entité) confirmées via
+// docs.verto.co/reference/create_a_sub-account_new le 2026-11-06 - le
+// champ `subCategory` (secteur d'activité), lui, n'a PAS de liste
+// publique confirmée : envoyé tel que saisi, à ajuster si Verto le
+// rejette. Mali et Guinée-Bissau sont ABSENTS de l'énumération pays de
+// Verto (vérifié) - non proposés dans le sélecteur ci-dessous.
+const VERTO_UEMOA_COUNTRIES = [
+  { value: "Benin", label: "Bénin" },
+  { value: "Burkina Faso", label: "Burkina Faso" },
+  { value: "Cote D'Ivoire", label: "Côte d'Ivoire" },
+  { value: "Niger", label: "Niger" },
+  { value: "Senegal", label: "Sénégal" },
+  { value: "Togo", label: "Togo" },
+];
+
+const VERTO_ENTITY_TYPES = [
+  { value: "Limited Liability Company", label: "SARL / LLC" },
+  { value: "Private Limited Company", label: "Société anonyme (SA)" },
+  { value: "Sole Trader / Sole Proprietorship / Freelancers", label: "Entreprise individuelle" },
+  { value: "Partnerships", label: "Partenariat" },
+  { value: "Non Profit / Charity", label: "Association / ONG" },
+];
+
+function vertoCountryOptionsHtml() {
+  return VERTO_UEMOA_COUNTRIES.map((c) => `<option value="${c.value}">${c.label}</option>`).join("");
+}
+
+function vertoEntityTypeOptionsHtml() {
+  return VERTO_ENTITY_TYPES.map((t) => `<option value="${t.value}">${t.label}</option>`).join("");
+}
+
+let vertoStatusData = null;
+
+function vertoStatusLabel(data) {
+  if (!data || data.status === "not_started") return "Non démarré";
+  if (data.status === "pending") return "Vérification en cours";
+  if (data.status === "rejected") return "Refusé";
+  if (data.status === "approved") return "Approuvé";
+  return data.status;
+}
+
+// Un seul représentant/actionnaire en v1 (toujours marqué
+// isControllingOfficer=true, condition minimale Verto "au moins un
+// actionnaire +25% et un dirigeant") - suffisant pour une PME dirigée par
+// son fondateur unique, cas très majoritaire chez nos marchands UEMOA.
+// Ajouter plusieurs associés est une amélioration future, pas nécessaire
+// pour débloquer l'onboarding.
+function vertoOnboardingFormHtml() {
+  return `
+    <div class="card-epay p-4" style="max-width:72%;">
+      <p class="text-muted small mb-3">Ces informations sont transmises à Verto (notre partenaire bancaire pour les virements locaux) afin de créer et vérifier votre sous-compte. Elles n'incluent aucun document pour l'instant - Verto peut vous en demander par e-mail si nécessaire.</p>
+      <form id="p-verto-onboarding-form" class="d-flex flex-column gap-2 mb-3">
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Pays de la société</label>
+            <select name="country" class="form-select form-select-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+              ${vertoCountryOptionsHtml()}
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Forme juridique</label>
+            <select name="entity_type" class="form-select form-select-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+              ${vertoEntityTypeOptionsHtml()}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="form-label text-dark fw-bold" style="font-size: 11px;">Nom légal de la société</label>
+          <input type="text" name="company_name" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Ex: Xepay SARL" required>
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label text-dark fw-bold" style="font-size: 11px;">N° d'enregistrement (RCCM)</label>
+            <input type="text" name="identification_number" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+          </div>
+          <div class="col-6">
+            <label class="form-label text-dark fw-bold" style="font-size: 11px;">N° fiscal (optionnel)</label>
+            <input type="text" name="tax_id_or_ein" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;">
+          </div>
+        </div>
+        <div>
+          <label class="form-label text-dark fw-bold" style="font-size: 11px;">Secteur d'activité</label>
+          <input type="text" name="sub_category" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Ex: Financial Services" required>
+        </div>
+        <hr class="my-1">
+        <p class="text-muted small mb-1">Adresse légale de la société</p>
+        <div class="row g-2">
+          <div class="col-8">
+            <input type="text" name="address_line1" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Adresse" required>
+          </div>
+          <div class="col-4">
+            <input type="text" name="zip_code" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Code postal">
+          </div>
+        </div>
+        <div class="row g-2">
+          <div class="col-12">
+            <input type="text" name="city" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Ville" required>
+          </div>
+        </div>
+        <hr class="my-1">
+        <p class="text-muted small mb-1">Représentant principal (dirigeant et actionnaire ≥25%)</p>
+        <div class="row g-2">
+          <div class="col-6">
+            <input type="text" name="rep_first_name" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Prénom" required>
+          </div>
+          <div class="col-6">
+            <input type="text" name="rep_last_name" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Nom" required>
+          </div>
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <input type="email" name="rep_email" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Email" required>
+          </div>
+          <div class="col-6">
+            <input type="tel" name="rep_phone" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="+2250700000000" required>
+          </div>
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Date de naissance</label>
+            <input type="date" name="rep_dob" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+          </div>
+          <div class="col-6">
+            <label class="form-label text-dark fw-bold" style="font-size: 11px;">% de détention du capital</label>
+            <input type="number" name="rep_ownership" min="1" max="100" value="100" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+          </div>
+        </div>
+      </form>
+      <button type="button" id="p-btn-start-verto" class="btn btn-warning w-100 fw-bold text-dark">Démarrer mon enregistrement</button>
+    </div>
+  `;
+}
+
+function vertoUsdAccountHtml(data) {
+  return `
+    <div class="card-epay p-4" style="max-width:72%;">
+      <p class="text-muted small mb-3">Votre sous-compte est approuvé. Pour recevoir vos virements, ajoutez ce compte bancaire USD comme compte de paiement sur votre Dashboard Stripe Express - c'est Stripe qui vous demande de confirmer, Xepay ne peut pas le faire à votre place.</p>
+      <div class="params-status-blocks mb-3">
+        <div class="params-status-box">
+          <h6>N° de compte</h6>
+          <div class="params-status-value">${data.usd_account_number || "—"}</div>
+        </div>
+        <div class="params-status-box">
+          <h6>Code banque (routing)</h6>
+          <div class="params-status-value">${data.usd_bank_code || "—"}</div>
+        </div>
+        <div class="params-status-box">
+          <h6>Banque</h6>
+          <div class="params-status-value">${data.usd_bank_name || "—"}</div>
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="button" id="p-verto-copy-account" class="params-edit-btn">Copier le n° de compte</button>
+        <button type="button" id="p-verto-open-stripe" class="create-client-btn">Ouvrir mon Dashboard Stripe</button>
+        <button type="button" id="p-verto-refresh-link" class="params-edit-btn">J'ai ajouté le compte - vérifier</button>
+      </div>
+    </div>
+  `;
+}
+
+function vertoBeneficiaryFormHtml() {
+  return `
+    <div class="card-epay p-4" style="max-width:72%;">
+      <p class="text-muted small mb-3">Compte bancaire local UEMOA, destination finale de vos retraits.</p>
+      <form id="p-verto-beneficiary-form" class="d-flex flex-column gap-2 mb-3">
+        <div>
+          <label class="form-label text-dark fw-bold" style="font-size: 11px;">IBAN</label>
+          <input type="text" name="iban" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Code banque</label>
+            <input type="text" name="bank_code" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+          </div>
+          <div class="col-6">
+            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Nom de la banque</label>
+            <input type="text" name="bank_name" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+          </div>
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Pays de la banque</label>
+            <select name="bank_country_code" class="form-select form-select-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+              ${vertoCountryOptionsHtml()}
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Pays du bénéficiaire</label>
+            <select name="beneficiary_country_code" class="form-select form-select-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+              ${vertoCountryOptionsHtml()}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="form-label text-dark fw-bold" style="font-size: 11px;">Adresse du bénéficiaire</label>
+          <input type="text" name="beneficiary_address_line1" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+        </div>
+      </form>
+      <button type="button" id="p-btn-register-beneficiary" class="btn btn-warning w-100 fw-bold text-dark">Enregistrer ce compte bancaire</button>
+    </div>
+  `;
+}
+
+function vertoBodyHtml() {
+  const data = vertoStatusData;
+  const status = (data && data.status) || "not_started";
+
+  let stepHtml;
+  if (status === "not_started" || status === "rejected") {
+    stepHtml = vertoOnboardingFormHtml();
+  } else if (status === "pending") {
+    stepHtml = `<p class="text-muted">Votre dossier est en cours de vérification par Verto. Vous recevrez une notification dès qu'il sera approuvé - généralement sous quelques jours ouvrés.</p>`;
+  } else if (status === "approved" && !data.stripe_external_account_linked) {
+    stepHtml = vertoUsdAccountHtml(data);
+  } else if (status === "approved" && !data.beneficiary_registered) {
+    stepHtml = vertoBeneficiaryFormHtml();
+  } else if (status === "approved" && data.beneficiary_registered) {
+    stepHtml = `
+      <div class="params-status-blocks">
+        <div class="params-status-box">
+          <h6>Compte bancaire local</h6>
+          <div class="params-status-value">${data.beneficiary_bank_name || "—"} •••• ${data.beneficiary_bank_iban_last4 || ""}</div>
+        </div>
+      </div>
+      <p class="text-muted small mt-2">Vos retraits locaux sont prêts : déclenchez-les depuis "Retirer des fonds" (vue Solde).</p>
+    `;
+  } else {
+    stepHtml = `<p class="text-muted">Statut : ${vertoStatusLabel(data)}</p>`;
+  }
+
+  return `
+    <div class="params-subsection-header">
+      <h6 class="params-subsection-title mb-0">Statut</h6>
+      <div class="params-status-box" style="min-width:160px;">
+        <div class="params-status-value">${vertoStatusLabel(data)}</div>
+      </div>
+    </div>
+    <div style="margin-top:16px;">${stepHtml}</div>
+  `;
+}
+
+async function loadVertoStatus() {
+  const body = document.getElementById("p-verto-body");
+  if (!body) return;
+  try {
+    const res = await apiFetch("/verto/status");
+    if (!res.ok) {
+      let message = "Impossible de charger le statut";
+      try {
+        const errData = await res.json();
+        if (errData.detail === "Permission insuffisante") message = "Seul le propriétaire du compte peut configurer les retraits locaux";
+        else if (errData.detail) message = errData.detail;
+      } catch (e) {}
+      body.innerHTML = `<p class="text-muted">${message}</p>`;
+      return;
+    }
+    vertoStatusData = await res.json();
+    body.innerHTML = vertoBodyHtml();
+  } catch (err) {
+    body.innerHTML = `<p class="text-muted">Erreur de chargement.</p>`;
+  }
+}
+
+async function startVertoOnboarding() {
+  const btn = document.getElementById("p-btn-start-verto");
+  const form = document.getElementById("p-verto-onboarding-form");
+  const fd = new FormData(form);
+  const countryCode = fd.get("rep_phone").startsWith("+") ? fd.get("rep_phone").match(/^\+(\d{1,3})/)?.[1] : null;
+  const payload = {
+    country: fd.get("country"),
+    company_name: fd.get("company_name"),
+    sub_category: fd.get("sub_category"),
+    identification_number: fd.get("identification_number"),
+    tax_id_or_ein: fd.get("tax_id_or_ein") || null,
+    kyc_payload: {
+      selectedProducts: ["Collect", "Pay"],
+      company: { type: fd.get("entity_type") },
+      companyAddresses: [{
+        action: "ADD",
+        data: {
+          type: "COMPANY_ADDRESS",
+          addressLine1: fd.get("address_line1"),
+          city: fd.get("city"),
+          zipCode: fd.get("zip_code") || null,
+          country: fd.get("country"),
+        },
+      }],
+      shareholders: [{
+        action: "ADD",
+        data: {
+          ownerType: "INDIVIDUAL",
+          firstName: fd.get("rep_first_name"),
+          lastName: fd.get("rep_last_name"),
+          email: fd.get("rep_email"),
+          dateOfBirth: fd.get("rep_dob"),
+          nationality: fd.get("country"),
+          countryCallingCode: countryCode ? `+${countryCode}` : null,
+          phoneNumber: fd.get("rep_phone").replace(/^\+\d{1,3}/, ""),
+          percentOwnershipInCompany: parseInt(fd.get("rep_ownership") || "100", 10),
+          isControllingOfficer: true,
+          shareholderRole: "Director",
+        },
+      }],
+    },
+  };
+  btn.disabled = true;
+  btn.innerText = "Envoi en cours...";
+  try {
+    const res = await apiFetch("/verto/onboarding", { method: "POST", body: payload });
+    const data = await res.json();
+    if (res.ok) {
+      showToast("Dossier envoyé - en cours de vérification", "success");
+      await loadVertoStatus();
+    } else {
+      showToast(data.detail || "Erreur lors de l'enregistrement", "error");
+    }
+  } catch (err) {
+    showToast("Erreur de connexion au serveur", "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerText = "Démarrer mon enregistrement";
+  }
+}
+
+async function registerVertoBeneficiary() {
+  const btn = document.getElementById("p-btn-register-beneficiary");
+  const form = document.getElementById("p-verto-beneficiary-form");
+  const fd = new FormData(form);
+  const payload = {
+    iban: fd.get("iban"),
+    bank_code: fd.get("bank_code"),
+    bank_name: fd.get("bank_name"),
+    bank_country_code: fd.get("bank_country_code"),
+    beneficiary_address_line1: fd.get("beneficiary_address_line1"),
+    beneficiary_country_code: fd.get("beneficiary_country_code"),
+  };
+  btn.disabled = true;
+  btn.innerText = "Enregistrement...";
+  try {
+    const res = await apiFetch("/verto/beneficiary", { method: "POST", body: payload });
+    const data = await res.json();
+    if (res.ok) {
+      showToast("Compte bancaire enregistré", "success");
+      await loadVertoStatus();
+    } else {
+      showToast(data.detail || "Erreur lors de l'enregistrement", "error");
+    }
+  } catch (err) {
+    showToast("Erreur de connexion au serveur", "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerText = "Enregistrer ce compte bancaire";
+  }
+}
+
+function mountRetraits(on) {
+  const body = document.getElementById("p-verto-body");
+  on(body, "click", (e) => {
+    if (e.target.closest("#p-btn-start-verto")) startVertoOnboarding();
+    if (e.target.closest("#p-btn-register-beneficiary")) registerVertoBeneficiary();
+    if (e.target.closest("#p-verto-refresh-link")) loadVertoStatus();
+    if (e.target.closest("#p-verto-copy-account")) {
+      navigator.clipboard.writeText((vertoStatusData && vertoStatusData.usd_account_number) || "");
+      showToast("N° de compte copié");
+    }
+    if (e.target.closest("#p-verto-open-stripe")) goToStripeLoginLink();
+  });
+  loadVertoStatus();
+}
+
 // Trois sections distinctes, chacune indépendante (pas de card-epay —
-// voir la règle en commentaire dans parametres.css) : virements
-// internationaux, puis un prestataire par section pour la formation de
-// société US - Firstbase (déjà en place) et Stripe Atlas (ajouté à la
-// demande), avec un contenu explicite plutôt qu'une ligne résumée. Les
-// deux restent de simples liens externes : ni Firstbase ni Atlas n'ont
-// d'API permettant à une plateforme Connect de déclencher la création de
+// voir la règle en commentaire dans parametres.css) : virements locaux
+// UEMOA (option principale, voir mountRetraits), puis un prestataire par
+// section pour la formation de société US - Firstbase (déjà en place) et
+// Stripe Atlas (ajouté à la demande), proposés comme alternative pour qui
+// préfère un compte bancaire US/EU. Ni Firstbase ni Atlas n'ont d'API
+// permettant à une plateforme Connect de déclencher la création de
 // société de SES marchands - ce sont des produits auto-service côté
 // fondateur, pas des endpoints qu'on peut appeler ici.
 function retraitsTemplate() {
@@ -2497,12 +2881,17 @@ function retraitsTemplate() {
     ${detailHeader("Retraits & Comptes US")}
 
     <div class="params-subsection-header">
-      <h6 class="params-subsection-title mb-0">Virements internationaux</h6>
+      <h6 class="params-subsection-title mb-0">Virement vers votre compte bancaire local (UEMOA)</h6>
     </div>
-    <p class="params-subsection-sub" style="max-width:100%;">Les fonds collectés sur Xepay sont reversés par Stripe directement vers un compte bancaire, en zone Europe ou aux États-Unis. Le virement n'est pas automatique : vous déclenchez chaque retrait vous-même depuis le bouton "Retirer des fonds" (vue Solde), qui lance un payout Stripe instantané vers le compte bancaire enregistré sur votre compte Connect. Un retrait en cours peut être annulé tant qu'il n'est pas finalisé.</p>
-    <p class="params-subsection-sub" style="max-width:100%;"><span class="text-warning"><i class="fa-solid fa-triangle-exclamation"></i> Les méthodes locales (Mobile Money, banques africaines) ne sont pas supportées actuellement</span> — seul un compte bancaire domicilié en zone Europe ou aux États-Unis peut recevoir vos virements. C'est pour cette raison que les deux options ci-dessous existent, si vous n'avez pas encore de structure éligible.</p>
+    <p class="params-subsection-sub" style="max-width:100%;">Les fonds collectés sur Xepay transitent par un wallet USD dédié (jamais détenu par Xepay) avant d'être reversés vers votre compte bancaire local, en Bénin, Burkina Faso, Côte d'Ivoire, Niger, Sénégal ou Togo. Vous déclenchez chaque retrait vous-même depuis le bouton "Retirer des fonds" (vue Solde).</p>
+    <div id="p-verto-body"><p class="text-muted">Chargement...</p></div>
 
     <div class="params-subsection-header" style="margin-top: 32px;">
+      <h6 class="params-subsection-title mb-0">Vous préférez un compte bancaire US ou EU ?</h6>
+    </div>
+    <p class="params-subsection-sub" style="max-width:100%;">Si vous disposez déjà d'une société et d'un compte bancaire domiciliés en zone Europe ou aux États-Unis, Stripe peut y verser directement vos virements - sans passer par le circuit local ci-dessus. Les deux options ci-dessous permettent de créer cette structure si vous n'en avez pas encore.</p>
+
+    <div class="params-subsection-header" style="margin-top: 24px;">
       <h6 class="params-subsection-title mb-0">🚀 Créer votre société US avec Firstbase</h6>
       <a href="https://get.firstbase.io/lzqmlclh3nr9" target="_blank" rel="noopener noreferrer" class="create-client-btn text-decoration-none">
         Créer ma LLC avec Firstbase <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.75rem;"></i>
@@ -2530,7 +2919,7 @@ const SECTIONS = {
   "entreprise": { title: "Entreprise", template: entrepriseTemplate, mount: (on) => mountEntreprise(on) },
   "permissions": { title: "Permissions", template: permissionsTemplate, mount: (on) => mountPermissions(on) },
   "cartes-virtuelles": { title: "Cartes virtuelles", template: cartesVirtuellesTemplate, mount: (on) => mountCartesVirtuelles(on) },
-  "retraits": { title: "Retraits & Comptes US", template: retraitsTemplate, mount: (on) => {} },
+  "retraits": { title: "Retraits & Comptes US", template: retraitsTemplate, mount: (on) => mountRetraits(on) },
 };
 
 export async function mount(container, params = {}) {

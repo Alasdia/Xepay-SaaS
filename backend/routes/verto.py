@@ -75,6 +75,9 @@ def get_verto_status(
         "usd_bank_code": profile.verto_usd_bank_code,
         "usd_bank_name": profile.verto_usd_bank_name,
         "stripe_external_account_linked": bool(profile.stripe_external_account_id),
+        "beneficiary_registered": bool(profile.verto_beneficiary_id),
+        "beneficiary_bank_name": profile.beneficiary_bank_name,
+        "beneficiary_bank_iban_last4": (profile.beneficiary_bank_iban or "")[-4:] or None,
     }
 
 
