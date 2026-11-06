@@ -354,6 +354,10 @@ export async function mount(container, params = {}) {
             await renderRisk(content);
             break;
 
+        case "cartes":
+            await renderCardIssuing(content);
+            break;
+
         default:
             await renderClients(content);
     }
@@ -6528,4 +6532,576 @@ async function renderRisk(container) {
     }
 
     await loadRisk();
+}
+/* =========================================================
+   ÉMISSION DE CARTE (Stripe Issuing)
+   3 sections : 1) cartes du compte Issuing dédié (voir
+   backend/services/stripe_issuing_service.py - distinct du compte Express
+   stripe_account_id), 2) transactions liées, 3) aperçu des dépenses.
+   Le compte Issiung a son propre onboarding (/onboarding/issuing),
+   indépendant de celui des paiements - tant qu'il n'est pas actif, cette
+   vue affiche un état "non configuré" plutôt que les 3 sections.
+========================================================= */
+
+const ISSUING_INTERVAL_LABELS = {
+    per_authorization: "par transaction",
+    daily: "par jour",
+    weekly: "par semaine",
+    monthly: "par mois",
+    yearly: "par an",
+    all_time: "au total",
+};
+
+const ISSUING_TX_TYPE_LABELS = {
+    capture: "Paiement",
+    refund: "Remboursement",
+};
+
+function ensureCardIssuingStyles() {
+
+    if (document.querySelector("#card-issuing-style")) return;
+
+    const style = document.createElement("style");
+    style.id = "card-issuing-style";
+    style.textContent = `
+        .issuing-balance-banner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            background: #f8fafc;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #6b7280;
+        }
+        .issuing-balance-banner strong {
+            font-size: 20px;
+            color: #111827;
+        }
+        .issuing-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .issuing-card-tile {
+            position: relative;
+            border-radius: 14px;
+            padding: 20px;
+            min-height: 150px;
+            color: #ffffff;
+            background: linear-gradient(135deg, #111827 0%, #1f2937 55%, #374151 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 4px 14px rgba(17,24,39,0.18);
+        }
+        .issuing-card-tile.is-inactive {
+            opacity: .55;
+        }
+        .issuing-card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .issuing-card-brand img {
+            height: 22px;
+        }
+        .issuing-card-number {
+            font-family: "Space Mono", monospace;
+            font-size: 17px;
+            letter-spacing: 2px;
+            margin: 18px 0 14px;
+        }
+        .issuing-card-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            font-size: 12px;
+        }
+        .issuing-card-holder {
+            text-transform: uppercase;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .issuing-card-exp {
+            opacity: .85;
+            margin-top: 2px;
+        }
+        .issuing-card-currency {
+            opacity: .85;
+        }
+        .issuing-card-limit {
+            margin-top: 10px;
+            font-size: 12px;
+            opacity: .85;
+        }
+        .issuing-chart-wrap {
+            position: relative;
+            height: 260px;
+            margin-bottom: 28px;
+        }
+        .issuing-empty-state {
+            text-align: center;
+            padding: 48px 20px;
+        }
+        .issuing-empty-state i {
+            font-size: 30px;
+            color: #9ca3af;
+            margin-bottom: 12px;
+            display: block;
+        }
+        .issuing-empty-state h3 {
+            font-size: 16px;
+            margin-bottom: 6px;
+        }
+        .issuing-empty-state p {
+            margin-bottom: 18px;
+        }
+        .issuing-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+function renderCardsGrid(gridEl, cards, onCreateClick) {
+
+    if (!cards.length) {
+        gridEl.innerHTML = `
+            <div class="commerce-card issuing-empty-state">
+                <i class="fa-solid fa-credit-card"></i>
+                <h3>Aucune carte émise</h3>
+                <p class="text-muted">Émettez une première carte virtuelle pour une dépense de l'entreprise.</p>
+                <button type="button" class="create-client-btn" id="issuing-empty-create-btn">+ Émettre une carte</button>
+            </div>
+        `;
+        gridEl.querySelector("#issuing-empty-create-btn").addEventListener("click", onCreateClick);
+        return;
+    }
+
+    gridEl.innerHTML = `
+        <div class="issuing-cards-grid">
+            ${cards.map(card => {
+                const limit = (card.spending_limits || [])[0];
+                return `
+                    <div class="issuing-card-tile${card.status !== "active" ? " is-inactive" : ""}">
+                        <div class="issuing-card-top">
+                            <div class="issuing-card-brand">
+                                ${card.brand && card.brand.toLowerCase() === "mastercard"
+                                    ? `<img src="/assets/mastercard.svg" alt="Mastercard">`
+                                    : `<span>${card.brand || "Carte"}</span>`}
+                            </div>
+                            <span class="status-badge ${card.status === "active" ? "status-success" : "status-danger"}">
+                                ${card.status === "active" ? "Active" : card.status === "inactive" ? "Inactive" : "Annulée"}
+                            </span>
+                        </div>
+                        <div>
+                            <div class="issuing-card-number">•••• •••• •••• ${card.last4}</div>
+                            <div class="issuing-card-bottom">
+                                <div>
+                                    <div class="issuing-card-holder">${card.cardholder_name || "—"}</div>
+                                    <div class="issuing-card-exp">Exp. ${String(card.exp_month).padStart(2, "0")}/${String(card.exp_year).slice(-2)}</div>
+                                </div>
+                                <div class="issuing-card-currency">${(card.currency || "").toUpperCase()}</div>
+                            </div>
+                            ${limit ? `
+                                <div class="issuing-card-limit">
+                                    Plafond : ${(limit.amount / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    ${(card.currency || "").toUpperCase()} ${ISSUING_INTERVAL_LABELS[limit.interval] || limit.interval}
+                                </div>
+                            ` : ""}
+                        </div>
+                    </div>
+                `;
+            }).join("")}
+        </div>
+    `;
+}
+
+let issuingSpendChartInstance = null;
+
+// Dépense quotidienne sur les 30 derniers jours, calculée côté client à
+// partir des transactions déjà récupérées (évite un endpoint de stats
+// dédié) - seuls les montants négatifs (capture = dépense réelle) sont
+// comptés, un remboursement (amount positif) n'est pas une "dépense".
+function renderSpendChart(canvas, transactions) {
+
+    const DAYS = 30;
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const buckets = new Array(DAYS).fill(0);
+
+    transactions.forEach(tx => {
+        if (tx.amount >= 0) return;
+        const diffDays = Math.floor((now - tx.created * 1000) / DAY_MS);
+        if (diffDays < 0 || diffDays >= DAYS) return;
+        buckets[DAYS - 1 - diffDays] += Math.abs(tx.amount) / 100;
+    });
+
+    const labels = buckets.map((_, i) =>
+        new Date(now - (DAYS - 1 - i) * DAY_MS).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })
+    );
+
+    if (issuingSpendChartInstance) {
+        issuingSpendChartInstance.destroy();
+    }
+
+    issuingSpendChartInstance = new Chart(canvas.getContext("2d"), {
+        type: "line",
+        data: {
+            labels,
+            datasets: [{
+                label: "Dépenses",
+                data: buckets,
+                borderColor: "#eab308",
+                backgroundColor: "rgba(234,179,8,0.1)",
+                borderWidth: 2,
+                pointRadius: 0,
+                pointHoverRadius: 4,
+                tension: 0.3,
+                fill: true,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => `${ctx.parsed.y.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`,
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: "#9ca3af", font: { size: 12 }, maxRotation: 0, autoSkip: true },
+                },
+                y: {
+                    beginAtZero: true,
+                    grace: "10%",
+                    grid: { color: "#e5e7eb" },
+                    ticks: { color: "#9ca3af", font: { size: 12 }, callback: (val) => Number(val).toLocaleString("fr-FR") },
+                },
+            },
+        },
+    });
+}
+
+function renderTransactionsTable(tableEl, transactions) {
+
+    if (!transactions.length) {
+        tableEl.innerHTML = `
+            <div class="commerce-card">
+                <p>Aucune transaction pour le moment.</p>
+            </div>
+        `;
+        return;
+    }
+
+    tableEl.innerHTML = `
+        <div class="table-wrap">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <div class="table-title">Transactions</div>
+                    <div class="page-subtitle">${transactions.length} transaction(s)</div>
+                </div>
+            </div>
+            <div id="customers-scroll-box">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Marchand</th>
+                            <th>Catégorie</th>
+                            <th>Carte</th>
+                            <th>Montant</th>
+                            <th>Type</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${transactions.map(tx => `
+                            <tr>
+                                <td>${tx.merchant_name || "—"}</td>
+                                <td>${tx.merchant_category || "—"}</td>
+                                <td>•••• ${tx.card_last4 || "—"}</td>
+                                <td>
+                                    <span class="amount-cell">${(Math.abs(tx.amount) / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span class="amount-currency">${(tx.currency || "").toUpperCase()}</span>
+                                </td>
+                                <td>${ISSUING_TX_TYPE_LABELS[tx.type] || tx.type}</td>
+                                <td>${formatDate(tx.created)}</td>
+                            </tr>
+                        `).join("")}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+function createCardModalHtml() {
+    return `
+        <div class="customer-modal-overlay" id="create-card-modal">
+            <div class="customer-modal customer-create-modal">
+                <div class="customer-modal-header">
+                    <div>
+                        <h3>Émettre une carte virtuelle</h3>
+                        <p>Carte Stripe Issuing pour une dépense de l'entreprise.</p>
+                    </div>
+                    <button type="button" class="customer-modal-close" id="close-create-card">×</button>
+                </div>
+                <form id="create-card-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="card-type">Type</label>
+                            <select id="card-type">
+                                <option value="individual">Particulier</option>
+                                <option value="company">Entreprise (LLC)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="card-currency">Devise</label>
+                            <select id="card-currency">
+                                <option value="usd">USD</option>
+                                <option value="eur">EUR</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="card-name">Nom du porteur / LLC</label>
+                        <input type="text" id="card-name" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="card-email">Email</label>
+                            <input type="email" id="card-email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="card-limit">Plafond par transaction</label>
+                            <input type="number" id="card-limit" min="0" step="0.01" value="500" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="card-address">Adresse</label>
+                        <input type="text" id="card-address" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="card-city">Ville</label>
+                            <input type="text" id="card-city" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="card-state">État (US)</label>
+                            <input type="text" id="card-state" placeholder="Ex: DE, WY" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="card-postal">Code postal</label>
+                            <input type="text" id="card-postal" required>
+                        </div>
+                    </div>
+                    <p class="form-hint">Compte Stripe Issuing basé aux États-Unis - adresse requise pour le porteur.</p>
+                    <div class="customer-modal-actions">
+                        <button type="button" class="modal-cancel-btn" id="cancel-create-card">Annuler</button>
+                        <button type="submit" class="modal-submit-btn" id="create-card-submit-btn">Émettre la carte</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+}
+
+function wireCreateCardModal(root, openTriggers, onCreated) {
+
+    const modal = root.querySelector("#create-card-modal");
+    const form = root.querySelector("#create-card-form");
+
+    function openModal() {
+        form.reset();
+        modal.classList.add("open");
+    }
+
+    openTriggers.forEach(trigger => trigger?.addEventListener("click", openModal));
+
+    root.querySelector("#close-create-card").addEventListener("click", () => modal.classList.remove("open"));
+    root.querySelector("#cancel-create-card").addEventListener("click", () => modal.classList.remove("open"));
+    modal.addEventListener("click", (event) => {
+        if (event.target === modal) modal.classList.remove("open");
+    });
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const submitBtn = root.querySelector("#create-card-submit-btn");
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Émission en cours...";
+        try {
+            const limitUnits = Number(root.querySelector("#card-limit").value || 0);
+            const response = await apiFetch("/issuing/create-virtual-card", {
+                method: "POST",
+                body: {
+                    type: root.querySelector("#card-type").value,
+                    currency: root.querySelector("#card-currency").value,
+                    name: root.querySelector("#card-name").value.trim(),
+                    email: root.querySelector("#card-email").value.trim(),
+                    limit_amount: Math.round(limitUnits * 100),
+                    address_line1: root.querySelector("#card-address").value.trim(),
+                    city: root.querySelector("#card-city").value.trim(),
+                    state: root.querySelector("#card-state").value.trim(),
+                    postal_code: root.querySelector("#card-postal").value.trim(),
+                    country: "US",
+                },
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.detail || "Impossible d'émettre la carte");
+            }
+            showToast("Carte émise avec succès", "success");
+            modal.classList.remove("open");
+            await onCreated();
+        } catch (error) {
+            showToast(error.message || "Erreur lors de l'émission de la carte", "error");
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Émettre la carte";
+        }
+    });
+}
+
+async function renderCardIssuing(container) {
+
+    ensureCardIssuingStyles();
+
+    container.innerHTML = `
+        <div class="page-header">
+            <div>
+                <h1>Émission de carte</h1>
+                <p>Cartes virtuelles Stripe Issuing pour les dépenses de votre entreprise.</p>
+            </div>
+        </div>
+        <div id="issuing-content">
+            <div class="commerce-card"><p>Chargement...</p></div>
+        </div>
+    `;
+
+    const content = container.querySelector("#issuing-content");
+
+    let statusData;
+    try {
+        const statusRes = await apiFetch("/stripe/issuing/status");
+        statusData = await statusRes.json();
+        if (!statusRes.ok) {
+            throw new Error(statusData.detail || "Impossible de récupérer le statut Stripe Issuing");
+        }
+    } catch (error) {
+        content.innerHTML = `
+            <div class="commerce-card">
+                <p>${error.message || "Erreur lors du chargement du statut Stripe Issuing"}</p>
+            </div>
+        `;
+        return;
+    }
+
+    if (!statusData.connected || !statusData.capability_active) {
+
+        content.innerHTML = `
+            <div class="commerce-card issuing-empty-state">
+                <i class="fa-solid fa-credit-card"></i>
+                <h3>Stripe Issuing n'est pas encore configuré</h3>
+                <p class="text-muted">
+                    ${statusData.connected
+                        ? "L'onboarding du compte Stripe Issuing n'est pas terminé."
+                        : "Configurez un compte Stripe Issuing dédié (distinct de votre compte de paiement) pour émettre des cartes virtuelles."}
+                </p>
+                <button type="button" class="create-client-btn" id="issuing-configure-btn">
+                    ${statusData.connected ? "Compléter l'onboarding Issuing" : "Configurer Stripe Issuing"}
+                </button>
+            </div>
+        `;
+
+        content.querySelector("#issuing-configure-btn").addEventListener("click", async () => {
+            try {
+                const res = await apiFetch("/onboarding/issuing", { method: "POST" });
+                const d = await res.json();
+                if (!res.ok) throw new Error(d.detail || "Impossible de démarrer l'onboarding Stripe Issuing");
+                window.location.href = d.url;
+            } catch (error) {
+                showToast(error.message || "Erreur lors du démarrage de l'onboarding", "error");
+            }
+        });
+
+        return;
+    }
+
+    let cardsData;
+    let txData;
+    try {
+        const [cardsRes, txRes] = await Promise.all([
+            apiFetch("/issuing/cards"),
+            apiFetch("/issuing/transactions"),
+        ]);
+        cardsData = await cardsRes.json();
+        txData = await txRes.json();
+        if (!cardsRes.ok) throw new Error(cardsData.detail || "Impossible de récupérer les cartes");
+        if (!txRes.ok) throw new Error(txData.detail || "Impossible de récupérer les transactions");
+    } catch (error) {
+        content.innerHTML = `
+            <div class="commerce-card">
+                <p>${error.message || "Erreur lors du chargement"}</p>
+            </div>
+        `;
+        return;
+    }
+
+    const cards = cardsData.cards || [];
+    const transactions = txData.transactions || [];
+
+    content.innerHTML = `
+        <div class="issuing-balance-banner">
+            <span>Solde Issuing disponible</span>
+            <strong>
+                ${(cardsData.balance_available / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+            </strong>
+        </div>
+
+        <!-- SECTION 1 : CARTES -->
+        <div class="issuing-section-header">
+            <div class="table-title">Cartes</div>
+            <button type="button" class="create-client-btn" id="issuing-create-card-btn">+ Émettre une carte</button>
+        </div>
+        <div id="issuing-cards-grid"></div>
+
+        <!-- SECTION 3 : APERÇU DES DÉPENSES -->
+        <div class="table-title mb-2">Aperçu des dépenses (30 derniers jours)</div>
+        <div class="issuing-chart-wrap">
+            <canvas id="issuing-spend-chart"></canvas>
+        </div>
+
+        <!-- SECTION 2 : TRANSACTIONS -->
+        <div id="issuing-transactions-table"></div>
+
+        ${createCardModalHtml()}
+    `;
+
+    const reload = () => renderCardIssuing(container);
+
+    renderCardsGrid(
+        content.querySelector("#issuing-cards-grid"),
+        cards,
+        () => content.querySelector("#create-card-modal").classList.add("open")
+    );
+    renderSpendChart(content.querySelector("#issuing-spend-chart"), transactions);
+    renderTransactionsTable(content.querySelector("#issuing-transactions-table"), transactions);
+
+    wireCreateCardModal(
+        content,
+        [content.querySelector("#issuing-create-card-btn")],
+        reload
+    );
 }

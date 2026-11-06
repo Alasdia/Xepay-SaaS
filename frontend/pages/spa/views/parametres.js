@@ -1243,6 +1243,12 @@ for (const [key, label] of [
 
 function formatStripeRequirement(code) {
   if (STRIPE_REQUIREMENT_LABELS[code]) return STRIPE_REQUIREMENT_LABELS[code];
+  // Les accords Issuing sont préfixés settings.card_issuing.tos_acceptances.
+  // suivi du nom de la banque partenaire (account_holder, cross_river...) -
+  // trop de variantes pour toutes les coder en dur, un même libellé suffit.
+  if (code.startsWith("settings.card_issuing.tos_acceptance")) {
+    return "Acceptation des conditions Stripe Issuing";
+  }
   // Repli pour un code non mappé : rendre au moins lisible plutôt que
   // d'afficher le jargon technique Stripe brut.
   return code.replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -2249,8 +2255,19 @@ function mountPermissions(on) {
 function cartesVirtuellesTemplate() {
   return `
     ${detailHeader("Cartes virtuelles")}
+    <p class="params-subsection-sub">Stripe Issuing fonctionne sur un compte Stripe dédié, distinct de votre compte de paiement (Express) - un onboarding séparé est nécessaire avant de pouvoir émettre une carte.</p>
+    <div id="p-issuing-body"><p class="text-muted">Chargement...</p></div>
+  `;
+}
+
+// Formulaire de création de carte - identique à l'existant, juste extrait
+// pour être injecté dans issuingBodyHtml() une fois le compte actif (voir
+// loadIssuingStatus). Les cartes/transactions déjà émises se consultent
+// dans Commerce > Émission de carte, pas ici (voir spa/views/commerce.js).
+function cartesVirtuellesFormHtml() {
+  return `
     <div class="card-epay p-4" style="max-width:72%;">
-      <p class="text-muted small mb-3">Générez et gérez des cartes virtuelles pour vos dépenses professionnelles ou celles de vos équipes.</p>
+      <p class="text-muted small mb-3">Générez une carte virtuelle pour vos dépenses professionnelles ou celles de vos équipes.</p>
       <form id="p-virtual-card-form" class="d-flex flex-column gap-2 mb-3">
         <div class="row g-2">
           <div class="col-6">
@@ -2304,42 +2321,137 @@ function cartesVirtuellesTemplate() {
   `;
 }
 
-function mountCartesVirtuelles(on) {
-  on(document.getElementById("p-btn-create-card"), "click", async () => {
-    const btn = document.getElementById("p-btn-create-card");
-    const form = document.getElementById("p-virtual-card-form");
-    const formData = new FormData(form);
-    const payload = {
-      type: formData.get("type"),
-      currency: formData.get("currency"),
-      name: formData.get("name"),
-      email: formData.get("email"),
-      limit_amount: parseInt(formData.get("limit_amount") || 50000),
-      address_line1: formData.get("address_line1"),
-      city: formData.get("city"),
-      state: formData.get("state"),
-      postal_code: formData.get("postal_code"),
-      country: "US",
-    };
+function issuingStatusLabel(data) {
+  if (!data || !data.connected) return "Non configuré";
+  if (data.capability_active) return "Actif";
+  return "Vérification en cours";
+}
+
+function issuingBodyHtml() {
+  const data = issuingStatusData;
+  const missing = [...new Set([...((data && data.past_due) || []), ...((data && data.currently_due) || [])])];
+  return `
+    <div class="params-subsection-header">
+      <h6 class="params-subsection-title mb-0">Statut</h6>
+      <button type="button" id="p-issuing-action-btn" class="create-client-btn">Configurer Stripe Issuing</button>
+    </div>
+    <div class="params-status-blocks">
+      <div class="params-status-box">
+        <h6>Statut du compte</h6>
+        <div class="params-status-value">${issuingStatusLabel(data)}</div>
+      </div>
+    </div>
+    ${missing.length ? `
+      <h6 class="params-subsection-title">Éléments requis</h6>
+      <p class="params-subsection-sub">À fournir via l'onboarding Stripe Issuing avant de pouvoir émettre une carte.</p>
+      <div class="params-required-groups">
+        <div class="params-required-group">
+          <div class="params-required-label">Requis actuellement</div>
+          <ul class="params-required-list">${formatStripeRequirementList(missing).map((x) => `<li>${x}</li>`).join("")}</ul>
+        </div>
+      </div>
+    ` : ""}
+    <div id="p-issuing-card-form-wrap" style="margin-top:20px;${data && data.capability_active ? "" : "display:none;"}">
+      ${cartesVirtuellesFormHtml()}
+    </div>
+  `;
+}
+
+let issuingStatusData = null;
+
+async function goToIssuingOnboarding() {
+  const res = await apiFetch("/onboarding/issuing", { method: "POST" });
+  const d = await res.json();
+  if (!res.ok) {
+    let message = d.detail || "Impossible de démarrer l'onboarding Stripe Issuing";
+    if (d.detail === "Permission insuffisante") message = "Seul le propriétaire du compte peut configurer Stripe Issuing";
+    showToast(message, "error");
+    return;
+  }
+  window.location.href = d.url;
+}
+
+function wireIssuingActionButton() {
+  const btn = document.getElementById("p-issuing-action-btn");
+  if (!btn) return;
+  const data = issuingStatusData;
+  btn.disabled = false;
+  if (!data || !data.connected) {
+    btn.innerText = "Configurer Stripe Issuing";
+    btn.onclick = () => goToIssuingOnboarding();
+  } else if (!data.capability_active) {
+    btn.innerText = "Compléter l'onboarding Issuing";
+    btn.onclick = () => goToIssuingOnboarding();
+  } else {
+    btn.innerText = "Compte Issuing actif";
     btn.disabled = true;
-    btn.innerText = "Création en cours...";
-    try {
-      const res = await apiFetch("/issuing/create-virtual-card", { method: "POST", body: payload });
-      const data = await res.json();
-      if (res.ok) {
-        showToast(`Carte créée avec succès ! ID: ${data.card_id}`, "success");
-        form.reset();
-      } else {
-        showToast(data.detail || "Erreur lors de la création de la carte", "error");
-      }
-    } catch (err) {
-      console.error("Erreur Issuing:", err);
-      showToast("Erreur de connexion au serveur", "error");
-    } finally {
-      btn.disabled = false;
-      btn.innerText = "Créer la carte virtuelle";
+  }
+}
+
+async function loadIssuingStatus() {
+  const body = document.getElementById("p-issuing-body");
+  issuingStatusData = null;
+  try {
+    const res = await apiFetch("/stripe/issuing/status");
+    if (!res.ok) {
+      let message = "Impossible de charger le statut Stripe Issuing";
+      try {
+        const errData = await res.json();
+        if (errData.detail === "Permission insuffisante") message = "Seul le propriétaire du compte peut configurer Stripe Issuing";
+        else if (errData.detail) message = errData.detail;
+      } catch (e) {}
+      body.innerHTML = `<p class="text-muted">${message}</p>`;
+      return;
     }
+    issuingStatusData = await res.json();
+    body.innerHTML = issuingBodyHtml();
+    wireIssuingActionButton();
+  } catch (err) {
+    body.innerHTML = `<p class="text-muted">Erreur de chargement.</p>`;
+  }
+}
+
+async function createVirtualCard() {
+  const btn = document.getElementById("p-btn-create-card");
+  const form = document.getElementById("p-virtual-card-form");
+  const formData = new FormData(form);
+  const payload = {
+    type: formData.get("type"),
+    currency: formData.get("currency"),
+    name: formData.get("name"),
+    email: formData.get("email"),
+    limit_amount: parseInt(formData.get("limit_amount") || 50000),
+    address_line1: formData.get("address_line1"),
+    city: formData.get("city"),
+    state: formData.get("state"),
+    postal_code: formData.get("postal_code"),
+    country: "US",
+  };
+  btn.disabled = true;
+  btn.innerText = "Création en cours...";
+  try {
+    const res = await apiFetch("/issuing/create-virtual-card", { method: "POST", body: payload });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(`Carte créée avec succès ! ID: ${data.card_id}`, "success");
+      form.reset();
+    } else {
+      showToast(data.detail || "Erreur lors de la création de la carte", "error");
+    }
+  } catch (err) {
+    console.error("Erreur Issuing:", err);
+    showToast("Erreur de connexion au serveur", "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerText = "Créer la carte virtuelle";
+  }
+}
+
+function mountCartesVirtuelles(on) {
+  on(document.getElementById("p-issuing-body"), "click", (e) => {
+    if (e.target.closest("#p-btn-create-card")) createVirtualCard();
   });
+  loadIssuingStatus();
 }
 
 // --- Detail : Retraits & Comptes US ---
