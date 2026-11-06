@@ -2546,8 +2546,8 @@ function vertoStatusLabel(data) {
 // pour débloquer l'onboarding.
 function vertoOnboardingFormHtml() {
   return `
-    <div class="card-epay p-4" style="max-width:72%;">
-      <p class="text-muted small mb-3">Ces informations sont transmises à Verto (notre partenaire bancaire pour les virements locaux) afin de créer et vérifier votre sous-compte. Elles n'incluent aucun document pour l'instant - Verto peut vous en demander par e-mail si nécessaire.</p>
+    <div style="max-width:72%;">
+      <p class="params-subsection-sub">Ces informations sont transmises à Verto (notre partenaire bancaire pour les virements locaux) afin de créer et vérifier votre sous-compte. Elles n'incluent aucun document pour l'instant - Verto peut vous en demander par e-mail si nécessaire.</p>
       <form id="p-verto-onboarding-form" class="d-flex flex-column gap-2 mb-3">
         <div class="row g-2">
           <div class="col-6">
@@ -2625,28 +2625,19 @@ function vertoOnboardingFormHtml() {
           </div>
         </div>
       </form>
-      <button type="button" id="p-btn-start-verto" class="btn btn-warning w-100 fw-bold text-dark">Démarrer mon enregistrement</button>
+      <button type="button" id="p-btn-start-verto" class="create-client-btn mt-2">Démarrer mon enregistrement</button>
     </div>
   `;
 }
 
 function vertoUsdAccountHtml(data) {
   return `
-    <div class="card-epay p-4" style="max-width:72%;">
-      <p class="text-muted small mb-3">Votre sous-compte est approuvé. Pour recevoir vos virements, ajoutez ce compte bancaire USD comme compte de paiement sur votre Dashboard Stripe Express - c'est Stripe qui vous demande de confirmer, Xepay ne peut pas le faire à votre place.</p>
-      <div class="params-status-blocks mb-3">
-        <div class="params-status-box">
-          <h6>N° de compte</h6>
-          <div class="params-status-value">${data.usd_account_number || "—"}</div>
-        </div>
-        <div class="params-status-box">
-          <h6>Code banque (routing)</h6>
-          <div class="params-status-value">${data.usd_bank_code || "—"}</div>
-        </div>
-        <div class="params-status-box">
-          <h6>Banque</h6>
-          <div class="params-status-value">${data.usd_bank_name || "—"}</div>
-        </div>
+    <div style="max-width:72%;">
+      <p class="params-subsection-sub">Votre sous-compte est approuvé. Pour recevoir vos virements, ajoutez ce compte bancaire USD comme compte de paiement sur votre Dashboard Stripe Express - c'est Stripe qui vous demande de confirmer, Xepay ne peut pas le faire à votre place.</p>
+      <div class="params-row-list mb-3">
+        <div class="params-info-row"><span>N° de compte</span><strong>${data.usd_account_number || "—"}</strong></div>
+        <div class="params-info-row"><span>Code banque (routing)</span><strong>${data.usd_bank_code || "—"}</strong></div>
+        <div class="params-info-row"><span>Banque</span><strong>${data.usd_bank_name || "—"}</strong></div>
       </div>
       <div class="d-flex gap-2">
         <button type="button" id="p-verto-copy-account" class="params-edit-btn">Copier le n° de compte</button>
@@ -2659,8 +2650,8 @@ function vertoUsdAccountHtml(data) {
 
 function vertoBeneficiaryFormHtml() {
   return `
-    <div class="card-epay p-4" style="max-width:72%;">
-      <p class="text-muted small mb-3">Compte bancaire local UEMOA, destination finale de vos retraits.</p>
+    <div style="max-width:72%;">
+      <p class="params-subsection-sub">Compte bancaire local UEMOA, destination finale de vos retraits.</p>
       <form id="p-verto-beneficiary-form" class="d-flex flex-column gap-2 mb-3">
         <div>
           <label class="form-label text-dark fw-bold" style="font-size: 11px;">IBAN</label>
@@ -2695,7 +2686,7 @@ function vertoBeneficiaryFormHtml() {
           <input type="text" name="beneficiary_address_line1" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
         </div>
       </form>
-      <button type="button" id="p-btn-register-beneficiary" class="btn btn-warning w-100 fw-bold text-dark">Enregistrer ce compte bancaire</button>
+      <button type="button" id="p-btn-register-beneficiary" class="create-client-btn mt-2">Enregistrer ce compte bancaire</button>
     </div>
   `;
 }
