@@ -839,7 +839,15 @@
    Xepay/Verto (fond teinté brand à 75% d'opacité), droite = formulaire
    (même fond opaque que .modal-content standard, #fdfaf8 - voir
    sidebar.css). Ciblé par ID (#paramsVertoOnboardingModal) pour ne
-   jamais affecter les autres modals Bootstrap de la vue. */
+   jamais affecter les autres modals Bootstrap de la vue.
+   #sidebar/#top-banner sont volontairement à z-index 500000/500001
+   (jamais assombris par un backdrop, voir sidebar.css) - sans élever CE
+   modal au-dessus d'eux, sa bande de marque gauche se retrouvait
+   recouverte par la sidebar. Même convention que #modalUpgrade
+   (modal-upgrade.css) : seul le modal lui-même passe à 999999, pas son
+   backdrop (qui reste sous la sidebar - elle ne doit toujours pas être
+   assombrie). */
+#paramsVertoOnboardingModal { z-index: 999999 !important; }
 #paramsVertoOnboardingModal .modal-dialog {
   width: 90vw;
   max-width: 1320px;
