@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /login
+Disallow: /signup
+Disallow: /dash/
+Disallow: /dashboard.html
+
+Sitemap: https://www.xepay.finance/sitemap.xml

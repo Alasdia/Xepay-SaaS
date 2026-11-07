@@ -31,6 +31,49 @@ const ROUTES = {
   "/cookies": { render: renderCookies, title: titleCookies },
 };
 
+const SEO = {
+  "/accueil": { title: "Xepay — Paiements en ligne pour l'Afrique de l'Ouest", description: "Encaissez vos clients en ligne, créez des liens de paiement et suivez vos flux en XOF, EUR et USD avec Xepay, la plateforme fintech pensée pour les marchands ouest-africains." },
+  "/fonctionnalite": { title: "Fonctionnalités — Paiement en ligne, liens et factures | Xepay", description: "Découvrez les fonctionnalités Xepay : paiements en ligne, liens de paiement, multi-devises XOF/EUR/USD, factures, rapports et gestion des équipes." },
+  "/tarif": { title: "Tarifs et offres | Xepay", description: "Consultez les offres Xepay et choisissez les outils de paiement et de gestion adaptés à votre activité." },
+  "/api": { title: "API de paiement et webhooks | Xepay", description: "Connectez Xepay à votre site ou application avec des clés API et des webhooks pour intégrer vos flux de paiement." },
+  "/a-propos": { title: "À propos de Xepay | Paiements fintech en Afrique de l'Ouest", description: "Découvrez Xepay et sa mission : simplifier l'encaissement des paiements internationaux pour les entrepreneurs et entreprises de la zone UEMOA." },
+  "/documentation": { title: "Documentation et guides | Xepay", description: "Consultez les guides Xepay pour créer des liens de paiement, encaisser vos clients et gérer vos opérations." },
+  "/centre-aide": { title: "Centre d'aide Xepay | Questions fréquentes", description: "Trouvez des réponses sur votre compte Xepay, les paiements, les liens de paiement et l'utilisation de la plateforme." },
+  "/securite": { title: "Sécurité des paiements et des données | Xepay", description: "En savoir plus sur les principes de sécurité de Xepay et la protection des paiements et des données." },
+  "/mentions-legales": { title: "Mentions légales | Xepay", description: "Informations légales relatives au site Xepay et à son éditeur, Alasdia Technologies LLC." },
+  "/cookies": { title: "Politique de cookies | Xepay", description: "Consultez les informations de Xepay sur l'utilisation des cookies." }
+};
+
+function updateSeo(path) {
+  const normalized = normalize(path);
+  const data = SEO[normalized] || SEO["/accueil"];
+  const canonicalPath = normalized === "/" ? "/accueil" : normalized;
+  const canonicalUrl = "https://www.xepay.finance" + canonicalPath;
+  document.title = data.title;
+  const setMeta = (selector, attributes, content) => {
+    let element = document.head.querySelector(selector);
+    if (!element) {
+      element = document.createElement("meta");
+      Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
+      document.head.appendChild(element);
+    }
+    element.setAttribute("content", content);
+  };
+  setMeta('meta[name="description"]', { name: "description" }, data.description);
+  setMeta('meta[property="og:title"]', { property: "og:title" }, data.title);
+  setMeta('meta[property="og:description"]', { property: "og:description" }, data.description);
+  setMeta('meta[property="og:url"]', { property: "og:url" }, canonicalUrl);
+  setMeta('meta[name="twitter:title"]', { name: "twitter:title" }, data.title);
+  setMeta('meta[name="twitter:description"]', { name: "twitter:description" }, data.description);
+  let canonical = document.head.querySelector('link[rel="canonical"]');
+  if (!canonical) {
+    canonical = document.createElement("link");
+    canonical.setAttribute("rel", "canonical");
+    document.head.appendChild(canonical);
+  }
+  canonical.setAttribute("href", canonicalUrl);
+}
+
 const root = document.getElementById("marketing-view");
 
 function normalize(path) {
@@ -74,7 +117,7 @@ function renderRoute(path, { scroll = true, hash = "" } = {}) {
 
   const route = ROUTES[normalize(path)] || ROUTES["/accueil"];
   root.innerHTML = route.render();
-  document.title = route.title;
+  updateSeo(path);
   setActiveLink(normalize(path));
   observeReveals();
   if (typeof route.mount === "function") {
