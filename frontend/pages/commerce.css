@@ -681,9 +681,9 @@
        qui défile, jamais une scrollbar interne sur la boîte elle-même. */
     overflow-y: auto;
 
-    background: rgba(107, 114, 128, 0.15);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    background: rgba(17, 24, 39, 0.8);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
 
     padding: 20px;
     box-sizing: border-box;

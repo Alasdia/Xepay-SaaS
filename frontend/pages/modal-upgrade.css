@@ -18,5 +18,5 @@
    que dans les overlays custom (Commerce/Dashboard/API/Multi-utilisateurs,
    qui n'ont pas cette couche d'opacité Bootstrap), d'où l'incohérence
    entre vues. */
-.modal-backdrop { background: rgba(107, 114, 128, 0.15) !important; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.modal-backdrop { background: rgba(17, 24, 39, 0.8) !important; backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
 .modal-backdrop.show { opacity: 1 !important; }
