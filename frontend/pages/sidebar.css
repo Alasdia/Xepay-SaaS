@@ -29,8 +29,7 @@
    travers), donc illisible - toujours une couleur opaque calculée. */
 .modal-content { background-color: #fdfaf8; }
 
-/* Overlay "voile sombre léger" (référence : invite WebAuthn native de
-   Chrome, vue Authentification - noir neutre ~45%, flou quasi nul, texte
+/* Overlay "voile sombre léger" - noir neutre 28%, SANS flou (texte
    derrière reste lisible) - appliqué à TOUT modal Bootstrap standard via
    spa/app.js (listener global document sur shown.bs.modal, une seule
    fois pour toute la session), SAUF les tiroirs latéraux de détails
@@ -42,9 +41,7 @@
    sombre, par omission volontaire des ID ci-dessous (voir commerce.css/
    transactions.css/liens.css - aucune règle ne les cible ici). */
 .overlay-soft-dim.modal-backdrop {
-  background: rgba(0, 0, 0, 0.45) !important;
-  backdrop-filter: blur(1.5px);
-  -webkit-backdrop-filter: blur(1.5px);
+  background: rgba(0, 0, 0, 0.28) !important;
 }
 
 /* Zone de recherche (visuelle pour l'instant, non branchée à une recherche

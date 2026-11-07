@@ -709,9 +709,7 @@
 #create-invoice-modal,
 #create-card-modal,
 #card-details-modal {
-    background: rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(1.5px);
-    -webkit-backdrop-filter: blur(1.5px);
+    background: rgba(0, 0, 0, 0.28);
 }
 
 /* Centre ces modals (création ET détails) sur #main-content, pas sur toute
