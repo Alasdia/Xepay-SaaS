@@ -870,7 +870,14 @@
   flex-direction: column;
   overflow-y: auto;
 }
-#paramsVertoOnboardingModal .p-verto-modal-left img { height: 34px; margin-bottom: 32px; }
+/* Icônes seules (pas les logos complets avec texte) dans un badge blanc
+   rond - nécessaire pour Verto (icône officielle teal) et pour Xepay
+   (favicon.svg, même couleur brand que le fond : illisible sans badge
+   clair derrière), voir la demande du 2026-11-07. */
+#paramsVertoOnboardingModal .p-verto-modal-brands { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
+#paramsVertoOnboardingModal .p-verto-modal-brands .p-verto-icon-badge { width: 44px; height: 44px; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+#paramsVertoOnboardingModal .p-verto-modal-brands .p-verto-icon-badge img { height: 22px; width: 22px; object-fit: contain; }
+#paramsVertoOnboardingModal .p-verto-modal-brands .p-verto-icon-x { color: rgba(255,255,255,.85); font-size: 18px; }
 #paramsVertoOnboardingModal .p-verto-modal-left h5 { color: #ffffff; font-weight: 700; margin-bottom: 16px; }
 #paramsVertoOnboardingModal .p-verto-modal-left p { color: rgba(255, 255, 255, 0.92); font-size: 13.5px; line-height: 1.65; }
 #paramsVertoOnboardingModal .p-verto-modal-left .p-verto-modal-links { margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding-top: 24px; }

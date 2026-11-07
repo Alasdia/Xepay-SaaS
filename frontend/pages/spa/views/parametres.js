@@ -2763,7 +2763,11 @@ const VERTO_ONBOARDING_MODAL_HTML = `
   <div class="modal-dialog">
     <div class="modal-content border-0 shadow-lg">
       <div class="p-verto-modal-left">
-        <img src="/assets/xepay-logo-full.png" alt="Xepay">
+        <div class="p-verto-modal-brands">
+          <span class="p-verto-icon-badge"><img src="/favicon.svg" alt="Xepay"></span>
+          <span class="p-verto-icon-x">×</span>
+          <span class="p-verto-icon-badge"><img src="/assets/verto-icon.png" alt="Verto"></span>
+        </div>
         <h5>Xepay &amp; Verto</h5>
         <p>Verto est notre partenaire bancaire agréé pour les virements locaux UEMOA. Vos fonds transitent par un wallet USD dédié chez Verto, jamais détenu par Xepay à aucune étape ("Zero-Custody") - Xepay n'a jamais accès à votre argent, seulement à son acheminement.</p>
         <p>Les informations ci-contre sont transmises directement à Verto pour créer et vérifier votre sous-compte. Elles n'incluent aucun document pour l'instant - Verto peut vous en demander par e-mail si nécessaire.</p>
