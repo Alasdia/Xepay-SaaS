@@ -2552,12 +2552,154 @@ function mountCartesVirtuelles(on) {
 //   3. Enregistrement du compte bancaire local UEMOA (bénéficiaire)
 //   4. Prêt pour les retraits locaux
 //
-// Valeurs d'énumération (pays, type d'entité) confirmées via
-// docs.verto.co/reference/create_a_sub-account_new le 2026-11-06 - le
-// champ `subCategory` (secteur d'activité), lui, n'a PAS de liste
-// publique confirmée : envoyé tel que saisi, à ajuster si Verto le
-// rejette. Mali et Guinée-Bissau sont ABSENTS de l'énumération pays de
-// Verto (vérifié) - non proposés dans le sélecteur ci-dessous.
+// Deux listes de pays bien distinctes (correction du 2026-11-07) :
+// - VERTO_COMPANY_COUNTRIES (pays DE LA SOCIÉTÉ, étapes 1 et 2) : la
+//   société déclarée à Verto doit correspondre à l'entité Stripe réelle
+//   du marchand, pas à son pays de résidence. backend/routes/users.py
+//   (POST /onboarding) appelle stripe.Account.create(type="express",
+//   email=...) SANS paramètre `country` - Stripe affecte alors le compte
+//   au pays de la plateforme Xepay elle-même (confirmé par la doc Stripe :
+//   "The country of the account defaults to the same country as your
+//   platform"), donc United States pour la quasi-totalité des marchands
+//   actuels. La liste couvre les pays réellement supportés par Stripe
+//   (requête live sur stripe.CountrySpec.list() le 2026-11-07, 121 pays),
+//   United States présélectionné par défaut. Seules les valeurs UEMOA
+//   ci-dessous restent confirmées contre l'énumération propre à Verto
+//   (docs.verto.co/reference/create_a_sub-account_new, 2026-11-06) - les
+//   115 autres valeurs (dont "United States") sont NON CONFIRMÉES contre
+//   cette énumération Verto, à vérifier en sandbox une fois le 403
+//   "Access Denied" débloqué.
+// - VERTO_UEMOA_COUNTRIES (pays DE LA BANQUE/DU BÉNÉFICIAIRE, formulaire
+//   bénéficiaire) : reste restreint à l'UEMOA sans ambiguïté, puisque
+//   c'est précisément la destination locale réelle du virement. Mali et
+//   Guinée-Bissau sont ABSENTS de l'énumération pays de Verto (vérifié) -
+//   non proposés dans ce sélecteur.
+const VERTO_COMPANY_COUNTRIES = [
+  { value: "United Arab Emirates", label: "Émirats arabes unis" },
+  { value: "Antigua and Barbuda", label: "Antigua-et-Barbuda" },
+  { value: "Albania", label: "Albanie" },
+  { value: "Armenia", label: "Arménie" },
+  { value: "Angola", label: "Angola" },
+  { value: "Argentina", label: "Argentine" },
+  { value: "Austria", label: "Autriche" },
+  { value: "Australia", label: "Australie" },
+  { value: "Azerbaijan", label: "Azerbaïdjan" },
+  { value: "Bosnia and Herzegovina", label: "Bosnie-Herzégovine" },
+  { value: "Bangladesh", label: "Bangladesh" },
+  { value: "Belgium", label: "Belgique" },
+  { value: "Bulgaria", label: "Bulgarie" },
+  { value: "Bahrain", label: "Bahreïn" },
+  { value: "Benin", label: "Bénin" },
+  { value: "Brunei", label: "Brunei" },
+  { value: "Bolivia", label: "Bolivie" },
+  { value: "Brazil", label: "Brésil" },
+  { value: "Bahamas", label: "Bahamas" },
+  { value: "Bhutan", label: "Bhoutan" },
+  { value: "Botswana", label: "Botswana" },
+  { value: "Canada", label: "Canada" },
+  { value: "Switzerland", label: "Suisse" },
+  { value: "Cote D'Ivoire", label: "Côte d'Ivoire" },
+  { value: "Chile", label: "Chili" },
+  { value: "Colombia", label: "Colombie" },
+  { value: "Costa Rica", label: "Costa Rica" },
+  { value: "Cyprus", label: "Chypre" },
+  { value: "Czech Republic", label: "République tchèque" },
+  { value: "Germany", label: "Allemagne" },
+  { value: "Denmark", label: "Danemark" },
+  { value: "Dominican Republic", label: "République dominicaine" },
+  { value: "Algeria", label: "Algérie" },
+  { value: "Ecuador", label: "Équateur" },
+  { value: "Estonia", label: "Estonie" },
+  { value: "Egypt", label: "Égypte" },
+  { value: "Spain", label: "Espagne" },
+  { value: "Ethiopia", label: "Éthiopie" },
+  { value: "Finland", label: "Finlande" },
+  { value: "France", label: "France" },
+  { value: "Gabon", label: "Gabon" },
+  { value: "United Kingdom", label: "Royaume-Uni" },
+  { value: "Ghana", label: "Ghana" },
+  { value: "Gibraltar", label: "Gibraltar" },
+  { value: "Gambia", label: "Gambie" },
+  { value: "Greece", label: "Grèce" },
+  { value: "Guatemala", label: "Guatemala" },
+  { value: "Guyana", label: "Guyana" },
+  { value: "Hong Kong", label: "Hong Kong" },
+  { value: "Croatia", label: "Croatie" },
+  { value: "Hungary", label: "Hongrie" },
+  { value: "Indonesia", label: "Indonésie" },
+  { value: "Ireland", label: "Irlande" },
+  { value: "Israel", label: "Israël" },
+  { value: "India", label: "Inde" },
+  { value: "Iceland", label: "Islande" },
+  { value: "Italy", label: "Italie" },
+  { value: "Jamaica", label: "Jamaïque" },
+  { value: "Jordan", label: "Jordanie" },
+  { value: "Japan", label: "Japon" },
+  { value: "Kenya", label: "Kenya" },
+  { value: "Cambodia", label: "Cambodge" },
+  { value: "South Korea", label: "Corée du Sud" },
+  { value: "Kuwait", label: "Koweït" },
+  { value: "Kazakhstan", label: "Kazakhstan" },
+  { value: "Laos", label: "Laos" },
+  { value: "Saint Lucia", label: "Sainte-Lucie" },
+  { value: "Liechtenstein", label: "Liechtenstein" },
+  { value: "Sri Lanka", label: "Sri Lanka" },
+  { value: "Lithuania", label: "Lituanie" },
+  { value: "Luxembourg", label: "Luxembourg" },
+  { value: "Latvia", label: "Lettonie" },
+  { value: "Morocco", label: "Maroc" },
+  { value: "Monaco", label: "Monaco" },
+  { value: "Moldova", label: "Moldavie" },
+  { value: "Madagascar", label: "Madagascar" },
+  { value: "North Macedonia", label: "Macédoine du Nord" },
+  { value: "Mongolia", label: "Mongolie" },
+  { value: "Macao", label: "Macao" },
+  { value: "Malta", label: "Malte" },
+  { value: "Mauritius", label: "Maurice" },
+  { value: "Mexico", label: "Mexique" },
+  { value: "Malaysia", label: "Malaisie" },
+  { value: "Mozambique", label: "Mozambique" },
+  { value: "Namibia", label: "Namibie" },
+  { value: "Niger", label: "Niger" },
+  { value: "Nigeria", label: "Nigeria" },
+  { value: "Netherlands", label: "Pays-Bas" },
+  { value: "Norway", label: "Norvège" },
+  { value: "New Zealand", label: "Nouvelle-Zélande" },
+  { value: "Oman", label: "Oman" },
+  { value: "Panama", label: "Panama" },
+  { value: "Peru", label: "Pérou" },
+  { value: "Philippines", label: "Philippines" },
+  { value: "Pakistan", label: "Pakistan" },
+  { value: "Poland", label: "Pologne" },
+  { value: "Portugal", label: "Portugal" },
+  { value: "Paraguay", label: "Paraguay" },
+  { value: "Qatar", label: "Qatar" },
+  { value: "Romania", label: "Roumanie" },
+  { value: "Serbia", label: "Serbie" },
+  { value: "Rwanda", label: "Rwanda" },
+  { value: "Saudi Arabia", label: "Arabie saoudite" },
+  { value: "Sweden", label: "Suède" },
+  { value: "Singapore", label: "Singapour" },
+  { value: "Slovenia", label: "Slovénie" },
+  { value: "Slovakia", label: "Slovaquie" },
+  { value: "San Marino", label: "Saint-Marin" },
+  { value: "Senegal", label: "Sénégal" },
+  { value: "El Salvador", label: "Salvador" },
+  { value: "Thailand", label: "Thaïlande" },
+  { value: "Tunisia", label: "Tunisie" },
+  { value: "Turkey", label: "Turquie" },
+  { value: "Trinidad and Tobago", label: "Trinité-et-Tobago" },
+  { value: "Taiwan", label: "Taïwan" },
+  { value: "Tanzania", label: "Tanzanie" },
+  { value: "United States", label: "États-Unis" },
+  { value: "Uruguay", label: "Uruguay" },
+  { value: "Uzbekistan", label: "Ouzbékistan" },
+  { value: "Vietnam", label: "Vietnam" },
+  { value: "South Africa", label: "Afrique du Sud" },
+];
+
+const VERTO_COMPANY_DEFAULT_COUNTRY = "United States";
+
 const VERTO_UEMOA_COUNTRIES = [
   { value: "Benin", label: "Bénin" },
   { value: "Burkina Faso", label: "Burkina Faso" },
@@ -2574,6 +2716,10 @@ const VERTO_ENTITY_TYPES = [
   { value: "Partnerships", label: "Partenariat" },
   { value: "Non Profit / Charity", label: "Association / ONG" },
 ];
+
+function vertoCompanyCountryOptionsHtml() {
+  return VERTO_COMPANY_COUNTRIES.map((c) => `<option value="${c.value}"${c.value === VERTO_COMPANY_DEFAULT_COUNTRY ? " selected" : ""}>${c.label}</option>`).join("");
+}
 
 function vertoCountryOptionsHtml() {
   return VERTO_UEMOA_COUNTRIES.map((c) => `<option value="${c.value}">${c.label}</option>`).join("");
@@ -2610,116 +2756,120 @@ function vertoStatusLabel(data) {
 // deux sans fermer le modal ; un marchand qui revient avec le statut
 // "sub_account_created" rouvre directement à l'étape 2 (voir
 // p-btn-continue-verto-kyb dans vertoBodyHtml).
+const VERTO_INPUT_STYLE = "background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;";
+
 const VERTO_ONBOARDING_MODAL_HTML = `
 <div class="modal fade" id="paramsVertoOnboardingModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content border-0 shadow-lg" style="border-radius: 14px;">
-      <div class="modal-header">
-        <h5 class="modal-title fw-bold text-dark mb-0" id="p-verto-modal-title">Démarrer mon enregistrement</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="p-verto-modal-left">
+        <img src="/assets/xepay-logo-full.png" alt="Xepay">
+        <h5>Xepay &amp; Verto</h5>
+        <p>Verto est notre partenaire bancaire agréé pour les virements locaux UEMOA. Vos fonds transitent par un wallet USD dédié chez Verto, jamais détenu par Xepay à aucune étape ("Zero-Custody") - Xepay n'a jamais accès à votre argent, seulement à son acheminement.</p>
+        <p>Les informations ci-contre sont transmises directement à Verto pour créer et vérifier votre sous-compte. Elles n'incluent aucun document pour l'instant - Verto peut vous en demander par e-mail si nécessaire.</p>
+        <div class="p-verto-modal-links">
+          <a href="/politique-confidentialite" target="_blank" rel="noopener">Politique de confidentialité</a>
+          <a href="/conditions-utilisation" target="_blank" rel="noopener">Conditions d'utilisation</a>
+        </div>
       </div>
-      <div class="modal-body">
+      <div class="p-verto-modal-right">
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+        <h5 class="fw-bold text-dark mb-1" id="p-verto-modal-title">Démarrer mon enregistrement</h5>
         <p id="p-verto-onboarding-rejected-notice" class="text-warning small mb-3" style="display:none;"><i class="fa-solid fa-triangle-exclamation"></i> Votre précédente demande a été refusée. Vous pouvez soumettre un nouveau dossier ci-dessous.</p>
 
         <div id="p-verto-step-1">
-          <p class="text-muted small mb-3">Ces informations sont transmises à Verto (notre partenaire bancaire pour les virements locaux) afin de créer votre sous-compte. L'étape suivante portera sur votre entreprise et son représentant.</p>
-          <form id="p-verto-step1-form" class="d-flex flex-column gap-2 mb-3">
-            <div class="row g-2">
-              <div class="col-6">
-                <label class="form-label text-dark fw-bold" style="font-size: 11px;">Pays de la société</label>
-                <select name="country" class="form-select form-select-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
-                  ${vertoCountryOptionsHtml()}
-                </select>
-              </div>
-              <div class="col-6">
-                <label class="form-label text-dark fw-bold" style="font-size: 11px;">Secteur d'activité</label>
-                <input type="text" name="sub_category" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Ex: Financial Services" required>
-              </div>
+          <form id="p-verto-step1-form">
+            <div class="p-verto-field">
+              <label>Pays de la société</label>
+              <p class="p-verto-field-help">Le pays de l'entité reconnue par Stripe pour votre compte marchand - pas nécessairement votre pays de résidence.</p>
+              <select name="country" class="form-select form-select-sm text-dark" style="${VERTO_INPUT_STYLE}" required>
+                ${vertoCompanyCountryOptionsHtml()}
+              </select>
             </div>
-            <div>
-              <label class="form-label text-dark fw-bold" style="font-size: 11px;">Nom légal de la société</label>
-              <input type="text" name="company_name" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Ex: Xepay SARL" required>
+            <div class="p-verto-field">
+              <label>Secteur d'activité</label>
+              <p class="p-verto-field-help">L'activité principale de votre entreprise, telle que déclarée à Verto.</p>
+              <input type="text" name="sub_category" class="form-control form-control-sm text-dark" style="${VERTO_INPUT_STYLE}" placeholder="Ex: Financial Services" required>
             </div>
-            <div class="row g-2">
-              <div class="col-6">
-                <label class="form-label text-dark fw-bold" style="font-size: 11px;">N° d'enregistrement (RCCM)</label>
-                <input type="text" name="identification_number" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
-              </div>
-              <div class="col-6">
-                <label class="form-label text-dark fw-bold" style="font-size: 11px;">N° fiscal (optionnel)</label>
-                <input type="text" name="tax_id_or_ein" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;">
-              </div>
+            <div class="p-verto-field">
+              <label>Nom légal de la société</label>
+              <p class="p-verto-field-help">Le nom exact enregistré auprès de l'administration - doit correspondre à celui utilisé pour votre compte Stripe.</p>
+              <input type="text" name="company_name" class="form-control form-control-sm text-dark" style="${VERTO_INPUT_STYLE}" placeholder="Ex: Xepay LLC" required>
+            </div>
+            <div class="p-verto-field">
+              <label>N° d'enregistrement de la société</label>
+              <p class="p-verto-field-help">Numéro d'immatriculation officiel (ex: numéro de dépôt auprès de l'État pour une LLC).</p>
+              <input type="text" name="identification_number" class="form-control form-control-sm text-dark" style="${VERTO_INPUT_STYLE}" placeholder="Ex: numéro d'immatriculation de l'État (LLC)" required>
+            </div>
+            <div class="p-verto-field">
+              <label>N° fiscal/EIN (optionnel)</label>
+              <p class="p-verto-field-help">Si votre société dispose d'un identifiant fiscal (EIN aux États-Unis, ou équivalent local), indiquez-le ici.</p>
+              <input type="text" name="tax_id_or_ein" class="form-control form-control-sm text-dark" style="${VERTO_INPUT_STYLE}">
             </div>
           </form>
         </div>
 
         <div id="p-verto-step-2" style="display:none;">
-          <p class="text-muted small mb-3">Sous-compte créé. Complétez maintenant les informations de votre entreprise et de son représentant.</p>
-          <form id="p-verto-step2-form" class="d-flex flex-column gap-2 mb-3">
-            <div class="row g-2">
-              <div class="col-6">
-                <label class="form-label text-dark fw-bold" style="font-size: 11px;">Pays de la société</label>
-                <select name="country" class="form-select form-select-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
-                  ${vertoCountryOptionsHtml()}
-                </select>
-              </div>
-              <div class="col-6">
-                <label class="form-label text-dark fw-bold" style="font-size: 11px;">Forme juridique</label>
-                <select name="entity_type" class="form-select form-select-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
-                  ${vertoEntityTypeOptionsHtml()}
-                </select>
+          <form id="p-verto-step2-form">
+            <div class="p-verto-field">
+              <label>Pays de la société</label>
+              <p class="p-verto-field-help">Doit correspondre au pays sélectionné à l'étape précédente.</p>
+              <select name="country" class="form-select form-select-sm text-dark" style="${VERTO_INPUT_STYLE}" required>
+                ${vertoCompanyCountryOptionsHtml()}
+              </select>
+            </div>
+            <div class="p-verto-field">
+              <label>Forme juridique</label>
+              <p class="p-verto-field-help">La structure légale de votre entreprise (SARL/LLC, société individuelle, etc.).</p>
+              <select name="entity_type" class="form-select form-select-sm text-dark" style="${VERTO_INPUT_STYLE}" required>
+                ${vertoEntityTypeOptionsHtml()}
+              </select>
+            </div>
+            <div class="p-verto-field">
+              <label>Adresse de la société</label>
+              <p class="p-verto-field-help">Adresse légale complète du siège social.</p>
+              <input type="text" name="address_line1" class="form-control form-control-sm text-dark mb-2" style="${VERTO_INPUT_STYLE}" placeholder="Adresse" required>
+              <div class="row g-2">
+                <div class="col-6">
+                  <input type="text" name="city" class="form-control form-control-sm text-dark" style="${VERTO_INPUT_STYLE}" placeholder="Ville" required>
+                </div>
+                <div class="col-6">
+                  <input type="text" name="zip_code" class="form-control form-control-sm text-dark" style="${VERTO_INPUT_STYLE}" placeholder="Code postal">
+                </div>
               </div>
             </div>
-            <hr class="my-1">
-            <p class="text-muted small mb-1">Adresse légale de la société</p>
-            <div class="row g-2">
-              <div class="col-8">
-                <input type="text" name="address_line1" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Adresse" required>
+            <div class="p-verto-field">
+              <label>Représentant principal</label>
+              <p class="p-verto-field-help">La personne dirigeante et actionnaire à au moins 25% du capital - Verto vérifie son identité (KYC).</p>
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <input type="text" name="rep_first_name" class="form-control form-control-sm text-dark" style="${VERTO_INPUT_STYLE}" placeholder="Prénom" required>
+                </div>
+                <div class="col-6">
+                  <input type="text" name="rep_last_name" class="form-control form-control-sm text-dark" style="${VERTO_INPUT_STYLE}" placeholder="Nom" required>
+                </div>
               </div>
-              <div class="col-4">
-                <input type="text" name="zip_code" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Code postal">
-              </div>
+              <input type="email" name="rep_email" class="form-control form-control-sm text-dark mb-2" style="${VERTO_INPUT_STYLE}" placeholder="Email - utilisé par Verto pour le consentement aux conditions" required>
+              <input type="tel" name="rep_phone" class="form-control form-control-sm text-dark" style="${VERTO_INPUT_STYLE}" placeholder="Téléphone, ex: +2250700000000" required>
             </div>
-            <div class="row g-2">
-              <div class="col-12">
-                <input type="text" name="city" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Ville" required>
-              </div>
+            <div class="p-verto-field">
+              <label>Date de naissance du représentant</label>
+              <p class="p-verto-field-help">Nécessaire pour la vérification d'identité (KYC).</p>
+              <input type="date" name="rep_dob" class="form-control form-control-sm text-dark" style="${VERTO_INPUT_STYLE}" required>
             </div>
-            <hr class="my-1">
-            <p class="text-muted small mb-1">Représentant principal (dirigeant et actionnaire ≥25%)</p>
-            <div class="row g-2">
-              <div class="col-6">
-                <input type="text" name="rep_first_name" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Prénom" required>
-              </div>
-              <div class="col-6">
-                <input type="text" name="rep_last_name" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Nom" required>
-              </div>
-            </div>
-            <div class="row g-2">
-              <div class="col-6">
-                <input type="email" name="rep_email" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Email" required>
-              </div>
-              <div class="col-6">
-                <input type="tel" name="rep_phone" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="+2250700000000" required>
-              </div>
-            </div>
-            <div class="row g-2">
-              <div class="col-6">
-                <label class="form-label text-dark fw-bold" style="font-size: 11px;">Date de naissance</label>
-                <input type="date" name="rep_dob" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
-              </div>
-              <div class="col-6">
-                <label class="form-label text-dark fw-bold" style="font-size: 11px;">% de détention du capital</label>
-                <input type="number" name="rep_ownership" min="1" max="100" value="100" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
-              </div>
+            <div class="p-verto-field">
+              <label>% de détention du capital</label>
+              <p class="p-verto-field-help">Part du capital détenue par ce représentant - 100% par défaut si vous êtes seul fondateur.</p>
+              <input type="number" name="rep_ownership" min="1" max="100" value="100" class="form-control form-control-sm text-dark" style="${VERTO_INPUT_STYLE}" required>
             </div>
           </form>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
-        <button type="button" id="p-btn-verto-step1-next" class="create-client-btn">Continuer</button>
-        <button type="button" id="p-btn-verto-step2-submit" class="create-client-btn" style="display:none;">Envoyer mon dossier</button>
+
+        <div class="d-flex justify-content-end gap-2 mt-2">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
+          <button type="button" id="p-btn-verto-step1-next" class="create-client-btn">Continuer</button>
+          <button type="button" id="p-btn-verto-step2-submit" class="create-client-btn" style="display:none;">Envoyer mon dossier</button>
+        </div>
       </div>
     </div>
   </div>

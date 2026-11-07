@@ -833,3 +833,63 @@
   background: #f9fafb;
   z-index: 1;
 }
+
+/* Modal d'onboarding Verto en page scindée (90% du viewport), demandé le
+   2026-11-07 à la place d'un modal classique : gauche = image de marque
+   Xepay/Verto (fond teinté brand à 75% d'opacité), droite = formulaire
+   (même fond opaque que .modal-content standard, #fdfaf8 - voir
+   sidebar.css). Ciblé par ID (#paramsVertoOnboardingModal) pour ne
+   jamais affecter les autres modals Bootstrap de la vue. */
+#paramsVertoOnboardingModal .modal-dialog {
+  width: 90vw;
+  max-width: 1320px;
+  height: 90vh;
+  margin: 5vh auto;
+}
+#paramsVertoOnboardingModal .modal-content {
+  height: 100%;
+  flex-direction: row;
+  overflow: hidden;
+  border-radius: 16px;
+}
+#paramsVertoOnboardingModal .p-verto-modal-left {
+  width: 38%;
+  flex-shrink: 0;
+  background: rgba(180, 83, 9, 0.75);
+  color: #ffffff;
+  padding: 48px 40px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+#paramsVertoOnboardingModal .p-verto-modal-left img { height: 34px; margin-bottom: 32px; }
+#paramsVertoOnboardingModal .p-verto-modal-left h5 { color: #ffffff; font-weight: 700; margin-bottom: 16px; }
+#paramsVertoOnboardingModal .p-verto-modal-left p { color: rgba(255, 255, 255, 0.92); font-size: 13.5px; line-height: 1.65; }
+#paramsVertoOnboardingModal .p-verto-modal-left .p-verto-modal-links { margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding-top: 24px; }
+#paramsVertoOnboardingModal .p-verto-modal-left .p-verto-modal-links a { color: rgba(255, 255, 255, 0.85); font-size: 12.5px; text-decoration: underline; }
+#paramsVertoOnboardingModal .p-verto-modal-left .p-verto-modal-links a:hover { color: #ffffff; }
+
+#paramsVertoOnboardingModal .p-verto-modal-right {
+  flex: 1;
+  min-width: 0;
+  background: #fdfaf8;
+  padding: 44px 56px;
+  overflow-y: auto;
+  position: relative;
+}
+#paramsVertoOnboardingModal .p-verto-modal-right .btn-close { position: absolute; top: 20px; right: 20px; }
+
+/* Champs présentés un par un (plus de grille col-6 côte à côte), chacun
+   avec son label ET une phrase d'explication - demande explicite du
+   2026-11-07, la place disponible en page scindée le permet. */
+#paramsVertoOnboardingModal .p-verto-field { margin-bottom: 22px; }
+#paramsVertoOnboardingModal .p-verto-field label { display: block; font-weight: 700; color: #1f2937; font-size: 13px; margin-bottom: 4px; }
+#paramsVertoOnboardingModal .p-verto-field .p-verto-field-help { font-size: 12px; color: #6b7280; margin-bottom: 6px; line-height: 1.5; }
+
+@media (max-width: 860px) {
+  #paramsVertoOnboardingModal .modal-dialog { width: 96vw; height: 94vh; margin: 3vh auto; }
+  #paramsVertoOnboardingModal .modal-content { flex-direction: column; }
+  #paramsVertoOnboardingModal .p-verto-modal-left { width: 100%; padding: 28px 24px; }
+  #paramsVertoOnboardingModal .p-verto-modal-left .p-verto-modal-links { margin-top: 20px; padding-top: 0; }
+  #paramsVertoOnboardingModal .p-verto-modal-right { padding: 28px 24px; }
+}
