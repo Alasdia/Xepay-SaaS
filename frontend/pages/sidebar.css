@@ -37,8 +37,11 @@
 #top-banner .top-banner-actions button:hover,
 #top-banner .top-banner-actions a:hover { background: rgba(17, 24, 39, 0.1); }
 #top-banner #settings-gear-btn:hover { transform: rotate(20deg); }
+/* z-index au-dessus de #sidebar (500000, voir plus haut) : ce coin gauche
+   chevauche le coin haut-gauche de la sidebar, qui le cachait entièrement
+   depuis que la sidebar est passée au-dessus de tous les backdrops. */
 #top-banner::before,
-#top-banner::after { content: ""; position: absolute; top: 100%; width: 12px; height: 12px; z-index: 200; }
+#top-banner::after { content: ""; position: absolute; top: 100%; width: 12px; height: 12px; z-index: 500001; }
 #top-banner::before { left: 0; background: radial-gradient(circle at 100% 100%, transparent 12px, rgba(180, 83, 9, 0.9) 12px); }
 #top-banner::after { right: 0; background: radial-gradient(circle at 0 100%, transparent 12px, rgba(180, 83, 9, 0.9) 12px); }
 /* z-index volontairement très au-dessus de TOUS les backdrops/overlays de
