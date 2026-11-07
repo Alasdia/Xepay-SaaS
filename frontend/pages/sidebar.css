@@ -41,7 +41,14 @@
 #top-banner::after { content: ""; position: absolute; top: 100%; width: 12px; height: 12px; z-index: 200; }
 #top-banner::before { left: 0; background: radial-gradient(circle at 100% 100%, transparent 12px, rgba(180, 83, 9, 0.9) 12px); }
 #top-banner::after { right: 0; background: radial-gradient(circle at 0 100%, transparent 12px, rgba(180, 83, 9, 0.9) 12px); }
-#sidebar{ background:#ffffff !important; border-right:1px solid #e5e7eb; box-shadow:0 2px 20px rgba(0,0,0,.04); z-index: 100; }
+/* z-index volontairement très au-dessus de TOUS les backdrops/overlays de
+   modals de l'app (Bootstrap .modal-backdrop ~1050, .customer-modal-overlay/
+   .activity-add-modal-overlay 9999, .invite-modal-backdrop 99999, etc.) -
+   la sidebar ne doit JAMAIS être floutée/assombrie par l'ouverture d'un
+   modal, quelle que soit la vue. Reste sous les contenus qui doivent
+   légitimement passer au-dessus d'elle (#modalUpgrade, .secret-modal,
+   .toast-notif, tous à 999999). */
+#sidebar{ background:#ffffff !important; border-right:1px solid #e5e7eb; box-shadow:0 2px 20px rgba(0,0,0,.04); z-index: 500000; }
 #sidebar h4{ color:#111827 !important; }
 #sidebar small{ color:#6b7280 !important; }
 #sidebar .nav-link{ color:#6b7280 !important; border-radius:12px; padding:6px 10px; font-size:14px; transition:.22s; display:flex; align-items:center; gap:8px; }
