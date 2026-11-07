@@ -166,6 +166,19 @@ async function init() {
   // Profil/Sécurité qui n'exposent pas leur propre window.upgrade.
   window.upgrade = upgrade;
 
+  // Voile "léger" (.overlay-soft-dim, voir sidebar.css) sur le backdrop
+  // Bootstrap de TOUT modal standard, une seule fois pour toute la
+  // session (couvre aussi les modals pas encore écrits) - sauf les
+  // tiroirs latéraux de détails (#stripeReportModal, voir
+  // shared/detailsDrawer.js), qui gardent leur superposition assombrie
+  // classique sur écran moyen/mobile (neutralisée de toute façon par le
+  // tiroir dès 1200px). Écouté sur document car shown.bs.modal remonte
+  // (bubbles) depuis l'élément .modal jusqu'ici.
+  document.addEventListener("shown.bs.modal", (e) => {
+    if (e.target.id === "stripeReportModal") return;
+    document.querySelectorAll(".modal-backdrop").forEach((el) => el.classList.add("overlay-soft-dim"));
+  });
+
   start();
 }
 

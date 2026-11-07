@@ -213,7 +213,7 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
 /* Modal "+ Ajouter" — mêmes valeurs que les modals de création déjà
    établies ailleurs dans l'app (commerce.css : fond gris, pas de coins
    arrondis, ombre portée, centré sur #main-content avec la marge sidebar). */
-.activity-add-modal-overlay { position:fixed; inset:0; z-index:9999; display:none; align-items:flex-start; justify-content:center; overflow-y:auto; background:rgba(17, 24, 39, 0.8); backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px); padding:5% 20px; padding-left:calc(18% + 20px); box-sizing:border-box; }
+.activity-add-modal-overlay { position:fixed; inset:0; z-index:9999; display:none; align-items:flex-start; justify-content:center; overflow-y:auto; background:rgba(0, 0, 0, 0.45); backdrop-filter:blur(1.5px); -webkit-backdrop-filter:blur(1.5px); padding:5% 20px; padding-left:calc(18% + 20px); box-sizing:border-box; }
 .activity-add-modal-overlay.open { display:flex; }
 @media (max-width: 960px) {
   .activity-add-modal-overlay { padding-left:20px; }

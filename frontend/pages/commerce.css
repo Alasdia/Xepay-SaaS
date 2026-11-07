@@ -693,6 +693,27 @@
     display: flex;
 }
 
+/* Voile "léger" (voir sidebar.css, .overlay-soft-dim) pour les modals qui
+   s'ouvrent AU-DESSUS de la vue (création + "Émettre une carte" + détails
+   de carte - jamais convertis en tiroir, voir cardDetailsModalHtml/
+   createCardModalHtml dans commerce.js). Volontairement absents de cette
+   liste : les 4 modals de DÉTAILS (clients/produits/abonnements/factures)
+   - ils s'ouvrent en tiroir latéral droit sur grand écran
+   (initDetailsDrawer, shared/detailsDrawer.js) et gardent l'ancien voile
+   sombre (.customer-modal-overlay de base, ci-dessus) sur écran moyen/
+   mobile où ils restent superposés. */
+#modalCreationLien,
+#create-client-modal,
+#create-product-modal,
+#create-subscription-modal,
+#create-invoice-modal,
+#create-card-modal,
+#card-details-modal {
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(1.5px);
+    -webkit-backdrop-filter: blur(1.5px);
+}
+
 /* Centre ces modals (création ET détails) sur #main-content, pas sur toute
    la fenêtre : #sidebar est fixe à 18% de la largeur (voir sidebar.html) —
    réserver cette marge à gauche avant centrage évite que le modal paraisse
