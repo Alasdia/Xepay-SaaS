@@ -6,7 +6,13 @@
    deux petits carrés sous le bandeau, masqués en quart de cercle via
    radial-gradient, pour obtenir une courbe qui prolonge le bandeau vers le
    bas/extérieur au lieu de le rogner. */
-#top-banner { position: fixed; top: 0; left: 0; width: 100%; height: 5vh; background: rgba(180, 83, 9, 0.9); z-index: 200; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; gap: 16px; }
+/* z-index au-dessus de #sidebar (500000, voir plus bas) : #top-banner
+   établit son propre contexte d'empilement, donc le z-index de ses
+   pseudo-éléments ::before/::after (le coin arrondi gauche) ne compte que
+   PAR RAPPORT À LUI, jamais face à #sidebar dans le contexte global -
+   remonter seulement ::before/::after ne suffisait pas, c'est le bandeau
+   entier qui doit passer au-dessus. */
+#top-banner { position: fixed; top: 0; left: 0; width: 100%; height: 5vh; background: rgba(180, 83, 9, 0.9); z-index: 500001; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; gap: 16px; }
 
 /* Fond par défaut de tous les modals Bootstrap de l'app n'ayant pas déjà
    leur propre fond (voir les overrides dans commerce.css/dashboard.css/
