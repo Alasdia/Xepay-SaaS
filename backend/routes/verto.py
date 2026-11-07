@@ -32,7 +32,17 @@ def start_verto_onboarding(
     Zero-Custody, voir services/verto_service.py) : crée le sous-compte,
     puis soumet les données KYC - tout via API, aucun passage par le
     dashboard Verto. Le sous-compte reste en statut "pending" jusqu'à la
-    confirmation du webhook (voir webhook/verto.py)."""
+    confirmation du webhook (voir webhook/verto.py).
+
+    accountType="PARTNER_REFERRED" (Atlas for Platform) depuis le
+    2026-11-07 - voir le plan dédié et le docstring de
+    verto_service.create_sub_account. Protégé par VERTO_ENABLED (false
+    par défaut) : testé empiriquement que ce changement de modèle seul ne
+    débloque pas le 403 "Access Denied" actuel sur /sub-accounts, donc ce
+    flux reste désactivé tant que Verto ne confirme pas l'accès."""
+    if not verto_service.VERTO_ENABLED:
+        raise HTTPException(503, "Fonctionnalité en cours de déploiement.")
+
     owner_id = membership.workspace_id
     profile = _get_or_create_profile(db, owner_id)
 
@@ -41,7 +51,7 @@ def start_verto_onboarding(
 
     try:
         sub_account = verto_service.create_sub_account(
-            account_type="SUB_CLIENT",
+            account_type="PARTNER_REFERRED",
             country=body.country,
             name=body.company_name,
             sub_category=body.sub_category,
@@ -62,6 +72,20 @@ def start_verto_onboarding(
 
     profile.verto_company_id = company_id
     profile.verto_onboarding_status = "pending"
+
+    # Consentement du dirigeant (PARTNER_REFERRED uniquement) - ne doit
+    # jamais faire échouer tout l'onboarding : le sous-compte est déjà
+    # créé, un échec d'envoi (y compris NotImplementedError tant que
+    # l'endpoint n'est pas confirmé, voir send_director_consent_email)
+    # laisse juste le statut à "not_sent", renvoyable via
+    # POST /verto/resend-director-consent.
+    try:
+        verto_service.send_director_consent_email(company_id)
+        profile.verto_director_consent_status = "sent"
+    except Exception:
+        logger.exception("Echec envoi e-mail de consentement dirigeant pour company_id=%s", company_id)
+        profile.verto_director_consent_status = "not_sent"
+
     db.commit()
 
     return {"status": "pending", "verto_company_id": company_id}
@@ -80,6 +104,7 @@ def get_verto_status(
         return {"status": "not_started"}
     return {
         "status": profile.verto_onboarding_status or "not_started",
+        "director_consent_status": profile.verto_director_consent_status or "not_sent",
         "usd_account_number": profile.verto_usd_account_number,
         "usd_bank_code": profile.verto_usd_bank_code,
         "usd_bank_name": profile.verto_usd_bank_name,
@@ -88,6 +113,34 @@ def get_verto_status(
         "beneficiary_bank_name": profile.beneficiary_bank_name,
         "beneficiary_bank_iban_last4": (profile.beneficiary_bank_iban or "")[-4:] or None,
     }
+
+
+@router.post("/verto/resend-director-consent")
+def resend_director_consent(
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_account_config")),
+    db: Session = Depends(get_db),
+):
+    """Renvoie l'e-mail de consentement Verto au dirigeant (PARTNER_REFERRED
+    uniquement) - voir verto_service.send_director_consent_email, NON
+    CONFIRMÉ tant que l'endpoint réel n'est pas vérifié."""
+    if not verto_service.VERTO_ENABLED:
+        raise HTTPException(503, "Fonctionnalité en cours de déploiement.")
+
+    profile = db.query(Profile).filter(Profile.user_id == membership.workspace_id).first()
+    if not profile or not profile.verto_company_id:
+        raise HTTPException(400, "Onboarding Verto non démarré")
+
+    try:
+        verto_service.send_director_consent_email(profile.verto_company_id)
+        profile.verto_director_consent_status = "sent"
+        db.commit()
+    except Exception:
+        logger.exception(
+            "Echec renvoi e-mail de consentement dirigeant pour company_id=%s", profile.verto_company_id
+        )
+        raise HTTPException(502, "Erreur lors de l'envoi. Réessayez plus tard.")
+
+    return {"director_consent_status": profile.verto_director_consent_status}
 
 
 @router.post("/verto/beneficiary")
@@ -99,6 +152,9 @@ def register_beneficiary(
     """Enregistre le compte bancaire local UEMOA du marchand (destination
     finale des retraits, voir webhook/verto.py) - nécessite un sous-compte
     Verto déjà approuvé."""
+    if not verto_service.VERTO_ENABLED:
+        raise HTTPException(503, "Fonctionnalité en cours de déploiement.")
+
     profile = db.query(Profile).filter(Profile.user_id == membership.workspace_id).first()
     if not profile or not profile.verto_company_id:
         raise HTTPException(400, "Onboarding Verto non démarré")
@@ -112,6 +168,7 @@ def register_beneficiary(
 
     try:
         result = verto_service.create_beneficiary(
+            company_id=profile.verto_company_id,
             currency_id=verto_service.VERTO_XOF_CURRENCY_ID,
             company_name=profile.full_name or "",
             iban=body.iban,

@@ -1,10 +1,13 @@
 """Webhook Verto - architecture "Zero-Custody" des retraits (voir
-services/verto_service.py, routes/payout.py, routes/verto.py). Gère 4
+services/verto_service.py, routes/payout.py, routes/verto.py). Gère 5
 transitions : approbation/rejet du sous-compte à l'onboarding (création
-du wallet USD + récupération de ses coordonnées), puis "Wallet Credit"
-quand le Payout Stripe atterrit (lance le virement vers la banque locale
-UEMOA), puis la confirmation finale de ce virement. Gère aussi la
-vérification automatique du rechargement de carte Issuing (voir plus bas).
+du wallet USD + récupération de ses coordonnées), acceptation du
+consentement du dirigeant (PARTNER_REFERRED, NON CONFIRMÉ - voir plus
+bas), puis "Wallet Credit" quand le Payout Stripe atterrit (lance le
+virement vers la banque locale UEMOA), puis la confirmation finale de ce
+virement. Gère aussi la vérification automatique du rechargement de
+carte Issuing (voir plus bas) - fonctionnalité séparée, jamais
+concernée par VERTO_ENABLED.
 
 AVERTISSEMENT : les noms exacts des types d'événements et la forme du
 payload JSON ci-dessous ne sont PAS confirmés par la doc publique Verto
@@ -65,6 +68,29 @@ async def verto_webhook(request: Request, db: Session = Depends(get_db)):
         logger.warning("Webhook Verto reçu pour un company_id inconnu: %s", company_id)
         return {"ok": True}
 
+    # Les branches onboarding/retrait ci-dessous dépendent du flux
+    # PARTNER_REFERRED (voir le plan du 2026-11-07) et restent désactivées
+    # tant que VERTO_ENABLED est à false - en pratique déjà sans effet
+    # aujourd'hui puisqu'aucun sous-compte ne peut être créé (routes/
+    # verto.py, lui aussi protégé), donc aucun profile n'a de
+    # verto_company_id à faire correspondre. Le bloc "VÉRIFICATION AUTO DU
+    # RECHARGEMENT DE CARTE ISSUING" plus bas est une fonctionnalité
+    # SÉPARÉE (financement de carte Stripe Issuing, pas l'onboarding
+    # Verto) - volontairement PAS couvert par cette liste, qui ne doit
+    # concerner que le périmètre PARTNER_REFERRED.
+    is_onboarding_or_withdrawal_event = (
+        event_type in (
+            "company.approved", "COMPANY_APPROVED",
+            "company.rejected", "COMPANY_REJECTED",
+            "wallet.credit", "WALLET_CREDIT",
+            "payment.completed", "payment.failed", "PAYMENT_COMPLETED", "PAYMENT_FAILED",
+            "director.consent_accepted",  # NON CONFIRMÉ, voir plus bas
+        )
+        or payload.get("companyStatus") in ("APPROVED", "REJECTED")
+    )
+    if is_onboarding_or_withdrawal_event and not verto_service.VERTO_ENABLED:
+        return {"ok": True}
+
     # --------------------------------------------------
     # ONBOARDING APPROUVÉ : crée le wallet USD + récupère ses coordonnées
     # bancaires receveuses, pour affichage dans l'UI Xepay (voir
@@ -92,6 +118,20 @@ async def verto_webhook(request: Request, db: Session = Depends(get_db)):
 
     if event_type in ("company.rejected", "COMPANY_REJECTED") or payload.get("companyStatus") == "REJECTED":
         profile.verto_onboarding_status = "rejected"
+        db.commit()
+        return {"ok": True}
+
+    # --------------------------------------------------
+    # CONSENTEMENT DU DIRIGEANT ACCEPTÉ (PARTNER_REFERRED uniquement) -
+    # NON CONFIRMÉ : ni le nom "director.consent_accepted" ni la forme du
+    # payload n'ont de source dans la doc publique (voir le plan du
+    # 2026-11-07, section 4) - point d'insertion prêt, pas fonctionnel.
+    # À vérifier/ajuster contre un vrai événement sandbox une fois
+    # l'accès PARTNER_REFERRED confirmé par Verto, avant d'activer
+    # VERTO_ENABLED.
+    # --------------------------------------------------
+    if event_type == "director.consent_accepted":
+        profile.verto_director_consent_status = "accepted"
         db.commit()
         return {"ok": True}
 
@@ -166,7 +206,7 @@ async def verto_webhook(request: Request, db: Session = Depends(get_db)):
 
         try:
             purposes = verto_service.list_payment_purpose_codes(
-                payment_direction="Outbound", currency="XOF", mode="LOCAL"
+                company_id=str(company_id), payment_direction="Outbound", currency="XOF", mode="LOCAL"
             )
             if not purposes:
                 raise ValueError("Aucun purposeId Outbound/XOF renvoyé par Verto")
@@ -177,6 +217,7 @@ async def verto_webhook(request: Request, db: Session = Depends(get_db)):
             purpose_id = purposes[0]["id"]
 
             result = verto_service.create_payment_request(
+                company_id=str(company_id),
                 beneficiary_id=int(profile.verto_beneficiary_id),
                 purpose_id=purpose_id,
                 amount_usd=wd.amount,

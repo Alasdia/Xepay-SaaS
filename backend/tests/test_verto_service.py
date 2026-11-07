@@ -1,5 +1,6 @@
 import importlib
 import os
+import time
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -127,7 +128,7 @@ class TestCreateBeneficiaryPayload(unittest.TestCase):
     obligatoires/placés le 2026-11-07 : paymentMode LOCAL, BIC dans
     bankCode, bankAddress minimal, beneficiaryAddress complet)."""
 
-    @patch("backend.services.verto_service._headers", return_value={})
+    @patch("backend.services.verto_service._sub_account_headers", return_value={})
     @patch("backend.services.verto_service.requests.post")
     def test_exact_payload_sent_to_verto(self, mock_post, _mock_headers):
         mock_post.return_value = MagicMock(
@@ -137,6 +138,7 @@ class TestCreateBeneficiaryPayload(unittest.TestCase):
         )
 
         vs.create_beneficiary(
+            company_id="16262",
             currency_id=49,
             company_name="Test Merchant SARL",
             iban="SN08SN0100152000048500003035",
@@ -171,6 +173,97 @@ class TestCreateBeneficiaryPayload(unittest.TestCase):
                 "companyName": "Test Merchant SARL",
             },
         )
+
+
+class TestSubAccountTokenCache(unittest.TestCase):
+    """Cache de jetons PAR SOUS-COMPTE (PARTNER_REFERRED, voir le plan du
+    2026-11-07) - indépendant du cache du jeton parent (_jwt_cache)."""
+
+    def setUp(self):
+        vs._sub_account_jwt_cache.clear()
+
+    @patch("backend.services.verto_service._sub_account_login")
+    def test_two_company_ids_have_independent_entries(self, mock_login):
+        mock_login.side_effect = lambda company_id: f"token-for-{company_id}"
+
+        token_a = vs.get_sub_account_token("111")
+        token_b = vs.get_sub_account_token("222")
+
+        self.assertEqual(token_a, "token-for-111")
+        self.assertEqual(token_b, "token-for-222")
+        self.assertEqual(mock_login.call_count, 2)
+
+    @patch("backend.services.verto_service._sub_account_login")
+    def test_token_reused_before_expiry(self, mock_login):
+        mock_login.return_value = "fake-token"
+        vs.get_sub_account_token("111")
+        vs.get_sub_account_token("111")
+        # Un seul login malgré deux appels - le second a réutilisé le cache.
+        mock_login.assert_called_once()
+
+    @patch("backend.services.verto_service._sub_account_login")
+    def test_token_renewed_once_expired(self, mock_login):
+        mock_login.return_value = "fake-token"
+        vs.get_sub_account_token("111")
+        vs._sub_account_jwt_cache["111"]["expires_at"] = time.time() - 1
+        vs.get_sub_account_token("111")
+        self.assertEqual(mock_login.call_count, 2)
+
+    def test_login_placeholder_never_leaks_a_token_value(self):
+        # _sub_account_login n'est pas encore implémentée (endpoint NON
+        # CONFIRMÉ) - vérifie que son message d'erreur ne contient jamais
+        # de valeur de jeton (il n'y en a d'ailleurs aucune à ce stade,
+        # ce test documente l'intention pour quand elle sera implémentée).
+        with self.assertRaises(NotImplementedError) as ctx:
+            vs._sub_account_login("111")
+        self.assertNotIn("Bearer", str(ctx.exception))
+
+
+class TestScopedFunctionsUseSubAccountHeaders(unittest.TestCase):
+    """Les fonctions scoped à un marchand utilisent _sub_account_headers
+    (jeton du BON company_id), jamais _headers (jeton parent) - voir le
+    plan PARTNER_REFERRED du 2026-11-07."""
+
+    @patch("backend.services.verto_service._sub_account_headers")
+    @patch("backend.services.verto_service._headers")
+    @patch("backend.services.verto_service.requests.post")
+    def test_create_wallet_uses_sub_account_headers(self, mock_post, mock_headers, mock_sub_headers):
+        mock_sub_headers.return_value = {"Authorization": "Bearer sub-token"}
+        mock_post.return_value = MagicMock(status_code=200, json=lambda: {"id": "w1"}, raise_for_status=lambda: None)
+
+        vs.create_wallet("16262", currency="USD")
+
+        mock_sub_headers.assert_called_once_with("16262")
+        mock_headers.assert_not_called()
+
+    @patch("backend.services.verto_service._sub_account_headers")
+    @patch("backend.services.verto_service._headers")
+    @patch("backend.services.verto_service.requests.get")
+    def test_list_payment_purpose_codes_uses_sub_account_headers(self, mock_get, mock_headers, mock_sub_headers):
+        mock_sub_headers.return_value = {"Authorization": "Bearer sub-token"}
+        mock_get.return_value = MagicMock(
+            status_code=200, json=lambda: {"documentTypes": []}, raise_for_status=lambda: None,
+        )
+
+        vs.list_payment_purpose_codes(company_id="16262", payment_direction="Outbound", currency="XOF", mode="LOCAL")
+
+        mock_sub_headers.assert_called_once_with("16262")
+        mock_headers.assert_not_called()
+
+    @patch("backend.services.verto_service._sub_account_headers")
+    @patch("backend.services.verto_service._headers")
+    @patch("backend.services.verto_service.requests.post")
+    def test_create_payment_request_uses_sub_account_headers(self, mock_post, mock_headers, mock_sub_headers):
+        mock_sub_headers.return_value = {"Authorization": "Bearer sub-token"}
+        mock_post.return_value = MagicMock(status_code=200, json=lambda: {"id": "p1"}, raise_for_status=lambda: None)
+
+        vs.create_payment_request(
+            company_id="16262", beneficiary_id=1, purpose_id=1, amount_usd=5,
+            wallet_id=1, client_reference="ref", payment_id="pay-1",
+        )
+
+        mock_sub_headers.assert_called_once_with("16262")
+        mock_headers.assert_not_called()
 
 
 if __name__ == "__main__":

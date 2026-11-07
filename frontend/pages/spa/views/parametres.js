@@ -2800,12 +2800,23 @@ function vertoBodyHtml() {
   }
 
   if (status === "pending") {
+    const consent = data.director_consent_status || "not_sent";
+    // Consentement du dirigeant (PARTNER_REFERRED) - voir le plan du
+    // 2026-11-07. "accepted" n'affiche rien de plus que le message
+    // générique (le KYB peut rester en cours même consentement donné).
+    const consentNotice = consent === "sent"
+      ? `<p class="params-subsection-sub" style="max-width:100%;">E-mail envoyé au dirigeant, en attente de son acceptation des conditions Verto.</p>
+         <button type="button" id="p-btn-resend-director-consent" class="params-edit-btn">Renvoyer l'e-mail</button>`
+      : consent === "not_sent"
+      ? `<p class="params-subsection-sub" style="max-width:100%;">En attente d'envoi des conditions au dirigeant.</p>`
+      : "";
     return `
       <div style="${SECTION_TINT}">
         <div class="params-subsection-header">
           <h6 class="params-subsection-title mb-0">Vérification en cours</h6>
         </div>
         <p class="params-subsection-sub" style="max-width:100%;">Votre dossier est en cours de vérification par Verto. Vous recevrez une notification dès qu'il sera approuvé - généralement sous quelques jours ouvrés.</p>
+        ${consentNotice}
       </div>
     `;
   }
@@ -2966,6 +2977,25 @@ async function registerVertoBeneficiary() {
   }
 }
 
+async function resendDirectorConsent() {
+  const btn = document.getElementById("p-btn-resend-director-consent");
+  if (btn) { btn.disabled = true; btn.innerText = "Envoi..."; }
+  try {
+    const res = await apiFetch("/verto/resend-director-consent", { method: "POST" });
+    const data = await res.json();
+    if (res.ok) {
+      showToast("E-mail renvoyé");
+      await loadVertoStatus();
+    } else {
+      showToast(data.detail || "Erreur lors de l'envoi", "error");
+    }
+  } catch (err) {
+    showToast("Erreur de connexion au serveur", "error");
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerText = "Renvoyer l'e-mail"; }
+  }
+}
+
 function mountRetraits(on) {
   document.body.insertAdjacentHTML("beforeend", VERTO_ONBOARDING_MODAL_HTML);
   on(document.getElementById("p-btn-start-verto"), "click", () => startVertoOnboarding());
@@ -2984,6 +3014,7 @@ function mountRetraits(on) {
       showToast("N° de compte copié");
     }
     if (e.target.closest("#p-verto-open-stripe")) goToStripeLoginLink();
+    if (e.target.closest("#p-btn-resend-director-consent")) resendDirectorConsent();
   });
   loadVertoStatus();
 

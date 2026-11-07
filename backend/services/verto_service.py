@@ -45,6 +45,13 @@ VERTO_AUTH_BASE_URL = os.getenv(
 # hôte, à surcharger via .env tant que api-company-sandbox/users/login ne
 # marche pas pour notre compte.
 VERTO_LOGIN_BASE_URL = os.getenv("VERTO_LOGIN_BASE_URL", VERTO_AUTH_BASE_URL)
+# Feature flag désactivé par défaut - voir le plan "PARTNER_REFERRED"
+# (2026-11-07) : le blocage 403 actuel sur /sub-accounts n'est PAS résolu
+# par ce changement de modèle (testé empiriquement avec SUB_CLIENT ET
+# PARTNER_REFERRED, même erreur) - ce flag reste à false tant que le
+# support Verto n'a pas confirmé que l'accès est débloqué, pour ne jamais
+# activer en prod un flux non fonctionnel.
+VERTO_ENABLED = os.getenv("VERTO_ENABLED", "false").lower() == "true"
 # "apiKey_plain" (sandbox, confirmé via docs.verto.co/docs/authentication-1
 # le 2026-10-31 : en sandbox, apiKey part en clair, sans chiffrement RSA)
 # ou "certificate" (production - chiffrement RSA via VERTO_LOGIN_PUBLIC_KEY_PEM,
@@ -74,6 +81,13 @@ class VertoAtlasNotEnabledError(RuntimeError):
 # en double en cas de course est sans conséquence (juste un appel réseau
 # en plus) - voir _get_token.
 _jwt_cache: dict = {"token": None, "expires_at": 0, "company_id": None, "company_settings_id": None}
+
+# Cache des jetons de SOUS-COMPTE (Atlas for Platform/PARTNER_REFERRED :
+# "All sub-account operations require authenticating as the sub-account
+# using the Sub-Account Login endpoint", voir plan du 2026-11-07) - jamais
+# fusionné avec _jwt_cache ci-dessus : le parent et chaque sous-compte ont
+# des cycles de vie de jeton indépendants, un company_id par entrée.
+_sub_account_jwt_cache: dict[str, dict] = {}
 
 
 def _encrypt_api_key(raw_api_key: str) -> str:
@@ -182,6 +196,40 @@ def _headers():
     }
 
 
+def _sub_account_login(company_id: str) -> str:
+    """NON CONFIRMÉ - voir le plan du 2026-11-07 : la page de référence
+    (docs.verto.co/v1.1/reference/sub-account-login) renvoie 404. Méthode,
+    hôte et paramètres exacts (identifiants propres au sous-compte ? jeton
+    parent + company_id ?) tous inconnus. Placeholder volontaire tant que
+    non vérifié - get_sub_account_token() ne doit jamais être appelée en
+    production avant que cette fonction soit réellement implémentée."""
+    raise NotImplementedError(
+        "Login de sous-compte Verto non implémenté - endpoint non confirmé "
+        "par la doc publique (voir section 4 du plan PARTNER_REFERRED)."
+    )
+
+
+def get_sub_account_token(company_id: str) -> str:
+    """Jeton Bearer du SOUS-COMPTE `company_id`, en cache, renouvelé 5 min
+    avant son expiration réelle (1h côté Verto, même durée que le jeton
+    parent) - jamais journalisé (voir _sub_account_login, aucune valeur de
+    jeton n'apparaît dans un message d'exception ou un log de ce module)."""
+    entry = _sub_account_jwt_cache.get(company_id)
+    if not entry or time.time() >= entry["expires_at"]:
+        token = _sub_account_login(company_id)
+        entry = {"token": token, "expires_at": time.time() + (60 * 60) - (5 * 60)}
+        _sub_account_jwt_cache[company_id] = entry
+    return entry["token"]
+
+
+def _sub_account_headers(company_id: str) -> dict:
+    return {
+        "Authorization": f"Bearer {get_sub_account_token(company_id)}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+
 def create_sub_account(
     *,
     account_type: str,
@@ -195,9 +243,21 @@ def create_sub_account(
     """Première étape de l'onboarding marchand : crée l'enregistrement du
     sous-compte (statut initial `CREATED`) et renvoie son `id`
     (= company_id), à utiliser ensuite pour submit_onboarding_data,
-    create_wallet, etc. `account_type="SUB_CLIENT"` est la valeur
-    attendue pour un marchand final de la plateforme (pas un partenaire
-    revendeur ni une entité liée à Xepay elle-même)."""
+    create_wallet, etc.
+
+    `account_type="PARTNER_REFERRED"` (Atlas for Platform) est la valeur
+    attendue pour Xepay depuis le 2026-11-07 (voir le plan dédié) - c'est
+    le modèle que la doc Verto désigne pour une plateforme SaaS onboardant
+    des marchands indépendants ("Verto conducts full KYB and KYC on each
+    sub-account directly"), contrairement à "SUB_CLIENT" (Atlas for
+    Fintech, pensé pour un établissement ayant déjà son propre programme
+    de conformité - pas le cas de Xepay). Testé empiriquement : les deux
+    valeurs renvoient le même 403 "Access Denied" sur ce compte sandbox -
+    ce changement de valeur seul ne débloque PAS l'accès, il aligne juste
+    le code sur le bon modèle en attendant la confirmation de Verto.
+    Le paramètre reste libre ici (pas forcé en dur) - c'est à l'appelant
+    (routes/verto.py) de passer la bonne valeur, pour garder cette
+    fonction simple et testable indépendamment du choix de modèle."""
     body = {
         "accountType": account_type,
         "country": country,
@@ -242,13 +302,29 @@ def submit_onboarding_data(company_id: str, kyc_payload: dict) -> dict:
     return resp.json()
 
 
+def send_director_consent_email(company_id: str) -> dict:
+    """NON CONFIRMÉ - voir le plan du 2026-11-07 : la référence trouvée
+    (`trigger_email_to_subclient_director`, "Send T&C email") n'a pas été
+    ouverte en détail - hôte/chemin/corps exact de l'appel inconnus.
+    Spécifique à PARTNER_REFERRED (Atlas for Platform) : "Director of end
+    company accepts Verto's Terms and Conditions via Email" - étape sans
+    équivalent sous SUB_CLIENT. Placeholder volontaire tant que non
+    vérifié - routes/verto.py doit tolérer son échec (NotImplementedError
+    inclus) sans faire échouer tout l'onboarding, voir start_verto_onboarding."""
+    raise NotImplementedError(
+        "Envoi de l'e-mail de consentement au dirigeant non implémenté - "
+        "endpoint non confirmé par la doc publique (voir section 4 du plan "
+        "PARTNER_REFERRED)."
+    )
+
+
 def create_wallet(company_id: str, currency: str = "USD") -> dict:
     """Crée le solde USD du sous-compte - uniquement possible une fois le
     sous-compte APPROVED (toute activité opérationnelle reste bloquée
     avant ça, cf. doc onboarding)."""
     resp = requests.post(
         f"{VERTO_WALLET_BASE_URL}/{company_id}/wallets",
-        headers=_headers(),
+        headers=_sub_account_headers(company_id),
         json={"currency": currency, "type": "standard"},
         timeout=20,
     )
@@ -267,7 +343,7 @@ def get_usd_funding_details(company_id: str, wallet_id: str) -> dict:
     la vérification est à faire côté appelant."""
     resp = requests.get(
         f"{VERTO_WALLET_BASE_URL}/{company_id}/wallets/{wallet_id}/fundingMethods",
-        headers=_headers(),
+        headers=_sub_account_headers(company_id),
         params={"autoCreate": "true"},
         timeout=20,
     )
@@ -351,6 +427,7 @@ def validate_iban_bic(iban: str, bic: str) -> None:
 
 def create_beneficiary(
     *,
+    company_id: str,
     currency_id: int,
     company_name: str,
     iban: str,
@@ -392,7 +469,7 @@ def create_beneficiary(
     qu'une erreur Verto brute sur un format déjà invalide côté client."""
     resp = requests.post(
         f"{VERTO_BENEFICIARY_BASE_URL}/recipients",
-        headers=_headers(),
+        headers=_sub_account_headers(company_id),
         json={
             "currencyId": currency_id,
             "beneficiaryType": "company",
@@ -418,6 +495,7 @@ def create_beneficiary(
 
 def create_payment_request(
     *,
+    company_id: str,
     beneficiary_id: int,
     purpose_id: int,
     amount_usd: float,
@@ -437,7 +515,7 @@ def create_payment_request(
     que de le figer en config."""
     resp = requests.post(
         f"{VERTO_PAYMENT_BASE_URL}/payment-requests",
-        headers=_headers(),
+        headers=_sub_account_headers(company_id),
         json={
             "beneficiaryId": beneficiary_id,
             "purposeId": purpose_id,
@@ -453,7 +531,7 @@ def create_payment_request(
 
 
 def list_payment_purpose_codes(
-    *, payment_direction: str, currency: str, mode: str
+    *, company_id: str, payment_direction: str, currency: str, mode: str
 ) -> list[dict]:
     """Résout dynamiquement le `purposeId` à utiliser pour create_payment_request
     (remplace l'ancienne config statique VERTO_PAYOUT_PURPOSE_ID - cet
@@ -462,7 +540,7 @@ def list_payment_purpose_codes(
     retrait marchand : "Outbound"). `mode` : "LOCAL" | "GLOBAL"."""
     resp = requests.get(
         f"{VERTO_PAYMENT_BASE_URL}/payments/purpose-codes",
-        headers=_headers(),
+        headers=_sub_account_headers(company_id),
         params={
             "purpose": "true",
             "paymentDirection": payment_direction,
@@ -476,7 +554,7 @@ def list_payment_purpose_codes(
 
 
 def get_fx_quote(
-    *, amount: float, amount_currency: str, currency_from: str, currency_to: str
+    *, company_id: str, amount: float, amount_currency: str, currency_from: str, currency_to: str
 ) -> dict:
     """Verrouille un taux de change (vfx_token, de courte durée - voir
     `expiry` dans la réponse) avant de l'utiliser dans create_fx_trade.
@@ -487,7 +565,7 @@ def get_fx_quote(
     automatiquement, rendant cet appel inutile pour notre cas d'usage)."""
     resp = requests.post(
         f"{VERTO_EXCHANGE_BASE_URL}/fx/quote",
-        headers=_headers(),
+        headers=_sub_account_headers(company_id),
         json={
             "amount": amount,
             "amountCurrency": amount_currency,
@@ -502,6 +580,7 @@ def get_fx_quote(
 
 def create_fx_trade_payout(
     *,
+    company_id: str,
     vfx_token: str,
     target_account_id: int,
     purpose_id: int,
@@ -515,7 +594,7 @@ def create_fx_trade_payout(
     conversion USD->XOF automatiquement (voir get_fx_quote). NON TESTÉ."""
     resp = requests.post(
         f"{VERTO_EXCHANGE_BASE_URL}/fx/payments",
-        headers=_headers(),
+        headers=_sub_account_headers(company_id),
         json={
             "paymentType": "convertWalletPayout",
             "targetAccountId": target_account_id,

@@ -325,6 +325,12 @@ class Profile(Base):
     # not_started/pending/approved/rejected - voir webhook/verto.py pour
     # la transition pending -> approved/rejected.
     verto_onboarding_status = Column(String, default="not_started")
+    # not_sent/sent/accepted - spécifique à PARTNER_REFERRED (Atlas for
+    # Platform) : "Director of end company accepts Verto's Terms and
+    # Conditions via Email", sans équivalent sous SUB_CLIENT. Voir le plan
+    # du 2026-11-07, routes/verto.py (envoi + renvoi) et webhook/verto.py
+    # (passage à "accepted", NON CONFIRMÉ - nom d'événement inconnu).
+    verto_director_consent_status = Column(String, nullable=True, default="not_sent")
     # Coordonnées du wallet USD Verto (GET /fundingMethods, autoCreate=true)
     # - affichées dans l'UI Xepay pour que le marchand les colle lui-même
     # dans son Dashboard Stripe Express (Stripe interdit à la plateforme de
