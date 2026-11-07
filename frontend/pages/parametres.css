@@ -91,7 +91,8 @@
 .params-back-btn {
   background: none;
   border: none;
-  color: #6b7280;
+  color: #b45309;
+  font-weight: 600;
   font-size: 14px;
   cursor: pointer;
   display: flex;
@@ -103,8 +104,8 @@
 }
 
 .params-back-btn:hover {
-  color: #111827;
-  background: rgba(17, 24, 39, 0.05);
+  color: #92400a;
+  background: rgba(180, 83, 9, 0.08);
 }
 
 .params-info-row {
