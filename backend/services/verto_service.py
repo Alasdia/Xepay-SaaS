@@ -319,36 +319,94 @@ def verify_webhook_signature(headers: dict, company_id: str) -> bool:
     return False
 
 
+UEMOA_COUNTRY_CODES = {"BJ", "BF", "CI", "GW", "ML", "NE", "SN", "TG"}
+
+
+def validate_iban_bic(iban: str, bic: str) -> None:
+    """Garde-fou de FORME avant tout appel réseau Verto (évite un aller-
+    retour API pour une faute de frappe évidente) - ne remplace pas la
+    validation de Verto elle-même (compte réel inconnu ici, checksum
+    complet). Longueur IBAN (28, confirmé par le message d'erreur Verto
+    "country code followed by 26 characters" le 2026-11-07) et BIC (8 ou
+    11, format SWIFT standard), plus cohérence pays IBAN/BIC (positions
+    4:6 du BIC = code pays ISO, doit correspondre aux 2 premiers
+    caractères de l'IBAN). Lève ValueError, jamais un HTTPException
+    directement - ce module ne connaît pas FastAPI (voir en-tête du
+    fichier), c'est aux routes appelantes de convertir."""
+    iban = (iban or "").strip().upper()
+    bic = (bic or "").strip().upper()
+    if len(iban) != 28:
+        raise ValueError("IBAN invalide : 28 caractères attendus pour un pays UEMOA.")
+    iban_country = iban[:2]
+    if iban_country not in UEMOA_COUNTRY_CODES:
+        raise ValueError(f"IBAN invalide : le pays '{iban_country}' n'est pas un pays UEMOA.")
+    if len(bic) not in (8, 11):
+        raise ValueError("BIC invalide : 8 ou 11 caractères attendus.")
+    bic_country = bic[4:6]
+    if bic_country != iban_country:
+        raise ValueError(
+            f"Le pays du BIC ('{bic_country}') ne correspond pas à celui de l'IBAN ('{iban_country}')."
+        )
+
+
 def create_beneficiary(
     *,
     currency_id: int,
     company_name: str,
     iban: str,
-    bank_code: str,
+    bic: str,
     bank_name: str,
     bank_country_code: str,
     beneficiary_address_line1: str,
     beneficiary_country_code: str,
+    beneficiary_city: str,
+    beneficiary_postal_code: str,
+    beneficiary_state_or_province: str,
 ) -> dict:
     """Enregistre le compte bancaire local UEMOA du marchand - une seule
     fois (le resultat, `accounts.id`, est réutilisé à chaque virement).
     `verificationState` peut revenir "pending" : il faut attendre son
     passage à "approved" avant de pouvoir l'utiliser dans un virement
-    (voir create_payment_request)."""
+    (voir create_payment_request).
+
+    Confirmé par API le 2026-11-07 (création réussie du bénéficiaire test
+    "test-api-1", id 18023, verificationState "approved") :
+    - paymentMode="LOCAL" (virement domestique XOF/UEMOA, pas SWIFT).
+    - Le BIC va dans `bankCode` - PAS `nationalId` (qui ne satisfait pas
+      l'exigence "Bank code is required", contrairement à ce que
+      suggérait la doc générale sur les marchés sans code bancaire
+      local).
+    - `bankAddress` : `countryCode` seul suffit, jamais besoin de
+      ville/code postal/région côté banque.
+    - `beneficiaryAddress` : countryCode + addressLine1 +
+      stateOrProvience + city + postCode sont TOUS obligatoires en
+      pratique, même en LOCAL - contrairement à la doc publique qui les
+      réserve à INTERNATIONAL (vérifié un par un, chaque champ manquant
+      déclenche une erreur 400 dédiée).
+    - `bankName` reste obligatoire (son omission déclenche "body must
+      have required property 'bankName'") - jamais rendu facultatif,
+      contrairement à l'intention initiale.
+
+    N'appelle PAS validate_iban_bic() ici - c'est à l'appelant (routes/
+    verto.py) de le faire avant, pour renvoyer un 400 propre plutôt
+    qu'une erreur Verto brute sur un format déjà invalide côté client."""
     resp = requests.post(
         f"{VERTO_BENEFICIARY_BASE_URL}/recipients",
         headers=_headers(),
         json={
             "currencyId": currency_id,
             "beneficiaryType": "company",
-            "paymentMode": "INTERNATIONAL",
+            "paymentMode": "LOCAL",
             "accountNumber": iban,
-            "bankCode": bank_code,
+            "bankCode": bic,
             "bankName": bank_name,
             "bankAddress": {"countryCode": bank_country_code},
             "beneficiaryAddress": {
                 "addressLine1": beneficiary_address_line1,
                 "countryCode": beneficiary_country_code,
+                "city": beneficiary_city,
+                "postCode": beneficiary_postal_code,
+                "stateOrProvience": beneficiary_state_or_province,
             },
             "companyName": company_name,
         },

@@ -106,22 +106,35 @@ def register_beneficiary(
         raise HTTPException(400, "Sous-compte Verto pas encore approuvé")
 
     try:
+        verto_service.validate_iban_bic(body.iban, body.bic)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    try:
         result = verto_service.create_beneficiary(
             currency_id=verto_service.VERTO_XOF_CURRENCY_ID,
             company_name=profile.full_name or "",
             iban=body.iban,
-            bank_code=body.bank_code,
+            bic=body.bic,
             bank_name=body.bank_name,
             bank_country_code=body.bank_country_code,
             beneficiary_address_line1=body.beneficiary_address_line1,
             beneficiary_country_code=body.beneficiary_country_code,
+            beneficiary_city=body.beneficiary_city,
+            beneficiary_postal_code=body.beneficiary_postal_code,
+            beneficiary_state_or_province=body.beneficiary_state_or_province,
         )
     except Exception as e:
         raise HTTPException(502, f"Echec création bénéficiaire Verto: {e}")
 
     accounts = result.get("accounts", result)
     profile.verto_beneficiary_id = str(accounts.get("id"))
-    profile.beneficiary_bank_iban = body.iban
+    # Jamais l'IBAN complet en base - seulement les 4 derniers chiffres,
+    # suffisant pour l'affichage (voir GET /verto/status) : aucune
+    # fonctionnalité n'a besoin de la valeur complète après coup (les
+    # virements utilisent verto_beneficiary_id, jamais l'IBAN
+    # directement, voir webhook/verto.py).
+    profile.beneficiary_bank_iban = body.iban[-4:]
     profile.beneficiary_bank_name = body.bank_name
     db.commit()
 

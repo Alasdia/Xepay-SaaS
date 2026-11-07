@@ -166,13 +166,21 @@ class VertoOnboardingRequest(BaseModel):
 
 class VertoBeneficiaryRequest(BaseModel):
     # Compte bancaire local UEMOA du marchand (destination finale des
-    # retraits) - voir verto_service.create_beneficiary.
+    # retraits) - voir verto_service.create_beneficiary. Format vérifié
+    # côté serveur (28 car./pays UEMOA pour l'IBAN, 8 ou 11 pour le BIC,
+    # cohérence pays IBAN/BIC) par verto_service.validate_iban_bic,
+    # jamais ici (pas de validator Pydantic dans ce fichier - voir
+    # routes/verto.py pour la convention déjà en place sur le téléphone
+    # Issuing).
     iban: str
-    bank_code: str
+    bic: str
     bank_name: str
     bank_country_code: str
     beneficiary_address_line1: str
     beneficiary_country_code: str
+    beneficiary_city: str
+    beneficiary_postal_code: str
+    beneficiary_state_or_province: str
 
 class ConnectCustomerCreateRequest(BaseModel):
     # Aucun champ n'est obligatoire chez Stripe pour créer un Customer -

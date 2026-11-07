@@ -2731,8 +2731,8 @@ function vertoBeneficiaryFormHtml() {
         </div>
         <div class="row g-2">
           <div class="col-6">
-            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Code banque</label>
-            <input type="text" name="bank_code" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Code SWIFT/BIC</label>
+            <input type="text" name="bic" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
           </div>
           <div class="col-6">
             <label class="form-label text-dark fw-bold" style="font-size: 11px;">Nom de la banque</label>
@@ -2756,6 +2756,22 @@ function vertoBeneficiaryFormHtml() {
         <div>
           <label class="form-label text-dark fw-bold" style="font-size: 11px;">Adresse du bénéficiaire</label>
           <input type="text" name="beneficiary_address_line1" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Ville du bénéficiaire</label>
+            <input type="text" name="beneficiary_city" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+          </div>
+          <div class="col-6">
+            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Code postal du bénéficiaire</label>
+            <input type="text" name="beneficiary_postal_code" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+          </div>
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Région du bénéficiaire</label>
+            <input type="text" name="beneficiary_state_or_province" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+          </div>
         </div>
       </form>
       <button type="button" id="p-btn-register-beneficiary" class="create-client-btn mt-2">Enregistrer ce compte bancaire</button>
@@ -2922,11 +2938,14 @@ async function registerVertoBeneficiary() {
   const fd = new FormData(form);
   const payload = {
     iban: fd.get("iban"),
-    bank_code: fd.get("bank_code"),
+    bic: fd.get("bic"),
     bank_name: fd.get("bank_name"),
     bank_country_code: fd.get("bank_country_code"),
     beneficiary_address_line1: fd.get("beneficiary_address_line1"),
     beneficiary_country_code: fd.get("beneficiary_country_code"),
+    beneficiary_city: fd.get("beneficiary_city"),
+    beneficiary_postal_code: fd.get("beneficiary_postal_code"),
+    beneficiary_state_or_province: fd.get("beneficiary_state_or_province"),
   };
   btn.disabled = true;
   btn.innerText = "Enregistrement...";
