@@ -134,7 +134,7 @@ function overviewTemplate() {
 function detailHeader(title) {
   return `
     <div class="params-detail-header">
-      <button type="button" class="params-back-btn" id="params-back"><i class="fa-solid fa-arrow-left"></i> Retour</button>
+      <button type="button" class="params-back-btn" id="params-back"><i class="fa-solid fa-arrow-left"></i> Paramètres</button>
       <h5 class="mb-0 fw-bold text-muted">${title}</h5>
     </div>
   `;
