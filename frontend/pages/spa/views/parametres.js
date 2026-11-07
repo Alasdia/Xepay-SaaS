@@ -2587,7 +2587,8 @@ let vertoStatusData = null;
 
 function vertoStatusLabel(data) {
   if (!data || data.status === "not_started") return "Non démarré";
-  if (data.status === "pending") return "Vérification en cours";
+  if (data.status === "sub_account_created") return "Sous-compte créé";
+  if (data.status === "kyb_submitted") return "Vérification en cours";
   if (data.status === "rejected") return "Refusé";
   if (data.status === "approved") return "Approuvé";
   return data.status;
@@ -2600,107 +2601,138 @@ function vertoStatusLabel(data) {
 // Ajouter plusieurs associés est une amélioration future, pas nécessaire
 // pour débloquer l'onboarding.
 //
-// Formulaire déplacé dans un modal (paramsVertoOnboardingModal, injecté
-// une fois dans document.body par mountRetraits - même pattern que
-// TWOFA_MODAL_HTML/CANCEL_SUB_MODAL_HTML) : la section elle-même ne
-// montre plus que titre/sous-titre/bouton, voir vertoBodyHtml.
+// Modal en 2 étapes (découpage backend du 2026-11-07, voir
+// backend/routes/verto.py) : étape 1 crée uniquement le sous-compte
+// (POST /verto/onboarding/sub-account), étape 2 soumet le KYB sur ce
+// sous-compte déjà créé (POST /verto/onboarding/kyb-data) - jamais les
+// deux dans le même appel, pour que l'étape 1 soit persistée même si
+// l'étape 2 échoue ou est abandonnée. showVertoStep() bascule entre les
+// deux sans fermer le modal ; un marchand qui revient avec le statut
+// "sub_account_created" rouvre directement à l'étape 2 (voir
+// p-btn-continue-verto-kyb dans vertoBodyHtml).
 const VERTO_ONBOARDING_MODAL_HTML = `
 <div class="modal fade" id="paramsVertoOnboardingModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content border-0 shadow-lg" style="border-radius: 14px;">
       <div class="modal-header">
-        <h5 class="modal-title fw-bold text-dark mb-0">Démarrer mon enregistrement</h5>
+        <h5 class="modal-title fw-bold text-dark mb-0" id="p-verto-modal-title">Démarrer mon enregistrement</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
       </div>
       <div class="modal-body">
         <p id="p-verto-onboarding-rejected-notice" class="text-warning small mb-3" style="display:none;"><i class="fa-solid fa-triangle-exclamation"></i> Votre précédente demande a été refusée. Vous pouvez soumettre un nouveau dossier ci-dessous.</p>
-        <p class="text-muted small mb-3">Ces informations sont transmises à Verto (notre partenaire bancaire pour les virements locaux) afin de créer et vérifier votre sous-compte. Elles n'incluent aucun document pour l'instant - Verto peut vous en demander par e-mail si nécessaire.</p>
-        <form id="p-verto-onboarding-form" class="d-flex flex-column gap-2 mb-3">
-        <div class="row g-2">
-          <div class="col-6">
-            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Pays de la société</label>
-            <select name="country" class="form-select form-select-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
-              ${vertoCountryOptionsHtml()}
-            </select>
-          </div>
-          <div class="col-6">
-            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Forme juridique</label>
-            <select name="entity_type" class="form-select form-select-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
-              ${vertoEntityTypeOptionsHtml()}
-            </select>
-          </div>
+
+        <div id="p-verto-step-1">
+          <p class="text-muted small mb-3">Ces informations sont transmises à Verto (notre partenaire bancaire pour les virements locaux) afin de créer votre sous-compte. L'étape suivante portera sur votre entreprise et son représentant.</p>
+          <form id="p-verto-step1-form" class="d-flex flex-column gap-2 mb-3">
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label text-dark fw-bold" style="font-size: 11px;">Pays de la société</label>
+                <select name="country" class="form-select form-select-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+                  ${vertoCountryOptionsHtml()}
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label text-dark fw-bold" style="font-size: 11px;">Secteur d'activité</label>
+                <input type="text" name="sub_category" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Ex: Financial Services" required>
+              </div>
+            </div>
+            <div>
+              <label class="form-label text-dark fw-bold" style="font-size: 11px;">Nom légal de la société</label>
+              <input type="text" name="company_name" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Ex: Xepay SARL" required>
+            </div>
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label text-dark fw-bold" style="font-size: 11px;">N° d'enregistrement (RCCM)</label>
+                <input type="text" name="identification_number" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+              </div>
+              <div class="col-6">
+                <label class="form-label text-dark fw-bold" style="font-size: 11px;">N° fiscal (optionnel)</label>
+                <input type="text" name="tax_id_or_ein" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;">
+              </div>
+            </div>
+          </form>
         </div>
-        <div>
-          <label class="form-label text-dark fw-bold" style="font-size: 11px;">Nom légal de la société</label>
-          <input type="text" name="company_name" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Ex: Xepay SARL" required>
+
+        <div id="p-verto-step-2" style="display:none;">
+          <p class="text-muted small mb-3">Sous-compte créé. Complétez maintenant les informations de votre entreprise et de son représentant.</p>
+          <form id="p-verto-step2-form" class="d-flex flex-column gap-2 mb-3">
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label text-dark fw-bold" style="font-size: 11px;">Pays de la société</label>
+                <select name="country" class="form-select form-select-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+                  ${vertoCountryOptionsHtml()}
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label text-dark fw-bold" style="font-size: 11px;">Forme juridique</label>
+                <select name="entity_type" class="form-select form-select-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+                  ${vertoEntityTypeOptionsHtml()}
+                </select>
+              </div>
+            </div>
+            <hr class="my-1">
+            <p class="text-muted small mb-1">Adresse légale de la société</p>
+            <div class="row g-2">
+              <div class="col-8">
+                <input type="text" name="address_line1" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Adresse" required>
+              </div>
+              <div class="col-4">
+                <input type="text" name="zip_code" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Code postal">
+              </div>
+            </div>
+            <div class="row g-2">
+              <div class="col-12">
+                <input type="text" name="city" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Ville" required>
+              </div>
+            </div>
+            <hr class="my-1">
+            <p class="text-muted small mb-1">Représentant principal (dirigeant et actionnaire ≥25%)</p>
+            <div class="row g-2">
+              <div class="col-6">
+                <input type="text" name="rep_first_name" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Prénom" required>
+              </div>
+              <div class="col-6">
+                <input type="text" name="rep_last_name" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Nom" required>
+              </div>
+            </div>
+            <div class="row g-2">
+              <div class="col-6">
+                <input type="email" name="rep_email" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Email" required>
+              </div>
+              <div class="col-6">
+                <input type="tel" name="rep_phone" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="+2250700000000" required>
+              </div>
+            </div>
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label text-dark fw-bold" style="font-size: 11px;">Date de naissance</label>
+                <input type="date" name="rep_dob" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+              </div>
+              <div class="col-6">
+                <label class="form-label text-dark fw-bold" style="font-size: 11px;">% de détention du capital</label>
+                <input type="number" name="rep_ownership" min="1" max="100" value="100" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
+              </div>
+            </div>
+          </form>
         </div>
-        <div class="row g-2">
-          <div class="col-6">
-            <label class="form-label text-dark fw-bold" style="font-size: 11px;">N° d'enregistrement (RCCM)</label>
-            <input type="text" name="identification_number" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
-          </div>
-          <div class="col-6">
-            <label class="form-label text-dark fw-bold" style="font-size: 11px;">N° fiscal (optionnel)</label>
-            <input type="text" name="tax_id_or_ein" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;">
-          </div>
-        </div>
-        <div>
-          <label class="form-label text-dark fw-bold" style="font-size: 11px;">Secteur d'activité</label>
-          <input type="text" name="sub_category" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Ex: Financial Services" required>
-        </div>
-        <hr class="my-1">
-        <p class="text-muted small mb-1">Adresse légale de la société</p>
-        <div class="row g-2">
-          <div class="col-8">
-            <input type="text" name="address_line1" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Adresse" required>
-          </div>
-          <div class="col-4">
-            <input type="text" name="zip_code" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Code postal">
-          </div>
-        </div>
-        <div class="row g-2">
-          <div class="col-12">
-            <input type="text" name="city" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Ville" required>
-          </div>
-        </div>
-        <hr class="my-1">
-        <p class="text-muted small mb-1">Représentant principal (dirigeant et actionnaire ≥25%)</p>
-        <div class="row g-2">
-          <div class="col-6">
-            <input type="text" name="rep_first_name" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Prénom" required>
-          </div>
-          <div class="col-6">
-            <input type="text" name="rep_last_name" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Nom" required>
-          </div>
-        </div>
-        <div class="row g-2">
-          <div class="col-6">
-            <input type="email" name="rep_email" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="Email" required>
-          </div>
-          <div class="col-6">
-            <input type="tel" name="rep_phone" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" placeholder="+2250700000000" required>
-          </div>
-        </div>
-        <div class="row g-2">
-          <div class="col-6">
-            <label class="form-label text-dark fw-bold" style="font-size: 11px;">Date de naissance</label>
-            <input type="date" name="rep_dob" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
-          </div>
-          <div class="col-6">
-            <label class="form-label text-dark fw-bold" style="font-size: 11px;">% de détention du capital</label>
-            <input type="number" name="rep_ownership" min="1" max="100" value="100" class="form-control form-control-sm text-dark" style="background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;" required>
-          </div>
-        </div>
-        </form>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
-        <button type="button" id="p-btn-start-verto" class="create-client-btn">Démarrer mon enregistrement</button>
+        <button type="button" id="p-btn-verto-step1-next" class="create-client-btn">Continuer</button>
+        <button type="button" id="p-btn-verto-step2-submit" class="create-client-btn" style="display:none;">Envoyer mon dossier</button>
       </div>
     </div>
   </div>
 </div>
 `;
+
+function showVertoStep(step) {
+  document.getElementById("p-verto-step-1").style.display = step === 1 ? "" : "none";
+  document.getElementById("p-verto-step-2").style.display = step === 2 ? "" : "none";
+  document.getElementById("p-btn-verto-step1-next").style.display = step === 1 ? "" : "none";
+  document.getElementById("p-btn-verto-step2-submit").style.display = step === 2 ? "" : "none";
+  document.getElementById("p-verto-modal-title").innerText = step === 1 ? "Démarrer mon enregistrement" : "Compléter mon dossier";
+}
 
 function vertoUsdAccountHtml(data) {
   return `
@@ -2799,7 +2831,19 @@ function vertoBodyHtml() {
     `;
   }
 
-  if (status === "pending") {
+  if (status === "sub_account_created") {
+    return `
+      <div style="${SECTION_TINT}">
+        <div class="params-subsection-header">
+          <h6 class="params-subsection-title mb-0">Compléter mon dossier</h6>
+        </div>
+        <p class="params-subsection-sub" style="max-width:100%;">Votre sous-compte Verto a été créé. Il reste à transmettre les informations de votre entreprise et de son représentant.</p>
+        <button type="button" id="p-btn-continue-verto-kyb" class="create-client-btn">Continuer mon enregistrement</button>
+      </div>
+    `;
+  }
+
+  if (status === "kyb_submitted") {
     const consent = data.director_consent_status || "not_sent";
     // Consentement du dirigeant (PARTNER_REFERRED) - voir le plan du
     // 2026-11-07. "accepted" n'affiche rien de plus que le message
@@ -2879,17 +2923,45 @@ async function loadVertoStatus() {
   }
 }
 
-async function startVertoOnboarding() {
-  const btn = document.getElementById("p-btn-start-verto");
-  const form = document.getElementById("p-verto-onboarding-form");
+async function createVertoSubAccount() {
+  const btn = document.getElementById("p-btn-verto-step1-next");
+  const form = document.getElementById("p-verto-step1-form");
+  if (!form.reportValidity()) return;
   const fd = new FormData(form);
-  const countryCode = fd.get("rep_phone").startsWith("+") ? fd.get("rep_phone").match(/^\+(\d{1,3})/)?.[1] : null;
   const payload = {
     country: fd.get("country"),
     company_name: fd.get("company_name"),
     sub_category: fd.get("sub_category"),
     identification_number: fd.get("identification_number"),
     tax_id_or_ein: fd.get("tax_id_or_ein") || null,
+  };
+  btn.disabled = true;
+  btn.innerText = "Création en cours...";
+  try {
+    const res = await apiFetch("/verto/onboarding/sub-account", { method: "POST", body: payload });
+    const data = await res.json();
+    if (res.ok) {
+      showToast("Sous-compte créé - complétez votre dossier", "success");
+      showVertoStep(2);
+      await loadVertoStatus();
+    } else {
+      showToast(data.detail || "Erreur lors de la création", "error");
+    }
+  } catch (err) {
+    showToast("Erreur de connexion au serveur", "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerText = "Continuer";
+  }
+}
+
+async function submitVertoKybData() {
+  const btn = document.getElementById("p-btn-verto-step2-submit");
+  const form = document.getElementById("p-verto-step2-form");
+  if (!form.reportValidity()) return;
+  const fd = new FormData(form);
+  const countryCode = fd.get("rep_phone").startsWith("+") ? fd.get("rep_phone").match(/^\+(\d{1,3})/)?.[1] : null;
+  const payload = {
     kyc_payload: {
       selectedProducts: ["Collect", "Pay"],
       company: { type: fd.get("entity_type") },
@@ -2924,7 +2996,7 @@ async function startVertoOnboarding() {
   btn.disabled = true;
   btn.innerText = "Envoi en cours...";
   try {
-    const res = await apiFetch("/verto/onboarding", { method: "POST", body: payload });
+    const res = await apiFetch("/verto/onboarding/kyb-data", { method: "POST", body: payload });
     const data = await res.json();
     if (res.ok) {
       showToast("Dossier envoyé - en cours de vérification", "success");
@@ -2933,13 +3005,13 @@ async function startVertoOnboarding() {
       if (instance) instance.hide();
       await loadVertoStatus();
     } else {
-      showToast(data.detail || "Erreur lors de l'enregistrement", "error");
+      showToast(data.detail || "Erreur lors de l'envoi", "error");
     }
   } catch (err) {
     showToast("Erreur de connexion au serveur", "error");
   } finally {
     btn.disabled = false;
-    btn.innerText = "Démarrer mon enregistrement";
+    btn.innerText = "Envoyer mon dossier";
   }
 }
 
@@ -2998,13 +3070,19 @@ async function resendDirectorConsent() {
 
 function mountRetraits(on) {
   document.body.insertAdjacentHTML("beforeend", VERTO_ONBOARDING_MODAL_HTML);
-  on(document.getElementById("p-btn-start-verto"), "click", () => startVertoOnboarding());
+  on(document.getElementById("p-btn-verto-step1-next"), "click", () => createVertoSubAccount());
+  on(document.getElementById("p-btn-verto-step2-submit"), "click", () => submitVertoKybData());
 
   const body = document.getElementById("p-verto-body");
   on(body, "click", (e) => {
     if (e.target.closest("#p-btn-open-verto-onboarding")) {
       const notice = document.getElementById("p-verto-onboarding-rejected-notice");
       if (notice) notice.style.display = vertoStatusData && vertoStatusData.status === "rejected" ? "" : "none";
+      showVertoStep(1);
+      bootstrap.Modal.getOrCreateInstance(document.getElementById("paramsVertoOnboardingModal")).show();
+    }
+    if (e.target.closest("#p-btn-continue-verto-kyb")) {
+      showVertoStep(2);
       bootstrap.Modal.getOrCreateInstance(document.getElementById("paramsVertoOnboardingModal")).show();
     }
     if (e.target.closest("#p-btn-register-beneficiary")) registerVertoBeneficiary();

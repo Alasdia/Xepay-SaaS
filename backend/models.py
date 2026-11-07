@@ -12,6 +12,7 @@ import secrets
 import string
 import uuid
 from sqlalchemy import Index
+from sqlalchemy import UniqueConstraint
 
 def generate_prefixed_id(prefix: str, length: int = 24) -> str:
     chars = string.ascii_lowercase + string.digits
@@ -152,16 +153,28 @@ class ChangePasswordRequest(BaseModel):
 class WithdrawRequest(BaseModel):
     amount: float
 
-class VertoOnboardingRequest(BaseModel):
-    # Champs requis par Verto POST /sub-accounts, voir verto_service.create_sub_account.
+class VertoSubAccountRequest(BaseModel):
+    # Étape A (découpage du 2026-11-07) : UNIQUEMENT les champs requis par
+    # Verto POST /sub-accounts, voir verto_service.create_sub_account - la
+    # persistance de verto_company_id est immédiate après cet appel (voir
+    # routes/verto.py), avant même la soumission KYB, pour ne jamais créer
+    # de sous-compte orphelin si l'étape B échoue.
     country: str
     company_name: str
     sub_category: str
     identification_number: str
     tax_id_or_ein: str | None = None
-    # Données KYC complémentaires (UBO 25%+, documents, adresse) - voir
-    # verto_service.submit_onboarding_data, forme exacte non figée ici
-    # (transmise telle quelle à l'API Verto).
+
+
+class VertoKybDataRequest(BaseModel):
+    # Étape B (découpage du 2026-11-07) : données KYC complémentaires
+    # (UBO 25%+, adresse - documents NON CONFIRMÉS, voir le plan dédié) -
+    # voir verto_service.submit_onboarding_data, forme exacte non figée
+    # ici (transmise telle quelle à l'API Verto). Peut être rappelée
+    # plusieurs fois tant que le sous-compte n'est pas approuvé/rejeté
+    # (reprise d'un KYB incomplet) - NON CONFIRMÉ si Verto traite un second
+    # appel comme une mise à jour ou un doublon, jamais testé (bloqué par
+    # le 403 sandbox).
     kyc_payload: dict
 
 class VertoBeneficiaryRequest(BaseModel):
@@ -322,8 +335,12 @@ class Profile(Base):
     # collectées côté Xepay - jamais via le dashboard Verto.
     verto_company_id = Column(String, nullable=True, index=True)
     verto_wallet_id = Column(String, nullable=True)
-    # not_started/pending/approved/rejected - voir webhook/verto.py pour
-    # la transition pending -> approved/rejected.
+    # not_started -> sub_account_created -> kyb_submitted -> approved/rejected
+    # (découpage en étapes du 2026-11-07, voir routes/verto.py) - les deux
+    # premières transitions sont posées par Xepay (étapes A/B), les deux
+    # dernières par webhook/verto.py sur company.approved/rejected (seuls
+    # événements Verto confirmés par la doc, jamais testés en conditions
+    # réelles - bloqué par le 403 sandbox).
     verto_onboarding_status = Column(String, default="not_started")
     # not_sent/sent/accepted - spécifique à PARTNER_REFERRED (Atlas for
     # Platform) : "Director of end company accepts Verto's Terms and
@@ -381,6 +398,15 @@ class Profile(Base):
     # Stripe - vidé une fois la vérification tentée (succès ou échec).
     stripe_issuing_bank_pending_amounts = Column(JSON, nullable=True)
     stripe_issuing_bank_link_started_at = Column(DateTime, nullable=True)
+
+    # Filet de sécurité au niveau base contre le double sous-compte Verto
+    # (voir le découpage en étapes du 2026-11-07 et with_for_update() dans
+    # routes/verto.py) - une contrainte UNIQUE sur une colonne nullable
+    # autorise plusieurs NULL (comportement standard Postgres), donc sans
+    # impact sur les profils n'ayant pas encore démarré l'onboarding.
+    __table_args__ = (
+        UniqueConstraint("verto_company_id", name="uq_profiles_verto_company_id"),
+    )
 
 class UserDB(Base):
     __tablename__ = "users"

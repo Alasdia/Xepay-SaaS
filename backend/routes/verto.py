@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models import Profile, WorkspaceUser, VertoOnboardingRequest, VertoBeneficiaryRequest
+from backend.models import Profile, WorkspaceUser, VertoSubAccountRequest, VertoKybDataRequest, VertoBeneficiaryRequest
 from backend.middleware.authorization import require_capability
 from backend.services import verto_service
 
@@ -12,42 +12,60 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def _get_or_create_profile(db: Session, owner_id: str) -> Profile:
-    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
+def _get_locked_or_create_profile(db: Session, owner_id: str) -> Profile:
+    """Verrouille la ligne Profile
+    (SELECT ... FOR UPDATE) si elle existe déjà - ferme la fenêtre de
+    course du double-clic sur "Démarrer mon enregistrement" identifiée
+    dans l'audit du 2026-11-07 (deux requêtes quasi simultanées liraient
+    sinon toutes les deux verto_company_id=None avant qu'aucune n'ait
+    committé). Une ligne neuve (juste insérée dans CETTE transaction) n'a
+    besoin d'aucun verrou explicite - aucune autre transaction ne peut la
+    voir avant son commit."""
+    profile = db.query(Profile).filter(Profile.user_id == owner_id).with_for_update().first()
     if not profile:
         profile = Profile(user_id=owner_id)
         db.add(profile)
-        db.commit()
-        db.refresh(profile)
+        db.flush()
     return profile
 
 
-@router.post("/verto/onboarding")
-def start_verto_onboarding(
-    body: VertoOnboardingRequest,
+@router.post("/verto/onboarding/sub-account")
+def create_verto_sub_account(
+    body: VertoSubAccountRequest,
     membership: WorkspaceUser = Depends(require_capability("manage_stripe_account_config")),
     db: Session = Depends(get_db),
 ):
-    """Démarre l'onboarding Verto du marchand (leg USD de l'architecture
-    Zero-Custody, voir services/verto_service.py) : crée le sous-compte,
-    puis soumet les données KYC - tout via API, aucun passage par le
-    dashboard Verto. Le sous-compte reste en statut "pending" jusqu'à la
-    confirmation du webhook (voir webhook/verto.py).
+    """Étape A du découpage du 2026-11-07 (remplace l'ancien
+    POST /verto/onboarding, qui créait le sous-compte ET soumettait le
+    KYB en un seul appel) : crée UNIQUEMENT le sous-compte Verto et
+    persiste verto_company_id IMMÉDIATEMENT après le succès de cet appel
+    réseau - jamais après un second appel (submit_onboarding_data, voir
+    create_verto_kyb_data) qui pourrait échouer. Corrige le bug identifié
+    dans l'audit : auparavant, un échec de soumission KYB après une
+    création de sous-compte réussie ne persistait RIEN, et une nouvelle
+    tentative créait un second sous-compte orphelin chez Verto à chaque
+    fois, sans aucune limite.
 
-    accountType="PARTNER_REFERRED" (Atlas for Platform) depuis le
-    2026-11-07 - voir le plan dédié et le docstring de
-    verto_service.create_sub_account. Protégé par VERTO_ENABLED (false
-    par défaut) : testé empiriquement que ce changement de modèle seul ne
-    débloque pas le 403 "Access Denied" actuel sur /sub-accounts, donc ce
-    flux reste désactivé tant que Verto ne confirme pas l'accès."""
+    accountType="PARTNER_REFERRED" (Atlas for Platform) - voir le
+    docstring de verto_service.create_sub_account. Protégé par
+    VERTO_ENABLED (false par défaut) : testé empiriquement que ce
+    changement de modèle seul ne débloque pas le 403 "Access Denied"
+    actuel sur /sub-accounts, donc ce flux reste désactivé tant que
+    Verto ne confirme pas l'accès.
+
+    with_for_update() (voir _get_locked_or_create_profile) ferme la
+    fenêtre de course du double-clic : deux requêtes quasi simultanées
+    liraient sinon toutes les deux verto_company_id=None avant qu'aucune
+    n'ait committé. UniqueConstraint("verto_company_id") côté base
+    (migration d4a7c2e9f031) reste un filet de sécurité supplémentaire."""
     if not verto_service.VERTO_ENABLED:
         raise HTTPException(503, "Fonctionnalité en cours de déploiement.")
 
     owner_id = membership.workspace_id
-    profile = _get_or_create_profile(db, owner_id)
+    profile = _get_locked_or_create_profile(db, owner_id)
 
     if profile.verto_company_id:
-        raise HTTPException(400, "Onboarding Verto déjà démarré")
+        raise HTTPException(400, "Sous-compte Verto déjà créé")
 
     try:
         sub_account = verto_service.create_sub_account(
@@ -59,36 +77,74 @@ def start_verto_onboarding(
             tax_id_or_ein=body.tax_id_or_ein,
             external_id=owner_id,
         )
-        company_id = str(sub_account["id"])
-        verto_service.submit_onboarding_data(company_id, body.kyc_payload)
     except verto_service.VertoAtlasNotEnabledError:
         raise HTTPException(503, "L'enregistrement bancaire local n'est pas encore disponible. Réessayez plus tard.")
     except Exception:
         # Détail de l'exception (jamais le jeton ni VERTO_API_KEY/CLIENT_ID,
         # qui n'apparaissent dans aucun message d'erreur Verto renvoyé ici)
         # loggé côté serveur pour le diagnostic - jamais exposé au marchand.
-        logger.exception("Echec onboarding Verto pour owner_id=%s", owner_id)
-        raise HTTPException(502, "Erreur lors de l'enregistrement. Réessayez plus tard.")
+        logger.exception("Echec création sous-compte Verto pour owner_id=%s", owner_id)
+        raise HTTPException(502, "Erreur lors de la création. Réessayez plus tard.")
 
-    profile.verto_company_id = company_id
-    profile.verto_onboarding_status = "pending"
+    # Persistance immédiate - avant tout autre appel réseau. C'est
+    # précisément le correctif demandé : ne jamais laisser un
+    # sous-compte réellement créé chez Verto sans trace côté Xepay.
+    profile.verto_company_id = str(sub_account["id"])
+    profile.verto_onboarding_status = "sub_account_created"
+    db.commit()
+
+    return {"status": "sub_account_created", "verto_company_id": profile.verto_company_id}
+
+
+@router.post("/verto/onboarding/kyb-data")
+def submit_verto_kyb_data(
+    body: VertoKybDataRequest,
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_account_config")),
+    db: Session = Depends(get_db),
+):
+    """Étape B du découpage du 2026-11-07 : soumet les données KYB sur un
+    sous-compte déjà créé (voir create_verto_sub_account). Peut être
+    rappelée plusieurs fois tant que le dossier n'est pas
+    approuvé/rejeté par Verto (reprise d'un KYB incomplet) - NON
+    CONFIRMÉ si Verto traite un second appel comme une mise à jour ou un
+    doublon, jamais testé (bloqué par le 403 sandbox)."""
+    if not verto_service.VERTO_ENABLED:
+        raise HTTPException(503, "Fonctionnalité en cours de déploiement.")
+
+    profile = db.query(Profile).filter(Profile.user_id == membership.workspace_id).first()
+    if not profile or not profile.verto_company_id:
+        raise HTTPException(400, "Sous-compte Verto non créé")
+    if profile.verto_onboarding_status not in ("sub_account_created", "kyb_submitted"):
+        raise HTTPException(400, f"Étape non disponible dans l'état actuel ({profile.verto_onboarding_status})")
+
+    try:
+        verto_service.submit_onboarding_data(profile.verto_company_id, body.kyc_payload)
+    except Exception:
+        logger.exception(
+            "Echec soumission KYB Verto pour company_id=%s", profile.verto_company_id
+        )
+        raise HTTPException(502, "Erreur lors de la soumission. Réessayez plus tard.")
+
+    profile.verto_onboarding_status = "kyb_submitted"
 
     # Consentement du dirigeant (PARTNER_REFERRED uniquement) - ne doit
-    # jamais faire échouer tout l'onboarding : le sous-compte est déjà
-    # créé, un échec d'envoi (y compris NotImplementedError tant que
+    # jamais faire échouer la soumission KYB elle-même : le KYB est déjà
+    # soumis, un échec d'envoi (y compris NotImplementedError tant que
     # l'endpoint n'est pas confirmé, voir send_director_consent_email)
     # laisse juste le statut à "not_sent", renvoyable via
     # POST /verto/resend-director-consent.
     try:
-        verto_service.send_director_consent_email(company_id)
+        verto_service.send_director_consent_email(profile.verto_company_id)
         profile.verto_director_consent_status = "sent"
     except Exception:
-        logger.exception("Echec envoi e-mail de consentement dirigeant pour company_id=%s", company_id)
+        logger.exception(
+            "Echec envoi e-mail de consentement dirigeant pour company_id=%s", profile.verto_company_id
+        )
         profile.verto_director_consent_status = "not_sent"
 
     db.commit()
 
-    return {"status": "pending", "verto_company_id": company_id}
+    return {"status": "kyb_submitted"}
 
 
 @router.get("/verto/status")

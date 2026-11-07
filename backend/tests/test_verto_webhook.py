@@ -62,7 +62,8 @@ class TestVertoWebhookFeatureFlag(unittest.TestCase):
         user = UserDB(email=f"verto-webhook-test-{id(self)}@example.com", password="x")
         self.db.add(user)
         self.db.flush()
-        profile = Profile(user_id=user.id, verto_company_id="16262", verto_onboarding_status="pending")
+        self.company_id = str(id(self))
+        profile = Profile(user_id=user.id, verto_company_id=self.company_id, verto_onboarding_status="pending")
         self.db.add(profile)
         self.db.commit()
         self.user_id = user.id
@@ -78,11 +79,11 @@ class TestVertoWebhookFeatureFlag(unittest.TestCase):
     def test_company_approved_disabled_by_default(self, mock_create_wallet, _mock_sig):
         res = self.client.post(
             "/webhook/verto",
-            json={"companyId": "16262", "eventType": "company.approved"},
+            json={"companyId": self.company_id, "eventType": "company.approved"},
         )
         self.assertEqual(res.status_code, 200)
         mock_create_wallet.assert_not_called()
-        profile = self.db.query(Profile).filter(Profile.verto_company_id == "16262").first()
+        profile = self.db.query(Profile).filter(Profile.verto_company_id == self.company_id).first()
         self.assertEqual(profile.verto_onboarding_status, "pending")  # inchangé
 
     @patch("backend.services.verto_service.VERTO_ENABLED", True)
@@ -90,10 +91,10 @@ class TestVertoWebhookFeatureFlag(unittest.TestCase):
     def test_director_consent_accepted_sets_status(self, _mock_sig):
         res = self.client.post(
             "/webhook/verto",
-            json={"companyId": "16262", "eventType": "director.consent_accepted"},
+            json={"companyId": self.company_id, "eventType": "director.consent_accepted"},
         )
         self.assertEqual(res.status_code, 200)
-        profile = self.db.query(Profile).filter(Profile.verto_company_id == "16262").first()
+        profile = self.db.query(Profile).filter(Profile.verto_company_id == self.company_id).first()
         self.assertEqual(profile.verto_director_consent_status, "accepted")
 
     @patch("backend.services.verto_service.VERTO_ENABLED", False)
@@ -101,10 +102,10 @@ class TestVertoWebhookFeatureFlag(unittest.TestCase):
     def test_director_consent_accepted_disabled_by_default(self, _mock_sig):
         res = self.client.post(
             "/webhook/verto",
-            json={"companyId": "16262", "eventType": "director.consent_accepted"},
+            json={"companyId": self.company_id, "eventType": "director.consent_accepted"},
         )
         self.assertEqual(res.status_code, 200)
-        profile = self.db.query(Profile).filter(Profile.verto_company_id == "16262").first()
+        profile = self.db.query(Profile).filter(Profile.verto_company_id == self.company_id).first()
         self.assertEqual(profile.verto_director_consent_status, "not_sent")  # inchangé
 
 
