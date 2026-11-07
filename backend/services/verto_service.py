@@ -29,6 +29,22 @@ VERTO_LOGIN_PUBLIC_KEY_PEM = os.getenv("VERTO_LOGIN_PUBLIC_KEY_PEM")
 VERTO_AUTH_BASE_URL = os.getenv(
     "VERTO_AUTH_BASE_URL", "https://api-company-sandbox.vertofx.com"
 )
+# Hôte de LOGIN, distinct de VERTO_AUTH_BASE_URL (sous-comptes, voir
+# create_sub_account) - confirmé le 2026-11-07 : ce sont deux hôtes dont
+# l'acceptation de nos identifiants diffère réellement. POST
+# {VERTO_LOGIN_BASE_URL}/users/login sur api-v3-sandbox renvoie 200 avec
+# notre clé actuelle, alors que le même appel sur api-company-sandbox
+# (VERTO_AUTH_BASE_URL) renvoie 401 "Invalid API Key". Le jeton obtenu via
+# api-v3-sandbox est ensuite accepté par wallet/onboarding/beneficiary
+# (200/404-légitime) - seul POST /sub-accounts sur api-company-sandbox
+# renvoie 403 "Access Denied" avec ce jeton (accès Atlas probablement pas
+# activé sur ce compte sandbox, voir VertoAtlasNotEnabledError - pas un
+# problème d'identifiants). Doit être défini APRÈS VERTO_AUTH_BASE_URL
+# (sert de valeur par défaut). Legacy api-v3-sandbox annoncé déprécié par
+# Verto (sunset 2027-01-30) : le défaut pointe donc déjà vers le nouvel
+# hôte, à surcharger via .env tant que api-company-sandbox/users/login ne
+# marche pas pour notre compte.
+VERTO_LOGIN_BASE_URL = os.getenv("VERTO_LOGIN_BASE_URL", VERTO_AUTH_BASE_URL)
 # "apiKey_plain" (sandbox, confirmé via docs.verto.co/docs/authentication-1
 # le 2026-10-31 : en sandbox, apiKey part en clair, sans chiffrement RSA)
 # ou "certificate" (production - chiffrement RSA via VERTO_LOGIN_PUBLIC_KEY_PEM,
@@ -40,6 +56,17 @@ VERTO_AUTH_MODE = os.getenv("VERTO_AUTH_MODE", "apiKey_plain")
 # `auth-*` de leurs webhooks (voir verify_webhook_signature). PAS ENCORE
 # GÉNÉRÉE/ENREGISTRÉE - placeholder tant que ce n'est pas fait.
 VERTO_WEBHOOK_PRIVATE_KEY_PEM = os.getenv("VERTO_WEBHOOK_PRIVATE_KEY_PEM")
+
+
+class VertoAtlasNotEnabledError(RuntimeError):
+    """POST /sub-accounts a renvoyé 403 "Access Denied" alors que le jeton
+    est valide (accepté par wallet/onboarding/beneficiary, voir le test du
+    2026-11-07) - signe que la fonctionnalité "Atlas for Platforms" n'est
+    probablement pas activée sur ce compte Verto, pas un identifiant
+    invalide. Permet à l'appelant (routes/verto.py) de distinguer ce cas
+    précis d'une vraie panne et d'afficher un message propre au marchand,
+    sans exposer le détail brut de Verto."""
+
 
 # Cache du JWT de session (valide 60 min côté Verto) - un seul process
 # Xepay partage une session Verto (le compte parent), pas un jwt par
@@ -73,7 +100,7 @@ def _login() -> dict:
         VERTO_API_KEY if VERTO_AUTH_MODE == "apiKey_plain" else _encrypt_api_key(VERTO_API_KEY)
     )
     resp = requests.post(
-        f"{VERTO_AUTH_BASE_URL}/users/login",
+        f"{VERTO_LOGIN_BASE_URL}/users/login",
         headers={"Content-Type": "application/json"},
         json={
             "mode": "apiKey",
@@ -188,6 +215,13 @@ def create_sub_account(
         json=body,
         timeout=20,
     )
+    if resp.status_code == 403:
+        raise VertoAtlasNotEnabledError(
+            "Verto a refusé la création de sous-compte (403 Access Denied) "
+            "- probablement l'accès \"Atlas for Platforms\" non activé sur "
+            "ce compte sandbox (vérifié le 2026-11-07, le jeton lui-même "
+            "est valide). À confirmer avec le support Verto."
+        )
     resp.raise_for_status()
     return resp.json()
 

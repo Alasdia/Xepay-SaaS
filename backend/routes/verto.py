@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -7,6 +9,7 @@ from backend.middleware.authorization import require_capability
 from backend.services import verto_service
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _get_or_create_profile(db: Session, owner_id: str) -> Profile:
@@ -48,8 +51,14 @@ def start_verto_onboarding(
         )
         company_id = str(sub_account["id"])
         verto_service.submit_onboarding_data(company_id, body.kyc_payload)
-    except Exception as e:
-        raise HTTPException(502, f"Echec onboarding Verto: {e}")
+    except verto_service.VertoAtlasNotEnabledError:
+        raise HTTPException(503, "L'enregistrement bancaire local n'est pas encore disponible. Réessayez plus tard.")
+    except Exception:
+        # Détail de l'exception (jamais le jeton ni VERTO_API_KEY/CLIENT_ID,
+        # qui n'apparaissent dans aucun message d'erreur Verto renvoyé ici)
+        # loggé côté serveur pour le diagnostic - jamais exposé au marchand.
+        logger.exception("Echec onboarding Verto pour owner_id=%s", owner_id)
+        raise HTTPException(502, "Erreur lors de l'enregistrement. Réessayez plus tard.")
 
     profile.verto_company_id = company_id
     profile.verto_onboarding_status = "pending"
