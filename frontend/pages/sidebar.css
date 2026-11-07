@@ -29,6 +29,21 @@
    travers), donc illisible - toujours une couleur opaque calculée. */
 .modal-content { background-color: #fdfaf8; }
 
+/* Overlay réutilisable "voile sombre léger" (référence : invite WebAuthn
+   native de Chrome, vue Authentification - noir neutre ~45%, flou quasi
+   nul, texte derrière reste lisible) - volontairement une classe à part
+   de .modal-backdrop (gris très sombre 80% + blur 2px, voir
+   modal-upgrade.css), appliquée au cas par cas via JS
+   (classList.add("overlay-soft-dim") sur l'élément .modal-backdrop au
+   moment du show.bs.modal) plutôt qu'en remplaçant la règle générique -
+   un seul modal l'utilise pour l'instant (#withdrawModal, voir solde.js),
+   en comparaison avant extension éventuelle à d'autres. */
+.overlay-soft-dim.modal-backdrop {
+  background: rgba(0, 0, 0, 0.45) !important;
+  backdrop-filter: blur(1.5px);
+  -webkit-backdrop-filter: blur(1.5px);
+}
+
 /* Zone de recherche (visuelle pour l'instant, non branchée à une recherche
    réelle) - fond blanc légèrement transparent pour rester lisible sur le
    jaune, largeur bornée plutôt qu'étirée sur tout l'espace disponible. */

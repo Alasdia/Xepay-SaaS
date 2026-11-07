@@ -492,6 +492,14 @@ export async function mount(container) {
     target.addEventListener(type, fn);
     boundListeners.push({ target, type, fn });
   }
+
+  // Overlay "voile sombre léger" en comparaison (voir sidebar.css,
+  // .overlay-soft-dim) - Bootstrap ajoute le backdrop en sibling de body,
+  // jamais nested dans la modale, donc impossible à cibler par ID en CSS
+  // seul : on marque l'élément au moment précis où CE modal s'ouvre.
+  on(document.getElementById("withdrawModal"), "shown.bs.modal", () => {
+    document.querySelectorAll(".modal-backdrop").forEach((el) => el.classList.add("overlay-soft-dim"));
+  });
   const sourceItems = Array.from(
     container.querySelectorAll(".balance-list-row")
   );

@@ -163,6 +163,27 @@ const CANCEL_SUB_MODAL_HTML = `
 </div>
 `;
 
+const PASSKEY_NAME_MODAL_HTML = `
+<div class="modal fade" id="paramsPasskeyNameModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 14px;">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold text-dark mb-0">Nommer cette clé d'accès</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label">Nom</label>
+        <input type="text" id="p-passkey-name-input" class="form-control" placeholder="Ex: iPhone de Jean" maxlength="60">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" id="p-btn-confirm-passkey-name" class="create-client-btn">Continuer</button>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
 const TWOFA_MODAL_HTML = `
 <div class="modal fade" id="paramsTwoFaModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
@@ -496,11 +517,31 @@ async function loadPasskeys() {
   }
 }
 
-async function registerPasskey() {
+let passkeyNameModalInstance = null;
+
+// Étape 1 : juste ouvrir la modal de nom - aucun appel réseau ni prompt
+// biométrique tant que le nom n'est pas confirmé (voir confirmPasskeyName).
+function registerPasskey() {
   if (!window.PublicKeyCredential) {
     showToast("Les clés d'accès ne sont pas prises en charge par ce navigateur", "error");
     return;
   }
+  const input = document.getElementById("p-passkey-name-input");
+  if (input) input.value = "";
+  if (!passkeyNameModalInstance) {
+    passkeyNameModalInstance = bootstrap.Modal.getOrCreateInstance(document.getElementById("paramsPasskeyNameModal"));
+  }
+  passkeyNameModalInstance.show();
+  setTimeout(() => input?.focus(), 200);
+}
+
+// Étape 2 (bouton "Continuer" de la modal) : le nom est déjà connu avant
+// de déclencher l'invite biométrique native (Face ID/Windows Hello/clé de
+// sécurité) - contrairement à l'ancien window.prompt() qui arrivait après.
+async function confirmPasskeyName() {
+  const name = (document.getElementById("p-passkey-name-input")?.value || "").trim() || "Clé d'accès";
+  passkeyNameModalInstance?.hide();
+
   const btn = document.getElementById("p-passkey-add-btn");
   btn.disabled = true;
   try {
@@ -530,7 +571,6 @@ async function registerPasskey() {
       origin: window.location.origin,
     };
 
-    const name = (window.prompt("Nom de cette clé d'accès (ex: iPhone de Jean)") || "").trim() || "Clé d'accès";
     const finishRes = await apiFetch("/passkeys/register/finish", {
       method: "POST",
       body: { credential: credentialJson, name },
@@ -949,10 +989,12 @@ async function generateBackupCode() {
 
 function mountAuthentification(on) {
   document.body.insertAdjacentHTML("beforeend", TWOFA_MODAL_HTML);
+  document.body.insertAdjacentHTML("beforeend", PASSKEY_NAME_MODAL_HTML);
   on(document.getElementById("p-google-btn"), "click", handleGoogleBtnClick);
   on(document.getElementById("p-twofa-toggle-btn"), "click", handleTwoFaToggle);
   on(document.getElementById("p-btn-verify-2fa"), "click", verify2FA);
   on(document.getElementById("p-passkey-add-btn"), "click", registerPasskey);
+  on(document.getElementById("p-btn-confirm-passkey-name"), "click", confirmPasskeyName);
 
   on(document.getElementById("p-passkeys-tbody"), "click", (e) => {
     const trigger = e.target.closest(".row-menu-trigger");
@@ -995,6 +1037,19 @@ function mountAuthentification(on) {
     }
     modalEl?.remove();
     twoFaModalInstance = null;
+
+    const passkeyModalEl = document.getElementById("paramsPasskeyNameModal");
+    const passkeyInstance = passkeyModalEl && bootstrap.Modal.getInstance(passkeyModalEl);
+    if (passkeyInstance) {
+      passkeyInstance.hide();
+      passkeyInstance.dispose();
+      document.body.classList.remove("modal-open");
+      document.body.style.removeProperty("overflow");
+      document.body.style.removeProperty("padding-right");
+      document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
+    }
+    passkeyModalEl?.remove();
+    passkeyNameModalInstance = null;
   };
 }
 
