@@ -915,6 +915,18 @@
     margin-top: 0;
 }
 
+/* "Émettre une carte virtuelle" : titre/sous-titre restent à gauche en
+   pleine largeur (.customer-modal-header, inchangé) - seuls les champs et
+   le bouton sont resserrés dans une colonne plus étroite, centrée dans la
+   boîte, plutôt qu'étirés sur toute sa largeur. */
+#create-card-modal #create-card-form {
+    max-width: 380px;
+    margin: 0 auto;
+}
+#create-card-modal .customer-modal-actions {
+    justify-content: center;
+}
+
 .modal-cancel-btn,
 .modal-submit-btn {
     border-radius: 8px;
