@@ -22,6 +22,10 @@ export function render() {
     <summary>Combien de temps prend l'activation de mon compte ?</summary>
     <p>La création du compte Stripe Connect est immédiate. La vérification complète (KYC) dépend des informations fournies et prend généralement de quelques minutes à quelques jours.</p>
   </details>
+  <details class="faq-item">
+    <summary>Ai-je besoin d'une entreprise pour utiliser Xepay ?</summary>
+    <p>Oui, et c'est une étape à anticiper : Stripe Connect (l'infrastructure qui traite vos paiements) exige une entité qu'il reconnaît — dans les faits, une société américaine (LLC) est la voie la plus simple. Sans elle, impossible de finaliser la vérification Stripe, donc impossible d'encaisser ou de retirer. Si vous n'en avez pas encore, vous pouvez en former une directement depuis vos paramètres Xepay (Firstbase ou Stripe Atlas) — voir la page Documentation pour le détail complet du parcours.</p>
+  </details>
 
   <div class="section-tag" style="margin-top:32px;">Paiements & retraits</div>
   <details class="faq-item">
@@ -30,7 +34,7 @@ export function render() {
   </details>
   <details class="faq-item">
     <summary>Comment retirer mes fonds ?</summary>
-    <p>Depuis la vue Solde de votre dashboard, le bouton "Retirer des fonds" déclenche un virement Stripe vers le compte bancaire enregistré sur votre compte Connect. Voir la section "Retraits & Comptes US" de vos paramètres pour les détails de couverture actuelle.</p>
+    <p>Depuis la vue Solde de votre dashboard, le bouton "Retirer des fonds" déclenche un virement vers la destination que vous avez configurée : soit votre banque locale en zone UEMOA via notre partenaire agréé Verto, soit un compte bancaire US/EU directement relié à votre compte Stripe Connect. Voir la section "Retraits & comptes bancaires" de vos paramètres pour configurer votre destination, ou "Entreprise" si vous devez d'abord créer une société.</p>
   </details>
   <details class="faq-item">
     <summary>Quelle commission Xepay applique-t-elle ?</summary>

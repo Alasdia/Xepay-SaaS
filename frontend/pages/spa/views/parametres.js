@@ -115,7 +115,7 @@ function overviewTemplate() {
           ${tile("stripe", "fa-brands fa-stripe", "Compte Stripe Connect", "Nom, identifiant et type de compte, statut des paiements et virements, éléments requis par Stripe, et suppression du compte")}
           ${tile("plans-et-frais", "fa-solid fa-crown", "Plans et frais", "Plan actuel, paiements et liens consommés ce mois, résiliation de l'abonnement et commission Xepay dégressive selon votre volume")}
           ${tile("equipe", "fa-solid fa-users", "Équipe et sécurité", "Membres, rôles et invitations de l'équipe, 2FA, clés d'accès et sessions, et journal d'activité du workspace")}
-          ${tile("entreprise", "fa-solid fa-building", "Entreprise", "Raison sociale, représentant légal et documents justificatifs, synchronisés directement depuis Stripe")}
+          ${tile("entreprise", "fa-solid fa-building", "Entreprise", "Créer votre société (Firstbase/Atlas), ou gérer raison sociale, représentant légal et documents via Stripe")}
           ${tile("permissions", "fa-solid fa-user-shield", "Permissions", "Rôle minimal requis pour chaque action sensible de l'équipe - personnalisable, réservé au propriétaire du workspace")}
         </div>
       </section>
@@ -124,18 +124,25 @@ function overviewTemplate() {
         ${sectionTitle("Paramètres produit")}
         <div class="params-tiles-grid">
           ${tile("cartes-virtuelles", "fa-solid fa-credit-card", "Cartes virtuelles", "Issuing")}
-          ${tile("retraits", "fa-solid fa-building-columns", "Retraits & Comptes US", "LLC et comptes bancaires")}
+          ${tile("retraits", "fa-solid fa-building-columns", "Retraits & comptes bancaires", "Virement local UEMOA (Verto) ou compte US/EU")}
         </div>
       </section>
     </div>
   `;
 }
 
+// Fil d'Ariane "Paramètres > {vue}" - remplace l'ancien bouton "← Paramètres"
+// + titre séparé. "Paramètres" reste un <button> (pour la navigation SPA via
+// #params-back, voir mount()) mais stylé comme un simple lien (couleur du
+// site, pas de fond ni de bordure) plutôt qu'un bouton avec icône retour.
 function detailHeader(title) {
   return `
     <div class="params-detail-header">
-      <button type="button" class="params-back-btn" id="params-back">Paramètres</button>
-      <h5 class="mb-0 fw-bold text-muted">${title}</h5>
+      <nav class="params-breadcrumb" aria-label="Fil d'Ariane">
+        <button type="button" class="params-breadcrumb-link" id="params-back">Paramètres</button>
+        <span class="params-breadcrumb-sep" aria-hidden="true">›</span>
+        <span class="params-breadcrumb-current">${title}</span>
+      </nav>
     </div>
   `;
 }
@@ -2152,14 +2159,38 @@ function mountEquipe(on) {
 // Un seul bloc (plus de colonnes "Informations du compte"/"État du
 // compte" - déplacées dans Compte Stripe Connect) : juste le widget
 // Stripe account_management, chargé à la demande via "Se connecter".
+// Ni Firstbase ni Atlas n'ont d'API permettant à une plateforme Connect
+// de déclencher la création de société de SES marchands - ce sont des
+// produits auto-service côté fondateur, pas des endpoints qu'on peut
+// appeler ici. Déplacé depuis retraitsTemplate le 2026-11-08 : la
+// création de société est le préalable à tout (Stripe Connect, Verto,
+// retraits), elle a donc plus sa place ici, avant la gestion des
+// informations d'entreprise elle-même, qu'au milieu du detail "Retraits".
 function entrepriseTemplate() {
   return `
     ${detailHeader("Entreprise")}
+
     <div class="params-subsection-header">
+      <h6 class="params-subsection-title mb-0">🚀 Créer votre société US avec Firstbase</h6>
+      <a href="https://get.firstbase.io/lzqmlclh3nr9" target="_blank" rel="noopener noreferrer" class="create-client-btn text-decoration-none">
+        Créer ma LLC avec Firstbase <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.75rem;"></i>
+      </a>
+    </div>
+    <p class="params-subsection-sub">Firstbase s'occupe de la création complète de votre LLC américaine à distance : constitution de la société, numéro EIN (identifiant fiscal fédéral), agent enregistré obligatoire, et ouverture d'un compte bancaire professionnel partenaire. Le dossier se remplit entièrement en ligne (pièce d'identité et justificatif d'adresse), et la société est généralement opérationnelle en quelques jours. Une fois votre LLC et son compte bancaire actifs, renseignez ce compte dans vos paramètres de retrait Stripe pour débloquer vos virements.</p>
+
+    <div class="params-subsection-header" style="margin-top: 32px;">
+      <h6 class="params-subsection-title mb-0"><i class="fa-brands fa-stripe"></i> Créer votre société US avec Stripe Atlas</h6>
+      <a href="https://stripe.com/atlas" target="_blank" rel="noopener noreferrer" class="create-client-btn text-decoration-none">
+        Créer ma société avec Stripe Atlas <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.75rem;"></i>
+      </a>
+    </div>
+    <p class="params-subsection-sub">Stripe Atlas est le produit officiel de Stripe pour former une société américaine, directement depuis l'écosystème que vous utilisez déjà pour encaisser vos paiements. Atlas gère la constitution de la société, l'obtention du numéro EIN et l'ouverture d'un compte bancaire associé, avec une intégration native à votre compte Stripe existant — une alternative utile si vous préférez centraliser la gestion de votre activité et de votre société chez un seul prestataire plutôt que d'en ajouter un second. Des frais de dossier Stripe s'appliquent à la constitution ; le détail actualisé est disponible sur leur page.</p>
+
+    <div class="params-subsection-header" style="margin-top: 32px;">
       <h6 class="params-subsection-title mb-0">Informations sur votre entreprise</h6>
       <button type="button" id="p-company-widget-btn" class="create-client-btn">Se connecter</button>
     </div>
-    <p class="params-subsection-sub">Détails d'entreprise, représentant légal et documents, gérés directement via Stripe.</p>
+    <p class="params-subsection-sub">Déjà une société ? Détails d'entreprise, représentant légal et documents, gérés directement via Stripe.</p>
     <div id="p-company-widget-container"></div>
   `;
 }
@@ -2537,12 +2568,19 @@ function mountCartesVirtuelles(on) {
   loadIssuingStatus();
 }
 
-// --- Detail : Retraits & Comptes US ---
+// --- Detail : Retraits & comptes bancaires ---
+// Rebaptisé le 2026-11-08 (ex-"Retraits & Comptes US") : le nom d'origine
+// ne décrivait plus que l'option secondaire (US/EU) alors que le virement
+// local UEMOA via Verto est l'option principale. La création de société
+// (Firstbase/Atlas) a été déplacée dans le detail "Entreprise"
+// (entrepriseTemplate ci-dessous) - ce detail ne garde que le flux de
+// retrait lui-même.
+//
 // Architecture "Zero-Custody" (voir backend/services/verto_service.py) :
 // Stripe Connect Express -> wallet USD dédié Verto -> compte bancaire
 // local UEMOA du marchand, jamais un pivot détenu par Xepay. L'option US
-// (Firstbase/Atlas) reste proposée en alternative pour qui préfère un
-// compte bancaire US/EU plutôt que le virement local.
+// (Firstbase/Atlas, voir "Entreprise") reste proposée en alternative pour
+// qui préfère un compte bancaire US/EU plutôt que le virement local.
 //
 // 4 étapes, chacune débloquant la suivante (voir vertoBodyHtml) :
 //   1. Enregistrement du sous-compte Verto (onboarding KYC/KYB)
@@ -3265,18 +3303,14 @@ function mountRetraits(on) {
   };
 }
 
-// Trois sections distinctes, chacune indépendante (pas de card-epay —
-// voir la règle en commentaire dans parametres.css) : virements locaux
-// UEMOA (option principale, voir mountRetraits), puis un prestataire par
-// section pour la formation de société US - Firstbase (déjà en place) et
-// Stripe Atlas (ajouté à la demande), proposés comme alternative pour qui
-// préfère un compte bancaire US/EU. Ni Firstbase ni Atlas n'ont d'API
-// permettant à une plateforme Connect de déclencher la création de
-// société de SES marchands - ce sont des produits auto-service côté
-// fondateur, pas des endpoints qu'on peut appeler ici.
+// Une seule section fonctionnelle : le virement local UEMOA (voir
+// mountRetraits). L'option US/EU n'a pas de formulaire propre ici - elle
+// dépend d'une société reconnue par Stripe, dont la création (Firstbase/
+// Atlas) vit maintenant dans le detail "Entreprise" (entrepriseTemplate) ;
+// ce detail ne fait plus qu'y renvoyer.
 function retraitsTemplate() {
   return `
-    ${detailHeader("Retraits & Comptes US")}
+    ${detailHeader("Retraits & comptes bancaires")}
 
     <div class="params-subsection-header">
       <h6 class="params-subsection-title mb-0">Virement vers votre compte bancaire local (UEMOA)</h6>
@@ -3287,23 +3321,7 @@ function retraitsTemplate() {
     <div class="params-subsection-header" style="margin-top: 32px;">
       <h6 class="params-subsection-title mb-0">Vous préférez un compte bancaire US ou EU ?</h6>
     </div>
-    <p class="params-subsection-sub" style="max-width:100%;">Si vous disposez déjà d'une société et d'un compte bancaire domiciliés en zone Europe ou aux États-Unis, Stripe peut y verser directement vos virements - sans passer par le circuit local ci-dessus. Les deux options ci-dessous permettent de créer cette structure si vous n'en avez pas encore.</p>
-
-    <div class="params-subsection-header" style="margin-top: 24px;">
-      <h6 class="params-subsection-title mb-0">🚀 Créer votre société US avec Firstbase</h6>
-      <a href="https://get.firstbase.io/lzqmlclh3nr9" target="_blank" rel="noopener noreferrer" class="create-client-btn text-decoration-none">
-        Créer ma LLC avec Firstbase <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.75rem;"></i>
-      </a>
-    </div>
-    <p class="params-subsection-sub">Firstbase s'occupe de la création complète de votre LLC américaine à distance : constitution de la société, numéro EIN (identifiant fiscal fédéral), agent enregistré obligatoire, et ouverture d'un compte bancaire professionnel partenaire. Le dossier se remplit entièrement en ligne (pièce d'identité et justificatif d'adresse), et la société est généralement opérationnelle en quelques jours. Une fois votre LLC et son compte bancaire actifs, renseignez ce compte dans vos paramètres de retrait Stripe pour débloquer vos virements.</p>
-
-    <div class="params-subsection-header" style="margin-top: 32px;">
-      <h6 class="params-subsection-title mb-0"><i class="fa-brands fa-stripe"></i> Créer votre société US avec Stripe Atlas</h6>
-      <a href="https://stripe.com/atlas" target="_blank" rel="noopener noreferrer" class="create-client-btn text-decoration-none">
-        Créer ma société avec Stripe Atlas <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.75rem;"></i>
-      </a>
-    </div>
-    <p class="params-subsection-sub">Stripe Atlas est le produit officiel de Stripe pour former une société américaine, directement depuis l'écosystème que vous utilisez déjà pour encaisser vos paiements. Atlas gère la constitution de la société, l'obtention du numéro EIN et l'ouverture d'un compte bancaire associé, avec une intégration native à votre compte Stripe existant — une alternative utile si vous préférez centraliser la gestion de votre activité et de votre société chez un seul prestataire plutôt que d'en ajouter un second. Des frais de dossier Stripe s'appliquent à la constitution ; le détail actualisé est disponible sur leur page.</p>
+    <p class="params-subsection-sub" style="max-width:100%;">Si vous disposez déjà d'une société et d'un compte bancaire domiciliés en zone Europe ou aux États-Unis, Stripe peut y verser directement vos virements - sans passer par le circuit local ci-dessus. Pas encore de société reconnue par Stripe ? Rendez-vous dans Paramètres → <strong>Entreprise</strong> pour en créer une.</p>
   `;
 }
 
@@ -3317,7 +3335,7 @@ const SECTIONS = {
   "entreprise": { title: "Entreprise", template: entrepriseTemplate, mount: (on) => mountEntreprise(on) },
   "permissions": { title: "Permissions", template: permissionsTemplate, mount: (on) => mountPermissions(on) },
   "cartes-virtuelles": { title: "Cartes virtuelles", template: cartesVirtuellesTemplate, mount: (on) => mountCartesVirtuelles(on) },
-  "retraits": { title: "Retraits & Comptes US", template: retraitsTemplate, mount: (on) => mountRetraits(on) },
+  "retraits": { title: "Retraits & comptes bancaires", template: retraitsTemplate, mount: (on) => mountRetraits(on) },
 };
 
 export async function mount(container, params = {}) {

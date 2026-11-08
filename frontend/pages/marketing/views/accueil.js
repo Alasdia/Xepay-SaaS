@@ -479,7 +479,7 @@ export function render() {
     <ul class="feature-checklist">
       <li>Détail par source : liens, abonnements, factures</li>
       <li>Montant verrouillé vs disponible, en un coup d'œil</li>
-      <li>Retrait à la demande vers votre compte Europe ou US</li>
+      <li>Retrait à la demande vers votre banque locale en zone UEMOA (via Verto) ou vers un compte Europe/US</li>
       <li>Historique complet de chaque retrait</li>
     </ul>
     <a href="/signup" class="btn-primary" style="display:inline-flex">Voir mon solde →</a>
@@ -583,8 +583,8 @@ export function render() {
     </div>
     <div class="highlight-card">
       <div class="hl-image"><video src="/assets/illu-company-formation-preview.mp4" autoplay muted loop playsinline></video></div>
-      <div class="hl-title">Pas encore de société US ?</div>
-      <div class="hl-desc">Formez votre LLC via Firstbase ou Stripe Atlas, directement depuis vos paramètres Xepay.</div>
+      <div class="hl-title">Pas encore de société reconnue par Stripe ?</div>
+      <div class="hl-desc">C'est le point de passage obligatoire pour encaisser et retirer sur Xepay. Formez votre LLC via Firstbase ou Stripe Atlas, directement depuis vos paramètres Xepay.</div>
     </div>
   </div>
 </section>

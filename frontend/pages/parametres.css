@@ -88,24 +88,40 @@
   margin-bottom: 24px;
 }
 
-.params-back-btn {
-  background: none;
-  border: none;
-  color: #b45309;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
+.params-breadcrumb {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  transition: .15s;
+  gap: 8px;
+  font-size: 15px;
 }
 
-.params-back-btn:hover {
+.params-breadcrumb-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: #b45309;
+  font-weight: 600;
+  font-size: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color .15s;
+}
+
+.params-breadcrumb-link:hover {
   color: #92400a;
-  background: rgba(180, 83, 9, 0.08);
+  text-decoration: underline;
+}
+
+.params-breadcrumb-sep {
+  color: rgba(17, 24, 39, 0.35);
+  font-size: 14px;
+}
+
+.params-breadcrumb-current {
+  font-weight: 700;
+  color: rgba(17, 24, 39, 0.85);
 }
 
 .params-info-row {

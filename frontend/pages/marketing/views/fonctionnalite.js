@@ -100,7 +100,12 @@ export function render() {
     <div class="feature-icon">🏦</div>
     <div class="section-tag">Trésorerie</div>
     <h2>Solde &amp; retraits</h2>
-    <p class="feature-desc">Votre solde disponible, votre solde en attente, et un seul bouton pour retirer — "Retirer des fonds" déclenche un virement Stripe vers votre compte bancaire enregistré. Vous gardez la main sur chaque retrait, que vous pouvez annuler tant qu'il n'est pas finalisé.</p>
+    <p class="feature-desc">Votre solde disponible, votre solde en attente, et un seul bouton pour retirer — "Retirer des fonds" déclenche un virement vers la destination de votre choix. Vous gardez la main sur chaque retrait, que vous pouvez annuler tant qu'il n'est pas finalisé.</p>
+    <ul class="fc-list">
+      <li>Retrait local vers votre banque en zone UEMOA, via notre partenaire agréé Verto</li>
+      <li>Ou retrait vers un compte bancaire US/EU, si vous en disposez déjà</li>
+      <li>Historique complet de chaque retrait, quelle que soit la destination</li>
+    </ul>
   </div>
 </section>
 
