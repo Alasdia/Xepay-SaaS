@@ -5,21 +5,72 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Xepay — Conditions d'utilisation</title>
 <meta name="description" content="Conditions générales d'utilisation de la plateforme Xepay, exploitée par ALASDIA TECHNOLOGIES LLC.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500;600&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="responsive.css">
-<link rel="stylesheet" href="legal.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/responsive.css">
+<link rel="stylesheet" href="/marketing.css">
+<link rel="stylesheet" href="/legal.css">
+<link rel="alternate" hreflang="fr" href="https://www.xepay.finance/conditions-utilisation">
+<link rel="alternate" hreflang="en" href="https://www.xepay.finance/terms-of-service">
+<link rel="canonical" href="https://www.xepay.finance/conditions-utilisation">
 </head>
 <body class="home-page">
 
-<div id="cursor"></div>
-<div id="cursor-ring"></div>
-<div class="noise"></div>
-<canvas id="bg-canvas"></canvas>
-
-<!-- ─── NAVBAR ─── -->
+<!-- ─── NAVBAR (identique au SPA marketing) ─── -->
 <nav>
-  <div class="logo">Xe<span>pay</span></div>
+ <div class="nav-inner">
+  <div class="nav-left">
+    <a href="/accueil" class="logo-lockup" style="text-decoration:none;">
+      <img src="/assets/xepay-logo-full.png" alt="" class="logo-mark-icon">
+      <span class="logo">xe<span>pay</span></span>
+    </a>
+
+    <div class="nav-dropdown" data-nav-dropdown="produits">
+      <button type="button" class="nav-dropdown-trigger" aria-haspopup="true" aria-expanded="false">
+        Produits <span class="nav-chevron" aria-hidden="true">⌄</span>
+      </button>
+      <div class="nav-dropdown-panel" hidden>
+        <div class="nav-panel-group">
+          <div class="nav-panel-group-title">Paiements</div>
+          <a href="/fonctionnalite#paiement-en-ligne"><strong>Paiement en ligne</strong><span>Encaissez vos clients en ligne</span></a>
+          <a href="/fonctionnalite#liens-de-paiement"><strong>Liens de paiement</strong><span>Créez un lien en quelques secondes</span></a>
+          <a href="/fonctionnalite#mode-de-paiement"><strong>Mode de paiement</strong><span>Carte, Apple Pay, Google Pay et plus</span></a>
+          <a href="/fonctionnalite#multi-devises"><strong>Multi-devises</strong><span>XOF, USD et EUR</span></a>
+        </div>
+        <div class="nav-panel-group">
+          <div class="nav-panel-group-title">Revenu</div>
+          <a href="/fonctionnalite#abonnements-factures"><strong>Abonnements &amp; factures</strong><span>Facturation et paiements récurrents</span></a>
+          <a href="/fonctionnalite#rapports-financiers"><strong>Rapports financiers</strong><span>Vos volumes et commissions en PDF</span></a>
+          <a href="/fonctionnalite#solde-retraits"><strong>Solde &amp; retraits</strong><span>Retraits vers votre compte bancaire</span></a>
+          <a href="/fonctionnalite#transactions-en-direct"><strong>Transactions en direct</strong><span>Suivez chaque paiement en temps réel</span></a>
+        </div>
+        <div class="nav-panel-group">
+          <div class="nav-panel-group-title">Gestion</div>
+          <a href="/fonctionnalite#equipe-roles"><strong>Équipe &amp; rôles</strong><span>Accès définis par rôle</span></a>
+          <a href="/api"><strong>API &amp; webhooks</strong><span>Intégrez Xepay à vos outils</span></a>
+          <a href="/accueil"><strong>Formation de société US</strong><span>LLC via Firstbase ou Stripe Atlas</span></a>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-dropdown" data-nav-dropdown="ressources">
+      <button type="button" class="nav-dropdown-trigger" aria-haspopup="true" aria-expanded="false">
+        Ressources <span class="nav-chevron" aria-hidden="true">⌄</span>
+      </button>
+      <div class="nav-dropdown-panel" hidden>
+        <a href="/centre-aide"><strong>Centre d'aide</strong><span>Guides et questions fréquentes</span></a>
+        <a href="/documentation"><strong>Documentation</strong><span>Référence technique de l'API</span></a>
+        <a href="/statut"><strong>Statut</strong><span>Disponibilité de la plateforme</span></a>
+        <a href="/securite"><strong>Sécurité</strong><span>Protection de vos paiements</span></a>
+      </div>
+    </div>
+
+    <a href="/tarif" class="nav-plain-link">Tarifs</a>
+  </div>
 
   <button class="nav-hamburger">
     <span></span>
@@ -28,20 +79,19 @@
   </button>
 
   <div class="nav-links">
-    <a href="/accueil">Accueil</a>
-    <a href="/fonctionnalite">Fonctionnalités</a>
-    <a href="/tarif">Tarifs</a>
+    <a href="https://app.xepay.finance/dash/workspace/me/" class="btn-nav-outline">Dashboard</a>
     <a href="/login" class="btn-nav-outline">Connexion</a>
     <a href="/signup" class="btn-nav-primary">Créer un compte</a>
   </div>
+ </div>
 </nav>
 
 <!-- ─── EN-TÊTE ─── -->
-<header class="legal-header">
-  <div class="legal-eyebrow">Document contractuel</div>
-  <h1>Conditions d'utilisation</h1>
-  <div class="legal-updated">Dernière mise à jour : 1er octobre 2026 — Version 1.0</div>
-</header>
+<section class="page-hero legal-hero">
+  <div class="eyebrow">Document contractuel</div>
+  <h1>Conditions <mark>d'utilisation</mark>.</h1>
+  <p class="legal-updated">Dernière mise à jour : 1er octobre 2026 — Version 1.0</p>
+</section>
 
 <!-- ─── CORPS ─── -->
 <div class="legal-body">
@@ -214,18 +264,58 @@
   </main>
 </div>
 
-<!-- ─── FOOTER ─── -->
-<footer>
-  <div class="logo">XE<span>PAY</span></div>
-  <div class="footer-links">
-    <a href="/fonctionnalite">Fonctionnalités</a>
-    <a href="/tarif">Tarifs</a>
-    <a href="/politique-confidentialite">Politique de confidentialité</a>
-    <a href="/conditions-utilisation">Conditions d'utilisation</a>
+<!-- ─── FOOTER (identique au SPA marketing) ─── -->
+<footer class="site-footer">
+  <div class="sf-top">
+    <div class="sf-brand">
+      <div class="logo-lockup">
+        <img src="/assets/xepay-logo-full.png" alt="" class="logo-mark-icon">
+        <span class="logo">xe<span>pay</span></span>
+      </div>
+      <p class="sf-tagline">Paiements fintech, de l'Afrique de l'Ouest au monde.</p>
+    </div>
+
+    <div class="sf-col">
+      <div class="sf-col-title">Produit</div>
+      <a href="/fonctionnalite#liens-de-paiement">Liens de paiement</a>
+      <a href="/fonctionnalite#abonnements-factures">Abonnements &amp; factures</a>
+      <a href="/fonctionnalite#rapports-financiers">Rapports financiers</a>
+      <a href="/tarif">Tarifs</a>
+      <a href="/api">API</a>
+    </div>
+
+    <div class="sf-col">
+      <div class="sf-col-title">Entreprise</div>
+      <a href="/a-propos">À propos</a>
+      <a href="/carrieres">Carrières</a>
+      <a href="/blog">Blog</a>
+      <a href="/presse">Presse</a>
+    </div>
+
+    <div class="sf-col">
+      <div class="sf-col-title">Ressources</div>
+      <a href="/centre-aide">Centre d'aide</a>
+      <a href="/documentation">Documentation</a>
+      <a href="/statut">Statut</a>
+      <a href="/securite">Sécurité</a>
+    </div>
+
+    <div class="sf-col">
+      <div class="sf-col-title">Légal</div>
+      <a href="/politique-confidentialite">Politique de confidentialité</a>
+      <a href="/conditions-utilisation">Conditions d'utilisation</a>
+      <a href="/mentions-legales">Mentions légales</a>
+      <a href="/cookies">Cookies</a>
+      <a href="/terms-of-service">English version</a>
+    </div>
   </div>
-  <div class="footer-copy">© 2026 ALASDIA TECHNOLOGIES LLC — XEPAY</div>
+
+  <div class="sf-bottom">
+    <div class="footer-copy">© 2026 Xepay — ALL RIGHTS RESERVED</div>
+    <a href="mailto:support@alasdia.com" class="sf-support">support@alasdia.com</a>
+  </div>
 </footer>
 
-<script src="legal.js" defer></script>
+<script src="/legal.js" defer></script>
 </body>
 </html>

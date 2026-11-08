@@ -5,21 +5,72 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Xepay — Politique de confidentialité</title>
 <meta name="description" content="Politique de confidentialité de la plateforme Xepay, exploitée par ALASDIA TECHNOLOGIES LLC : données collectées, finalités, partage, sécurité et droits des utilisateurs.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500;600&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="responsive.css">
-<link rel="stylesheet" href="legal.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/responsive.css">
+<link rel="stylesheet" href="/marketing.css">
+<link rel="stylesheet" href="/legal.css">
+<link rel="alternate" hreflang="fr" href="https://www.xepay.finance/politique-confidentialite">
+<link rel="alternate" hreflang="en" href="https://www.xepay.finance/privacy-policy">
+<link rel="canonical" href="https://www.xepay.finance/politique-confidentialite">
 </head>
 <body class="home-page">
 
-<div id="cursor"></div>
-<div id="cursor-ring"></div>
-<div class="noise"></div>
-<canvas id="bg-canvas"></canvas>
-
-<!-- ─── NAVBAR ─── -->
+<!-- ─── NAVBAR (identique au SPA marketing) ─── -->
 <nav>
-  <div class="logo">Xe<span>pay</span></div>
+ <div class="nav-inner">
+  <div class="nav-left">
+    <a href="/accueil" class="logo-lockup" style="text-decoration:none;">
+      <img src="/assets/xepay-logo-full.png" alt="" class="logo-mark-icon">
+      <span class="logo">xe<span>pay</span></span>
+    </a>
+
+    <div class="nav-dropdown" data-nav-dropdown="produits">
+      <button type="button" class="nav-dropdown-trigger" aria-haspopup="true" aria-expanded="false">
+        Produits <span class="nav-chevron" aria-hidden="true">⌄</span>
+      </button>
+      <div class="nav-dropdown-panel" hidden>
+        <div class="nav-panel-group">
+          <div class="nav-panel-group-title">Paiements</div>
+          <a href="/fonctionnalite#paiement-en-ligne"><strong>Paiement en ligne</strong><span>Encaissez vos clients en ligne</span></a>
+          <a href="/fonctionnalite#liens-de-paiement"><strong>Liens de paiement</strong><span>Créez un lien en quelques secondes</span></a>
+          <a href="/fonctionnalite#mode-de-paiement"><strong>Mode de paiement</strong><span>Carte, Apple Pay, Google Pay et plus</span></a>
+          <a href="/fonctionnalite#multi-devises"><strong>Multi-devises</strong><span>XOF, USD et EUR</span></a>
+        </div>
+        <div class="nav-panel-group">
+          <div class="nav-panel-group-title">Revenu</div>
+          <a href="/fonctionnalite#abonnements-factures"><strong>Abonnements &amp; factures</strong><span>Facturation et paiements récurrents</span></a>
+          <a href="/fonctionnalite#rapports-financiers"><strong>Rapports financiers</strong><span>Vos volumes et commissions en PDF</span></a>
+          <a href="/fonctionnalite#solde-retraits"><strong>Solde &amp; retraits</strong><span>Retraits vers votre compte bancaire</span></a>
+          <a href="/fonctionnalite#transactions-en-direct"><strong>Transactions en direct</strong><span>Suivez chaque paiement en temps réel</span></a>
+        </div>
+        <div class="nav-panel-group">
+          <div class="nav-panel-group-title">Gestion</div>
+          <a href="/fonctionnalite#equipe-roles"><strong>Équipe &amp; rôles</strong><span>Accès définis par rôle</span></a>
+          <a href="/api"><strong>API &amp; webhooks</strong><span>Intégrez Xepay à vos outils</span></a>
+          <a href="/accueil"><strong>Formation de société US</strong><span>LLC via Firstbase ou Stripe Atlas</span></a>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-dropdown" data-nav-dropdown="ressources">
+      <button type="button" class="nav-dropdown-trigger" aria-haspopup="true" aria-expanded="false">
+        Ressources <span class="nav-chevron" aria-hidden="true">⌄</span>
+      </button>
+      <div class="nav-dropdown-panel" hidden>
+        <a href="/centre-aide"><strong>Centre d'aide</strong><span>Guides et questions fréquentes</span></a>
+        <a href="/documentation"><strong>Documentation</strong><span>Référence technique de l'API</span></a>
+        <a href="/statut"><strong>Statut</strong><span>Disponibilité de la plateforme</span></a>
+        <a href="/securite"><strong>Sécurité</strong><span>Protection de vos paiements</span></a>
+      </div>
+    </div>
+
+    <a href="/tarif" class="nav-plain-link">Tarifs</a>
+  </div>
 
   <button class="nav-hamburger">
     <span></span>
@@ -28,20 +79,19 @@
   </button>
 
   <div class="nav-links">
-    <a href="/accueil">Accueil</a>
-    <a href="/fonctionnalite">Fonctionnalités</a>
-    <a href="/tarif">Tarifs</a>
+    <a href="https://app.xepay.finance/dash/workspace/me/" class="btn-nav-outline">Dashboard</a>
     <a href="/login" class="btn-nav-outline">Connexion</a>
     <a href="/signup" class="btn-nav-primary">Créer un compte</a>
   </div>
+ </div>
 </nav>
 
 <!-- ─── EN-TÊTE ─── -->
-<header class="legal-header">
-  <div class="legal-eyebrow">Document contractuel</div>
-  <h1>Politique de confidentialité</h1>
-  <div class="legal-updated">Dernière mise à jour : 1er octobre 2026 — Version 1.0</div>
-</header>
+<section class="page-hero legal-hero">
+  <div class="eyebrow">Document contractuel</div>
+  <h1>Politique de <mark>confidentialité</mark>.</h1>
+  <p class="legal-updated">Dernière mise à jour : 1er octobre 2026 — Version 1.0</p>
+</section>
 
 <!-- ─── CORPS ─── -->
 <div class="legal-body">
@@ -85,6 +135,7 @@
 
     <section id="donnees">
       <h2><span class="num">3</span>Données collectées</h2>
+      <p>Xepay collecte uniquement les données nécessaires au fonctionnement du Service : ouvrir et sécuriser un Compte, vérifier l'identité d'un Marchand dans le cadre de la réglementation applicable aux services de paiement, traiter les transactions initiées via un lien de paiement, et assurer le support technique et commercial. Nous distinguons trois grandes catégories de données ci-dessous, selon qu'elles sont fournies directement par le Marchand, générées automatiquement par l'utilisation du Service, ou relatives aux Clients finaux qui paient via un lien Xepay.</p>
       <h3>a) Données fournies par le Marchand</h3>
       <ul>
         <li>Données d'identification : nom, prénom, adresse email, mot de passe (stocké sous forme hachée), numéro de téléphone le cas échéant.</li>
@@ -137,7 +188,7 @@
 
     <section id="finalites">
       <h2><span class="num">5</span>Finalités du traitement</h2>
-      <p>Les données collectées sont utilisées pour :</p>
+      <p>Chaque donnée que nous collectons sert un objectif précis, directement lié à la fourniture du Service ou à une obligation à laquelle Xepay ou Stripe sont soumis. Nous n'utilisons jamais vos données à des fins incompatibles avec celles décrites ci-dessous, et nous ne les revendons jamais à des tiers à des fins publicitaires. Concrètement, les données collectées sont utilisées pour :</p>
       <ul>
         <li>créer et administrer votre Compte et votre Workspace ;</li>
         <li>permettre le traitement des paiements et la mise à disposition des fonds via Stripe ;</li>
@@ -172,7 +223,7 @@
           <tr><td>Autorités compétentes</td><td>Lorsque la loi l'exige ou en cas de demande judiciaire valable</td></tr>
         </tbody>
       </table>
-      <p>Chacun de ces prestataires est tenu contractuellement de protéger vos données et de ne les utiliser que pour les finalités autorisées par Xepay.</p>
+      <p>Chacun de ces prestataires est tenu contractuellement de protéger vos données et de ne les utiliser que pour les finalités autorisées par Xepay. Nous sélectionnons nos sous-traitants en fonction de leurs garanties de sécurité et de conformité, et nous limitons systématiquement les données transmises à ce qui est strictement nécessaire à l'exécution de leur mission. Xepay reste responsable du traitement de vos données même lorsque celui-ci est partiellement délégué à l'un de ces prestataires, et ne partage jamais vos données avec des tiers à des fins de prospection commerciale sans votre consentement explicite.</p>
     </section>
 
     <section id="transferts">
@@ -239,18 +290,58 @@
   </main>
 </div>
 
-<!-- ─── FOOTER ─── -->
-<footer>
-  <div class="logo">XE<span>PAY</span></div>
-  <div class="footer-links">
-    <a href="/fonctionnalite">Fonctionnalités</a>
-    <a href="/tarif">Tarifs</a>
-    <a href="/politique-confidentialite">Politique de confidentialité</a>
-    <a href="/conditions-utilisation">Conditions d'utilisation</a>
+<!-- ─── FOOTER (identique au SPA marketing) ─── -->
+<footer class="site-footer">
+  <div class="sf-top">
+    <div class="sf-brand">
+      <div class="logo-lockup">
+        <img src="/assets/xepay-logo-full.png" alt="" class="logo-mark-icon">
+        <span class="logo">xe<span>pay</span></span>
+      </div>
+      <p class="sf-tagline">Paiements fintech, de l'Afrique de l'Ouest au monde.</p>
+    </div>
+
+    <div class="sf-col">
+      <div class="sf-col-title">Produit</div>
+      <a href="/fonctionnalite#liens-de-paiement">Liens de paiement</a>
+      <a href="/fonctionnalite#abonnements-factures">Abonnements &amp; factures</a>
+      <a href="/fonctionnalite#rapports-financiers">Rapports financiers</a>
+      <a href="/tarif">Tarifs</a>
+      <a href="/api">API</a>
+    </div>
+
+    <div class="sf-col">
+      <div class="sf-col-title">Entreprise</div>
+      <a href="/a-propos">À propos</a>
+      <a href="/carrieres">Carrières</a>
+      <a href="/blog">Blog</a>
+      <a href="/presse">Presse</a>
+    </div>
+
+    <div class="sf-col">
+      <div class="sf-col-title">Ressources</div>
+      <a href="/centre-aide">Centre d'aide</a>
+      <a href="/documentation">Documentation</a>
+      <a href="/statut">Statut</a>
+      <a href="/securite">Sécurité</a>
+    </div>
+
+    <div class="sf-col">
+      <div class="sf-col-title">Légal</div>
+      <a href="/politique-confidentialite">Politique de confidentialité</a>
+      <a href="/conditions-utilisation">Conditions d'utilisation</a>
+      <a href="/mentions-legales">Mentions légales</a>
+      <a href="/cookies">Cookies</a>
+      <a href="/privacy-policy">English version</a>
+    </div>
   </div>
-  <div class="footer-copy">© 2026 ALASDIA TECHNOLOGIES LLC — XEPAY</div>
+
+  <div class="sf-bottom">
+    <div class="footer-copy">© 2026 Xepay — ALL RIGHTS RESERVED</div>
+    <a href="mailto:support@alasdia.com" class="sf-support">support@alasdia.com</a>
+  </div>
 </footer>
 
-<script src="legal.js" defer></script>
+<script src="/legal.js" defer></script>
 </body>
 </html>

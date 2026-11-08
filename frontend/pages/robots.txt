@@ -4,5 +4,10 @@ Disallow: /login
 Disallow: /signup
 Disallow: /dash/
 Disallow: /dashboard.html
+Disallow: /profil.html
+Disallow: /transactions.html
+Disallow: /multi-users.html
+Disallow: /liens.html
+Disallow: /report.html
 
 Sitemap: https://www.xepay.finance/sitemap.xml
