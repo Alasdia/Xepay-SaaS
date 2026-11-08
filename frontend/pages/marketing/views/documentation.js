@@ -2,6 +2,16 @@ export const title = "Xepay — Documentation";
 
 const GUIDES = [
   {
+    title: "Le prérequis avant tout : une société reconnue par Stripe",
+    summary: "Le portail d'entrée — sans ça, impossible d'encaisser ou de retirer",
+    steps: [
+      "Xepay s'appuie sur Stripe Connect pour traiter vos paiements. Pour créer votre compte Connect, Stripe exige une entité qu'il reconnaît comme un véritable business — dans les faits, la voie la plus simple est une société américaine (LLC), car le compte Connect créé par Xepay est par défaut rattaché aux États-Unis, le pays de notre propre plateforme Stripe.",
+      "Sans cette société, la vérification d'identité (KYC) demandée par Stripe ne peut pas être finalisée : vous ne pourrez ni encaisser de paiement, ni faire l'onboarding avec notre partenaire bancaire Verto, ni retirer vers une banque locale UEMOA.",
+      "Vous avez déjà une société reconnue par Stripe (LLC US ou autre) ? Passez directement à l'étape <strong>Configurer votre compte Stripe Connect</strong> ci-dessous.",
+      "Vous n'en avez pas encore ? Depuis Paramètres → <strong>Entreprise</strong>, utilisez l'option de formation de société (LLC via <strong>Firstbase</strong> ou <strong>Stripe Atlas</strong>) directement proposée dans Xepay — une fois la société créée, revenez à l'étape suivante.",
+    ],
+  },
+  {
     title: "Créer un lien de paiement",
     summary: "Encaisser un client sans site web",
     steps: [
@@ -13,8 +23,9 @@ const GUIDES = [
   },
   {
     title: "Configurer votre compte Stripe Connect",
-    summary: "Obligatoire avant de pouvoir encaisser et retirer",
+    summary: "Obligatoire avant de pouvoir encaisser et retirer — nécessite une société reconnue par Stripe",
     steps: [
+      "Assurez-vous d'avoir déjà une société reconnue par Stripe (voir le guide précédent) — c'est elle qui sera déclarée lors de la vérification.",
       "Cliquez sur l'icône ⚙️ dans le bandeau en haut de votre dashboard.",
       "Dans Paramètres, ouvrez l'onglet <strong>Compte Stripe Connect</strong>.",
       "Cliquez sur <strong>Configurer Stripe</strong> et suivez le parcours de vérification (KYC) proposé par Stripe.",
@@ -22,13 +33,23 @@ const GUIDES = [
     ],
   },
   {
+    title: "Retirer vers une banque locale UEMOA (Verto)",
+    summary: "4 étapes pour activer le virement local — nécessite un compte Stripe Connect déjà activé",
+    steps: [
+      "Depuis Paramètres → <strong>Retraits &amp; comptes bancaires</strong>, démarrez l'enregistrement de votre sous-compte auprès de notre partenaire bancaire agréé <strong>Verto</strong> (vérification KYC/KYB de votre société).",
+      "Une fois votre sous-compte Verto approuvé, ajoutez le compte bancaire USD Verto généré comme compte de paiement sur votre Dashboard Stripe Express — Xepay détecte automatiquement la liaison.",
+      "Enregistrez votre compte bancaire local en zone UEMOA (IBAN, SWIFT/BIC, banque) : c'est la destination finale de vos retraits.",
+      "Vos retraits locaux sont prêts : chaque demande depuis la vue Solde part désormais directement vers votre banque UEMOA, via le wallet USD dédié Verto — Xepay ne détient vos fonds à aucune étape.",
+    ],
+  },
+  {
     title: "Retirer vos fonds",
-    summary: "Envoyer votre solde vers votre compte bancaire",
+    summary: "Envoyer votre solde vers votre destination configurée",
     steps: [
       "Dans la sidebar, cliquez sur <strong>Solde</strong>.",
       "Cliquez sur le bouton <strong>Retirer des fonds</strong>.",
       "Indiquez le montant à retirer et confirmez.",
-      "Le retrait est envoyé par Stripe vers le compte bancaire enregistré sur votre compte Connect — vous pouvez l'annuler tant qu'il n'est pas finalisé.",
+      "Le retrait part vers la destination que vous avez configurée : votre banque locale UEMOA (via Verto) ou un compte bancaire US/EU enregistré sur votre compte Connect — vous pouvez l'annuler tant qu'il n'est pas finalisé.",
     ],
   },
   {
@@ -99,6 +120,11 @@ export function render() {
   <h1>Tout pour <mark>utiliser Xepay</mark>.</h1>
   <p>Pour chaque action courante, le chemin exact à suivre dans votre dashboard, étape par étape.</p>
 </section>
+
+<div class="disclaimer-strip reveal">
+  <div>🏛️</div>
+  <div><strong>À lire avant tout : il vous faut une société reconnue par Stripe.</strong> Sans elle, vous ne pourrez ni encaisser, ni faire l'onboarding avec notre partenaire Verto, ni retirer vers une banque UEMOA. Voir le premier guide ci-dessous — Xepay propose de former une LLC US directement depuis vos paramètres si vous n'en avez pas encore.</div>
+</div>
 
 <section class="faq-section reveal">
   <div class="section-tag">Guides étape par étape</div>

@@ -296,7 +296,7 @@ def start_issuing_bank_link(
         raise HTTPException(
             400,
             "Wallet Verto non configuré - complétez d'abord l'onboarding "
-            "Verto (voir Paramètres produit > Retraits & Comptes US).",
+            "Verto (voir Paramètres produit > Retraits & comptes bancaires).",
         )
 
     try:
