@@ -1,12 +1,80 @@
 {
   "rewrites": [
-    { "source": "/dash/(.*)", "destination": "/dashboard.html" },
-    { "source": "/accueil(/)?", "destination": "/marketing.html" },
-    { "source": "/fonctionnalite(/)?", "destination": "/marketing.html" },
-    { "source": "/tarif(/)?", "destination": "/marketing.html" },
-    { "source": "/login(/)?", "destination": "/login.html" },
-    { "source": "/signup(/)?", "destination": "/signup.html" },
-    { "source": "/politique-confidentialite(/)?", "destination": "/politique-confidentialite.html" },
-    { "source": "/conditions-utilisation(/)?", "destination": "/conditions-utilisation.html" }
+    {
+      "source": "/dash/(.*)",
+      "destination": "/dashboard.html"
+    },
+    {
+      "source": "/accueil(/)?",
+      "destination": "/marketing.html"
+    },
+    {
+      "source": "/fonctionnalite(/)?",
+      "destination": "/marketing.html"
+    },
+    {
+      "source": "/tarif(/)?",
+      "destination": "/marketing.html"
+    },
+    {
+      "source": "/api(/)?",
+      "destination": "/marketing.html"
+    },
+    {
+      "source": "/a-propos(/)?",
+      "destination": "/marketing.html"
+    },
+    {
+      "source": "/carrieres(/)?",
+      "destination": "/marketing.html"
+    },
+    {
+      "source": "/blog(/)?",
+      "destination": "/marketing.html"
+    },
+    {
+      "source": "/presse(/)?",
+      "destination": "/marketing.html"
+    },
+    {
+      "source": "/centre-aide(/)?",
+      "destination": "/marketing.html"
+    },
+    {
+      "source": "/documentation(/)?",
+      "destination": "/marketing.html"
+    },
+    {
+      "source": "/statut(/)?",
+      "destination": "/marketing.html"
+    },
+    {
+      "source": "/securite(/)?",
+      "destination": "/marketing.html"
+    },
+    {
+      "source": "/mentions-legales(/)?",
+      "destination": "/marketing.html"
+    },
+    {
+      "source": "/cookies(/)?",
+      "destination": "/marketing.html"
+    },
+    {
+      "source": "/login(/)?",
+      "destination": "/login.html"
+    },
+    {
+      "source": "/signup(/)?",
+      "destination": "/signup.html"
+    },
+    {
+      "source": "/politique-confidentialite(/)?",
+      "destination": "/politique-confidentialite.html"
+    },
+    {
+      "source": "/conditions-utilisation(/)?",
+      "destination": "/conditions-utilisation.html"
+    }
   ]
 }
