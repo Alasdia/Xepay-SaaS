@@ -2582,7 +2582,9 @@ function mountCartesVirtuelles(on) {
 // (Firstbase/Atlas, voir "Entreprise") reste proposée en alternative pour
 // qui préfère un compte bancaire US/EU plutôt que le virement local.
 //
-// 4 étapes, chacune débloquant la suivante (voir vertoBodyHtml) :
+// 4 étapes, chacune débloquant la suivante (voir vertoComptesBancairesHtml
+// et vertoRetraitHtml - étapes 1 et 2 dans l'onglet "Comptes bancaires",
+// étapes 3 et 4 dans l'onglet "Retrait", verrouillé jusqu'à l'étape 2) :
 //   1. Enregistrement du sous-compte Verto (onboarding KYC/KYB)
 //   2. Liaison du compte USD Verto sur le Dashboard Stripe Express du
 //      marchand (lui seul peut l'ajouter - voir routes/payout.py -
@@ -2769,6 +2771,17 @@ function vertoEntityTypeOptionsHtml() {
 
 let vertoStatusData = null;
 
+// Deux sous-vues (2026-11-08) : "Comptes bancaires" (infrastructure -
+// sous-compte Verto puis wallet USD) doit être complété avant "Retrait"
+// (banque locale UEMOA, destination finale) - on ne peut pas retirer sans
+// d'abord disposer d'un compte. Même pattern que STRIPE_TABS/EQUIPE_TABS
+// (.notif-tabs) ci-dessus dans ce fichier.
+const RETRAITS_TABS = [
+  { key: "comptes", label: "Comptes bancaires" },
+  { key: "retrait", label: "Retrait" },
+];
+let retraitsActiveTab = "comptes";
+
 function vertoStatusLabel(data) {
   if (!data || data.status === "not_started") return "Non démarré";
   if (data.status === "sub_account_created") return "Sous-compte créé";
@@ -2793,7 +2806,7 @@ function vertoStatusLabel(data) {
 // l'étape 2 échoue ou est abandonnée. showVertoStep() bascule entre les
 // deux sans fermer le modal ; un marchand qui revient avec le statut
 // "sub_account_created" rouvre directement à l'étape 2 (voir
-// p-btn-continue-verto-kyb dans vertoBodyHtml).
+// p-btn-continue-verto-kyb dans vertoComptesBancairesHtml).
 const VERTO_INPUT_STYLE = "background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ced4da !important;";
 
 const VERTO_ONBOARDING_MODAL_HTML = `
@@ -2944,6 +2957,27 @@ function vertoUsdAccountHtml(data) {
   `;
 }
 
+// Affichage persistant (une fois lié) du wallet USD dans l'onglet
+// "Comptes bancaires" - contrairement à vertoUsdAccountHtml ci-dessus
+// (utilisée pendant l'étape de liaison elle-même), pas de bouton
+// "vérifier" puisque c'est déjà fait.
+function vertoUsdAccountReadyHtml(data) {
+  return `
+    <div style="max-width:72%;">
+      <p class="params-subsection-sub">Votre compte bancaire USD (wallet Verto), lié à votre Dashboard Stripe Express.</p>
+      <div class="params-row-list mb-3">
+        <div class="params-info-row"><span>N° de compte</span><strong>${data.usd_account_number || "—"}</strong></div>
+        <div class="params-info-row"><span>Code banque (routing)</span><strong>${data.usd_bank_code || "—"}</strong></div>
+        <div class="params-info-row"><span>Banque</span><strong>${data.usd_bank_name || "—"}</strong></div>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="button" id="p-verto-copy-account" class="params-edit-btn">Copier le n° de compte</button>
+        <button type="button" id="p-verto-open-stripe" class="create-client-btn">Ouvrir mon Dashboard Stripe</button>
+      </div>
+    </div>
+  `;
+}
+
 function vertoBeneficiaryFormHtml() {
   return `
     <div style="max-width:72%;">
@@ -3003,17 +3037,20 @@ function vertoBeneficiaryFormHtml() {
   `;
 }
 
-function vertoBodyHtml() {
+// Fond teinté (2%, même couleur que le reste de l'app) sur chaque étape.
+const VERTO_SECTION_TINT = "background: rgba(180, 83, 9, 0.02); border-radius: 12px; padding: 20px;";
+
+// Onglet "Comptes bancaires" : toute l'infrastructure en amont du retrait
+// lui-même - création du sous-compte Verto (KYC/KYB), puis liaison du
+// wallet USD à Stripe. Une fois lié, reste affiché en lecture (coordonnées
+// du wallet) indépendamment de l'état du bénéficiaire local.
+function vertoComptesBancairesHtml() {
   const data = vertoStatusData;
   const status = (data && data.status) || "not_started";
 
-  // Fond teinté (2%, même couleur que le reste de l'app) sur chaque étape -
-  // uniforme sur les 4, pas seulement la première comme avant.
-  const SECTION_TINT = "background: rgba(180, 83, 9, 0.02); border-radius: 12px; padding: 20px;";
-
   if (status === "not_started" || status === "rejected") {
     return `
-      <div style="${SECTION_TINT}">
+      <div style="${VERTO_SECTION_TINT}">
         <div class="params-subsection-header">
           <h6 class="params-subsection-title mb-0">Démarrer mon enregistrement</h6>
         </div>
@@ -3025,7 +3062,7 @@ function vertoBodyHtml() {
 
   if (status === "sub_account_created") {
     return `
-      <div style="${SECTION_TINT}">
+      <div style="${VERTO_SECTION_TINT}">
         <div class="params-subsection-header">
           <h6 class="params-subsection-title mb-0">Compléter mon dossier</h6>
         </div>
@@ -3047,7 +3084,7 @@ function vertoBodyHtml() {
       ? `<p class="params-subsection-sub" style="max-width:100%;">En attente d'envoi des conditions au dirigeant.</p>`
       : "";
     return `
-      <div style="${SECTION_TINT}">
+      <div style="${VERTO_SECTION_TINT}">
         <div class="params-subsection-header">
           <h6 class="params-subsection-title mb-0">Vérification en cours</h6>
         </div>
@@ -3059,7 +3096,7 @@ function vertoBodyHtml() {
 
   if (status === "approved" && !data.stripe_external_account_linked) {
     return `
-      <div style="${SECTION_TINT}">
+      <div style="${VERTO_SECTION_TINT}">
         <div class="params-subsection-header">
           <h6 class="params-subsection-title mb-0">Lier votre compte bancaire USD</h6>
         </div>
@@ -3068,9 +3105,41 @@ function vertoBodyHtml() {
     `;
   }
 
-  if (status === "approved" && !data.beneficiary_registered) {
+  // Lié - affichage persistant, quel que soit l'état du bénéficiaire local
+  // (onglet "Retrait").
+  return `
+    <div style="${VERTO_SECTION_TINT}">
+      <div class="params-subsection-header">
+        <h6 class="params-subsection-title mb-0">Compte bancaire actif</h6>
+      </div>
+      ${vertoUsdAccountReadyHtml(data)}
+    </div>
+  `;
+}
+
+// Onglet "Retrait" : la destination finale, locale (UEMOA) - verrouillé
+// tant que l'onglet "Comptes bancaires" n'est pas terminé (on ne peut pas
+// retirer sans disposer d'un compte).
+function vertoRetraitHtml() {
+  const data = vertoStatusData;
+  const status = (data && data.status) || "not_started";
+  const accountReady = status === "approved" && data.stripe_external_account_linked;
+
+  if (!accountReady) {
     return `
-      <div style="${SECTION_TINT}">
+      <div style="${VERTO_SECTION_TINT}">
+        <div class="params-subsection-header">
+          <h6 class="params-subsection-title mb-0">Compte bancaire requis</h6>
+        </div>
+        <p class="params-subsection-sub" style="max-width:100%;">Terminez d'abord l'onglet <strong>Comptes bancaires</strong> - impossible d'enregistrer une destination de retrait sans disposer au préalable d'un compte bancaire actif.</p>
+        <button type="button" id="p-btn-goto-comptes-tab" class="params-edit-btn">Aller à "Comptes bancaires"</button>
+      </div>
+    `;
+  }
+
+  if (!data.beneficiary_registered) {
+    return `
+      <div style="${VERTO_SECTION_TINT}">
         <div class="params-subsection-header">
           <h6 class="params-subsection-title mb-0">Enregistrer votre compte bancaire local</h6>
         </div>
@@ -3079,18 +3148,33 @@ function vertoBodyHtml() {
     `;
   }
 
-  if (status === "approved" && data.beneficiary_registered) {
-    return `
-      <div style="${SECTION_TINT}">
-        <div class="params-subsection-header">
-          <h6 class="params-subsection-title mb-0">Compte bancaire local prêt</h6>
-        </div>
-        <p class="params-subsection-sub" style="max-width:100%;">${data.beneficiary_bank_name || "—"} •••• ${data.beneficiary_bank_iban_last4 || ""} — déclenchez vos retraits locaux depuis "Retirer des fonds" (vue Solde).</p>
+  return `
+    <div style="${VERTO_SECTION_TINT}">
+      <div class="params-subsection-header">
+        <h6 class="params-subsection-title mb-0">Compte bancaire local prêt</h6>
       </div>
-    `;
-  }
+      <p class="params-subsection-sub" style="max-width:100%;">${data.beneficiary_bank_name || "—"} •••• ${data.beneficiary_bank_iban_last4 || ""} — déclenchez vos retraits locaux depuis "Retirer des fonds" (vue Solde).</p>
+    </div>
+  `;
+}
 
-  return `<p class="text-muted">Statut : ${vertoStatusLabel(data)}</p>`;
+function vertoTabPanelHtml(key) {
+  if (key === "comptes") return vertoComptesBancairesHtml();
+  if (key === "retrait") return vertoRetraitHtml();
+  return "";
+}
+
+function vertoTabsHtml() {
+  return `
+    <div class="notif-layout">
+      <div class="notif-tabs">
+        ${RETRAITS_TABS.map((t) => `<button type="button" class="notif-tab${t.key === retraitsActiveTab ? " notif-tab--active" : ""}" data-retraits-tab="${t.key}">${t.label}</button>`).join("")}
+      </div>
+      <div class="notif-event-list">
+        ${RETRAITS_TABS.map((t) => `<div data-retraits-panel="${t.key}" style="${t.key === retraitsActiveTab ? "" : "display:none;"}">${vertoTabPanelHtml(t.key)}</div>`).join("")}
+      </div>
+    </div>
+  `;
 }
 
 async function loadVertoStatus() {
@@ -3109,7 +3193,7 @@ async function loadVertoStatus() {
       return;
     }
     vertoStatusData = await res.json();
-    body.innerHTML = vertoBodyHtml();
+    body.innerHTML = vertoTabsHtml();
   } catch (err) {
     body.innerHTML = `<p class="text-muted">Erreur de chargement.</p>`;
   }
@@ -3260,13 +3344,23 @@ async function resendDirectorConsent() {
   }
 }
 
+function switchRetraitsTab(key) {
+  retraitsActiveTab = key;
+  document.querySelectorAll("[data-retraits-tab]").forEach((b) => b.classList.toggle("notif-tab--active", b.dataset.retraitsTab === key));
+  document.querySelectorAll("[data-retraits-panel]").forEach((p) => { p.style.display = p.dataset.retraitsPanel === key ? "" : "none"; });
+}
+
 function mountRetraits(on) {
+  retraitsActiveTab = "comptes";
   document.body.insertAdjacentHTML("beforeend", VERTO_ONBOARDING_MODAL_HTML);
   on(document.getElementById("p-btn-verto-step1-next"), "click", () => createVertoSubAccount());
   on(document.getElementById("p-btn-verto-step2-submit"), "click", () => submitVertoKybData());
 
   const body = document.getElementById("p-verto-body");
   on(body, "click", (e) => {
+    const tabBtn = e.target.closest("[data-retraits-tab]");
+    if (tabBtn) { switchRetraitsTab(tabBtn.dataset.retraitsTab); return; }
+    if (e.target.closest("#p-btn-goto-comptes-tab")) { switchRetraitsTab("comptes"); return; }
     if (e.target.closest("#p-btn-open-verto-onboarding")) {
       const notice = document.getElementById("p-verto-onboarding-rejected-notice");
       if (notice) notice.style.display = vertoStatusData && vertoStatusData.status === "rejected" ? "" : "none";
@@ -3278,7 +3372,16 @@ function mountRetraits(on) {
       bootstrap.Modal.getOrCreateInstance(document.getElementById("paramsVertoOnboardingModal")).show();
     }
     if (e.target.closest("#p-btn-register-beneficiary")) registerVertoBeneficiary();
-    if (e.target.closest("#p-verto-refresh-link")) loadVertoStatus();
+    if (e.target.closest("#p-verto-refresh-link")) {
+      // Bascule automatiquement vers l'onglet "Retrait" dès que le compte
+      // vient de devenir actif - c'est précisément le moment où cette
+      // étape se débloque.
+      loadVertoStatus().then(() => {
+        if (vertoStatusData && vertoStatusData.status === "approved" && vertoStatusData.stripe_external_account_linked) {
+          switchRetraitsTab("retrait");
+        }
+      });
+    }
     if (e.target.closest("#p-verto-copy-account")) {
       navigator.clipboard.writeText((vertoStatusData && vertoStatusData.usd_account_number) || "");
       showToast("N° de compte copié");
@@ -3315,7 +3418,7 @@ function retraitsTemplate() {
     <div class="params-subsection-header">
       <h6 class="params-subsection-title mb-0">Virement vers votre compte bancaire local (UEMOA)</h6>
     </div>
-    <p class="params-subsection-sub" style="max-width:100%;">Les fonds collectés sur Xepay transitent par un wallet USD dédié (jamais détenu par Xepay) avant d'être reversés vers votre compte bancaire local, en Bénin, Burkina Faso, Côte d'Ivoire, Niger, Sénégal ou Togo. Vous déclenchez chaque retrait vous-même depuis le bouton "Retirer des fonds" (vue Solde).</p>
+    <p class="params-subsection-sub" style="max-width:100%;">Les fonds collectés sur Xepay transitent par un wallet USD dédié (jamais détenu par Xepay) avant d'être reversés vers votre compte bancaire local, en Bénin, Burkina Faso, Côte d'Ivoire, Niger, Sénégal ou Togo. Deux étapes, dans l'ordre : <strong>Comptes bancaires</strong> (votre wallet USD) puis <strong>Retrait</strong> (votre banque locale UEMOA, destination finale) - vous déclenchez ensuite chaque retrait vous-même depuis le bouton "Retirer des fonds" (vue Solde).</p>
     <div id="p-verto-body"><p class="text-muted">Chargement...</p></div>
 
     <div class="params-subsection-header" style="margin-top: 32px;">
