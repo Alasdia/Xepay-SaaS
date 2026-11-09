@@ -18,19 +18,19 @@
     },
     {
       "source": "/fonctionnalite(/)?",
-      "destination": "/marketing.html"
+      "destination": "/seo/fonctionnalite.html"
     },
     {
       "source": "/tarif(/)?",
-      "destination": "/marketing.html"
+      "destination": "/seo/tarif.html"
     },
     {
       "source": "/api(/)?",
-      "destination": "/marketing.html"
+      "destination": "/seo/api.html"
     },
     {
       "source": "/a-propos(/)?",
-      "destination": "/marketing.html"
+      "destination": "/seo/a-propos.html"
     },
     {
       "source": "/carrieres(/)?",
@@ -42,15 +42,15 @@
     },
     {
       "source": "/presse(/)?",
-      "destination": "/marketing.html"
+      "destination": "/seo/presse.html"
     },
     {
       "source": "/centre-aide(/)?",
-      "destination": "/marketing.html"
+      "destination": "/seo/centre-aide.html"
     },
     {
       "source": "/documentation(/)?",
-      "destination": "/marketing.html"
+      "destination": "/seo/documentation.html"
     },
     {
       "source": "/statut(/)?",
@@ -58,15 +58,15 @@
     },
     {
       "source": "/securite(/)?",
-      "destination": "/marketing.html"
+      "destination": "/seo/securite.html"
     },
     {
       "source": "/mentions-legales(/)?",
-      "destination": "/marketing.html"
+      "destination": "/seo/mentions-legales.html"
     },
     {
       "source": "/cookies(/)?",
-      "destination": "/marketing.html"
+      "destination": "/seo/cookies.html"
     },
     {
       "source": "/login(/)?",
