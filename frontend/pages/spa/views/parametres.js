@@ -3669,31 +3669,13 @@ function treasuryBodyHtml(data) {
     `;
   }
 
-  const cashUsd = ((fa.balance && fa.balance.cash && fa.balance.cash.usd) || 0) / 100;
-  const addresses = fa.financial_addresses || [];
   return `
     <div class="params-row-list mb-4">
-      <div class="params-info-row"><span>Solde</span><strong>${cashUsd.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</strong></div>
+      <div class="params-info-row"><span>Statut</span><strong>Actif</strong></div>
       <div class="params-info-row"><span>card_issuing</span><strong>${cardIssuingActive ? "Actif" : "En attente"}</strong></div>
     </div>
-    ${addresses.length ? `
-      <p class="params-subsection-sub"><strong>Coordonnées bancaires</strong> - derniers chiffres uniquement : l'API Treasury utilisée ici ne renvoie jamais le numéro complet (il faudrait l'API v2 Money Management, non branchée).</p>
-      <div class="params-row-list mb-4">
-        ${addresses.filter((a) => a.aba).map((a) => `
-          <div class="params-info-row"><span>Banque</span><strong>${a.aba.bank_name || "—"}</strong></div>
-          <div class="params-info-row"><span>Compte</span><strong>•••• ${a.aba.account_number_last4 || "----"}</strong></div>
-          <div class="params-info-row"><span>Routing</span><strong>${a.aba.routing_number || "—"}</strong></div>
-        `).join("")}
-      </div>
-    ` : ""}
-    <div class="params-subsection-header">
-      <h6 class="params-subsection-title mb-0">Ajouter des fonds (test)</h6>
-    </div>
-    <div class="branding-preview-row" style="margin-bottom:12px;">
-      <input type="number" id="treasury-funding-amount" min="1" max="5000" step="0.01" placeholder="Montant (USD)" style="width:140px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:7px;">
-      <button type="button" class="create-client-btn" id="treasury-funding-btn">Ajouter des fonds (test)</button>
-    </div>
-    <p class="text-muted" style="font-size:12px;">La création d'une carte liée à ce compte financier n'est pas encore branchée dans cette page (prochaine étape).</p>
+    <p class="params-subsection-sub">Compte financier opérationnel - solde, coordonnées et ajout de fonds de test se gèrent désormais depuis Commerce > Comptes financiers (même découpage que Cartes virtuelles/Émission de carte).</p>
+    <button type="button" class="create-client-btn" id="treasury-goto-commerce-btn">Aller dans Commerce</button>
   `;
 }
 
@@ -3775,35 +3757,15 @@ function wireTreasuryBody() {
     onboardingBtn.addEventListener("click", () => loadTreasuryOnboardingComponent());
   }
 
-  const fundingBtn = document.getElementById("treasury-funding-btn");
-  if (fundingBtn) {
-    fundingBtn.addEventListener("click", async () => {
-      const amountEl = document.getElementById("treasury-funding-amount");
-      const amount = Number(amountEl.value);
-      if (!amount || amount <= 0) {
-        showToast("Montant invalide", "error");
-        return;
-      }
-      fundingBtn.disabled = true;
-      fundingBtn.textContent = "Ajout...";
-      try {
-        const res = await apiFetch("/treasury/financial-account/test-funding", { method: "POST", body: { amount } });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Impossible d'ajouter les fonds");
-        showToast("Financement de test envoyé", "success");
-        amountEl.value = "";
-        await loadTreasuryStatus();
-      } catch (error) {
-        showToast(error.message || "Erreur", "error");
-      } finally {
-        fundingBtn.disabled = false;
-        fundingBtn.textContent = "Ajouter des fonds (test)";
-      }
+  const gotoCommerceBtn = document.getElementById("treasury-goto-commerce-btn");
+  if (gotoCommerceBtn) {
+    gotoCommerceBtn.addEventListener("click", () => {
+      navigate(`/dash/workspace/${encodeURIComponent(getWorkspaceId() || "me")}/commerce/comptes-financiers`);
     });
   }
 }
 
-function mountTreasury(on) {
+function mountTreasury() {
   treasuryOnboardingLoaded = false;
   loadTreasuryStatus();
 }
