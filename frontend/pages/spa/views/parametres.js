@@ -1428,7 +1428,9 @@ function stripeBrandingPanelHtml() {
         <label>Icône (carrée)</label>
         <div class="branding-preview-row">
           <img id="branding-icon-preview" src="${iconUrl || ""}" style="${iconUrl ? "" : "display:none;"}" alt="Icône">
-          <input type="file" id="branding-icon-input" accept="image/png,image/jpeg">
+          <button type="button" class="branding-file-btn" id="branding-icon-choose-btn">Choisir un fichier</button>
+          <span class="branding-file-name" id="branding-icon-filename">Aucun fichier choisi</span>
+          <input type="file" id="branding-icon-input" accept="image/png,image/jpeg" class="branding-file-input-hidden">
         </div>
         <p class="text-muted" style="font-size:12px;margin-top:6px;">Complétée automatiquement en carré (fond blanc) avant l'envoi - jamais recadrée.</p>
       </div>
@@ -1436,16 +1438,18 @@ function stripeBrandingPanelHtml() {
         <label>Logo</label>
         <div class="branding-preview-row">
           <img id="branding-logo-preview" src="${logoUrl || ""}" style="${logoUrl ? "" : "display:none;"}" alt="Logo">
-          <input type="file" id="branding-logo-input" accept="image/png,image/jpeg">
+          <button type="button" class="branding-file-btn" id="branding-logo-choose-btn">Choisir un fichier</button>
+          <span class="branding-file-name" id="branding-logo-filename">Aucun fichier choisi</span>
+          <input type="file" id="branding-logo-input" accept="image/png,image/jpeg" class="branding-file-input-hidden">
         </div>
       </div>
       <div class="branding-field">
         <label>Couleur principale</label>
-        <input type="color" id="branding-primary-color" value="${b.primary_color || "#000000"}">
+        <input type="text" id="branding-primary-color" class="branding-color-input" placeholder="#RRGGBB" maxlength="7" value="${b.primary_color || ""}">
       </div>
       <div class="branding-field">
         <label>Couleur secondaire</label>
-        <input type="color" id="branding-secondary-color" value="${b.secondary_color || "#000000"}">
+        <input type="text" id="branding-secondary-color" class="branding-color-input" placeholder="#RRGGBB" maxlength="7" value="${b.secondary_color || ""}">
       </div>
     </div>
     <p id="branding-status" class="text-danger" style="display:none;margin-bottom:12px;"></p>
@@ -1485,50 +1489,80 @@ function padImageToSquare(file, targetSize = 512) {
   });
 }
 
+const BRANDING_HEX_COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
+
+function wireBrandingColorInput(id) {
+  const input = document.getElementById(id);
+  if (!input) return;
+  input.addEventListener("input", () => {
+    const valid = !input.value || BRANDING_HEX_COLOR_RE.test(input.value);
+    input.classList.toggle("is-invalid", !valid);
+  });
+}
+
+function wireBrandingFileChoice(chooseBtnId, inputId, filenameId, previewId, onFile) {
+  const chooseBtn = document.getElementById(chooseBtnId);
+  const input = document.getElementById(inputId);
+  const filenameEl = document.getElementById(filenameId);
+  const previewEl = document.getElementById(previewId);
+  chooseBtn.addEventListener("click", () => input.click());
+  input.addEventListener("change", async () => {
+    const file = input.files && input.files[0];
+    filenameEl.textContent = file ? file.name : "Aucun fichier choisi";
+    if (!file) return;
+    try {
+      const previewSrc = await onFile(file);
+      previewEl.src = previewSrc;
+      previewEl.style.display = "";
+    } catch (error) {
+      showToast(error.message || "Image invalide", "error");
+      input.value = "";
+      filenameEl.textContent = "Aucun fichier choisi";
+    }
+  });
+}
+
 function wireStripeBrandingPanel() {
   const saveBtn = document.getElementById("branding-save-btn");
   if (!saveBtn) return;
 
   const iconInput = document.getElementById("branding-icon-input");
   const logoInput = document.getElementById("branding-logo-input");
-  const iconPreview = document.getElementById("branding-icon-preview");
-  const logoPreview = document.getElementById("branding-logo-preview");
   const statusEl = document.getElementById("branding-status");
 
   let pendingIconBlob = null;
   let pendingLogoFile = null;
 
-  iconInput.addEventListener("change", async () => {
-    const file = iconInput.files && iconInput.files[0];
-    if (!file) { pendingIconBlob = null; return; }
-    try {
-      pendingIconBlob = await padImageToSquare(file);
-      iconPreview.src = URL.createObjectURL(pendingIconBlob);
-      iconPreview.style.display = "";
-    } catch (error) {
-      showToast(error.message || "Image invalide", "error");
-      iconInput.value = "";
-      pendingIconBlob = null;
-    }
+  wireBrandingFileChoice("branding-icon-choose-btn", "branding-icon-input", "branding-icon-filename", "branding-icon-preview", async (file) => {
+    pendingIconBlob = await padImageToSquare(file);
+    return URL.createObjectURL(pendingIconBlob);
+  });
+  wireBrandingFileChoice("branding-logo-choose-btn", "branding-logo-input", "branding-logo-filename", "branding-logo-preview", async (file) => {
+    pendingLogoFile = file;
+    return URL.createObjectURL(file);
   });
 
-  logoInput.addEventListener("change", () => {
-    const file = logoInput.files && logoInput.files[0];
-    pendingLogoFile = file || null;
-    if (file) {
-      logoPreview.src = URL.createObjectURL(file);
-      logoPreview.style.display = "";
-    }
-  });
+  wireBrandingColorInput("branding-primary-color");
+  wireBrandingColorInput("branding-secondary-color");
 
   saveBtn.addEventListener("click", async () => {
     statusEl.style.display = "none";
 
+    const primaryColor = document.getElementById("branding-primary-color").value.trim();
+    const secondaryColor = document.getElementById("branding-secondary-color").value.trim();
+    for (const color of [primaryColor, secondaryColor]) {
+      if (color && !BRANDING_HEX_COLOR_RE.test(color)) {
+        statusEl.textContent = "Couleur invalide (format #RRGGBB attendu)";
+        statusEl.style.display = "";
+        return;
+      }
+    }
+
     const formData = new FormData();
     if (pendingIconBlob) formData.append("icon", pendingIconBlob, "icon.png");
     if (pendingLogoFile) formData.append("logo", pendingLogoFile, pendingLogoFile.name);
-    formData.append("primary_color", document.getElementById("branding-primary-color").value);
-    formData.append("secondary_color", document.getElementById("branding-secondary-color").value);
+    if (primaryColor) formData.append("primary_color", primaryColor);
+    if (secondaryColor) formData.append("secondary_color", secondaryColor);
 
     saveBtn.disabled = true;
     saveBtn.textContent = "Enregistrement...";
@@ -1542,6 +1576,8 @@ function wireStripeBrandingPanel() {
       pendingLogoFile = null;
       iconInput.value = "";
       logoInput.value = "";
+      document.getElementById("branding-icon-filename").textContent = "Aucun fichier choisi";
+      document.getElementById("branding-logo-filename").textContent = "Aucun fichier choisi";
     } catch (error) {
       statusEl.textContent = error.message || "Erreur lors de l'enregistrement du branding";
       statusEl.style.display = "";
