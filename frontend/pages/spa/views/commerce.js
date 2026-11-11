@@ -7643,6 +7643,17 @@ function ensureFinancialAccountStyles() {
             border-radius: 7px;
             font-size: 13px;
         }
+        /* Crédit reçu = argent qui entre (vert) ; virement/paiement
+           sortant = argent qui part (rouge) - 80% d'opacité demandée
+           plutôt qu'une couleur pleine. */
+        .fa-amount-positive {
+            color: #16a34a !important;
+            opacity: .8;
+        }
+        .fa-amount-negative {
+            color: #dc2626 !important;
+            opacity: .8;
+        }
     `;
     document.head.appendChild(style);
 }
@@ -7699,6 +7710,18 @@ const FA_FLOW_TYPE_LABELS = {
     inbound_transfer: "Virement entrant",
     credit_reversal: "Annulation de crédit",
     debit_reversal: "Annulation de débit",
+    issuing_authorization: "Dépense carte",
+    other: "Autre",
+};
+
+// Statuts réels de treasury.Transaction (voir docs.stripe.com/api/treasury/
+// transactions/object) - "open"/"posted"/"void", jamais "pending"/"success"
+// comme ailleurs dans Xepay : vocabulaire Treasury propre, pas celui du
+// reste de l'app.
+const FA_STATUS_LABELS = {
+    open: "Ouverte",
+    posted: "Validée",
+    void: "Annulée",
 };
 
 function renderFinancialAccountTransactions(tableEl, transactions) {
@@ -7726,6 +7749,7 @@ function renderFinancialAccountTransactions(tableEl, transactions) {
                             <th>Type</th>
                             <th>Montant</th>
                             <th>Statut</th>
+                            <th>ID du compte financier</th>
                             <th>Date</th>
                         </tr>
                     </thead>
@@ -7734,10 +7758,11 @@ function renderFinancialAccountTransactions(tableEl, transactions) {
                             <tr>
                                 <td>${FA_FLOW_TYPE_LABELS[t.flow_type] || t.flow_type || "—"}</td>
                                 <td>
-                                    <span class="amount-cell">${t.amount < 0 ? "-" : "+"}${(Math.abs(t.amount) / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span class="amount-cell ${t.amount < 0 ? "fa-amount-negative" : "fa-amount-positive"}">${t.amount < 0 ? "-" : "+"}${(Math.abs(t.amount) / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                     <span class="amount-currency">${(t.currency || "").toUpperCase()}</span>
                                 </td>
-                                <td>${t.status}</td>
+                                <td>${FA_STATUS_LABELS[t.status] || t.status || "—"}</td>
+                                <td>${t.financial_account || "—"}</td>
                                 <td>${formatDate(t.created)}</td>
                             </tr>
                         `).join("")}
