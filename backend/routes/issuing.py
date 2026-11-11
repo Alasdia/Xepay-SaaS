@@ -590,3 +590,54 @@ def create_virtual_card(
         }
     except stripe.error.StripeError as e:
         raise HTTPException(400, f"Erreur Stripe Issuing : {e.user_message or str(e)} (request_id: {e.request_id})")
+
+
+@router.post("/issuing/cards/{card_id}/spending-limit")
+def update_card_spending_limit(
+    card_id: str,
+    payload: dict,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("manage_virtual_cards"))
+):
+    """Modifie le plafond de dépense (per_authorization) d'une carte DÉJÀ
+    émise - jamais un financement de la carte elle-même : Stripe Issuing
+    n'a pas de solde par carte (voir conversation du 2026-11-11), une
+    carte ne fait que piocher dans le solde Issuing partagé du compte
+    (POST /issuing/topup), dans la limite de ce plafond. Toujours
+    "per_authorization" - même intervalle que celui fixé à l'émission
+    (create_virtual_card), la seule valeur utilisée dans ce code."""
+    owner_id = membership.workspace_id
+    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
+    issuing_account_id = _get_active_issuing_account(profile)
+
+    amount = payload.get("amount")
+    if isinstance(amount, bool) or not isinstance(amount, (int, float)) or amount <= 0:
+        raise HTTPException(400, "Plafond invalide")
+
+    try:
+        # Vérifie que cette carte appartient bien au compte Issuing DE CE
+        # marchand avant toute modification - même garde que
+        # create_card_ephemeral_key (empêche de modifier la carte d'un
+        # autre marchand en devinant son id).
+        stripe.issuing.Card.retrieve(card_id, stripe_account=issuing_account_id)
+
+        card = stripe.issuing.Card.modify(
+            card_id,
+            spending_controls={
+                "spending_limits": [{
+                    "amount": int(amount),
+                    "interval": "per_authorization",
+                }]
+            },
+            stripe_account=issuing_account_id,
+        )
+    except stripe.error.StripeError as e:
+        raise HTTPException(400, f"Erreur Stripe Issuing : {e.user_message or str(e)} (request_id: {e.request_id})")
+
+    return {
+        "card_id": card.id,
+        "spending_limits": [
+            {"amount": sl.amount, "interval": sl.interval}
+            for sl in ((card.spending_controls.spending_limits if card.spending_controls else None) or [])
+        ],
+    }
