@@ -53,7 +53,7 @@ class TestCreateCheckoutSessionPayment(unittest.TestCase):
         self.db.close()
 
     @patch("backend.services.stripe_service.stripe.checkout.Session.create")
-    def test_builds_session_without_payment_method_types(self, mock_create):
+    def test_builds_direct_charge_session_on_connected_account(self, mock_create):
         mock_create.return_value = MagicMock(url="https://checkout.stripe.com/pay/abc")
 
         url = create_checkout_session(
@@ -71,10 +71,39 @@ class TestCreateCheckoutSessionPayment(unittest.TestCase):
         _, kwargs = mock_create.call_args
         self.assertNotIn("payment_method_types", kwargs)
         self.assertEqual(kwargs["mode"], "payment")
-        self.assertEqual(
-            kwargs["payment_intent_data"]["transfer_data"]["destination"], "acct_123"
-        )
+        # Direct charge : la session vit sur le compte connecté
+        # (stripe_account=), plus de transfer_data/on_behalf_of (propres
+        # au destination charge, l'ancien modèle) - voir stripe_service.py.
+        self.assertEqual(kwargs["stripe_account"], "acct_123")
+        self.assertNotIn("transfer_data", kwargs["payment_intent_data"])
+        self.assertNotIn("on_behalf_of", kwargs["payment_intent_data"])
+        self.assertIn("application_fee_amount", kwargs["payment_intent_data"])
         self.assertEqual(kwargs["metadata"]["link_id"], str(self.link_id))
+
+    @patch("backend.services.stripe_service.stripe.checkout.Session.create")
+    def test_raises_clear_error_when_connected_account_rejects_direct_charge(self, mock_create):
+        # Cas attendu en pratique : le compte connecté n'a pas (ou pas
+        # encore) la capacité card_payments active, requise pour un direct
+        # charge (contrairement à l'ancien destination charge, qui ne
+        # demandait que transfers) - voir le try/except dans
+        # create_checkout_session.
+        import stripe as stripe_module
+        mock_create.side_effect = stripe_module.error.StripeError(
+            "Your destination account needs to have at least one of the "
+            "following capabilities enabled: card_payments"
+        )
+
+        with self.assertRaises(Exception) as ctx:
+            create_checkout_session(
+                db=self.db,
+                mode="payment",
+                email="client@example.com",
+                user_id="user_x",
+                amount=100,
+                link_id=self.link_id,
+                currency="USD",
+            )
+        self.assertIn("acct_123", str(ctx.exception))
 
     @patch("backend.services.stripe_service.stripe.checkout.Session.create")
     def test_unknown_link_raises(self, mock_create):

@@ -536,13 +536,15 @@ def refund_payment(
             status_code=400,
             detail="Compte Stripe Connect introuvable"
         )
-    # Le paiement par lien est un destination charge : le PaymentIntent vit
-    # côté plateforme (pas de stripe_account). Facture/abonnement est un
-    # direct charge : il vit sur le compte connecté (stripe_account requis,
-    # sinon Stripe répond "no such payment_intent"). payment.link_id n'est
-    # posé que pour le paiement par lien (paiement.py) — seul signal fiable
-    # pour distinguer les deux ici, Payment n'a pas de colonne "source".
-    stripe_kwargs = {} if payment.link_id else {"stripe_account": profile.stripe_account_id}
+    # Payment.charge_type ("destination" ou "direct") - seul signal fiable
+    # pour savoir si ce PaymentIntent vit côté plateforme (destination
+    # charge, pas de stripe_account) ou côté compte connecté (direct
+    # charge, stripe_account requis, sinon Stripe répond "no such
+    # payment_intent"). Un paiement par lien peut désormais être l'un ou
+    # l'autre (voir stripe_service.py, create_checkout_session) : link_id
+    # n'est plus un proxy valable, contrairement à avant.
+    is_direct_charge = payment.charge_type == "direct"
+    stripe_kwargs = {"stripe_account": profile.stripe_account_id} if is_direct_charge else {}
     try:
         intent = stripe.PaymentIntent.retrieve(
             payment.stripe_payment_intent_id, **stripe_kwargs
@@ -594,14 +596,14 @@ def refund_payment(
             "amount": amount,
             "reason": req.reason or "requested_by_customer",
         }
-        if payment.link_id:
+        if not is_direct_charge:
             # reverse_transfer (annule le Transfer vers le compte connecté)
             # et refund_application_fee (récupère la commission Xepay déjà
-            # transférée) ne s'appliquent qu'aux destination charges
-            # (paiement par lien). Les direct charges (facture/abonnement)
-            # n'ont pas de Transfer séparé (voir process_invoice_paid_event)
-            # — Stripe rejette l'appel si on les passe quand même, ce qui
-            # faisait échouer tout remboursement sur ces deux flux.
+            # transférée) ne s'appliquent qu'aux destination charges. Les
+            # direct charges n'ont pas de Transfer séparé (voir
+            # process_invoice_paid_event) — Stripe rejette l'appel si on les
+            # passe quand même, ce qui faisait échouer tout remboursement
+            # sur ce flux.
             refund_params["reverse_transfer"] = True
             refund_params["refund_application_fee"] = True
         import logging
@@ -636,10 +638,10 @@ def refund_payment(
             else:
                 payment.status = "partially_refunded"
 
-            if not payment.link_id:
-                # Direct charge (facture/abonnement) : reverse_transfer/
-                # refund_application_fee (qui auraient fait ça tout seuls)
-                # ne s'appliquent qu'aux destination charges. Sans ce
+            if is_direct_charge:
+                # Direct charge : reverse_transfer/refund_application_fee
+                # (qui auraient fait ça tout seuls) ne s'appliquent qu'aux
+                # destination charges. Sans ce
                 # remboursement explicite, Stripe débite le compte connecté
                 # du montant BRUT du remboursement, alors qu'il n'avait reçu
                 # net que gross - application_fee à l'encaissement : la
