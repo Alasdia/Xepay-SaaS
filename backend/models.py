@@ -314,6 +314,35 @@ class WalletTransaction(Base):
         default=lambda: datetime.now(timezone.utc)
     )
 
+class IssuingTopup(Base):
+    """Historique des recharges du solde Issuing (pull funding ACH - voir
+    routes/issuing.py create_issuing_topup, et backend/scripts/
+    fund_issuing_balance.py pour l'équivalent test sur un compte
+    arbitraire). stripe_topup_id reste NULL tant que l'appel
+    stripe.Topup.create n'a pas abouti : une ligne "pending" sans
+    stripe_topup_id plus vieille que quelques minutes n'a jamais atteint
+    Stripe (process arrêté entre l'écriture de cette ligne et l'appel
+    Stripe) - voir PENDING_SUBMIT_GRACE dans routes/issuing.py, qui
+    l'ignore sans jamais la nettoyer activement."""
+    __tablename__ = "issuing_topups"
+
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("itu"))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    stripe_account_id = Column(String, nullable=False, index=True)
+    stripe_topup_id = Column(String, unique=True, index=True, nullable=True)
+    stripe_source_id = Column(String, nullable=True)
+    amount = Column(Float, nullable=False)
+    # pending / succeeded / failed / canceled / reversed - cycle de vie
+    # Stripe d'un Topup (webhook/stripe.py gère les quatre transitions
+    # au-delà de la création, déjà connue de façon synchrone via la
+    # réponse de l'appel API).
+    status = Column(String, nullable=False, default="pending")
+    failure_message = Column(String, nullable=True)
+    idempotency_key = Column(String, unique=True, index=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
 class Profile(Base):
     __tablename__ = "profiles"
 
