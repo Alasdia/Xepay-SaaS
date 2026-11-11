@@ -6570,21 +6570,46 @@ function ensureCardIssuingStyles() {
     const style = document.createElement("style");
     style.id = "card-issuing-style";
     style.textContent = `
-        .issuing-balance-banner {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 14px 18px;
+        /* Même style que le bloc de solde de la vue Solde (.balance-card/
+           .balance-subcard, solde.js) - dupliqué ici pour la même raison
+           que .create-client-btn plus haut dans ce fichier (chaque style
+           est injecté en JS, propre à sa vue, pas un fichier CSS partagé). */
+        .balance-card {
+            width: 100%;
+            background: #f8f9fb;
             border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            background: #f8fafc;
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
             margin-bottom: 20px;
-            font-size: 13px;
-            color: #6b7280;
         }
-        .issuing-balance-banner strong {
-            font-size: 20px;
+        .balance-subcard {
+            position: relative;
+            background: #ffffff;
+            border: none;
+            border-radius: 10px;
+            padding: 20px;
+            transition: box-shadow .15s ease, transform .15s ease;
+        }
+        .balance-subcard:hover {
+            box-shadow: 0 6px 16px rgba(17, 24, 39, .1);
+            transform: translateY(-3px);
+        }
+        .balance-card-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: #9ca3af;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .balance-card-amount {
+            font-size: 30px;
+            font-weight: 700;
             color: #111827;
+            line-height: 1.1;
         }
         .issuing-cards-grid {
             display: grid;
@@ -7610,18 +7635,47 @@ function ensureFinancialAccountStyles() {
     const style = document.createElement("style");
     style.id = "financial-account-style";
     style.textContent = `
-        .fa-balance-banner {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #111827;
-            color: #fff;
+        /* Même style que le bloc de solde de la vue Solde (.balance-card/
+           .balance-subcard, solde.js) et que celui d'Émission de carte -
+           dupliqué ici pour la même raison que .create-client-btn plus
+           bas dans ce fichier (chaque style est injecté en JS, propre à
+           sa vue, pas un fichier CSS partagé). */
+        .balance-card {
+            width: 100%;
+            background: #f8f9fb;
+            border: 1px solid #e5e7eb;
             border-radius: 12px;
-            padding: 20px 24px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
             margin-bottom: 24px;
         }
-        .fa-balance-banner strong {
-            font-size: 22px;
+        .balance-subcard {
+            position: relative;
+            background: #ffffff;
+            border: none;
+            border-radius: 10px;
+            padding: 20px;
+            transition: box-shadow .15s ease, transform .15s ease;
+        }
+        .balance-subcard:hover {
+            box-shadow: 0 6px 16px rgba(17, 24, 39, .1);
+            transform: translateY(-3px);
+        }
+        .balance-card-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: #9ca3af;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .balance-card-amount {
+            font-size: 30px;
+            font-weight: 700;
+            color: #111827;
+            line-height: 1.1;
         }
         .fa-address-row {
             display: flex;
@@ -7673,9 +7727,15 @@ function financialAccountActiveHtml(financialAccount) {
     const cashUsd = ((financialAccount.balance && financialAccount.balance.cash && financialAccount.balance.cash.usd) || 0) / 100;
     const addresses = financialAccount.financial_addresses || [];
     return `
-        <div class="fa-balance-banner">
-            <span>Solde du compte financier</span>
-            <strong>${cashUsd.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</strong>
+        <div class="balance-card">
+            <div class="balance-subcard">
+                <div class="balance-block-header">
+                    <div>
+                        <div class="balance-card-label">Solde du compte financier</div>
+                        <div class="balance-card-amount">${cashUsd.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</div>
+                    </div>
+                </div>
+            </div>
         </div>
         ${addresses.length ? `
             <div class="table-title mb-2">Coordonnées bancaires</div>
@@ -7952,11 +8012,15 @@ async function renderCardIssuing(container) {
     const transactions = txData.transactions || [];
 
     content.innerHTML = `
-        <div class="issuing-balance-banner">
-            <span>Solde Issuing disponible</span>
-            <strong>
-                ${(cardsData.balance_available / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
-            </strong>
+        <div class="balance-card">
+            <div class="balance-subcard">
+                <div class="balance-block-header">
+                    <div>
+                        <div class="balance-card-label">Solde Issuing disponible</div>
+                        <div class="balance-card-amount">${(cardsData.balance_available / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- FINANCEMENT : depuis le wallet USD Verto du marchand, jamais
