@@ -7369,6 +7369,14 @@ function wireCardDetailsModal(root) {
    qu'afficher le statut et proposer l'action suivante.
 ========================================================= */
 
+// Doit rester synchronisé avec les constantes ISSUING_TOPUP_* de
+// backend/routes/issuing.py - le backend reste la seule source de
+// vérité (ces valeurs ne font qu'éviter un aller-retour réseau inutile
+// pour un montant déjà hors limites, le serveur revalide de toute façon).
+const ISSUING_TOPUP_MIN_USD = 1;
+const ISSUING_TOPUP_MAX_USD = 5000;
+const ISSUING_TOPUP_DAILY_MAX_USD = 10000;
+
 function fundingSectionHtml(status) {
     if (status === "verified") {
         return `
@@ -7376,9 +7384,10 @@ function fundingSectionHtml(status) {
                 <div>
                     <strong>Compte bancaire relié</strong>
                     <p class="text-muted">Rechargez votre carte depuis votre wallet Verto.</p>
+                    <p class="text-muted">Entre ${ISSUING_TOPUP_MIN_USD} et ${ISSUING_TOPUP_MAX_USD} USD par recharge, ${ISSUING_TOPUP_DAILY_MAX_USD} USD max par 24h.</p>
                 </div>
                 <div class="issuing-funding-action">
-                    <input type="number" id="issuing-topup-amount" min="1" step="0.01" placeholder="Montant (USD)">
+                    <input type="number" id="issuing-topup-amount" min="${ISSUING_TOPUP_MIN_USD}" max="${ISSUING_TOPUP_MAX_USD}" step="0.01" placeholder="Montant (USD)">
                     <button type="button" class="create-client-btn" id="issuing-topup-btn">Recharger ma carte</button>
                 </div>
             </div>
@@ -7450,8 +7459,11 @@ function renderFundingSection(el, status, onChanged) {
         topupBtn.addEventListener("click", async () => {
             const amountEl = el.querySelector("#issuing-topup-amount");
             const amount = Number(amountEl.value);
-            if (!amount || amount <= 0) {
-                showToast("Montant invalide", "error");
+            if (!amount || amount < ISSUING_TOPUP_MIN_USD || amount > ISSUING_TOPUP_MAX_USD) {
+                showToast(
+                    `Montant invalide (entre ${ISSUING_TOPUP_MIN_USD} et ${ISSUING_TOPUP_MAX_USD} USD)`,
+                    "error"
+                );
                 return;
             }
             topupBtn.disabled = true;
