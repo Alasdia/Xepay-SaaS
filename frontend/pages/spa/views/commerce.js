@@ -2,6 +2,8 @@ import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
 import { initDetailsDrawer } from "../shared/detailsDrawer.js";
+import { navigate } from "../core/router.js";
+import { getWorkspaceId } from "../core/state.js";
 
 // Pays acceptés par Stripe pour une adresse (address.country) : tout code
 // ISO 3166-1 alpha-2, à l'exception de Cuba, l'Iran, la Corée du Nord et la
@@ -352,6 +354,10 @@ export async function mount(container, params = {}) {
 
         case "risque":
             await renderRisk(content);
+            break;
+
+        case "comptes-financiers":
+            await renderFinancialAccounts(content);
             break;
 
         case "cartes":
@@ -7587,6 +7593,170 @@ function renderFundingSection(el, status, onChanged) {
             }
         });
     }
+}
+
+/* =========================================================
+   COMPTES FINANCIERS (Stripe Treasury for platforms - prototype de
+   test, voir conversation du 2026-11-11/12). Même découpage que
+   Cartes virtuelles : l'activation/conformité se fait dans Paramètres
+   > Compte financier (Treasury) (composant Connect embarqué), cette
+   vue-ci n'affiche que le produit au quotidien une fois actif - solde,
+   coordonnées, ajout de fonds de test. Jamais de duplication du
+   composant d'onboarding ici.
+========================================================= */
+
+function ensureFinancialAccountStyles() {
+    if (document.querySelector("#financial-account-style")) return;
+    const style = document.createElement("style");
+    style.id = "financial-account-style";
+    style.textContent = `
+        .fa-balance-banner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #111827;
+            color: #fff;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+        }
+        .fa-balance-banner strong {
+            font-size: 22px;
+        }
+        .fa-address-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f1f1f1;
+            font-size: 14px;
+        }
+        .fa-funding-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 8px;
+        }
+        .fa-funding-row input {
+            width: 140px;
+            padding: 8px 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 7px;
+            font-size: 13px;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+function financialAccountNotActiveHtml() {
+    return `
+        <div class="commerce-card issuing-empty-state">
+            <i class="fa-solid fa-building-columns"></i>
+            <h3>Compte financier pas encore actif</h3>
+            <p class="text-muted">Activation et conformité (prototype de test) à terminer dans Paramètres > Compte financier (Treasury).</p>
+            <button type="button" class="create-client-btn" id="fa-goto-params-btn">Aller dans Paramètres</button>
+        </div>
+    `;
+}
+
+function financialAccountActiveHtml(financialAccount) {
+    const cashUsd = ((financialAccount.balance && financialAccount.balance.cash && financialAccount.balance.cash.usd) || 0) / 100;
+    const addresses = financialAccount.financial_addresses || [];
+    return `
+        <div class="fa-balance-banner">
+            <span>Solde du compte financier</span>
+            <strong>${cashUsd.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</strong>
+        </div>
+        ${addresses.length ? `
+            <div class="table-title mb-2">Coordonnées bancaires</div>
+            <div class="commerce-card mb-4">
+                ${addresses.filter((a) => a.aba).map((a) => `
+                    <div class="fa-address-row"><span>Banque</span><strong>${a.aba.bank_name || "—"}</strong></div>
+                    <div class="fa-address-row"><span>Compte</span><strong>•••• ${a.aba.account_number_last4 || "----"}</strong></div>
+                    <div class="fa-address-row"><span>Routing</span><strong>${a.aba.routing_number || "—"}</strong></div>
+                `).join("")}
+                <p class="text-muted" style="font-size:12px;margin-top:10px;margin-bottom:0;">Derniers chiffres uniquement pour l'instant - affichage du numéro complet à confirmer (voir backend/services/stripe_treasury_service.py).</p>
+            </div>
+        ` : ""}
+        <div class="table-title mb-2">Ajouter des fonds (test)</div>
+        <div class="commerce-card">
+            <div class="fa-funding-row">
+                <input type="number" id="fa-funding-amount" min="1" max="5000" step="0.01" placeholder="Montant (USD)">
+                <button type="button" class="create-client-btn" id="fa-funding-btn">Ajouter des fonds (test)</button>
+            </div>
+        </div>
+    `;
+}
+
+async function renderFinancialAccounts(container) {
+
+    ensureFinancialAccountStyles();
+
+    container.innerHTML = `
+        <div class="page-header">
+            <div>
+                <h1>Comptes financiers</h1>
+                <p>Stripe Treasury for platforms - solde et coordonnées financées directement par ce compte (prototype de test).</p>
+            </div>
+        </div>
+        <div id="fa-content">
+            <div class="commerce-card"><p>Chargement...</p></div>
+        </div>
+    `;
+
+    const content = container.querySelector("#fa-content");
+
+    let statusData;
+    try {
+        const statusRes = await apiFetch("/treasury/financial-account");
+        if (statusRes.status === 503) {
+            content.innerHTML = `<div class="commerce-card"><p class="text-muted">Fonctionnalité en cours de déploiement.</p></div>`;
+            return;
+        }
+        statusData = await statusRes.json();
+        if (!statusRes.ok) {
+            throw new Error(statusData.detail || "Impossible de récupérer le statut du compte financier");
+        }
+    } catch (error) {
+        content.innerHTML = `<div class="commerce-card"><p>${error.message || "Erreur lors du chargement"}</p></div>`;
+        return;
+    }
+
+    const fa = statusData.financial_account;
+    const abaActive = fa && (fa.active_features || []).includes("financial_addresses.aba");
+
+    if (!abaActive) {
+        content.innerHTML = financialAccountNotActiveHtml();
+        content.querySelector("#fa-goto-params-btn").addEventListener("click", () => {
+            navigate(`/dash/workspace/${encodeURIComponent(getWorkspaceId() || "me")}/parametres/compte-financier`);
+        });
+        return;
+    }
+
+    content.innerHTML = financialAccountActiveHtml(fa);
+
+    const fundingBtn = content.querySelector("#fa-funding-btn");
+    fundingBtn.addEventListener("click", async () => {
+        const amountEl = content.querySelector("#fa-funding-amount");
+        const amount = Number(amountEl.value);
+        if (!amount || amount <= 0) {
+            showToast("Montant invalide", "error");
+            return;
+        }
+        fundingBtn.disabled = true;
+        fundingBtn.textContent = "Ajout...";
+        try {
+            const response = await apiFetch("/treasury/financial-account/test-funding", { method: "POST", body: { amount } });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || "Impossible d'ajouter les fonds");
+            showToast("Financement de test envoyé", "success");
+            amountEl.value = "";
+        } catch (error) {
+            showToast(error.message || "Erreur lors du financement", "error");
+        } finally {
+            fundingBtn.disabled = false;
+            fundingBtn.textContent = "Ajouter des fonds (test)";
+        }
+    });
 }
 
 async function renderCardIssuing(container) {

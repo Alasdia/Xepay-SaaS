@@ -97,12 +97,18 @@ def get_financial_account(account_id: str, financial_account_id: str) -> dict:
     FinancialAccount lui-même, pas sur la sous-ressource /features
     (vérifié dans la doc Stripe, voir conversation).
 
-    financial_addresses[].aba.account_number N'EST JAMAIS renvoyé en
-    entier par cette API v1 (uniquement account_number_last4) - vérifié
-    dans la doc Stripe, aucun paramètre expand ne débloque ça sur le v1
-    Treasury utilisé par tout ce module. Le numéro complet n'existe que
-    sur l'API v2 Money Management (include=credentials.us_bank_account.
-    account_number), une surface différente, pas branchée ici."""
+    financial_addresses[].aba.account_number : À CONFIRMER, ne rien
+    supposer dans un sens ou l'autre (voir conversation du 2026-11-12 -
+    une affirmation précédente ici, "jamais renvoyé en entier sur le
+    v1", reposait sur un résumé de recherche web sans source citable et
+    s'est révélée contredite par une page Stripe lue directement par
+    l'utilisateur : docs.stripe.com/treasury/connect/legacy/v1/
+    account-management/financial-account-features montre un exemple
+    GET avec expand[]=financial_addresses.aba.account_number qui
+    renvoie bien le numéro complet). Cet appel-ci ne passe PAS ce
+    paramètre expand (comportement actuel inchangé, affichage last4
+    côté UI) - à tester avec et sans dès que financial_addresses.aba
+    sera actif sur un compte financier de test, avant de conclure."""
     account = _client().v1.treasury.financial_accounts.retrieve(
         financial_account_id,
         options={"stripe_account": account_id},

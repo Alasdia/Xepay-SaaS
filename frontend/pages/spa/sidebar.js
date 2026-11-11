@@ -26,6 +26,7 @@ const ROUTE_BY_PAGE = {
   factures: "commerce/factures",
   "moyens-paiement": "commerce/moyens-paiement",
   risque: "commerce/risque",
+  "comptes-financiers": "commerce/comptes-financiers",
   cartes: "commerce/cartes",
 
   api: "api",
@@ -137,7 +138,7 @@ export function setActiveRoute(routeName) {
   if (["paiements", "retraits"].includes(effectiveRouteName)) {
     setSubmenuOpen("submenu-transactions", true);
   }
-  if (["clients", "produits", "abonnements", "factures", "moyens-paiement", "risque", "cartes"].includes(effectiveRouteName)) {
+  if (["clients", "produits", "abonnements", "factures", "moyens-paiement", "risque", "comptes-financiers", "cartes"].includes(effectiveRouteName)) {
     setSubmenuOpen("submenu-commerce", true);
   }
   // Les liens du menu doivent toujours pointer vers le workspace courant,
