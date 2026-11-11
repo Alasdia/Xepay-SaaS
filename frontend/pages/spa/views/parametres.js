@@ -124,6 +124,7 @@ function overviewTemplate() {
         ${sectionTitle("Paramètres produit")}
         <div class="params-tiles-grid">
           ${tile("cartes-virtuelles", "fa-solid fa-credit-card", "Cartes virtuelles", "Issuing")}
+          ${tile("compte-financier", "fa-solid fa-landmark", "Compte financier (Treasury)", "Prototype de test - masqué automatiquement si indisponible")}
           ${tile("retraits", "fa-solid fa-building-columns", "Retraits & comptes bancaires", "Virement local UEMOA (Verto) ou compte US/EU")}
         </div>
       </section>
@@ -3627,6 +3628,186 @@ function retraitsTemplate() {
   `;
 }
 
+// --- Detail : Compte financier (Treasury for platforms, prototype de
+// test - voir conversation du 2026-11-11). Masqué au niveau de la tile
+// (overview) si indisponible ; cette page relit le statut indépendamment
+// au cas où elle serait ouverte par une URL directe. ---
+function treasuryTemplate() {
+  return `
+    ${detailHeader("Compte financier (Treasury)")}
+    <p class="params-subsection-sub">Prototype de test (Stripe Treasury for platforms) - solde et cartes financées directement par ce compte, distinct du solde Issuing classique.</p>
+    <div id="p-treasury-body"><p class="text-muted">Chargement...</p></div>
+  `;
+}
+
+let treasuryOnboardingLoaded = false;
+
+function treasuryBodyHtml(data) {
+  const fa = data.financial_account;
+  const activeFeatures = (fa && fa.active_features) || [];
+  const abaActive = activeFeatures.includes("financial_addresses.aba");
+  const cardIssuingActive = activeFeatures.includes("card_issuing");
+
+  if (!fa) {
+    return `
+      <p class="params-subsection-sub">Statut de la capacité Treasury : <strong>${data.capability_status || "inconnu"}</strong></p>
+      <button type="button" class="create-client-btn" id="treasury-activate-btn">Activer le compte financier</button>
+      <div id="treasury-onboarding-container" style="margin-top:20px;"></div>
+    `;
+  }
+
+  if (!abaActive) {
+    const requirements = (data.capability_requirements && data.capability_requirements.currently_due) || [];
+    return `
+      <p class="params-subsection-sub">Compte financier créé (<code>${fa.id}</code>), en attente d'activation - l'activation est asynchrone côté Stripe, cette page se rafraîchit une fois la conformité complétée.</p>
+      ${requirements.length ? `
+        <p class="params-subsection-sub"><strong>Conformité restante :</strong></p>
+        <ul class="params-subsection-sub">${requirements.map((r) => `<li>${r}</li>`).join("")}</ul>
+      ` : ""}
+      <button type="button" class="create-client-btn" id="treasury-onboarding-btn">Compléter la conformité</button>
+      <div id="treasury-onboarding-container" style="margin-top:20px;"></div>
+    `;
+  }
+
+  const cashUsd = ((fa.balance && fa.balance.cash && fa.balance.cash.usd) || 0) / 100;
+  const addresses = fa.financial_addresses || [];
+  return `
+    <div class="params-row-list mb-4">
+      <div class="params-info-row"><span>Solde</span><strong>${cashUsd.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</strong></div>
+      <div class="params-info-row"><span>card_issuing</span><strong>${cardIssuingActive ? "Actif" : "En attente"}</strong></div>
+    </div>
+    ${addresses.length ? `
+      <p class="params-subsection-sub"><strong>Coordonnées bancaires</strong> - derniers chiffres uniquement : l'API Treasury utilisée ici ne renvoie jamais le numéro complet (il faudrait l'API v2 Money Management, non branchée).</p>
+      <div class="params-row-list mb-4">
+        ${addresses.filter((a) => a.aba).map((a) => `
+          <div class="params-info-row"><span>Banque</span><strong>${a.aba.bank_name || "—"}</strong></div>
+          <div class="params-info-row"><span>Compte</span><strong>•••• ${a.aba.account_number_last4 || "----"}</strong></div>
+          <div class="params-info-row"><span>Routing</span><strong>${a.aba.routing_number || "—"}</strong></div>
+        `).join("")}
+      </div>
+    ` : ""}
+    <div class="params-subsection-header">
+      <h6 class="params-subsection-title mb-0">Ajouter des fonds (test)</h6>
+    </div>
+    <div class="branding-preview-row" style="margin-bottom:12px;">
+      <input type="number" id="treasury-funding-amount" min="1" max="5000" step="0.01" placeholder="Montant (USD)" style="width:140px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:7px;">
+      <button type="button" class="create-client-btn" id="treasury-funding-btn">Ajouter des fonds (test)</button>
+    </div>
+    <p class="text-muted" style="font-size:12px;">La création d'une carte liée à ce compte financier n'est pas encore branchée dans cette page (prochaine étape).</p>
+  `;
+}
+
+async function loadTreasuryStatus() {
+  const body = document.getElementById("p-treasury-body");
+  if (!body) return;
+  try {
+    const res = await apiFetch("/treasury/financial-account");
+    if (res.status === 503) {
+      body.innerHTML = `<p class="text-muted">Fonctionnalité en cours de déploiement.</p>`;
+      return;
+    }
+    const data = await res.json();
+    if (!res.ok) {
+      body.innerHTML = `<p class="text-muted">${data.detail || "Erreur de chargement"}</p>`;
+      return;
+    }
+    body.innerHTML = treasuryBodyHtml(data);
+    wireTreasuryBody();
+  } catch (err) {
+    body.innerHTML = `<p class="text-muted">Erreur de chargement.</p>`;
+  }
+}
+
+async function loadTreasuryOnboardingComponent() {
+  const container = document.getElementById("treasury-onboarding-container");
+  if (!container || treasuryOnboardingLoaded) return;
+  try {
+    const res = await apiFetch("/treasury/financial-account/account-session", { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Impossible de charger la conformité");
+    const stripeConnect = window.StripeConnect.init({
+      publishableKey: window.STRIPE_PUBLISHABLE_KEY,
+      fetchClientSecret: () => Promise.resolve(data.client_secret),
+    });
+    // Composant Connect embarqué "account-onboarding" - gère nativement
+    // l'étape treasury_and_card_issuing_terms_of_service (acceptation
+    // par le marchand lui-même, avec sa date/IP réelles - jamais un
+    // formulaire Xepay, voir backend/services/stripe_treasury_service.py).
+    const component = stripeConnect.create("account-onboarding");
+    component.setOnExit(() => {
+      // L'activation des fonctions est asynchrone côté Stripe (webhook
+      // treasury.financial_account.features_status_updated) - on relit
+      // juste l'état connu à la sortie, sans attendre ce webhook.
+      loadTreasuryStatus();
+    });
+    container.innerHTML = "";
+    container.appendChild(component);
+    treasuryOnboardingLoaded = true;
+    const triggerBtn = document.getElementById("treasury-onboarding-btn") || document.getElementById("treasury-activate-btn");
+    if (triggerBtn) triggerBtn.classList.add("d-none");
+  } catch (error) {
+    showToast(error.message || "Impossible de charger le composant de conformité", "error");
+  }
+}
+
+function wireTreasuryBody() {
+  const activateBtn = document.getElementById("treasury-activate-btn");
+  if (activateBtn) {
+    activateBtn.addEventListener("click", async () => {
+      activateBtn.disabled = true;
+      activateBtn.textContent = "Activation...";
+      try {
+        const res = await apiFetch("/treasury/financial-account/activate", { method: "POST" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Impossible d'activer le compte financier");
+        showToast("Compte financier activé - conformité à terminer", "success");
+        await loadTreasuryStatus();
+      } catch (error) {
+        showToast(error.message || "Erreur", "error");
+        activateBtn.disabled = false;
+        activateBtn.textContent = "Activer le compte financier";
+      }
+    });
+  }
+
+  const onboardingBtn = document.getElementById("treasury-onboarding-btn");
+  if (onboardingBtn) {
+    onboardingBtn.addEventListener("click", () => loadTreasuryOnboardingComponent());
+  }
+
+  const fundingBtn = document.getElementById("treasury-funding-btn");
+  if (fundingBtn) {
+    fundingBtn.addEventListener("click", async () => {
+      const amountEl = document.getElementById("treasury-funding-amount");
+      const amount = Number(amountEl.value);
+      if (!amount || amount <= 0) {
+        showToast("Montant invalide", "error");
+        return;
+      }
+      fundingBtn.disabled = true;
+      fundingBtn.textContent = "Ajout...";
+      try {
+        const res = await apiFetch("/treasury/financial-account/test-funding", { method: "POST", body: { amount } });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Impossible d'ajouter les fonds");
+        showToast("Financement de test envoyé", "success");
+        amountEl.value = "";
+        await loadTreasuryStatus();
+      } catch (error) {
+        showToast(error.message || "Erreur", "error");
+      } finally {
+        fundingBtn.disabled = false;
+        fundingBtn.textContent = "Ajouter des fonds (test)";
+      }
+    });
+  }
+}
+
+function mountTreasury(on) {
+  treasuryOnboardingLoaded = false;
+  loadTreasuryStatus();
+}
+
 const SECTIONS = {
   "informations-personnelles": { title: "Informations personnelles", template: informationsPersonnellesTemplate, mount: (on) => mountInformationsPersonnelles(on) },
   "authentification": { title: "Authentification", template: authentificationTemplate, mount: (on) => mountAuthentification(on) },
@@ -3637,6 +3818,7 @@ const SECTIONS = {
   "entreprise": { title: "Entreprise", template: entrepriseTemplate, mount: (on) => mountEntreprise(on) },
   "permissions": { title: "Permissions", template: permissionsTemplate, mount: (on) => mountPermissions(on) },
   "cartes-virtuelles": { title: "Cartes virtuelles", template: cartesVirtuellesTemplate, mount: (on) => mountCartesVirtuelles(on) },
+  "compte-financier": { title: "Compte financier (Treasury)", template: treasuryTemplate, mount: (on) => mountTreasury(on) },
   "retraits": { title: "Retraits & comptes bancaires", template: retraitsTemplate, mount: (on) => mountRetraits(on) },
 };
 
@@ -3680,6 +3862,16 @@ export async function mount(container, params = {}) {
         navigate(`/dash/workspace/${encodeURIComponent(workspaceId)}/parametres/${el.dataset.section}`);
       });
     });
+    // Tile affiché de façon optimiste puis retiré si Treasury n'est pas
+    // disponible (503, voir routes/treasury.py is_treasury_available) -
+    // pas de restructuration du rendu synchrone des tiles pour ce
+    // prototype de test.
+    apiFetch("/treasury/financial-account").then((res) => {
+      if (!res.ok) {
+        const tileEl = container.querySelector('[data-section="compte-financier"]');
+        if (tileEl) tileEl.remove();
+      }
+    }).catch(() => {});
   }
 
   return {

@@ -7,7 +7,7 @@ from PIL import Image
 import stripe
 
 from backend.database import get_db
-from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectSubscriptionQuantityUpdateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest, ConnectInvoiceUpdateRequest, Payment, IssuingTopup
+from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectSubscriptionQuantityUpdateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest, ConnectInvoiceUpdateRequest, Payment, IssuingTopup, TreasuryReceivedCredit
 from backend.middleware.authorization import require_capability
 from backend.services.stripe_service import (create_connect_invoice, create_connect_product, create_connect_customer, update_connect_customer)
 from backend.services import commission_service, stripe_branding_service
@@ -678,6 +678,58 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                     "Topup Issuing mis a jour : id=%s statut=%s compte=%s",
                     topup_id, new_status, connected_account_id,
                 )
+        # --------------------------------------------------
+        # TREASURY (compte financier - prototype de test, voir
+        # conversation du 2026-11-11)
+        # --------------------------------------------------
+        elif event_type in (
+            "treasury.received_credit.succeeded",
+            "treasury.received_credit.failed",
+        ):
+            # .created n'est pas écouté : déjà connu de façon synchrone
+            # via la réponse de simulate_received_credit (voir
+            # routes/treasury.py), même raison que topup.created plus
+            # haut.
+            credit_id = object_data["id"]
+
+            credit_row = db.query(TreasuryReceivedCredit).filter(
+                TreasuryReceivedCredit.stripe_received_credit_id == credit_id
+            ).first()
+
+            if not credit_row:
+                logger.warning(
+                    "ReceivedCredit Treasury inconnu en base : id=%s type=%s compte=%s",
+                    credit_id, event_type, connected_account_id,
+                )
+            elif credit_row.status in ("succeeded", "failed"):
+                pass  # déjà en statut terminal - redelivery, idempotent
+            else:
+                new_status = event_type.rsplit(".", 1)[1]
+                credit_row.status = new_status
+                if new_status == "failed":
+                    credit_row.failure_code = object_data.get("failure_code")
+                credit_row.updated_at = datetime.now(timezone.utc)
+                db.commit()
+
+                logger.info(
+                    "ReceivedCredit Treasury mis a jour : id=%s statut=%s compte=%s",
+                    credit_id, new_status, connected_account_id,
+                )
+        elif event_type == "treasury.financial_account.features_status_updated":
+            # Pas de cache local des features (toujours relues en direct
+            # depuis Stripe, voir stripe_treasury_service.get_financial_account)
+            # - juste une trace pour le suivi. L'activation est
+            # asynchrone (voir conversation du 2026-11-11) : c'est cet
+            # événement, pas la réponse de la requête qui a demandé la
+            # fonction, qui signale le vrai passage à "active".
+            logger.info(
+                "Features du compte financier Treasury mises a jour : id=%s compte=%s "
+                "active=%s pending=%s restricted=%s",
+                object_data.get("id"), connected_account_id,
+                object_data.get("active_features"),
+                object_data.get("pending_features"),
+                object_data.get("restricted_features"),
+            )
         # --------------------------------------------------
         # FACTURES CONNECT
         # --------------------------------------------------
