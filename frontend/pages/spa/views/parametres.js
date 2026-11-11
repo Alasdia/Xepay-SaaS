@@ -1221,6 +1221,7 @@ async function mountNotifications(on) {
 const STRIPE_TABS = [
   { key: "account", label: "Informations du compte" },
   { key: "etat", label: "État du compte" },
+  { key: "branding", label: "Branding" },
 ];
 
 function stripeTemplate() {
@@ -1407,9 +1408,154 @@ function stripeAccountPanelHtml() {
   `;
 }
 
+// --- Onglet Branding (icône/logo/couleurs du compte Stripe Connect) ---
+// Apparaît sur le Dashboard Stripe du marchand et sur le reçu envoyé à ses
+// clients - UNIQUEMENT pour un paiement en direct charge (lien de paiement,
+// facture) : une destination charge (abonnement) montre toujours le
+// branding Xepay, jamais celui du marchand (confirmé le 2026-11-11).
+function stripeBrandingPanelHtml() {
+  const b = stripeBrandingData || {};
+  const iconUrl = b.icon && b.icon.url;
+  const logoUrl = b.logo && b.logo.url;
+  return `
+    <p class="params-subsection-sub">
+      Icône et logo affichés sur votre Dashboard Stripe et sur le reçu envoyé à vos clients -
+      <strong>uniquement pour un lien de paiement ou une facture</strong>. Un paiement d'abonnement affiche
+      toujours le branding Xepay, jamais le vôtre.
+    </p>
+    <div class="branding-form">
+      <div class="branding-field">
+        <label>Icône (carrée)</label>
+        <div class="branding-preview-row">
+          <img id="branding-icon-preview" src="${iconUrl || ""}" style="${iconUrl ? "" : "display:none;"}" alt="Icône">
+          <input type="file" id="branding-icon-input" accept="image/png,image/jpeg">
+        </div>
+        <p class="text-muted" style="font-size:12px;margin-top:6px;">Complétée automatiquement en carré (fond blanc) avant l'envoi - jamais recadrée.</p>
+      </div>
+      <div class="branding-field">
+        <label>Logo</label>
+        <div class="branding-preview-row">
+          <img id="branding-logo-preview" src="${logoUrl || ""}" style="${logoUrl ? "" : "display:none;"}" alt="Logo">
+          <input type="file" id="branding-logo-input" accept="image/png,image/jpeg">
+        </div>
+      </div>
+      <div class="branding-field">
+        <label>Couleur principale</label>
+        <input type="color" id="branding-primary-color" value="${b.primary_color || "#000000"}">
+      </div>
+      <div class="branding-field">
+        <label>Couleur secondaire</label>
+        <input type="color" id="branding-secondary-color" value="${b.secondary_color || "#000000"}">
+      </div>
+    </div>
+    <p id="branding-status" class="text-danger" style="display:none;margin-bottom:12px;"></p>
+    <button type="button" id="branding-save-btn" class="create-client-btn">Enregistrer le branding</button>
+  `;
+}
+
+// Complète (jamais ne recadre) l'image choisie dans un carré targetSize x
+// targetSize, fond blanc, image centrée et réduite si besoin - garantit le
+// ratio 1:1 exigé par Stripe pour l'icône sans jamais couper une partie de
+// l'image d'origine (demande explicite du 2026-11-11).
+function padImageToSquare(file, targetSize = 512) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, targetSize / Math.max(img.width, img.height));
+      const drawW = img.width * scale;
+      const drawH = img.height * scale;
+      const canvas = document.createElement("canvas");
+      canvas.width = targetSize;
+      canvas.height = targetSize;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, targetSize, targetSize);
+      ctx.drawImage(img, (targetSize - drawW) / 2, (targetSize - drawH) / 2, drawW, drawH);
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(url);
+        blob ? resolve(blob) : reject(new Error("Impossible de traiter l'image"));
+      }, "image/png");
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Image invalide"));
+    };
+    img.src = url;
+  });
+}
+
+function wireStripeBrandingPanel() {
+  const saveBtn = document.getElementById("branding-save-btn");
+  if (!saveBtn) return;
+
+  const iconInput = document.getElementById("branding-icon-input");
+  const logoInput = document.getElementById("branding-logo-input");
+  const iconPreview = document.getElementById("branding-icon-preview");
+  const logoPreview = document.getElementById("branding-logo-preview");
+  const statusEl = document.getElementById("branding-status");
+
+  let pendingIconBlob = null;
+  let pendingLogoFile = null;
+
+  iconInput.addEventListener("change", async () => {
+    const file = iconInput.files && iconInput.files[0];
+    if (!file) { pendingIconBlob = null; return; }
+    try {
+      pendingIconBlob = await padImageToSquare(file);
+      iconPreview.src = URL.createObjectURL(pendingIconBlob);
+      iconPreview.style.display = "";
+    } catch (error) {
+      showToast(error.message || "Image invalide", "error");
+      iconInput.value = "";
+      pendingIconBlob = null;
+    }
+  });
+
+  logoInput.addEventListener("change", () => {
+    const file = logoInput.files && logoInput.files[0];
+    pendingLogoFile = file || null;
+    if (file) {
+      logoPreview.src = URL.createObjectURL(file);
+      logoPreview.style.display = "";
+    }
+  });
+
+  saveBtn.addEventListener("click", async () => {
+    statusEl.style.display = "none";
+
+    const formData = new FormData();
+    if (pendingIconBlob) formData.append("icon", pendingIconBlob, "icon.png");
+    if (pendingLogoFile) formData.append("logo", pendingLogoFile, pendingLogoFile.name);
+    formData.append("primary_color", document.getElementById("branding-primary-color").value);
+    formData.append("secondary_color", document.getElementById("branding-secondary-color").value);
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Enregistrement...";
+    try {
+      const response = await apiFetch("/stripe/connect/branding", { method: "POST", body: formData });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Impossible d'enregistrer le branding");
+      showToast("Branding mis à jour", "success");
+      stripeBrandingData = data;
+      pendingIconBlob = null;
+      pendingLogoFile = null;
+      iconInput.value = "";
+      logoInput.value = "";
+    } catch (error) {
+      statusEl.textContent = error.message || "Erreur lors de l'enregistrement du branding";
+      statusEl.style.display = "";
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = "Enregistrer le branding";
+    }
+  });
+}
+
 function stripeTabContentHtml(key) {
   if (key === "account") return stripeAccountPanelHtml();
   if (key === "etat") return stripeEtatPanelHtml();
+  if (key === "branding") return stripeBrandingPanelHtml();
   return "";
 }
 
@@ -1429,6 +1575,7 @@ function stripeTabsHtml() {
 let stripeBusinessData = null;
 let stripeBusinessError = null;
 let stripeStatusData = null;
+let stripeBrandingData = null;
 let stripeActiveTab = "account";
 
 async function goToStripeLoginLink() {
@@ -1493,12 +1640,19 @@ async function loadStripeDetails() {
   stripeBusinessData = null;
   stripeBusinessError = null;
   stripeStatusData = null;
+  stripeBrandingData = null;
   stripeActiveTab = "account";
   try {
-    const [bizRes, statusRes] = await Promise.all([
+    const [bizRes, statusRes, brandingRes] = await Promise.all([
       apiFetch("/stripe/business-details"),
       apiFetch("/stripe/status"),
+      apiFetch("/stripe/connect/branding"),
     ]);
+    // Non bloquant (contrairement à statusRes) : un onglet Branding en
+    // erreur ne doit jamais empêcher d'afficher le reste de la page.
+    if (brandingRes.ok) {
+      stripeBrandingData = await brandingRes.json();
+    }
     if (bizRes.ok) {
       stripeBusinessData = await bizRes.json();
     } else {
@@ -1523,6 +1677,7 @@ async function loadStripeDetails() {
     }
     body.innerHTML = stripeTabsHtml();
     wireStripeActionButton();
+    wireStripeBrandingPanel();
   } catch (err) {
     body.innerHTML = `<p class="text-muted">Erreur de chargement.</p>`;
   }
