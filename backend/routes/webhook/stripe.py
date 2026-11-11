@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 import stripe
 
 from backend.database import get_db
-from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectSubscriptionQuantityUpdateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest, ConnectInvoiceUpdateRequest, Payment
+from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectSubscriptionQuantityUpdateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest, ConnectInvoiceUpdateRequest, Payment, IssuingTopup
 from backend.middleware.authorization import require_capability
 from backend.services.stripe_service import (create_connect_invoice, create_connect_product, create_connect_customer, update_connect_customer)
 from backend.services import commission_service
@@ -458,8 +458,9 @@ def process_invoice_paid_event(
 @router.post("/webhook/stripe")
 async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     import logging
+    from datetime import datetime, timezone
 
-    logger = logging.getLogger(__name__) 
+    logger = logging.getLogger(__name__)
 
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
@@ -614,6 +615,64 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                         send_payout_failed_email(
                             merchant.email, wd.amount
                         )
+        # --------------------------------------------------
+        # RECHARGES ISSUING (CARTES)
+        # --------------------------------------------------
+        elif event_type in (
+            "topup.succeeded",
+            "topup.failed",
+            "topup.canceled",
+            "topup.reversed",
+        ):
+            # topup.created n'est pas écouté : on connaît déjà ce statut
+            # de façon synchrone via la réponse de stripe.Topup.create
+            # (voir routes/issuing.py) - seules les VRAIES transitions
+            # ultérieures nous intéressent ici. Un débit ACH peut rester
+            # "pending" plusieurs jours avant de réussir ou d'échouer, et
+            # un topup déjà "succeeded" peut encore devenir "reversed"
+            # plus tard (retour ACH après coup) - donc seuls failed/
+            # canceled/reversed sont de VRAIS statuts terminaux ici.
+            topup_id = object_data["id"]
+
+            topup_row = db.query(IssuingTopup).filter(
+                IssuingTopup.stripe_topup_id == topup_id
+            ).first()
+
+            if not topup_row:
+                # Filet de secours : ce webhook peut arriver avant que
+                # notre propre requête n'ait eu le temps de committer
+                # stripe_topup_id en base (voir routes/issuing.py) -
+                # l'id de la ligne est alors retrouvé via la metadata
+                # posée sur le Topup à sa création.
+                fallback_id = (object_data.get("metadata") or {}).get("issuing_topup_id")
+                if fallback_id:
+                    topup_row = db.query(IssuingTopup).filter(
+                        IssuingTopup.id == fallback_id
+                    ).first()
+
+            if not topup_row:
+                logger.warning(
+                    "Topup Issuing inconnu en base : id=%s type=%s compte=%s",
+                    topup_id, event_type, connected_account_id,
+                )
+            elif topup_row.status in ("failed", "canceled", "reversed"):
+                pass  # déjà en statut terminal - redelivery, idempotent
+            else:
+                new_status = event_type.split(".", 1)[1]
+                topup_row.stripe_topup_id = topup_row.stripe_topup_id or topup_id
+                topup_row.status = new_status
+                if new_status == "failed":
+                    topup_row.failure_message = (
+                        object_data.get("failure_message")
+                        or object_data.get("failure_code")
+                    )
+                topup_row.updated_at = datetime.now(timezone.utc)
+                db.commit()
+
+                logger.info(
+                    "Topup Issuing mis a jour : id=%s statut=%s compte=%s",
+                    topup_id, new_status, connected_account_id,
+                )
         # --------------------------------------------------
         # FACTURES CONNECT
         # --------------------------------------------------

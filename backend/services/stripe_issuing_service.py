@@ -190,16 +190,46 @@ def verify_issuing_bank_source(account_id: str, source_id: str, amounts: list[in
     return source.to_dict()
 
 
-def topup_issuing_balance(account_id: str, source_id: str, amount_cents: int) -> dict:
+def topup_issuing_balance(
+    account_id: str,
+    source_id: str,
+    amount_cents: int,
+    idempotency_key: str | None = None,
+    metadata: dict | None = None,
+) -> dict:
     """Prélève amount_cents depuis la source ach_debit déjà vérifiée
     (wallet Verto du marchand) et l'ajoute au solde Issuing de ce compte -
     jamais le solde de la plateforme (voir conversation du 2026-11-06,
-    règle "zéro custody")."""
+    règle "zéro custody"). idempotency_key : à fournir par l'appelant,
+    STABLE sur tout retry d'une même demande (jamais régénérée à chaque
+    appel, voir routes/issuing.py) - un uuid4() régénéré à chaque appel
+    (comme le fait payout.py pour les refunds) ne protège pas contre un
+    retry réseau. metadata : posée sur le Topup lui-même, pour retrouver
+    la ligne IssuingTopup correspondante depuis un webhook même si notre
+    propre écriture de stripe_topup_id n'a pas encore été commitée (voir
+    webhook/stripe.py)."""
+    extra_options = {}
+    if idempotency_key:
+        extra_options["idempotency_key"] = idempotency_key
     topup = stripe.Topup.create(
         amount=amount_cents,
         currency="usd",
         destination_balance="issuing",
         source=source_id,
         stripe_account=account_id,
+        metadata=metadata or {},
+        **extra_options,
     )
     return topup.to_dict()
+
+
+def get_issuing_balance(account_id: str) -> int:
+    """Solde Issuing disponible (USD, en cents) de ce compte connecté -
+    PARTAGÉ par toutes les cartes du compte, jamais un solde par carte
+    (voir docs.stripe.com/issuing/connect/funding). balance.issuing est
+    absent (pas juste vide) sur un compte sans capacité Issuing - d'où le
+    getattr, même garde que list_virtual_cards (routes/issuing.py)."""
+    balance = stripe.Balance.retrieve(stripe_account=account_id)
+    if not getattr(balance, "issuing", None):
+        return 0
+    return next((b.amount for b in balance.issuing.available if b.currency == "usd"), 0)

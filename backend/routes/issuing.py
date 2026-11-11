@@ -1,18 +1,31 @@
 import os
 import re
 import time
-from datetime import datetime, timezone
+import uuid
+from datetime import datetime, timedelta, timezone
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from backend.database import get_db
-from backend.models import Profile, WorkspaceUser
+from backend.models import Profile, WorkspaceUser, IssuingTopup
 from backend.middleware.authorization import require_capability
 from backend.services import stripe_issuing_service
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 router = APIRouter()
+
+# Garde-fous POST /issuing/topup (voir conversation du 2026-11-11) -
+# valeurs indicatives, à ajuster si besoin.
+ISSUING_TOPUP_MIN_USD = 1
+ISSUING_TOPUP_MAX_USD = 5000
+ISSUING_TOPUP_DAILY_MAX_USD = 10000
+# Une ligne "pending" sans stripe_topup_id plus vieille que ce délai n'a
+# jamais atteint Stripe (process arrêté entre l'écriture de la ligne et
+# l'appel Stripe) - ignorée par les deux requêtes ci-dessous, jamais
+# nettoyée activement (pas de tâche de fond).
+ISSUING_TOPUP_PENDING_SUBMIT_GRACE = timedelta(minutes=2)
 
 
 def _get_active_issuing_account(profile: Profile) -> str:
@@ -340,9 +353,30 @@ def create_issuing_topup(
     membership: WorkspaceUser = Depends(require_capability("manage_virtual_cards"))
 ):
     """Recharge le solde Issuing depuis le wallet Verto déjà vérifié -
-    jamais depuis le solde de la plateforme."""
+    jamais depuis le solde de la plateforme.
+
+    Garde-fous (voir conversation du 2026-11-11) :
+    - une seule recharge "en vol" à la fois par compte (profile verrouillé
+      via with_for_update pour serialiser deux requêtes concurrentes du
+      même marchand) - un débit ACH peut échouer plusieurs jours après sa
+      création, on ne laisse jamais s'empiler plusieurs débits en attente
+      sur la même source bancaire ;
+    - clé d'idempotence par ligne IssuingTopup, STABLE (jamais régénérée
+      sur retry) ;
+    - l'id de la ligne est aussi posé en metadata Stripe sur le Topup :
+      filet de secours si le webhook topup.succeeded/failed/canceled/
+      reversed arrive avant que stripe_topup_id soit écrit en base (voir
+      webhook/stripe.py) ;
+    - min/max par recharge + plafond glissant 24h, montants invalides
+      (bool compris - bool est une sous-classe d'int en Python) rejetés.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+
     owner_id = membership.workspace_id
-    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
+    profile = db.query(Profile).filter(
+        Profile.user_id == owner_id
+    ).with_for_update().first()
     issuing_account_id = _get_active_issuing_account(profile)
 
     if profile.stripe_issuing_bank_status != "verified" or not profile.stripe_issuing_bank_source_id:
@@ -351,15 +385,82 @@ def create_issuing_topup(
         )
 
     amount = payload.get("amount")
-    if not isinstance(amount, (int, float)) or amount <= 0:
+    if isinstance(amount, bool) or not isinstance(amount, (int, float)):
         raise HTTPException(400, "Montant invalide")
+    if amount < ISSUING_TOPUP_MIN_USD or amount > ISSUING_TOPUP_MAX_USD:
+        raise HTTPException(
+            400,
+            f"Montant hors limites (entre {ISSUING_TOPUP_MIN_USD} et "
+            f"{ISSUING_TOPUP_MAX_USD} USD par recharge)",
+        )
+
+    now = datetime.now(timezone.utc)
+
+    # "En vol" = Stripe a confirmé la création (stripe_topup_id connu) ou
+    # c'est trop récent pour trancher (voir ISSUING_TOPUP_PENDING_SUBMIT_
+    # GRACE ci-dessus).
+    existing_pending = db.query(IssuingTopup).filter(
+        IssuingTopup.stripe_account_id == issuing_account_id,
+        IssuingTopup.status == "pending",
+        (
+            (IssuingTopup.stripe_topup_id.isnot(None))
+            | (IssuingTopup.created_at > now - ISSUING_TOPUP_PENDING_SUBMIT_GRACE)
+        ),
+    ).first()
+    if existing_pending:
+        raise HTTPException(
+            409,
+            "Une recharge est déjà en cours pour ce compte - attendez "
+            "qu'elle soit confirmée ou échoue avant d'en lancer une nouvelle.",
+        )
+
+    day_total = db.query(func.coalesce(func.sum(IssuingTopup.amount), 0)).filter(
+        IssuingTopup.stripe_account_id == issuing_account_id,
+        IssuingTopup.status.in_(("pending", "succeeded")),
+        IssuingTopup.created_at > now - timedelta(hours=24),
+    ).scalar()
+    if float(day_total or 0) + amount > ISSUING_TOPUP_DAILY_MAX_USD:
+        raise HTTPException(
+            400,
+            f"Plafond de {ISSUING_TOPUP_DAILY_MAX_USD} USD/24h atteint pour ce compte",
+        )
+
+    topup_row = IssuingTopup(
+        user_id=owner_id,
+        stripe_account_id=issuing_account_id,
+        stripe_source_id=profile.stripe_issuing_bank_source_id,
+        amount=float(amount),
+        status="pending",
+        idempotency_key=f"xepay-issuing-topup-{uuid.uuid4()}",
+    )
+    db.add(topup_row)
+    db.commit()
 
     try:
         topup = stripe_issuing_service.topup_issuing_balance(
-            issuing_account_id, profile.stripe_issuing_bank_source_id, int(round(amount * 100))
+            issuing_account_id,
+            profile.stripe_issuing_bank_source_id,
+            int(round(amount * 100)),
+            idempotency_key=topup_row.idempotency_key,
+            metadata={"issuing_topup_id": topup_row.id},
         )
     except stripe.error.StripeError as e:
-        raise HTTPException(400, f"Erreur Stripe Issuing : {e.user_message or str(e)} (request_id: {e.request_id})")
+        logger.error(
+            "Echec creation topup Issuing (topup_row=%s, compte=%s) : %s (request_id=%s)",
+            topup_row.id, issuing_account_id, e.user_message or str(e), e.request_id,
+        )
+        topup_row.status = "failed"
+        topup_row.failure_message = str(e)
+        topup_row.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        raise HTTPException(
+            502, "La recharge a échoué, réessayez plus tard ou contactez le support."
+        )
+
+    topup_row.stripe_topup_id = topup["id"]
+    topup_row.status = topup["status"]
+    topup_row.updated_at = datetime.now(timezone.utc)
+    db.commit()
 
     return {"topup_id": topup["id"], "status": topup["status"]}
 
