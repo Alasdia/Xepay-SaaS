@@ -223,6 +223,28 @@ const STRIPE_REPORT_MODAL_HTML = `
 </div>
 `;
 
+// Choix du montant à rembourser (2026-11-13) : la commission Xepay n'est
+// jamais remboursée (voir backend/routes/payout.py et la section
+// "Remboursements" des conditions d'utilisation) - soit le marchand
+// rembourse le brut et son solde Stripe absorbe la commission non rendue
+// (régularisé sur son prochain versement), soit il rembourse seulement le
+// net qu'il a reçu et c'est alors le client final qui ne récupère pas la
+// commission. Ce choix doit être explicite, pas décidé à la place du
+// marchand - voir refundChoiceBodyHtml.
+const REFUND_CHOICE_MODAL_HTML = `
+<div class="modal fade" id="refundChoiceModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold">Choisir le montant à rembourser</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body px-4 pb-4" id="refund-choice-body"></div>
+    </div>
+  </div>
+</div>
+`;
+
 export async function mount(container, params = {}) {
   // commerce.css fournit les classes .customer-modal-overlay/.customer-
   // details-grid (Clients/Produits, voir views/commerce.js) réutilisées ici
@@ -231,6 +253,7 @@ export async function mount(container, params = {}) {
   ensureCommerceKpiStyles();
   container.innerHTML = TEMPLATE;
   document.body.insertAdjacentHTML("beforeend", STRIPE_REPORT_MODAL_HTML);
+  document.body.insertAdjacentHTML("beforeend", REFUND_CHOICE_MODAL_HTML);
   document.body.insertAdjacentHTML("beforeend", ACTION_MENU_HTML);
 
   // Rapport de solde Stripe : consultation de détails -> tiroir latéral
@@ -765,6 +788,46 @@ export async function mount(container, params = {}) {
   // --- Menu Action "..." (Rembourser / Détails du paiement) ---
   const actionMenuEl = document.getElementById("payment-action-menu");
   let actionMenuTriggerBtn = null;
+  // Paiement et montants en attente pendant que la popup de choix est
+  // ouverte (voir openRefundChoiceModal) - consommé par le clic sur l'une
+  // des deux options.
+  let refundChoiceContext = null;
+
+  // Contenu de la popup "Choisir le montant à rembourser" : deux options
+  // explicites, jamais un choix fait à la place du marchand - voir le
+  // commentaire sur REFUND_CHOICE_MODAL_HTML. L'option "net" n'est montrée
+  // que si elle diffère réellement du brut (commission effectivement
+  // posée sur ce paiement) ; sinon les deux montants sont identiques et le
+  // choix n'a pas de sens.
+  function refundChoiceBodyHtml(t) {
+    const currency = t.currency_gross ?? "USD";
+    const gross = t.amount_gross ?? 0;
+    const net = t.amount_net_merchant;
+    const hasNetOption = net != null && net < gross;
+    const netOptionHtml = hasNetOption ? `
+      <button type="button" class="btn btn-export text-start p-3" id="refund-choice-net" style="border: 1px solid #d1d5db; border-radius: 10px;">
+        <div class="fw-bold">Rembourser le montant net reçu — ${formatMontant(net, currency)}</div>
+        <div class="text-muted small mt-1">Le client récupère ${formatMontant(net, currency)} au lieu de ${formatMontant(gross, currency)} — la commission Xepay reste à sa charge. Votre solde Stripe n'est pas affecté.</div>
+      </button>
+    ` : "";
+    return `
+      <p class="text-muted mb-3">La commission Xepay n'est jamais remboursée, quel que soit le choix ci-dessous — Stripe ne rend pas non plus son propre frais de traitement sur un remboursement.</p>
+      <div class="d-flex flex-column gap-2">
+        <button type="button" class="btn btn-export text-start p-3" id="refund-choice-full" style="border: 1px solid #d1d5db; border-radius: 10px;">
+          <div class="fw-bold">Rembourser le montant total — ${formatMontant(gross, currency)}</div>
+          <div class="text-muted small mt-1">Le client récupère l'intégralité de son paiement. Votre solde Stripe absorbe la commission non rendue (régularisé sur votre prochain versement).</div>
+        </button>
+        ${netOptionHtml}
+      </div>
+    `;
+  }
+
+  function openRefundChoiceModal(paymentId, t) {
+    if (!paymentId || !t) return;
+    document.getElementById("refund-choice-body").innerHTML = refundChoiceBodyHtml(t);
+    refundChoiceContext = { paymentId, t };
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("refundChoiceModal")).show();
+  }
 
   function closeActionMenu() {
     actionMenuEl.classList.remove("open");
@@ -815,14 +878,16 @@ export async function mount(container, params = {}) {
     if (event.key === "Escape") closeActionMenu();
   });
 
-  async function refundPayment(paymentId, amount, currency) {
-    if (!confirm(
-      `Confirmer le remboursement du paiement de ${amount} ${currency} ?`
-    )) return;
+  // amountCents : omis (undefined) = rembourse tout le montant restant
+  // (comportement par défaut du backend) ; posé = rembourse exactement ce
+  // montant, en centimes (voir openRefundChoiceModal, option "net").
+  async function refundPayment(paymentId, amountCents) {
     try {
+      const body = {};
+      if (amountCents) body.amount = amountCents;
       const res = await apiFetch(
         `/payments/${encodeURIComponent(paymentId)}/refund`,
-        { method: "POST", body: {} }
+        { method: "POST", body }
       );
       const data = await res.json();
       if (!res.ok) {
@@ -938,10 +1003,23 @@ export async function mount(container, params = {}) {
         showToast("Identifiant du paiement introuvable", "error");
         return;
       }
-      refundPayment(paymentId, triggerBtn.dataset.amount, triggerBtn.dataset.currency || "USD");
+      openRefundChoiceModal(paymentId, t);
     } else if (item.dataset.action === "details") {
       if (!t) return;
       showPaymentDetails(t);
+    }
+  });
+  on(document.getElementById("refundChoiceModal"), "click", (event) => {
+    if (!refundChoiceContext) return;
+    const { paymentId, t } = refundChoiceContext;
+    if (event.target.closest("#refund-choice-full")) {
+      bootstrap.Modal.getInstance(document.getElementById("refundChoiceModal"))?.hide();
+      refundChoiceContext = null;
+      refundPayment(paymentId);
+    } else if (event.target.closest("#refund-choice-net")) {
+      bootstrap.Modal.getInstance(document.getElementById("refundChoiceModal"))?.hide();
+      refundChoiceContext = null;
+      refundPayment(paymentId, Math.round((t.amount_net_merchant ?? 0) * 100));
     }
   });
   on(document.getElementById("close-payment-details"), "click", () => {
@@ -1335,6 +1413,17 @@ export async function mount(container, params = {}) {
         document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
       }
       stripeReportModalEl?.remove();
+      const refundChoiceModalEl = document.getElementById("refundChoiceModal");
+      const refundChoiceModalInstance = refundChoiceModalEl && bootstrap.Modal.getInstance(refundChoiceModalEl);
+      if (refundChoiceModalInstance) {
+        refundChoiceModalInstance.hide();
+        refundChoiceModalInstance.dispose();
+        document.body.classList.remove("modal-open");
+        document.body.style.removeProperty("overflow");
+        document.body.style.removeProperty("padding-right");
+        document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
+      }
+      refundChoiceModalEl?.remove();
       document.getElementById("payment-action-menu")?.remove();
       if (statusChart) statusChart.destroy();
       boundListeners.forEach(({ target, type, fn }) => target.removeEventListener(type, fn));
