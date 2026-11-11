@@ -374,6 +374,7 @@ def process_invoice_paid_event(
         status=payment_status,
         created_at=created_at,
         source=source,
+        charge_type="direct",
         stripe_metadata=stripe_metadata or None,
         stripe_account_id=connected_account_id,
         stripe_payment_intent_id=intent.id,
@@ -1748,16 +1749,22 @@ def list_merchant_risk(
             )
         ]
 
-        # Paiements par lien (destination charge) : la vraie charge, avec
-        # son évaluation de risque, vit sur la PLATEFORME - jamais
-        # stripe_account= ici. Retrouvée via Payment.charge_id (déjà
-        # stocké à la création du paiement), pas via stripe_account=.
+        # Paiements par lien EN DESTINATION CHARGE uniquement : la vraie
+        # charge, avec son évaluation de risque, vit sur la PLATEFORME -
+        # jamais stripe_account= ici. Retrouvée via Payment.charge_id (déjà
+        # stocké à la création du paiement), pas via stripe_account=. Les
+        # liens en direct charge sont déjà inclus dans direct_charges
+        # ci-dessus (charge réelle sur le compte connecté, pas un miroir
+        # "stripe_account") - les exclure ici évite un Charge.retrieve voué
+        # à l'échec (charge introuvable côté plateforme pour ceux-là) et un
+        # doublon.
         link_payments = (
             db.query(Payment)
             .filter(
                 Payment.user_id == membership.workspace_id,
                 Payment.link_id.isnot(None),
                 Payment.charge_id.isnot(None),
+                Payment.charge_type != "direct",
             )
             .order_by(Payment.created_at.desc())
             .limit(100)

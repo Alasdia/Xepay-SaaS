@@ -46,46 +46,67 @@ def create_checkout_session(
         # la création de cette session et le règlement du paiement).
         commission_rate = commission_service.resolve_commission_rate(db, merchant.id)
         application_fee_amount = int(Decimal(amount_cents) * commission_rate)
-        session = stripe.checkout.Session.create(
-            mode=mode,
-            customer_email=None,
-            payment_intent_data={
-                "application_fee_amount": application_fee_amount,
-                "transfer_data": {
-                    "destination": stripe_account_id
+        # Direct charge (2026-11-12) : la Checkout Session est créée sur le
+        # compte connecté du marchand (stripe_account=) au lieu de la
+        # plateforme - le PaymentIntent/Charge y vivent directement, le reçu
+        # Stripe sort au nom du marchand (son settings.branding), plus de
+        # Xepay. transfer_data/on_behalf_of retirés : propres aux
+        # destination charges (l'ancien modèle), Stripe les refuse sur un
+        # direct charge. application_fee_amount reste identique - c'est lui
+        # qui fait encore de Xepay le bénéficiaire de la commission, direct
+        # charge ou pas. Même principe déjà en place pour les factures/
+        # abonnements (create_connect_invoice ci-dessous, stripe_account=
+        # déjà utilisé là) - voir aussi webhook/paiement.py et payout.py, mis
+        # à jour pour lire Payment.charge_type plutôt que de supposer le
+        # type de charge depuis link_id.
+        try:
+            session = stripe.checkout.Session.create(
+                mode=mode,
+                customer_email=None,
+                payment_intent_data={
+                    "application_fee_amount": application_fee_amount,
+                      "metadata": {
+                        "source": "xepay",
+                        "payment_type": "payment_link",
+                        "link_id": str(link.id),
+                        "merchant_id": str(merchant.id),
+                        "user_id": str(user_id),
+                        "stripe_account_id": str(stripe_account_id),
+                        "commission_rate_applied": str(commission_rate),
+                    }
                 },
-                "on_behalf_of": stripe_account_id,
-                  "metadata": {
+                metadata={
                     "source": "xepay",
                     "payment_type": "payment_link",
+                    "user_id": str(user_id),
                     "link_id": str(link.id),
                     "merchant_id": str(merchant.id),
-                    "user_id": str(user_id),
-                    "stripe_account_id": str(stripe_account_id),
-                    "commission_rate_applied": str(commission_rate),
-                }
-            },
-            metadata={
-                "source": "xepay",
-                "payment_type": "payment_link",
-                "user_id": str(user_id),
-                "link_id": str(link.id),
-                "merchant_id": str(merchant.id),
-                "stripe_account_id": str(stripe_account_id)
-            },
-            line_items=[{
-                "price_data": {
-                    "currency": currency.lower(),
-                    "product_data": {
-                        "name": "Paiement Xepay",
-                    },
-                    "unit_amount": amount_cents,
+                    "stripe_account_id": str(stripe_account_id)
                 },
-                "quantity": 1,
-            }],
-            success_url="https://app.xepay.finance/success.html",
-            cancel_url="https://app.xepay.finance/cancel.html",
-        )
+                line_items=[{
+                    "price_data": {
+                        "currency": currency.lower(),
+                        "product_data": {
+                            "name": "Paiement Xepay",
+                        },
+                        "unit_amount": amount_cents,
+                    },
+                    "quantity": 1,
+                }],
+                success_url="https://app.xepay.finance/success.html",
+                cancel_url="https://app.xepay.finance/cancel.html",
+                stripe_account=stripe_account_id,
+            )
+        except stripe.error.StripeError as e:
+            # Le cas attendu en pratique : le compte connecté n'a pas (ou pas
+            # encore) la capacité card_payments active - un direct charge
+            # l'exige, contrairement à l'ancien destination charge (qui ne
+            # demandait que transfers). Message explicite plutôt que de
+            # laisser remonter l'erreur Stripe brute telle quelle.
+            raise Exception(
+                f"Impossible de créer le paiement sur le compte connecté "
+                f"({stripe_account_id}) : {e.user_message or str(e)}"
+            )
         return session.url
     elif mode == "subscription":
         price_map = {

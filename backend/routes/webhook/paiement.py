@@ -46,11 +46,16 @@ SETTLEMENT_RETRY_DELAYS_SECONDS = [2, 3, 5, 8, 10, 15, 20, 20, 20, 20, 20, 20, 2
 MAX_SETTLEMENT_ATTEMPTS = len(SETTLEMENT_RETRY_DELAYS_SECONDS) + 1
 
 
-def _fetch_settled_charge_data(charge_id):
+def _fetch_settled_charge_data(charge_id, stripe_account=None):
     """Relit le Charge et sa BalanceTransaction jusqu'à ce que les deux
     soient disponibles (balance_transaction est strictement requis, le
     calcul du montant/commission/frais Stripe en dépend tous les trois -
     voir process_checkout_session_payment).
+
+    stripe_account : compte connecté sur lequel vit CE Charge pour un
+    paiement par lien en direct charge (voir Payment.charge_type) - None
+    pour un destination charge, où Charge/BalanceTransaction vivent côté
+    plateforme, exactement comme avant ce champ.
 
     Ne bloque plus en plus sur application_fee une fois balance_tx trouvée
     (la commission Xepay venant de ApplicationFee.
@@ -62,12 +67,13 @@ def _fetch_settled_charge_data(charge_id):
     stripe_fee_amount/available_at et application_fee_requested dès que
     Stripe a fini de les régler, sans sondage, et recalculent
     balance_transaction_net dès que les deux valeurs sont connues."""
+    stripe_kwargs = {"stripe_account": stripe_account} if stripe_account else {}
     charge_dict = None
     balance_tx = None
     for attempt in range(MAX_SETTLEMENT_ATTEMPTS):
-        charge = stripe.Charge.retrieve(charge_id)
+        charge = stripe.Charge.retrieve(charge_id, **stripe_kwargs)
         charge_dict = charge.to_dict()
-        balance_txs = stripe.BalanceTransaction.list(source=charge_id, limit=1)
+        balance_txs = stripe.BalanceTransaction.list(source=charge_id, limit=1, **stripe_kwargs)
         if balance_txs.data:
             balance_tx = balance_txs.data[0]
             break
@@ -76,10 +82,39 @@ def _fetch_settled_charge_data(charge_id):
     return charge_dict, balance_tx
 
 
-def process_checkout_session_payment(session_dict, user_id, link_id, reference_key, pi_id, event_type):
+def _resolve_stripe_fee_amount(charge_id, connected_account_id, destination_balance_tx):
+    """Frais Stripe réel de CETTE charge, en USD.
+
+    Destination charge (connected_account_id=None, paiement par lien à
+    l'ancien modèle) : balance_tx.fee de la charge EST le frais Stripe -
+    inchangé, comportement historique de ce webhook.
+
+    Direct charge (connected_account_id posé) : balance_tx.fee de la
+    charge, côté compte connecté, ne porte QUE l'ApplicationFee (fee=0 pour
+    la part Stripe) - ce projet a fees_collector="application" (voir
+    account_configuration, routes/users.py), donc le vrai frais Stripe est
+    une BalanceTransaction séparée, type "stripe_fee", côté solde de la
+    PLATEFORME (jamais de stripe_account ici), source=charge_id. Même
+    recherche déjà faite et confirmée en prod pour les factures/
+    abonnements - voir process_invoice_paid_event, webhook/stripe.py."""
+    if not connected_account_id:
+        return destination_balance_tx.fee / 100 if destination_balance_tx else None
+    platform_txs = stripe.BalanceTransaction.list(source=charge_id, limit=10)
+    stripe_fee_tx = next((t for t in platform_txs.data if t.type == "stripe_fee"), None)
+    return abs(stripe_fee_tx.amount) / 100 if stripe_fee_tx else None
+
+
+def process_checkout_session_payment(session_dict, user_id, link_id, reference_key, pi_id, event_type, connected_account_id=None):
     """Traite, après que la réponse HTTP ait déjà été renvoyée à Stripe, la
     part de checkout.session.completed qui dépend du règlement Stripe.
     Exécutée comme tâche de fond (thread pool, pas l'event loop).
+
+    connected_account_id : event.account du webhook Stripe - posé quand ce
+    paiement par lien est un direct charge (voir stripe_service.py,
+    create_checkout_session), None pour un destination charge (ancien
+    modèle, PaymentIntent/Charge côté plateforme). Détermine Payment.
+    charge_type et si les relectures Stripe ci-dessous ont besoin de
+    stripe_account=.
 
     La BalanceTransaction du Charge est retrouvée via
     stripe.BalanceTransaction.list(source=charge.id) plutôt que via le champ
@@ -98,7 +133,8 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
         if existing_tx:
             return
 
-        intent = stripe.PaymentIntent.retrieve(pi_id) if pi_id else None
+        stripe_kwargs = {"stripe_account": connected_account_id} if connected_account_id else {}
+        intent = stripe.PaymentIntent.retrieve(pi_id, **stripe_kwargs) if pi_id else None
         if intent and not intent.latest_charge:
             raise Exception("payment_intent_without_charge_yet")
 
@@ -114,7 +150,7 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
 
         if intent and intent.latest_charge:
             charge_id = intent.latest_charge
-            charge_dict, balance_tx = _fetch_settled_charge_data(intent.latest_charge)
+            charge_dict, balance_tx = _fetch_settled_charge_data(intent.latest_charge, stripe_account=connected_account_id)
             payment_method_details = charge_dict.get("payment_method_details", {})
             card_info = payment_method_details.get("card", {})
             card_brand = card_info.get("brand")
@@ -161,16 +197,18 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
                 #   requested - stripe_fee_amount). Peut encore être None
                 #   ici si pas disponible à temps, application_fee.created
                 #   la corrigera alors.
-                # - frais Stripe = balance_tx.fee, celle DE LA CHARGE
-                #   elle-même (_fetch_settled_charge_data la retrouve par
-                #   source=charge_id) - c'est elle qui porte le vrai frais
-                #   de traitement carte, jamais celle de l'ApplicationFee.
+                # - frais Stripe : balance_tx.fee de la charge pour un
+                #   destination charge (comportement historique) ; pour un
+                #   direct charge, cette même balance_tx (côté compte
+                #   connecté) ne porte que l'ApplicationFee - le vrai frais
+                #   Stripe est une BalanceTransaction séparée côté
+                #   plateforme (voir _resolve_stripe_fee_amount).
                 # - net marchand = brut - commission globale (déjà réglé
                 #   par Stripe au Connect : amount - application_fee_amount)
                 #   - PAS brut - commission globale - frais Stripe, qui
                 #   soustrairait le frais Stripe deux fois puisqu'il est
                 #   déjà inclus dans la commission globale.
-                stripe_fee_amount = balance_tx.fee / 100
+                stripe_fee_amount = _resolve_stripe_fee_amount(charge_id, connected_account_id, balance_tx)
                 if application_fee_requested is not None:
                     balance_transaction_net = round(amount_usd - application_fee_requested, 2)
                 available_on = balance_tx.available_on
@@ -267,6 +305,7 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             status="paid",
             link_id=link_id,
             source="link",
+            charge_type="direct" if connected_account_id else "destination",
             stripe_metadata=intent.metadata.to_dict() if intent and intent.metadata else None,
             stripe_session_id=session_dict.get("id"),
             stripe_account_id=profile.stripe_account_id,
@@ -511,6 +550,7 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
             if not balance_transaction_id:
                 return {"status": "ignored"}
             pi_id = object_data.payment_intent
+            connected_account_id = event.account
             payment = (
                 db.query(Payment)
                 .filter(Payment.stripe_payment_intent_id == pi_id)
@@ -518,13 +558,17 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
             )
             if not payment:
                 return {"status": "ignored"}
+            stripe_kwargs = {"stripe_account": connected_account_id} if connected_account_id else {}
             try:
-                balance_tx = stripe.BalanceTransaction.retrieve(balance_transaction_id)
+                balance_tx = stripe.BalanceTransaction.retrieve(balance_transaction_id, **stripe_kwargs)
             except stripe.error.StripeError as e:
                 print(f"⚠️ BalanceTransaction.retrieve a échoué pour {balance_transaction_id} (pi={pi_id}): {e}")
                 return {"status": "ok"}
             amount_usd = balance_tx.amount / 100
-            stripe_fee_amount = balance_tx.fee / 100
+            # Voir _resolve_stripe_fee_amount : en direct charge, le frais
+            # Stripe réel n'est pas sur CETTE balance_transaction (qui ne
+            # porte que l'ApplicationFee côté compte connecté).
+            stripe_fee_amount = _resolve_stripe_fee_amount(payment.charge_id, connected_account_id, balance_tx)
             payment.stripe_fee_amount = stripe_fee_amount
             # application_fee_requested vient désormais de l'event dédié
             # application_fee.created (ApplicationFee.balance_transaction.
@@ -592,9 +636,15 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
             # toute la suite dépendante en est différée en tâche de fond
             # (process_checkout_session_payment) pour ne plus bloquer l'event
             # loop pendant l'attente, et on répond déjà "ok" à Stripe.
+            # event.account : posé quand cette session est un direct charge
+            # (voir stripe_service.py) - None pour un destination charge
+            # (ancien modèle). Déterminant pour Payment.charge_type et
+            # toutes les relectures Stripe dans process_checkout_session_
+            # payment (PaymentIntent/Charge/BalanceTransaction ont alors
+            # besoin de stripe_account=).
             background_tasks.add_task(
                 process_checkout_session_payment,
-                session_dict, user_id, link_id, reference_key, pi_id, event_type
+                session_dict, user_id, link_id, reference_key, pi_id, event_type, event.account
             )
             return {"status": "ok"}
     except Exception as e:

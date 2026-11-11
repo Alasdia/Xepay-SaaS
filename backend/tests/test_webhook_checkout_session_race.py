@@ -379,6 +379,15 @@ class TestProcessCheckoutSessionPaymentRace(unittest.TestCase):
         db.close()
 
 
+class _FakeStripeEvent(dict):
+    """Un vrai stripe.Event supporte à la fois l'accès dict (event["type"])
+    et l'accès attribut (event.account, toujours présent sur la classe,
+    None si l'événement ne vient pas d'un compte connecté) - un dict nu ne
+    supporte que le premier. account=None par défaut : événement
+    plateforme (destination charge), pas un compte connecté."""
+    account = None
+
+
 class TestCheckoutSessionWebhookRoute(unittest.TestCase):
     """Vérifie que la route répond immédiatement et délègue le traitement
     dépendant du règlement Stripe à la tâche de fond, sans jamais
@@ -396,7 +405,7 @@ class TestCheckoutSessionWebhookRoute(unittest.TestCase):
     def test_schedules_background_task_and_returns_ok_immediately(
         self, mock_construct_event, mock_pi_retrieve, mock_process,
     ):
-        mock_construct_event.return_value = {
+        mock_construct_event.return_value = _FakeStripeEvent({
             "id": "evt_1",
             "type": "checkout.session.completed",
             "data": {
@@ -411,7 +420,7 @@ class TestCheckoutSessionWebhookRoute(unittest.TestCase):
                     },
                 )
             },
-        }
+        })
 
         res = self.client.post(
             "/webhook/payment",
@@ -422,6 +431,10 @@ class TestCheckoutSessionWebhookRoute(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json(), {"status": "ok"})
         mock_process.assert_called_once()
+        # event.account propagé jusqu'à la tâche de fond (None ici : la
+        # session simulée n'est pas un direct charge) - voir
+        # process_checkout_session_payment et Payment.charge_type.
+        self.assertIsNone(mock_process.call_args.args[-1])
         # La partie synchrone ne doit plus jamais aller chercher le
         # PaymentIntent/Charge elle-même : c'est désormais la responsabilité
         # exclusive de la tâche de fond.

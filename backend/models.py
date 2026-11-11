@@ -697,6 +697,17 @@ class Payment(Base):
     # avant l'ajout de ce champ (toujours des paiements par lien a cette
     # epoque, mais pas devine ici - voir PAYMENT_SOURCE_LABELS cote API).
     source = Column(String, nullable=True)
+    # "destination" ou "direct" - type de charge Stripe réellement utilisé
+    # pour CE paiement, posé explicitement à la création (jamais déduit de
+    # link_id/source : un paiement par lien peut être l'un ou l'autre depuis
+    # le passage des liens en direct charge, voir stripe_service.py). Seul
+    # signal fiable pour savoir si les appels Stripe de relecture
+    # (PaymentIntent/Charge/BalanceTransaction) ont besoin de stripe_account=
+    # - voir routes/webhook/paiement.py et routes/payout.py (remboursement).
+    # Backfillé sur les lignes antérieures à ce champ par la migration
+    # d9efd7c7893e (link_id rempli -> "destination", sinon "direct" -
+    # exact à 100% pour tout ce qui existait avant ce changement).
+    charge_type = Column(String, nullable=True)
     # metadata du PaymentIntent Stripe qui a regle ce paiement (deja
     # recupere en memoire dans les deux flux de creation, aucun appel
     # Stripe supplementaire) - nomme stripe_metadata (pas "metadata",
