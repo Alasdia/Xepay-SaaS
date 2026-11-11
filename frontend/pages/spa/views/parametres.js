@@ -1427,7 +1427,10 @@ function stripeBrandingPanelHtml() {
       <div class="branding-field">
         <label>Icône (carrée)</label>
         <div class="branding-preview-row">
-          <img id="branding-icon-preview" src="${iconUrl || ""}" style="${iconUrl ? "" : "display:none;"}" alt="Icône">
+          <div class="branding-preview-box">
+            <img id="branding-icon-preview" src="${iconUrl || ""}" style="${iconUrl ? "" : "display:none;"}" alt="Icône">
+            <div class="branding-preview-placeholder" id="branding-icon-preview-placeholder" style="${iconUrl ? "display:none;" : ""}"><i class="fa-solid fa-image"></i></div>
+          </div>
           <button type="button" class="branding-file-btn" id="branding-icon-choose-btn">Choisir un fichier</button>
           <span class="branding-file-name" id="branding-icon-filename">Aucun fichier choisi</span>
           <input type="file" id="branding-icon-input" accept="image/png,image/jpeg" class="branding-file-input-hidden">
@@ -1437,7 +1440,10 @@ function stripeBrandingPanelHtml() {
       <div class="branding-field">
         <label>Logo</label>
         <div class="branding-preview-row">
-          <img id="branding-logo-preview" src="${logoUrl || ""}" style="${logoUrl ? "" : "display:none;"}" alt="Logo">
+          <div class="branding-preview-box">
+            <img id="branding-logo-preview" src="${logoUrl || ""}" style="${logoUrl ? "" : "display:none;"}" alt="Logo">
+            <div class="branding-preview-placeholder" id="branding-logo-preview-placeholder" style="${logoUrl ? "display:none;" : ""}"><i class="fa-solid fa-image"></i></div>
+          </div>
           <button type="button" class="branding-file-btn" id="branding-logo-choose-btn">Choisir un fichier</button>
           <span class="branding-file-name" id="branding-logo-filename">Aucun fichier choisi</span>
           <input type="file" id="branding-logo-input" accept="image/png,image/jpeg" class="branding-file-input-hidden">
@@ -1500,11 +1506,12 @@ function wireBrandingColorInput(id) {
   });
 }
 
-function wireBrandingFileChoice(chooseBtnId, inputId, filenameId, previewId, onFile) {
+function wireBrandingFileChoice(chooseBtnId, inputId, filenameId, previewId, placeholderId, onFile) {
   const chooseBtn = document.getElementById(chooseBtnId);
   const input = document.getElementById(inputId);
   const filenameEl = document.getElementById(filenameId);
   const previewEl = document.getElementById(previewId);
+  const placeholderEl = document.getElementById(placeholderId);
   chooseBtn.addEventListener("click", () => input.click());
   input.addEventListener("change", async () => {
     const file = input.files && input.files[0];
@@ -1514,6 +1521,7 @@ function wireBrandingFileChoice(chooseBtnId, inputId, filenameId, previewId, onF
       const previewSrc = await onFile(file);
       previewEl.src = previewSrc;
       previewEl.style.display = "";
+      placeholderEl.style.display = "none";
     } catch (error) {
       showToast(error.message || "Image invalide", "error");
       input.value = "";
@@ -1533,11 +1541,11 @@ function wireStripeBrandingPanel() {
   let pendingIconBlob = null;
   let pendingLogoFile = null;
 
-  wireBrandingFileChoice("branding-icon-choose-btn", "branding-icon-input", "branding-icon-filename", "branding-icon-preview", async (file) => {
+  wireBrandingFileChoice("branding-icon-choose-btn", "branding-icon-input", "branding-icon-filename", "branding-icon-preview", "branding-icon-preview-placeholder", async (file) => {
     pendingIconBlob = await padImageToSquare(file);
     return URL.createObjectURL(pendingIconBlob);
   });
-  wireBrandingFileChoice("branding-logo-choose-btn", "branding-logo-input", "branding-logo-filename", "branding-logo-preview", async (file) => {
+  wireBrandingFileChoice("branding-logo-choose-btn", "branding-logo-input", "branding-logo-filename", "branding-logo-preview", "branding-logo-preview-placeholder", async (file) => {
     pendingLogoFile = file;
     return URL.createObjectURL(file);
   });
