@@ -434,41 +434,19 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
                         })
             return {"status": "ok"}
         elif event_type == "charge.refunded":
-            charge_id = object_data["id"]
             pi_id = object_data.payment_intent
             connected_account_id = event.account
 
-            # Rembourse la part d'Application Fee correspondant au montant
-            # déjà remboursé sur ce charge (object_data.amount_refunded est
-            # cumulatif, pas seulement ce dernier remboursement). Calculé en
-            # comparant à ce que l'ApplicationFee a déjà rendu
-            # (fee_obj.amount_refunded) plutôt qu'en se fiant à qui a
-            # déclenché ce remboursement : si refund_application_fee=True
-            # (paiement par lien) ou POST /payments/{id}/refund (facture/
-            # abonnement) l'ont déjà fait, la différence calculée ici tombe
-            # à 0 et ce bloc ne fait rien — couvre donc aussi, sans double
-            # remboursement, un remboursement fait directement depuis le
-            # dashboard Stripe (jamais vu par notre code sinon).
-            fee_id = getattr(object_data, "application_fee", None)
-            if fee_id:
-                try:
-                    app_fee_amount = getattr(object_data, "application_fee_amount", None) or 0
-                    charge_amount = getattr(object_data, "amount", None) or 0
-                    amount_refunded = getattr(object_data, "amount_refunded", None) or 0
-                    if app_fee_amount and charge_amount:
-                        target_fee_refunded = int(app_fee_amount * amount_refunded / charge_amount)
-                        fee_obj = stripe.ApplicationFee.retrieve(fee_id)
-                        already_refunded = getattr(fee_obj, "amount_refunded", 0) or 0
-                        fee_refund_amount = target_fee_refunded - already_refunded
-                        if fee_refund_amount > 0:
-                            stripe.ApplicationFee.create_refund(
-                                fee_id, amount=fee_refund_amount
-                            )
-                except stripe.error.StripeError as e:
-                    print(
-                        f"⚠️ ApplicationFee.create_refund a échoué pour fee_id={fee_id} "
-                        f"(charge={charge_id}): {e}"
-                    )
+            # Politique (2026-11-12) : la commission Xepay (ApplicationFee)
+            # n'est jamais remboursée, sur aucun flux (lien, facture,
+            # abonnement) ni aucun type de charge (direct ou destination) -
+            # alignée sur Stripe, qui ne rend jamais son propre stripe_fee
+            # (confirmé : aucune transaction ne l'annule jamais). Ancien
+            # comportement retiré : ce bloc rattrapait un remboursement de
+            # commission resté partiel (ou absent) après coup - devenu sans
+            # objet puisqu'il ne doit justement plus jamais y en avoir. Voir
+            # payout.py (POST /payments/{id}/refund, même politique) et la
+            # section "Remboursements" des conditions d'utilisation.
 
             payment = (
                 db.query(Payment)
