@@ -7678,10 +7678,71 @@ function financialAccountActiveHtml(financialAccount) {
             </div>
         ` : ""}
         <div class="table-title mb-2">Ajouter des fonds (test)</div>
-        <div class="commerce-card">
+        <div class="commerce-card mb-4">
             <div class="fa-funding-row">
                 <input type="number" id="fa-funding-amount" min="1" max="5000" step="0.01" placeholder="Montant (USD)">
                 <button type="button" class="create-client-btn" id="fa-funding-btn">Ajouter des fonds (test)</button>
+            </div>
+        </div>
+        <div id="fa-transactions-table"></div>
+    `;
+}
+
+// Mêmes libellés français que ISSUING_TX_TYPE_LABELS (vue Émission de
+// carte) côté intention - vocabulaire Treasury différent (flow_type, pas
+// type), jamais le même dictionnaire.
+const FA_FLOW_TYPE_LABELS = {
+    received_credit: "Financement reçu",
+    received_debit: "Débit reçu",
+    outbound_transfer: "Virement sortant (mon compte)",
+    outbound_payment: "Paiement sortant (tiers)",
+    inbound_transfer: "Virement entrant",
+    credit_reversal: "Annulation de crédit",
+    debit_reversal: "Annulation de débit",
+};
+
+function renderFinancialAccountTransactions(tableEl, transactions) {
+    if (!transactions.length) {
+        tableEl.innerHTML = `
+            <div class="commerce-card">
+                <p>Aucune transaction pour le moment.</p>
+            </div>
+        `;
+        return;
+    }
+
+    tableEl.innerHTML = `
+        <div class="table-wrap">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <div class="table-title">Transactions</div>
+                    <div class="page-subtitle">${transactions.length} transaction(s)</div>
+                </div>
+            </div>
+            <div id="fa-transactions-scroll-box">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Montant</th>
+                            <th>Statut</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${transactions.map((t) => `
+                            <tr>
+                                <td>${FA_FLOW_TYPE_LABELS[t.flow_type] || t.flow_type || "—"}</td>
+                                <td>
+                                    <span class="amount-cell">${t.amount < 0 ? "-" : "+"}${(Math.abs(t.amount) / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span class="amount-currency">${(t.currency || "").toUpperCase()}</span>
+                                </td>
+                                <td>${t.status}</td>
+                                <td>${formatDate(t.created)}</td>
+                            </tr>
+                        `).join("")}
+                    </tbody>
+                </table>
             </div>
         </div>
     `;
@@ -7734,6 +7795,19 @@ async function renderFinancialAccounts(container) {
 
     content.innerHTML = financialAccountActiveHtml(fa);
 
+    const transactionsTable = content.querySelector("#fa-transactions-table");
+    async function reloadTransactions() {
+        try {
+            const txRes = await apiFetch("/treasury/financial-account/transactions");
+            const txData = await txRes.json();
+            if (!txRes.ok) throw new Error(txData.detail || "Impossible de récupérer les transactions");
+            renderFinancialAccountTransactions(transactionsTable, txData.transactions || []);
+        } catch (error) {
+            transactionsTable.innerHTML = `<div class="commerce-card"><p>${error.message || "Erreur lors du chargement des transactions"}</p></div>`;
+        }
+    }
+    await reloadTransactions();
+
     const fundingBtn = content.querySelector("#fa-funding-btn");
     fundingBtn.addEventListener("click", async () => {
         const amountEl = content.querySelector("#fa-funding-amount");
@@ -7750,6 +7824,7 @@ async function renderFinancialAccounts(container) {
             if (!response.ok) throw new Error(data.detail || "Impossible d'ajouter les fonds");
             showToast("Financement de test envoyé", "success");
             amountEl.value = "";
+            await reloadTransactions();
         } catch (error) {
             showToast(error.message || "Erreur lors du financement", "error");
         } finally {
