@@ -7719,7 +7719,7 @@ function renderFinancialAccountTransactions(tableEl, transactions) {
                     <div class="page-subtitle">${transactions.length} transaction(s)</div>
                 </div>
             </div>
-            <div id="fa-transactions-scroll-box">
+            <div id="customers-scroll-box">
                 <table class="table">
                     <thead>
                         <tr>
