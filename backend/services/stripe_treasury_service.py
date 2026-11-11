@@ -156,8 +156,57 @@ def simulate_received_credit(
             "currency": currency,
             "financial_account": financial_account_id,
             "network": network,
-            "description": "Xepay test Treasury",
+            # 10 caractères max pour le réseau ACH - confirmé en direct le
+            # 2026-11-12 ("Description must be at most 10 characters long
+            # for ACH transfers."), jamais documenté à l'avance, une
+            # chaîne plus longue ("Xepay test Treasury") faisait échouer
+            # CHAQUE financement de test.
+            "description": "XepayTest",
         },
         options=options,
     )
     return received_credit.to_dict()
+
+
+def list_cardholders(account_id: str) -> list[dict]:
+    """Cardholders DÉJÀ existants sur ce compte Issuing (créés via le
+    flux classique /issuing/create-virtual-card, routes/issuing.py) -
+    jamais recréés ici : une carte financée par le compte financier
+    (Phase 3) réutilise un cardholder existant, elle n'en crée jamais un
+    nouveau (évite de dupliquer toute la logique de conformité/ToS déjà
+    en place dans create_virtual_card). stripe.issuing.Card/Cardholder
+    sont des classes statiques du SDK (pas StripeClient ici, contrairement
+    au reste de ce module - mêmes ressources que stripe_issuing_service.py)."""
+    cardholders = stripe.issuing.Cardholder.list(limit=50, stripe_account=account_id)
+    return [
+        {"id": c.id, "name": c.name, "email": c.email, "status": c.status}
+        for c in cardholders.data
+    ]
+
+
+def create_card_funded_by_financial_account(
+    account_id: str,
+    financial_account_id: str,
+    cardholder_id: str,
+    currency: str,
+    limit_amount_cents: int,
+) -> dict:
+    """Carte financée par le compte financier (financial_account=), par
+    opposition au solde Issuing classique (create_virtual_card,
+    routes/issuing.py - jamais modifiée pour cette fonctionnalité). Les
+    deux types de cartes coexistent sur le même compte Connect : c'est le
+    paramètre financial_account à la création qui fixe, pour toujours,
+    quel solde une carte donnée utilise - rien ne les fait changer de
+    solde après coup (voir docs.stripe.com/treasury/account-management/
+    issuing-cards, confirmé dans la conversation)."""
+    card = stripe.issuing.Card.create(
+        cardholder=cardholder_id,
+        financial_account=financial_account_id,
+        currency=currency,
+        type="virtual",
+        spending_controls={
+            "spending_limits": [{"amount": limit_amount_cents, "interval": "per_authorization"}]
+        },
+        stripe_account=account_id,
+    )
+    return card.to_dict()

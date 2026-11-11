@@ -104,6 +104,11 @@ def list_virtual_cards(
                 "currency": card.currency,
                 "status": card.status,
                 "type": card.type,
+                # None = carte classique (solde Issuing du compte) ; sinon
+                # l'id du compte financier Treasury qui la finance - champ
+                # purement additif (voir conversation du 2026-11-12,
+                # Phase 3), ne change rien pour les cartes déjà existantes.
+                "financial_account": card.financial_account,
                 "cardholder_name": card.cardholder.name if card.cardholder else None,
                 "cardholder_email": card.cardholder.email if card.cardholder else None,
                 # Extraction explicite, champ par champ - passer les objets

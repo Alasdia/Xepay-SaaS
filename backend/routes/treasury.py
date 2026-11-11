@@ -291,3 +291,96 @@ def create_test_funding(
     db.commit()
 
     return {"received_credit_id": received_credit["id"], "status": received_credit.get("status")}
+
+
+@router.get("/treasury/financial-account/cardholders")
+def list_financial_account_cardholders(
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("manage_virtual_cards")),
+):
+    """Cardholders déjà existants sur le compte Issuing - pour choisir à
+    qui attacher une carte financée par le compte financier (voir
+    create_financial_account_card). Jamais de création de cardholder ici,
+    voir stripe_treasury_service.list_cardholders."""
+    _require_available()
+    logger = logging.getLogger(__name__)
+
+    profile = db.query(Profile).filter(Profile.user_id == membership.workspace_id).first()
+    account_id = _get_issuing_account_id(profile)
+
+    try:
+        cardholders = stripe_treasury_service.list_cardholders(account_id)
+    except stripe.error.StripeError as e:
+        _handle_stripe_error(logger, "liste des cardholders", account_id, e)
+
+    return {"cardholders": cardholders}
+
+
+@router.post("/treasury/financial-account/cards")
+def create_financial_account_card(
+    payload: dict,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("manage_virtual_cards")),
+):
+    """Carte financée par le compte financier (financial_account=) -
+    coexiste avec les cartes classiques (solde Issuing, /issuing/
+    create-virtual-card, jamais modifiée). Réutilise un cardholder déjà
+    existant (payload.cardholder_id) - ne crée jamais de cardholder ici,
+    pour ne jamais dupliquer la logique de conformité/ToS déjà en place
+    dans create_virtual_card (routes/issuing.py)."""
+    _require_available()
+    logger = logging.getLogger(__name__)
+
+    profile = db.query(Profile).filter(Profile.user_id == membership.workspace_id).first()
+    account_id = _get_issuing_account_id(profile)
+
+    if not profile.stripe_financial_account_id:
+        raise HTTPException(400, "Compte financier non créé - voir POST /treasury/financial-account/activate")
+
+    cardholder_id = payload.get("cardholder_id")
+    if not cardholder_id or not isinstance(cardholder_id, str):
+        raise HTTPException(400, "cardholder_id manquant")
+
+    limit_amount = payload.get("limit_amount")
+    if isinstance(limit_amount, bool) or not isinstance(limit_amount, (int, float)) or limit_amount <= 0:
+        raise HTTPException(400, "Plafond invalide")
+
+    # Vérifié AVANT tout appel de création (même logique que test-funding
+    # pour financial_addresses.aba) : card_issuing doit être actif sur CE
+    # compte financier, sinon Stripe refuserait la carte avec une erreur
+    # moins lisible.
+    try:
+        financial_account = stripe_treasury_service.get_financial_account(
+            account_id, profile.stripe_financial_account_id
+        )
+    except stripe.error.StripeError as e:
+        _handle_stripe_error(logger, "lecture compte financier (creation carte)", account_id, e)
+
+    if "card_issuing" not in (financial_account.get("active_features") or []):
+        raise HTTPException(
+            400,
+            "L'émission de carte n'est pas encore active sur ce compte financier - conformité à terminer.",
+        )
+
+    try:
+        # Vérifie que ce cardholder appartient bien à CE marchand avant
+        # toute création - même garde que create_card_ephemeral_key
+        # (routes/issuing.py) : empêche de cibler le cardholder d'un
+        # autre marchand en devinant son id.
+        stripe.issuing.Cardholder.retrieve(cardholder_id, stripe_account=account_id)
+
+        card = stripe_treasury_service.create_card_funded_by_financial_account(
+            account_id,
+            profile.stripe_financial_account_id,
+            cardholder_id,
+            "usd",
+            int(round(limit_amount * 100)),
+        )
+    except stripe.error.StripeError as e:
+        logger.error(
+            "Echec creation carte financee par le compte financier (compte=%s) : %s (request_id=%s)",
+            account_id, e.user_message or str(e), e.request_id,
+        )
+        raise HTTPException(502, "Impossible de créer la carte, réessayez plus tard.")
+
+    return {"card_id": card["id"], "status": card.get("status")}
