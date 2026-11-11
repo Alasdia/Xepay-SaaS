@@ -419,6 +419,7 @@ def list_financial_account_transactions(
                 "flow_type": t.get("flow_type"),
                 "created": t["created"],
                 "description": t.get("description"),
+                "financial_account": t.get("financial_account"),
             }
             for t in transactions
         ]
