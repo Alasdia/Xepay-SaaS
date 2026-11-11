@@ -7671,10 +7671,10 @@ function financialAccountActiveHtml(financialAccount) {
             <div class="commerce-card mb-4">
                 ${addresses.filter((a) => a.aba).map((a) => `
                     <div class="fa-address-row"><span>Banque</span><strong>${a.aba.bank_name || "—"}</strong></div>
-                    <div class="fa-address-row"><span>Compte</span><strong>•••• ${a.aba.account_number_last4 || "----"}</strong></div>
+                    <div class="fa-address-row"><span>Titulaire</span><strong>${a.aba.account_holder_name || "—"}</strong></div>
+                    <div class="fa-address-row"><span>Compte</span><strong>${a.aba.account_number || `•••• ${a.aba.account_number_last4 || "----"}`}</strong></div>
                     <div class="fa-address-row"><span>Routing</span><strong>${a.aba.routing_number || "—"}</strong></div>
                 `).join("")}
-                <p class="text-muted" style="font-size:12px;margin-top:10px;margin-bottom:0;">Derniers chiffres uniquement pour l'instant - affichage du numéro complet à confirmer (voir backend/services/stripe_treasury_service.py).</p>
             </div>
         ` : ""}
         <div class="table-title mb-2">Ajouter des fonds (test)</div>
