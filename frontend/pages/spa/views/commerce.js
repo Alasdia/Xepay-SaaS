@@ -6667,10 +6667,27 @@ function ensureCardIssuingStyles() {
         .issuing-card-limit {
             margin-top: 8px;
             font-size: 11px;
+            opacity: .85;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+        }
+        .issuing-card-limit span {
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+        .issuing-card-edit-limit-btn {
+            flex: 0 0 auto;
+            background: none;
+            border: none;
             opacity: .85;
+            cursor: pointer;
+            padding: 2px 4px;
+        }
+        .issuing-card-edit-limit-btn:hover {
+            opacity: 1;
         }
         .issuing-chart-wrap {
             position: relative;
@@ -6758,7 +6775,7 @@ function ensureCardIssuingStyles() {
     document.head.appendChild(style);
 }
 
-function renderCardsGrid(gridEl, cards, onCreateClick, onRevealClick) {
+function renderCardsGrid(gridEl, cards, onCreateClick, onRevealClick, onEditLimitClick) {
 
     if (!cards.length) {
         gridEl.innerHTML = `
@@ -6805,8 +6822,13 @@ function renderCardsGrid(gridEl, cards, onCreateClick, onRevealClick) {
                             </div>
                             ${limit ? `
                                 <div class="issuing-card-limit">
-                                    Plafond : ${(limit.amount / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    ${(card.currency || "").toUpperCase()} ${ISSUING_INTERVAL_LABELS[limit.interval] || limit.interval}
+                                    <span>
+                                        Plafond : ${(limit.amount / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        ${(card.currency || "").toUpperCase()} ${ISSUING_INTERVAL_LABELS[limit.interval] || limit.interval}
+                                    </span>
+                                    <button type="button" class="issuing-card-edit-limit-btn" data-card-id="${card.id}" data-current-amount="${limit.amount}" title="Modifier le plafond">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </button>
                                 </div>
                             ` : ""}
                         </div>
@@ -6818,6 +6840,10 @@ function renderCardsGrid(gridEl, cards, onCreateClick, onRevealClick) {
 
     gridEl.querySelectorAll(".issuing-card-reveal-btn").forEach(btn => {
         btn.addEventListener("click", () => onRevealClick(btn.dataset.cardId));
+    });
+
+    gridEl.querySelectorAll(".issuing-card-edit-limit-btn").forEach(btn => {
+        btn.addEventListener("click", () => onEditLimitClick(btn.dataset.cardId, Number(btn.dataset.currentAmount)));
     });
 }
 
@@ -7345,6 +7371,85 @@ async function openCardDetailsModal(root, cardId, issuingAccountId) {
     }
 }
 
+function editLimitModalHtml() {
+    return `
+        <div class="customer-modal-overlay" id="edit-limit-modal">
+            <div class="customer-modal" style="max-width:380px;">
+                <div class="customer-modal-header">
+                    <div>
+                        <h3>Modifier le plafond</h3>
+                        <p>Plafond par transaction de cette carte - ne finance pas la carte, elle puise toujours dans le solde Issuing du compte.</p>
+                    </div>
+                    <button type="button" class="customer-modal-close" id="close-edit-limit">×</button>
+                </div>
+                <form id="edit-limit-form">
+                    <div class="form-group">
+                        <label for="edit-limit-amount">Nouveau plafond par transaction (USD)</label>
+                        <input type="number" id="edit-limit-amount" min="0.01" step="0.01" required>
+                    </div>
+                    <div class="customer-modal-actions">
+                        <button type="button" class="modal-cancel-btn" id="cancel-edit-limit">Annuler</button>
+                        <button type="submit" class="modal-submit-btn" id="edit-limit-submit-btn">Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+}
+
+function wireEditLimitModal(root, onUpdated) {
+    const modal = root.querySelector("#edit-limit-modal");
+    const form = root.querySelector("#edit-limit-form");
+    const amountEl = root.querySelector("#edit-limit-amount");
+    let currentCardId = null;
+
+    function closeModal() {
+        modal.classList.remove("open");
+        currentCardId = null;
+    }
+
+    root.openEditLimitModal = (cardId, currentAmountCents) => {
+        currentCardId = cardId;
+        amountEl.value = (currentAmountCents / 100).toFixed(2);
+        modal.classList.add("open");
+    };
+
+    root.querySelector("#close-edit-limit").addEventListener("click", closeModal);
+    root.querySelector("#cancel-edit-limit").addEventListener("click", closeModal);
+    modal.addEventListener("click", (event) => {
+        if (event.target === modal) closeModal();
+    });
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!currentCardId) return;
+        const submitBtn = root.querySelector("#edit-limit-submit-btn");
+        const amountUnits = Number(amountEl.value || 0);
+        if (!amountUnits || amountUnits <= 0) {
+            showToast("Plafond invalide", "error");
+            return;
+        }
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Enregistrement...";
+        try {
+            const response = await apiFetch(`/issuing/cards/${currentCardId}/spending-limit`, {
+                method: "POST",
+                body: { amount: Math.round(amountUnits * 100) },
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || "Impossible de modifier le plafond");
+            showToast("Plafond mis à jour", "success");
+            closeModal();
+            await onUpdated();
+        } catch (error) {
+            showToast(error.message || "Erreur lors de la modification du plafond", "error");
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Enregistrer";
+        }
+    });
+}
+
 function wireCardDetailsModal(root) {
     const modal = root.querySelector("#card-details-modal");
 
@@ -7607,6 +7712,7 @@ async function renderCardIssuing(container) {
 
         ${createCardModalHtml()}
         ${cardDetailsModalHtml()}
+        ${editLimitModalHtml()}
     `;
 
     const reload = () => renderCardIssuing(container);
@@ -7616,7 +7722,8 @@ async function renderCardIssuing(container) {
         content.querySelector("#issuing-cards-grid"),
         cards,
         () => content.querySelector("#create-card-modal").classList.add("open"),
-        (cardId) => openCardDetailsModal(content, cardId, issuingAccountId)
+        (cardId) => openCardDetailsModal(content, cardId, issuingAccountId),
+        (cardId, currentAmountCents) => content.openEditLimitModal(cardId, currentAmountCents)
     );
     renderSpendChart(content.querySelector("#issuing-spend-chart"), transactions);
     renderTransactionsTable(content.querySelector("#issuing-transactions-table"), transactions);
@@ -7627,5 +7734,6 @@ async function renderCardIssuing(container) {
         reload
     );
     wireCardDetailsModal(content);
+    wireEditLimitModal(content, reload);
     renderFundingSection(content.querySelector("#issuing-funding-section"), bankLinkData.status, reload);
 }
