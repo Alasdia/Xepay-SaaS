@@ -384,3 +384,42 @@ def create_financial_account_card(
         raise HTTPException(502, "Impossible de créer la carte, réessayez plus tard.")
 
     return {"card_id": card["id"], "status": card.get("status")}
+
+
+@router.get("/treasury/financial-account/transactions")
+def list_financial_account_transactions(
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("view_stripe_account_info")),
+):
+    """Historique du compte financier (financements, OutboundTransfer,
+    OutboundPayment...) - voir vue Commerce "Comptes financiers"."""
+    _require_available()
+    logger = logging.getLogger(__name__)
+
+    profile = db.query(Profile).filter(Profile.user_id == membership.workspace_id).first()
+    account_id = _get_issuing_account_id(profile)
+
+    if not profile.stripe_financial_account_id:
+        return {"transactions": []}
+
+    try:
+        transactions = stripe_treasury_service.list_transactions(
+            account_id, profile.stripe_financial_account_id
+        )
+    except stripe.error.StripeError as e:
+        _handle_stripe_error(logger, "liste des transactions", account_id, e)
+
+    return {
+        "transactions": [
+            {
+                "id": t["id"],
+                "amount": t["amount"],
+                "currency": t["currency"],
+                "status": t["status"],
+                "flow_type": t.get("flow_type"),
+                "created": t["created"],
+                "description": t.get("description"),
+            }
+            for t in transactions
+        ]
+    }

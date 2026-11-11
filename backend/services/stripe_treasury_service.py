@@ -210,3 +210,15 @@ def create_card_funded_by_financial_account(
         stripe_account=account_id,
     )
     return card.to_dict()
+
+
+def list_transactions(account_id: str, financial_account_id: str, limit: int = 20) -> list[dict]:
+    """Historique des mouvements du compte financier (financement,
+    OutboundTransfer, OutboundPayment, ...) - toujours relu en direct
+    depuis Stripe (treasury.Transaction), jamais mis en cache côté
+    Xepay, même règle que get_financial_account."""
+    transactions = _client().v1.treasury.transactions.list(
+        params={"financial_account": financial_account_id, "limit": limit},
+        options={"stripe_account": account_id},
+    )
+    return [t.to_dict() for t in transactions.data]
