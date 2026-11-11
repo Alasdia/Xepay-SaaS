@@ -925,3 +925,40 @@
   #paramsVertoOnboardingModal .p-verto-modal-left .p-verto-modal-links { margin-top: 20px; padding-top: 0; }
   #paramsVertoOnboardingModal .p-verto-modal-right { padding: 28px 24px; }
 }
+
+/* Onglet "Branding" (Compte Stripe Connect) - icône/logo/couleurs. */
+.branding-form {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 72%;
+  margin-bottom: 18px;
+}
+.branding-field label {
+  display: block;
+  font-weight: 700;
+  color: #1f2937;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.branding-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.branding-preview-row img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+}
+.branding-field input[type="color"] {
+  width: 56px;
+  height: 36px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 2px;
+  cursor: pointer;
+}

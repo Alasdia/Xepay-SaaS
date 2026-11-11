@@ -1,14 +1,19 @@
-from fastapi import APIRouter, Request, Depends, HTTPException
+import io
+import re
+
+from fastapi import APIRouter, Request, Depends, HTTPException, File, UploadFile, Form
 from sqlalchemy.orm import Session
+from PIL import Image
 import stripe
 
 from backend.database import get_db
 from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectSubscriptionQuantityUpdateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest, ConnectInvoiceUpdateRequest, Payment, IssuingTopup
 from backend.middleware.authorization import require_capability
 from backend.services.stripe_service import (create_connect_invoice, create_connect_product, create_connect_customer, update_connect_customer)
-from backend.services import commission_service
+from backend.services import commission_service, stripe_branding_service
+from backend.services import rate_limit as rate_limit_service
 from backend.services.email_service import send_account_updated_email, send_payout_success_email, send_payout_failed_email, is_notification_enabled
-import stripe  
+import stripe
 import os
 
 STRIPE_WEBHOOK_SECRET_CONNECT = os.getenv("STRIPE_WEBHOOK_SECRET_CONNECT")
@@ -1864,3 +1869,169 @@ def list_merchant_risk(
             status_code=400,
             detail=e.user_message or str(e)
         )
+
+
+# ========================================================
+# BRANDING DU COMPTE CONNECT (icône, logo, couleurs) - voir conversation
+# du 2026-11-11. N'apparaît sur le reçu Stripe que pour un paiement en
+# direct charge (stripe_account=) - une destination charge montre
+# toujours le branding de la PLATEFORME, jamais celui du marchand
+# (confirmé sur le compte Jupe).
+# ========================================================
+
+BRANDING_MAX_FILE_BYTES = 512 * 1024  # limite dure Stripe (business_icon/business_logo)
+BRANDING_MIN_DIMENSION_PX = 128  # minimum Stripe pour icon ET logo
+_HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
+
+
+async def _read_upload_capped(file: UploadFile, max_bytes: int) -> bytes:
+    """Lit le flux par blocs et s'arrête dès que max_bytes est dépassé -
+    jamais tout le flux d'abord puis vérification de sa taille.
+    Content-Length est fourni par le client, jamais fiable. Un fichier
+    trop gros est donc rejeté sans jamais être entièrement chargé en
+    mémoire, et avant même d'atteindre Pillow (donc avant tout appel
+    Stripe)."""
+    chunks = []
+    total = 0
+    while True:
+        chunk = await file.read(64 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(400, "Fichier trop volumineux (512 Ko maximum)")
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
+def _validate_branding_image(data: bytes, require_square: bool) -> None:
+    """Valide le VRAI format du fichier (jamais le Content-Type ni
+    l'extension du nom de fichier, tous deux fournis par le client) via
+    Pillow. Image.MAX_IMAGE_PIXELS est abaissé UNIQUEMENT pour la durée
+    de cette validation (sauvegardé/restauré, jamais modifié de façon
+    globale et permanente - d'autres usages de Pillow existent dans ce
+    process, voir auth.py/export.py) : une icône/logo légitime ne dépasse
+    jamais quelques centaines de milliers de pixels, un fichier qui
+    revendique bien plus que ça pour un poids de 512 Ko est une bombe de
+    décompression, pas une image de marque.
+
+    verify() laisse l'objet Image inutilisable pour toute lecture
+    ultérieure (format/size) - on rouvre un Image frais sur le même
+    buffer après, comme documenté par Pillow."""
+    previous_max_pixels = Image.MAX_IMAGE_PIXELS
+    try:
+        Image.MAX_IMAGE_PIXELS = 10_000_000
+        buf = io.BytesIO(data)
+        try:
+            img = Image.open(buf)
+            img.verify()
+        except Exception:
+            raise HTTPException(400, "Fichier image invalide ou corrompu")
+
+        buf.seek(0)
+        img = Image.open(buf)
+        if img.format not in ("PNG", "JPEG"):
+            raise HTTPException(400, "Format non supporté (PNG ou JPG uniquement)")
+
+        width, height = img.size
+        if width < BRANDING_MIN_DIMENSION_PX or height < BRANDING_MIN_DIMENSION_PX:
+            raise HTTPException(
+                400, f"Image trop petite (minimum {BRANDING_MIN_DIMENSION_PX}x{BRANDING_MIN_DIMENSION_PX}px)"
+            )
+        if require_square and width != height:
+            raise HTTPException(400, "L'icône doit être carrée (largeur = hauteur)")
+    finally:
+        Image.MAX_IMAGE_PIXELS = previous_max_pixels
+
+
+def _validate_hex_color(value: str) -> None:
+    if not _HEX_COLOR_RE.match(value):
+        raise HTTPException(400, "Couleur invalide (format #RRGGBB attendu)")
+
+
+@router.post("/stripe/connect/branding")
+async def update_merchant_branding(
+    icon: UploadFile | None = File(None),
+    logo: UploadFile | None = File(None),
+    primary_color: str | None = Form(None),
+    secondary_color: str | None = Form(None),
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_account_config")),
+):
+    """Modifie settings.branding du compte Connect DE CE marchand -
+    résolu depuis la session (profile.stripe_account_id), jamais depuis
+    le corps de la requête. Ne pose que les champs effectivement fournis
+    (icône/logo/couleurs facultatifs chacun) - ne touche à aucun autre
+    champ du compte."""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    profile = db.query(Profile).filter(Profile.user_id == membership.workspace_id).first()
+    if not profile or not profile.stripe_account_id:
+        raise HTTPException(404, "Compte Stripe introuvable")
+    account_id = profile.stripe_account_id
+
+    # Limite de fréquence - réutilise telle quelle la protection anti
+    # brute-force existante (backend/services/rate_limit.py, 15 min / 5
+    # tentatives) plutôt qu'un nouveau mécanisme : une mise à jour de
+    # branding est une action ponctuelle de configuration, pas un flux à
+    # haute fréquence légitime. Pas de reset() sur succès (contrairement
+    # au login) : le but est de plafonner le nombre d'appels à l'API
+    # Stripe sur cette fenêtre, succès ou échec confondus.
+    if not rate_limit_service.allow_attempt(f"branding:{account_id}"):
+        raise HTTPException(429, "Trop de tentatives - réessayez dans quelques minutes")
+
+    if primary_color:
+        _validate_hex_color(primary_color)
+    if secondary_color:
+        _validate_hex_color(secondary_color)
+
+    icon_file_id = None
+    logo_file_id = None
+    try:
+        if icon is not None:
+            data = await _read_upload_capped(icon, BRANDING_MAX_FILE_BYTES)
+            _validate_branding_image(data, require_square=True)
+            icon_file_id = stripe_branding_service.upload_branding_file(data, "business_icon")
+        if logo is not None:
+            data = await _read_upload_capped(logo, BRANDING_MAX_FILE_BYTES)
+            _validate_branding_image(data, require_square=False)
+            logo_file_id = stripe_branding_service.upload_branding_file(data, "business_logo")
+
+        return stripe_branding_service.update_account_branding(
+            account_id,
+            icon_file_id=icon_file_id,
+            logo_file_id=logo_file_id,
+            primary_color=primary_color,
+            secondary_color=secondary_color,
+        )
+    except HTTPException:
+        raise
+    except stripe.error.StripeError as e:
+        logger.error(
+            "Echec mise a jour branding Stripe (compte=%s) : %s (request_id=%s)",
+            account_id, e.user_message or str(e), e.request_id,
+        )
+        raise HTTPException(502, "Impossible d'enregistrer le branding, réessayez plus tard.")
+
+
+@router.get("/stripe/connect/branding")
+def get_merchant_branding(
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_account_config")),
+):
+    import logging
+    logger = logging.getLogger(__name__)
+
+    profile = db.query(Profile).filter(Profile.user_id == membership.workspace_id).first()
+    if not profile or not profile.stripe_account_id:
+        raise HTTPException(404, "Compte Stripe introuvable")
+
+    try:
+        return stripe_branding_service.get_account_branding(profile.stripe_account_id)
+    except stripe.error.StripeError as e:
+        logger.error(
+            "Echec lecture branding Stripe (compte=%s) : %s (request_id=%s)",
+            profile.stripe_account_id, e.user_message or str(e), e.request_id,
+        )
+        raise HTTPException(502, "Impossible de récupérer le branding actuel.")

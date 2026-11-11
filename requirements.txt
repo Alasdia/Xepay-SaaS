@@ -19,6 +19,7 @@ resend
 matplotlib
 pyotp
 qrcode[pil]
+Pillow
 pydantic[email]
 redis
 alembic
