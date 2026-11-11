@@ -597,15 +597,16 @@ def refund_payment(
             "reason": req.reason or "requested_by_customer",
         }
         if not is_direct_charge:
-            # reverse_transfer (annule le Transfer vers le compte connecté)
-            # et refund_application_fee (récupère la commission Xepay déjà
-            # transférée) ne s'appliquent qu'aux destination charges. Les
-            # direct charges n'ont pas de Transfer séparé (voir
-            # process_invoice_paid_event) — Stripe rejette l'appel si on les
-            # passe quand même, ce qui faisait échouer tout remboursement
-            # sur ce flux.
+            # reverse_transfer (annule le Transfer du montant principal vers
+            # le compte connecté) ne s'applique qu'aux destination charges -
+            # les direct charges n'ont pas de Transfer séparé (voir
+            # process_invoice_paid_event), Stripe rejette l'appel si on le
+            # passe quand même. refund_application_fee volontairement absent
+            # (2026-11-12) : la commission Xepay n'est plus jamais remboursée,
+            # sur aucun flux ni aucun type de charge - voir la politique
+            # documentée plus bas et la section "Remboursements" des
+            # conditions d'utilisation.
             refund_params["reverse_transfer"] = True
-            refund_params["refund_application_fee"] = True
         import logging
         from decimal import Decimal
 
@@ -638,34 +639,24 @@ def refund_payment(
             else:
                 payment.status = "partially_refunded"
 
-            if is_direct_charge:
-                # Direct charge : reverse_transfer/refund_application_fee
-                # (qui auraient fait ça tout seuls) ne s'appliquent qu'aux
-                # destination charges. Sans ce
-                # remboursement explicite, Stripe débite le compte connecté
-                # du montant BRUT du remboursement, alors qu'il n'avait reçu
-                # net que gross - application_fee à l'encaissement : la
-                # commission Xepay n'étant jamais rendue, le compte connecté
-                # ressort perdant de ce montant (le "solde négatif" observé).
-                # Proportionnel au montant réellement remboursé (amount),
-                # comme le fait Stripe lui-même pour refund_application_fee
-                # sur un remboursement partiel d'une destination charge.
-                fee_id = getattr(charge, "application_fee", None)
-                app_fee_amount = getattr(charge, "application_fee_amount", None)
-                if fee_id and app_fee_amount and charge.amount:
-                    fee_refund_amount = int(app_fee_amount * amount / charge.amount)
-                    if fee_refund_amount > 0:
-                        try:
-                            stripe.ApplicationFee.create_refund(
-                                fee_id, amount=fee_refund_amount
-                            )
-                        except stripe.error.StripeError:
-                            logger.exception(
-                                "ApplicationFee.create_refund a échoué pour fee_id=%s "
-                                "(payment_id=%s, montant=%s) : la commission Xepay n'a "
-                                "pas été rendue au compte connecté",
-                                fee_id, payment.id, fee_refund_amount,
-                            )
+            # Politique (2026-11-12) : la commission Xepay (ApplicationFee)
+            # n'est JAMAIS remboursée, sur aucun flux (lien, facture,
+            # abonnement) ni aucun type de remboursement (total ou partiel) -
+            # alignée sur Stripe lui-même, qui ne rend jamais son propre frais
+            # de traitement (stripe_fee, confirmé : aucune transaction ne
+            # l'annule jamais, voir webhook/paiement.py, _resolve_stripe_fee_
+            # amount). Avant ce changement, un direct charge se voyait
+            # rembourser l'intégralité de l'ApplicationFee (stripe_fee inclus)
+            # pour éviter que le compte connecté ne finisse en solde négatif
+            # sur chaque remboursement - Xepay absorbait alors elle-même le
+            # stripe_fee non récupérable. Conséquence assumée de ce
+            # changement : le compte Stripe du marchand finit bien en solde
+            # négatif du montant de la commission sur un remboursement
+            # (total ou partiel) - debité de son prochain versement par
+            # Stripe, un comportement normal côté Stripe, pas une erreur.
+            # Voir aussi webhook/paiement.py (même politique sur le filet de
+            # rattrapage charge.refunded) et la section "Remboursements" des
+            # conditions d'utilisation.
 
             # Répercute sur le wallet : WalletTransaction.reference diffère
             # selon le flux (payment_intent_id pour le paiement par lien,
