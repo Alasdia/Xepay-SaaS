@@ -7677,12 +7677,13 @@ function ensureFinancialAccountStyles() {
             color: #111827;
             line-height: 1.1;
         }
-        .fa-address-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #f1f1f1;
+        /* Disposition "en vrac" demandée explicitement - jamais de
+           colonnes alignées/espacées comme un tableau, juste des lignes
+           de texte qui se suivent normalement. */
+        .fa-address-loose p {
+            margin: 6px 0;
             font-size: 14px;
+            color: #374151;
         }
         .fa-funding-row {
             display: flex;
@@ -7739,13 +7740,16 @@ function financialAccountActiveHtml(financialAccount) {
         </div>
         ${addresses.length ? `
             <div class="table-title mb-2">Coordonnées bancaires</div>
-            <div class="commerce-card mb-4">
+            <div class="commerce-card mb-4 fa-address-loose">
                 ${addresses.filter((a) => a.aba).map((a) => `
-                    <div class="fa-address-row"><span>Banque</span><strong>${a.aba.bank_name || "—"}</strong></div>
-                    <div class="fa-address-row"><span>Titulaire</span><strong>${a.aba.account_holder_name || "—"}</strong></div>
-                    <div class="fa-address-row"><span>Compte</span><strong>${a.aba.account_number || `•••• ${a.aba.account_number_last4 || "----"}`}</strong></div>
-                    <div class="fa-address-row"><span>Routing</span><strong>${a.aba.routing_number || "—"}</strong></div>
+                    <p>Nom de la banque : <strong>${a.aba.bank_name || "—"}</strong></p>
+                    <p>Titulaire du compte : <strong>${a.aba.account_holder_name || "—"}</strong></p>
+                    <p>Numéro du compte : <strong>${a.aba.account_number || `•••• ${a.aba.account_number_last4 || "----"}`}</strong></p>
+                    <p>Numéro de routage : <strong>${a.aba.routing_number || "—"}</strong></p>
                 `).join("")}
+                <p class="text-muted" style="font-size:12px;margin-top:10px;margin-bottom:0;">
+                    Ni l'adresse de la banque ni des coordonnées internationales (SWIFT/IBAN) ne sont disponibles : l'API Treasury v1 utilisée ici (financial_addresses.aba) n'expose que ces 4 champs, et ne couvre que les rails domestiques US (ACH/virement US) - aucune coordonnée internationale n'existe pour ce type de compte.
+                </p>
             </div>
         ` : ""}
         <div class="table-title mb-2">Ajouter des fonds (test)</div>
