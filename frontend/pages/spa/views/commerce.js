@@ -7712,12 +7712,26 @@ function ensureFinancialAccountStyles() {
         .fa-address-loose {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px 32px;
-            align-items: baseline;
+            gap: 14px 32px;
+            align-items: flex-start;
         }
+        /* Valeur sous le libellé, jamais "Libellé : valeur" sur une seule
+           ligne - demande explicite. */
         .fa-address-loose .fa-chip {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .fa-chip-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            color: #9ca3af;
+            font-weight: 600;
+        }
+        .fa-chip-value {
             font-size: 14px;
-            color: #374151;
+            color: #111827;
         }
         .fa-address-loose .fa-address-note {
             flex-basis: 100%;
@@ -7782,16 +7796,17 @@ function financialAccountActiveHtml(financialAccount) {
                         </div>
                     </div>
                 </div>
+                <div id="fa-transactions-table"></div>
             </div>
             <div class="fa-side-col">
                 ${addresses.length ? `
                     <div class="table-title mb-2">Coordonnées bancaires</div>
                     <div class="commerce-card fa-address-loose">
                         ${addresses.filter((a) => a.aba).map((a) => `
-                            <span class="fa-chip">Nom de la banque : <strong>${a.aba.bank_name || "—"}</strong></span>
-                            <span class="fa-chip">Titulaire du compte : <strong>${a.aba.account_holder_name || "—"}</strong></span>
-                            <span class="fa-chip">Numéro du compte : <strong>${a.aba.account_number || `•••• ${a.aba.account_number_last4 || "----"}`}</strong></span>
-                            <span class="fa-chip">Numéro de routage : <strong>${a.aba.routing_number || "—"}</strong></span>
+                            <span class="fa-chip"><span class="fa-chip-label">Nom de la banque</span><strong class="fa-chip-value">${a.aba.bank_name || "—"}</strong></span>
+                            <span class="fa-chip"><span class="fa-chip-label">Titulaire du compte</span><strong class="fa-chip-value">${a.aba.account_holder_name || "—"}</strong></span>
+                            <span class="fa-chip"><span class="fa-chip-label">Numéro du compte</span><strong class="fa-chip-value">${a.aba.account_number || `•••• ${a.aba.account_number_last4 || "----"}`}</strong></span>
+                            <span class="fa-chip"><span class="fa-chip-label">Numéro de routage</span><strong class="fa-chip-value">${a.aba.routing_number || "—"}</strong></span>
                         `).join("")}
                         <p class="fa-address-note text-muted" style="font-size:12px;margin-bottom:0;">
                             Ni l'adresse de la banque ni des coordonnées internationales (SWIFT/IBAN) ne sont disponibles : l'API Treasury v1 utilisée ici (financial_addresses.aba) n'expose que ces 4 champs, et ne couvre que les rails domestiques US (ACH/virement US) - aucune coordonnée internationale n'existe pour ce type de compte.
@@ -7800,7 +7815,6 @@ function financialAccountActiveHtml(financialAccount) {
                 ` : ""}
             </div>
         </div>
-        <div id="fa-transactions-table"></div>
     `;
 }
 
