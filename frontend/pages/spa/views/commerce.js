@@ -7677,13 +7677,24 @@ function ensureFinancialAccountStyles() {
             color: #111827;
             line-height: 1.1;
         }
-        /* Disposition "en vrac" demandée explicitement - jamais de
-           colonnes alignées/espacées comme un tableau, juste des lignes
-           de texte qui se suivent normalement. */
-        .fa-address-loose p {
-            margin: 6px 0;
+        /* Disposition "en vrac" demandée explicitement - ni lignes
+           (empilées verticalement) ni colonnes alignées : les éléments
+           sont dispersés dans le bloc, leur position dépend juste de la
+           largeur disponible (flex-wrap), pas d'un ordre de lecture
+           strict ligne par ligne. */
+        .fa-address-loose {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 32px;
+            align-items: baseline;
+        }
+        .fa-address-loose .fa-chip {
             font-size: 14px;
             color: #374151;
+        }
+        .fa-address-loose .fa-address-note {
+            flex-basis: 100%;
+            margin-top: 6px;
         }
         .fa-funding-row {
             display: flex;
@@ -7742,12 +7753,12 @@ function financialAccountActiveHtml(financialAccount) {
             <div class="table-title mb-2">Coordonnées bancaires</div>
             <div class="commerce-card mb-4 fa-address-loose">
                 ${addresses.filter((a) => a.aba).map((a) => `
-                    <p>Nom de la banque : <strong>${a.aba.bank_name || "—"}</strong></p>
-                    <p>Titulaire du compte : <strong>${a.aba.account_holder_name || "—"}</strong></p>
-                    <p>Numéro du compte : <strong>${a.aba.account_number || `•••• ${a.aba.account_number_last4 || "----"}`}</strong></p>
-                    <p>Numéro de routage : <strong>${a.aba.routing_number || "—"}</strong></p>
+                    <span class="fa-chip">Nom de la banque : <strong>${a.aba.bank_name || "—"}</strong></span>
+                    <span class="fa-chip">Titulaire du compte : <strong>${a.aba.account_holder_name || "—"}</strong></span>
+                    <span class="fa-chip">Numéro du compte : <strong>${a.aba.account_number || `•••• ${a.aba.account_number_last4 || "----"}`}</strong></span>
+                    <span class="fa-chip">Numéro de routage : <strong>${a.aba.routing_number || "—"}</strong></span>
                 `).join("")}
-                <p class="text-muted" style="font-size:12px;margin-top:10px;margin-bottom:0;">
+                <p class="fa-address-note text-muted" style="font-size:12px;margin-bottom:0;">
                     Ni l'adresse de la banque ni des coordonnées internationales (SWIFT/IBAN) ne sont disponibles : l'API Treasury v1 utilisée ici (financial_addresses.aba) n'expose que ces 4 champs, et ne couvre que les rails domestiques US (ACH/virement US) - aucune coordonnée internationale n'existe pour ce type de compte.
                 </p>
             </div>
