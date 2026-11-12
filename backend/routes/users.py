@@ -154,6 +154,15 @@ def signup(
                     }
                 }
             )
+            try:
+                stripe.Account.modify(
+                    account.id,
+                    capabilities={
+                        "tax_reporting_us_1099_k": {"requested": True}
+                    }
+                )
+            except stripe.error.StripeError as e:
+                print("❌ ERREUR tax_reporting_us_1099_k :", repr(e))
             profile = Profile(user_id=new_user.id, stripe_account_id=account.id)
             db.add(profile)
             db.commit()
@@ -425,6 +434,15 @@ def _exchange_google_code(code: str, db: Session, redirect_uri: str, invite_toke
                     }
                 }
             )
+            try:
+                stripe.Account.modify(
+                    account.id,
+                    capabilities={
+                        "tax_reporting_us_1099_k": {"requested": True}
+                    }
+                )
+            except stripe.error.StripeError as e:
+                print("❌ ERREUR tax_reporting_us_1099_k (google signup):", repr(e))
             profile = Profile(user_id=user.id, stripe_account_id=account.id)
             db.add(profile)
 
@@ -625,6 +643,15 @@ def create_onboarding_link(
             type="express",
             email=workspace_user.email,
         )
+        try:
+            stripe.Account.modify(
+                account.id,
+                capabilities={
+                    "tax_reporting_us_1099_k": {"requested": True}
+                }
+            )
+        except stripe.error.StripeError as e:
+            print("❌ ERREUR tax_reporting_us_1099_k (onboarding) :", repr(e))
         profile.stripe_account_id = account.id
         db.commit()
     else:
