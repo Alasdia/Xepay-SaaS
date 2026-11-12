@@ -7690,11 +7690,13 @@ function ensureFinancialAccountStyles() {
             box-shadow: 0 6px 16px rgba(17, 24, 39, .1);
             transform: translateY(-3px);
         }
+        /* Jamais muet/gris ni tout en majuscules - texte normal, seule la
+           1ère lettre de "Solde du compte financier" est en majuscule
+           (demande explicite). */
         .balance-card-label {
             font-size: 12px;
-            text-transform: uppercase;
             letter-spacing: .6px;
-            color: #9ca3af;
+            color: #111827;
             font-weight: 600;
             margin-bottom: 6px;
         }
@@ -7724,9 +7726,8 @@ function ensureFinancialAccountStyles() {
         }
         .fa-chip-label {
             font-size: 11px;
-            text-transform: uppercase;
             letter-spacing: .4px;
-            color: #9ca3af;
+            color: #111827;
             font-weight: 600;
         }
         .fa-chip-value {
