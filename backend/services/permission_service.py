@@ -42,7 +42,6 @@ ROLE_LABELS = {
 # config.set_override, pas par ce dictionnaire.
 CAPABILITY_DEFAULTS = {
     "create_payment_links": "manager",       # POST /links (routes/lien.py)
-    "manage_virtual_cards": "manager",        # POST /issuing/create-virtual-card
     "manage_stripe_billing": "manager",       # /stripe/connect/{invoices,subscriptions,products,customers}* (routes/webhook/stripe.py)
     "view_stripe_account_info": "manager",    # GET /stripe/status, /stripe/business-details
     "manage_stripe_account_config": "owner",  # /onboarding, /stripe/login-link, /stripe/account-session
@@ -56,7 +55,6 @@ CAPABILITY_DEFAULTS = {
 
 CAPABILITY_LABELS = {
     "create_payment_links": ("Créer des liens de paiement", "Générer de nouveaux liens de paiement pour encaisser des clients."),
-    "manage_virtual_cards": ("Gérer les cartes virtuelles", "Créer des cartes virtuelles (Issuing) pour les dépenses de l'entreprise."),
     "manage_stripe_billing": ("Gérer les factures et abonnements Stripe", "Créer/modifier des factures, abonnements, produits et clients côté Stripe Connect."),
     "view_stripe_account_info": ("Consulter le compte Stripe Connect", "Voir le statut de vérification et les informations du compte Stripe Connect."),
     "manage_stripe_account_config": ("Configurer le compte Stripe Connect", "Lancer l'onboarding Stripe, accéder au Dashboard Stripe, modifier les informations Stripe du compte."),

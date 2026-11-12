@@ -5,9 +5,7 @@ du wallet USD + récupération de ses coordonnées), acceptation du
 consentement du dirigeant (PARTNER_REFERRED, NON CONFIRMÉ - voir plus
 bas), puis "Wallet Credit" quand le Payout Stripe atterrit (lance le
 virement vers la banque locale UEMOA), puis la confirmation finale de ce
-virement. Gère aussi la vérification automatique du rechargement de
-carte Issuing (voir plus bas) - fonctionnalité séparée, jamais
-concernée par VERTO_ENABLED.
+virement.
 
 AVERTISSEMENT : les noms exacts des types d'événements et la forme du
 payload JSON ci-dessous ne sont PAS confirmés par la doc publique Verto
@@ -32,7 +30,7 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.models import Profile, Withdrawal, Wallet, WalletTransaction, UserDB
-from backend.services import verto_service, stripe_issuing_service
+from backend.services import verto_service
 from backend.services.email_service import (
     send_payout_success_email,
     send_payout_failed_email,
@@ -73,11 +71,7 @@ async def verto_webhook(request: Request, db: Session = Depends(get_db)):
     # tant que VERTO_ENABLED est à false - en pratique déjà sans effet
     # aujourd'hui puisqu'aucun sous-compte ne peut être créé (routes/
     # verto.py, lui aussi protégé), donc aucun profile n'a de
-    # verto_company_id à faire correspondre. Le bloc "VÉRIFICATION AUTO DU
-    # RECHARGEMENT DE CARTE ISSUING" plus bas est une fonctionnalité
-    # SÉPARÉE (financement de carte Stripe Issuing, pas l'onboarding
-    # Verto) - volontairement PAS couvert par cette liste, qui ne doit
-    # concerner que le périmètre PARTNER_REFERRED.
+    # verto_company_id à faire correspondre.
     is_onboarding_or_withdrawal_event = (
         event_type in (
             "company.approved", "COMPANY_APPROVED",
@@ -133,57 +127,6 @@ async def verto_webhook(request: Request, db: Session = Depends(get_db)):
     if event_type == "director.consent_accepted":
         profile.verto_director_consent_status = "accepted"
         db.commit()
-        return {"ok": True}
-
-    # --------------------------------------------------
-    # VÉRIFICATION AUTO DU RECHARGEMENT DE CARTE ISSUING : les 2 micro-
-    # dépôts envoyés par Stripe (voir POST /issuing/bank-link) arrivent sur
-    # ce même wallet Verto - on les capture ici par leur montant (toujours
-    # < 1$), jamais vus par le marchand (son wallet n'a pas de relevé).
-    # Payload confirmé par docs.verto.co/docs/inbound-funds : champs
-    # imbriqués sous "payload" (id/amount/state/currency/walletId), state
-    # "requested" dès réception (pas besoin d'attendre "completed" pour
-    # connaître le montant). Vérifié AVANT le routage event_type générique
-    # ci-dessous car la forme (imbriquée sous "payload") diffère des autres
-    # events de ce fichier.
-    # --------------------------------------------------
-    inbound = payload.get("payload")
-    if (
-        isinstance(inbound, dict)
-        and inbound.get("state") in ("requested", "REQUESTED")
-        and str(inbound.get("walletId") or "") == str(profile.verto_wallet_id or "")
-        and (inbound.get("currency") or "").upper() == "USD"
-        and profile.stripe_issuing_bank_status == "pending_verification"
-    ):
-        try:
-            amount_cents = int(round(float(inbound.get("amount", "0")) * 100))
-        except (TypeError, ValueError):
-            amount_cents = 0
-
-        # Les micro-dépôts Stripe sont toujours < 1$ - un vrai dépôt (ex:
-        # virement Payout Stripe) ne doit jamais être pris pour l'un
-        # d'eux, même pendant la fenêtre de vérification.
-        if 0 < amount_cents < 100:
-            pending = list(profile.stripe_issuing_bank_pending_amounts or [])
-            pending.append(amount_cents)
-            profile.stripe_issuing_bank_pending_amounts = pending
-
-            if len(pending) >= 2:
-                try:
-                    stripe_issuing_service.verify_issuing_bank_source(
-                        profile.stripe_issuing_account_id,
-                        profile.stripe_issuing_bank_source_id,
-                        pending[:2],
-                    )
-                    profile.stripe_issuing_bank_status = "verified"
-                except stripe.error.StripeError:
-                    logger.exception(
-                        "Echec vérification source bancaire Issuing pour profile %s", profile.id
-                    )
-                    profile.stripe_issuing_bank_status = "failed"
-                profile.stripe_issuing_bank_pending_amounts = []
-
-            db.commit()
         return {"ok": True}
 
     # --------------------------------------------------

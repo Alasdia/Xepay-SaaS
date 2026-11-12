@@ -3,9 +3,9 @@ icon, logo, primary_color, secondary_color) - affiché sur les reçus
 Stripe UNIQUEMENT pour les paiements en direct charge (stripe_account=),
 jamais pour une destination charge, qui montre le branding de la
 PLATEFORME (voir conversation du 2026-11-11, confirmé sur le compte
-Jupe). Ce module ne fait jamais de db.commit/db.add (même règle que
-stripe_issuing_service.py) - rien à persister, le branding vit
-entièrement côté Stripe, toujours relu depuis Stripe par get_account_branding.
+Jupe). Ce module ne fait jamais de db.commit/db.add - rien à persister,
+le branding vit entièrement côté Stripe, toujours relu depuis Stripe par
+get_account_branding.
 
 Point non-évident confirmé manuellement sur le compte Jupe : un fichier
 business_icon/business_logo doit être uploadé avec la clé PLATEFORME et

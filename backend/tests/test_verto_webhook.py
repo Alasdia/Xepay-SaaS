@@ -54,8 +54,7 @@ def build_app():
 class TestVertoWebhookFeatureFlag(unittest.TestCase):
     """VERTO_ENABLED=false (défaut) : les événements d'onboarding/retrait
     renvoient {"ok": True} sans toucher à la base ni appeler verto_service
-    - voir le plan PARTNER_REFERRED du 2026-11-07. Le bloc Issuing (micro-
-    dépôts carte) est une fonctionnalité séparée, jamais concernée."""
+    - voir le plan PARTNER_REFERRED du 2026-11-07."""
 
     def setUp(self):
         self.db = TestingSessionLocal()
