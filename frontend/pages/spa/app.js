@@ -123,8 +123,6 @@ async function init() {
   registerRoute("/dash/workspace/:workspaceId/commerce/factures", (c, p) => mountCommerce(c, { ...p, section: "factures" }), { name: "factures" });
   registerRoute("/dash/workspace/:workspaceId/commerce/moyens-paiement", (c, p) => mountCommerce(c, { ...p, section: "moyens-paiement" }), { name: "moyens-paiement" });
   registerRoute("/dash/workspace/:workspaceId/commerce/risque", (c, p) => mountCommerce(c, { ...p, section: "risque" }),{ name: "risque" });
-  registerRoute("/dash/workspace/:workspaceId/commerce/comptes-financiers", (c, p) => mountCommerce(c, { ...p, section: "comptes-financiers" }), { name: "comptes-financiers" });
-  registerRoute("/dash/workspace/:workspaceId/commerce/cartes", (c, p) => mountCommerce(c, { ...p, section: "cartes" }), { name: "cartes" });
   registerRoute("/dash/workspace/:workspaceId/api", mountApi, { name: "api" });
   registerRoute("/dash/workspace/:workspaceId/multi-users", mountMultiUsers, { name: "multi-users" });
   registerRoute("/dash/workspace/:workspaceId/parametres", mountParametres, { name: "parametres" });

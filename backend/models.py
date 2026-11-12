@@ -182,9 +182,7 @@ class VertoBeneficiaryRequest(BaseModel):
     # retraits) - voir verto_service.create_beneficiary. Format vérifié
     # côté serveur (28 car./pays UEMOA pour l'IBAN, 8 ou 11 pour le BIC,
     # cohérence pays IBAN/BIC) par verto_service.validate_iban_bic,
-    # jamais ici (pas de validator Pydantic dans ce fichier - voir
-    # routes/verto.py pour la convention déjà en place sur le téléphone
-    # Issuing).
+    # jamais ici (pas de validator Pydantic dans ce fichier).
     iban: str
     bic: str
     bank_name: str
@@ -314,63 +312,6 @@ class WalletTransaction(Base):
         default=lambda: datetime.now(timezone.utc)
     )
 
-class IssuingTopup(Base):
-    """Historique des recharges du solde Issuing (pull funding ACH - voir
-    routes/issuing.py create_issuing_topup, et backend/scripts/
-    fund_issuing_balance.py pour l'équivalent test sur un compte
-    arbitraire). stripe_topup_id reste NULL tant que l'appel
-    stripe.Topup.create n'a pas abouti : une ligne "pending" sans
-    stripe_topup_id plus vieille que quelques minutes n'a jamais atteint
-    Stripe (process arrêté entre l'écriture de cette ligne et l'appel
-    Stripe) - voir PENDING_SUBMIT_GRACE dans routes/issuing.py, qui
-    l'ignore sans jamais la nettoyer activement."""
-    __tablename__ = "issuing_topups"
-
-    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("itu"))
-    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
-    stripe_account_id = Column(String, nullable=False, index=True)
-    stripe_topup_id = Column(String, unique=True, index=True, nullable=True)
-    stripe_source_id = Column(String, nullable=True)
-    amount = Column(Float, nullable=False)
-    # pending / succeeded / failed / canceled / reversed - cycle de vie
-    # Stripe d'un Topup (webhook/stripe.py gère les quatre transitions
-    # au-delà de la création, déjà connue de façon synchrone via la
-    # réponse de l'appel API).
-    status = Column(String, nullable=False, default="pending")
-    failure_message = Column(String, nullable=True)
-    idempotency_key = Column(String, unique=True, index=True, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-
-
-class TreasuryReceivedCredit(Base):
-    """Historique des financements de test d'un compte financier Treasury
-    (test_helpers.treasury.received_credits - voir
-    backend/services/stripe_treasury_service.py). Montant en CENTIMES
-    (Integer, jamais Float - demande explicite du 2026-11-11, contrairement
-    à IssuingTopup.amount) : Treasury est une vraie comptabilité de solde,
-    pas juste un affichage. Même garde "pending sans id Stripe = jamais
-    atteint Stripe" que IssuingTopup."""
-    __tablename__ = "treasury_received_credits"
-
-    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("trc"))
-    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
-    stripe_account_id = Column(String, nullable=False, index=True)
-    financial_account_id = Column(String, nullable=False, index=True)
-    stripe_received_credit_id = Column(String, unique=True, index=True, nullable=True)
-    amount = Column(Integer, nullable=False)
-    currency = Column(String, nullable=False, default="usd")
-    network = Column(String, nullable=False)
-    # pending / succeeded / failed - cycle de vie Stripe d'un ReceivedCredit
-    # (webhook/stripe.py gère succeeded/failed, créé de façon synchrone via
-    # la réponse de l'appel API, comme pour IssuingTopup).
-    status = Column(String, nullable=False, default="pending")
-    failure_code = Column(String, nullable=True)
-    idempotency_key = Column(String, unique=True, index=True, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-
-
 class Profile(Base):
     __tablename__ = "profiles"
 
@@ -427,42 +368,6 @@ class Profile(Base):
     # ID du bénéficiaire Verto (`accounts.id` renvoyé par create_beneficiary,
     # distinct du companyId du sous-compte) - requis par create_payment_request.
     verto_beneficiary_id = Column(String, nullable=True)
-
-    # Compte Stripe Connect DÉDIÉ à Issuing (dashboard: none), distinct de
-    # stripe_account_id (Express, paiements/payouts) - Issuing n'est pas
-    # compatible avec un compte Express, voir
-    # backend/services/stripe_issuing_service.py. Même marchand, deux
-    # comptes Stripe séparés.
-    stripe_issuing_account_id = Column(String, nullable=True, index=True)
-    # Programme Issuing (banque partenaire + réseau) créé sur ce compte -
-    # nécessaire pour que la capacité card_issuing soit demandée.
-    stripe_issuing_program_id = Column(String, nullable=True)
-
-    # Rechargement de la carte Issuing depuis le wallet USD Verto DÉJÀ
-    # existant du marchand (verto_usd_account_number/bank_code plus haut) -
-    # jamais un compte bancaire américain générique ni le compte UEMOA
-    # directement (Stripe ACH ne fonctionne qu'avec un compte US, voir
-    # conversation du 2026-11-06). source ach_debit créée sur le compte
-    # Issuing, vérifiée automatiquement via les webhooks Verto (montant des
-    # micro-dépôts Stripe lus dans leur notification de paiement entrant),
-    # jamais par le marchand lui-même (son wallet Verto n'a pas d'interface
-    # où il pourrait les voir).
-    stripe_issuing_bank_source_id = Column(String, nullable=True)
-    # not_started / pending_verification / verified / failed
-    stripe_issuing_bank_status = Column(String, nullable=True, default="not_started")
-    # Montants (en cents) des micro-dépôts Stripe déjà vus via webhook
-    # Verto, en attendant d'en avoir 2 pour vérifier la source auprès de
-    # Stripe - vidé une fois la vérification tentée (succès ou échec).
-    stripe_issuing_bank_pending_amounts = Column(JSON, nullable=True)
-    stripe_issuing_bank_link_started_at = Column(DateTime, nullable=True)
-
-    # Treasury for platforms (Financial Account) - distinct à la fois du
-    # compte Express (stripe_account_id) et du compte Issuing dédié
-    # (stripe_issuing_account_id ci-dessus) : la capacité treasury se
-    # demande sur CE DERNIER (voir conversation du 2026-11-11, prototype
-    # sur acct_1UYofyP5Gfz5cr66). Mode test uniquement pour l'instant -
-    # voir backend/services/stripe_treasury_service.py.TREASURY_ENABLED.
-    stripe_financial_account_id = Column(String, nullable=True, index=True)
 
     # Filet de sécurité au niveau base contre le double sous-compte Verto
     # (voir le découpage en étapes du 2026-11-07 et with_for_update() dans

@@ -7,7 +7,7 @@ from PIL import Image
 import stripe
 
 from backend.database import get_db
-from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectSubscriptionQuantityUpdateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest, ConnectInvoiceUpdateRequest, Payment, IssuingTopup, TreasuryReceivedCredit
+from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectSubscriptionQuantityUpdateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest, ConnectInvoiceUpdateRequest, Payment
 from backend.middleware.authorization import require_capability
 from backend.services.stripe_service import (create_connect_invoice, create_connect_product, create_connect_customer, update_connect_customer)
 from backend.services import commission_service, stripe_branding_service
@@ -621,116 +621,6 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                             merchant.email, wd.amount
                         )
         # --------------------------------------------------
-        # RECHARGES ISSUING (CARTES)
-        # --------------------------------------------------
-        elif event_type in (
-            "topup.succeeded",
-            "topup.failed",
-            "topup.canceled",
-            "topup.reversed",
-        ):
-            # topup.created n'est pas écouté : on connaît déjà ce statut
-            # de façon synchrone via la réponse de stripe.Topup.create
-            # (voir routes/issuing.py) - seules les VRAIES transitions
-            # ultérieures nous intéressent ici. Un débit ACH peut rester
-            # "pending" plusieurs jours avant de réussir ou d'échouer, et
-            # un topup déjà "succeeded" peut encore devenir "reversed"
-            # plus tard (retour ACH après coup) - donc seuls failed/
-            # canceled/reversed sont de VRAIS statuts terminaux ici.
-            topup_id = object_data["id"]
-
-            topup_row = db.query(IssuingTopup).filter(
-                IssuingTopup.stripe_topup_id == topup_id
-            ).first()
-
-            if not topup_row:
-                # Filet de secours : ce webhook peut arriver avant que
-                # notre propre requête n'ait eu le temps de committer
-                # stripe_topup_id en base (voir routes/issuing.py) -
-                # l'id de la ligne est alors retrouvé via la metadata
-                # posée sur le Topup à sa création.
-                fallback_id = (object_data.get("metadata") or {}).get("issuing_topup_id")
-                if fallback_id:
-                    topup_row = db.query(IssuingTopup).filter(
-                        IssuingTopup.id == fallback_id
-                    ).first()
-
-            if not topup_row:
-                logger.warning(
-                    "Topup Issuing inconnu en base : id=%s type=%s compte=%s",
-                    topup_id, event_type, connected_account_id,
-                )
-            elif topup_row.status in ("failed", "canceled", "reversed"):
-                pass  # déjà en statut terminal - redelivery, idempotent
-            else:
-                new_status = event_type.split(".", 1)[1]
-                topup_row.stripe_topup_id = topup_row.stripe_topup_id or topup_id
-                topup_row.status = new_status
-                if new_status == "failed":
-                    topup_row.failure_message = (
-                        object_data.get("failure_message")
-                        or object_data.get("failure_code")
-                    )
-                topup_row.updated_at = datetime.now(timezone.utc)
-                db.commit()
-
-                logger.info(
-                    "Topup Issuing mis a jour : id=%s statut=%s compte=%s",
-                    topup_id, new_status, connected_account_id,
-                )
-        # --------------------------------------------------
-        # TREASURY (compte financier - prototype de test, voir
-        # conversation du 2026-11-11)
-        # --------------------------------------------------
-        elif event_type in (
-            "treasury.received_credit.succeeded",
-            "treasury.received_credit.failed",
-        ):
-            # .created n'est pas écouté : déjà connu de façon synchrone
-            # via la réponse de simulate_received_credit (voir
-            # routes/treasury.py), même raison que topup.created plus
-            # haut.
-            credit_id = object_data["id"]
-
-            credit_row = db.query(TreasuryReceivedCredit).filter(
-                TreasuryReceivedCredit.stripe_received_credit_id == credit_id
-            ).first()
-
-            if not credit_row:
-                logger.warning(
-                    "ReceivedCredit Treasury inconnu en base : id=%s type=%s compte=%s",
-                    credit_id, event_type, connected_account_id,
-                )
-            elif credit_row.status in ("succeeded", "failed"):
-                pass  # déjà en statut terminal - redelivery, idempotent
-            else:
-                new_status = event_type.rsplit(".", 1)[1]
-                credit_row.status = new_status
-                if new_status == "failed":
-                    credit_row.failure_code = object_data.get("failure_code")
-                credit_row.updated_at = datetime.now(timezone.utc)
-                db.commit()
-
-                logger.info(
-                    "ReceivedCredit Treasury mis a jour : id=%s statut=%s compte=%s",
-                    credit_id, new_status, connected_account_id,
-                )
-        elif event_type == "treasury.financial_account.features_status_updated":
-            # Pas de cache local des features (toujours relues en direct
-            # depuis Stripe, voir stripe_treasury_service.get_financial_account)
-            # - juste une trace pour le suivi. L'activation est
-            # asynchrone (voir conversation du 2026-11-11) : c'est cet
-            # événement, pas la réponse de la requête qui a demandé la
-            # fonction, qui signale le vrai passage à "active".
-            logger.info(
-                "Features du compte financier Treasury mises a jour : id=%s compte=%s "
-                "active=%s pending=%s restricted=%s",
-                object_data.get("id"), connected_account_id,
-                object_data.get("active_features"),
-                object_data.get("pending_features"),
-                object_data.get("restricted_features"),
-            )
-        # --------------------------------------------------
         # FACTURES CONNECT
         # --------------------------------------------------
         elif event_type in (
@@ -1331,8 +1221,8 @@ def create_merchant_customer(
             "phone": customer.phone,
             # customer.address est un StripeObject imbriqué - passé tel
             # quel, sa sérialisation JSON fuite _requestor._options.api_key
-            # (confirmé le 2026-11-06, même bug que spending_limits dans
-            # issuing.py). .to_dict() convertit récursivement en primitifs.
+            # (confirmé le 2026-11-06). .to_dict() convertit récursivement
+            # en primitifs.
             "address": customer.address.to_dict() if customer.address else None,
         }
     except stripe.error.StripeError as e:
