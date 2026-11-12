@@ -7635,6 +7635,33 @@ function ensureFinancialAccountStyles() {
     const style = document.createElement("style");
     style.id = "financial-account-style";
     style.textContent = `
+        /* Solde (75%) + Coordonnées bancaires (25%) côte à côte - demande
+           explicite. Empilés en pleine largeur sous ~860px (même seuil
+           que les autres mises en page responsives de ce fichier) plutôt
+           que de forcer deux colonnes étroites sur mobile. */
+        .fa-layout {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+        .fa-main-col {
+            flex: 0 0 75%;
+            max-width: 75%;
+        }
+        .fa-side-col {
+            flex: 0 0 25%;
+            max-width: 25%;
+        }
+        @media (max-width: 860px) {
+            .fa-layout {
+                flex-direction: column;
+            }
+            .fa-main-col, .fa-side-col {
+                flex: 1 1 100%;
+                max-width: 100%;
+            }
+        }
         /* Même style que le bloc de solde de la vue Solde (.balance-card/
            .balance-subcard, solde.js) et que celui d'Émission de carte -
            dupliqué ici pour la même raison que .create-client-btn plus
@@ -7700,7 +7727,7 @@ function ensureFinancialAccountStyles() {
             display: flex;
             gap: 8px;
             align-items: center;
-            margin-top: 8px;
+            margin-top: 18px;
         }
         .fa-funding-row input {
             width: 140px;
@@ -7739,35 +7766,38 @@ function financialAccountActiveHtml(financialAccount) {
     const cashUsd = ((financialAccount.balance && financialAccount.balance.cash && financialAccount.balance.cash.usd) || 0) / 100;
     const addresses = financialAccount.financial_addresses || [];
     return `
-        <div class="balance-card">
-            <div class="balance-subcard">
-                <div class="balance-block-header">
-                    <div>
-                        <div class="balance-card-label">Solde du compte financier</div>
-                        <div class="balance-card-amount">${cashUsd.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</div>
+        <div class="fa-layout">
+            <div class="fa-main-col">
+                <div class="balance-card">
+                    <div class="balance-subcard">
+                        <div class="balance-block-header">
+                            <div>
+                                <div class="balance-card-label">Solde du compte financier</div>
+                                <div class="balance-card-amount">${cashUsd.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</div>
+                            </div>
+                        </div>
+                        <div class="fa-funding-row">
+                            <input type="number" id="fa-funding-amount" min="1" max="5000" step="0.01" placeholder="Montant (USD)">
+                            <button type="button" class="create-client-btn" id="fa-funding-btn">Ajouter des fonds (test)</button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        ${addresses.length ? `
-            <div class="table-title mb-2">Coordonnées bancaires</div>
-            <div class="commerce-card mb-4 fa-address-loose">
-                ${addresses.filter((a) => a.aba).map((a) => `
-                    <span class="fa-chip">Nom de la banque : <strong>${a.aba.bank_name || "—"}</strong></span>
-                    <span class="fa-chip">Titulaire du compte : <strong>${a.aba.account_holder_name || "—"}</strong></span>
-                    <span class="fa-chip">Numéro du compte : <strong>${a.aba.account_number || `•••• ${a.aba.account_number_last4 || "----"}`}</strong></span>
-                    <span class="fa-chip">Numéro de routage : <strong>${a.aba.routing_number || "—"}</strong></span>
-                `).join("")}
-                <p class="fa-address-note text-muted" style="font-size:12px;margin-bottom:0;">
-                    Ni l'adresse de la banque ni des coordonnées internationales (SWIFT/IBAN) ne sont disponibles : l'API Treasury v1 utilisée ici (financial_addresses.aba) n'expose que ces 4 champs, et ne couvre que les rails domestiques US (ACH/virement US) - aucune coordonnée internationale n'existe pour ce type de compte.
-                </p>
-            </div>
-        ` : ""}
-        <div class="table-title mb-2">Ajouter des fonds (test)</div>
-        <div class="commerce-card mb-4">
-            <div class="fa-funding-row">
-                <input type="number" id="fa-funding-amount" min="1" max="5000" step="0.01" placeholder="Montant (USD)">
-                <button type="button" class="create-client-btn" id="fa-funding-btn">Ajouter des fonds (test)</button>
+            <div class="fa-side-col">
+                ${addresses.length ? `
+                    <div class="table-title mb-2">Coordonnées bancaires</div>
+                    <div class="commerce-card fa-address-loose">
+                        ${addresses.filter((a) => a.aba).map((a) => `
+                            <span class="fa-chip">Nom de la banque : <strong>${a.aba.bank_name || "—"}</strong></span>
+                            <span class="fa-chip">Titulaire du compte : <strong>${a.aba.account_holder_name || "—"}</strong></span>
+                            <span class="fa-chip">Numéro du compte : <strong>${a.aba.account_number || `•••• ${a.aba.account_number_last4 || "----"}`}</strong></span>
+                            <span class="fa-chip">Numéro de routage : <strong>${a.aba.routing_number || "—"}</strong></span>
+                        `).join("")}
+                        <p class="fa-address-note text-muted" style="font-size:12px;margin-bottom:0;">
+                            Ni l'adresse de la banque ni des coordonnées internationales (SWIFT/IBAN) ne sont disponibles : l'API Treasury v1 utilisée ici (financial_addresses.aba) n'expose que ces 4 champs, et ne couvre que les rails domestiques US (ACH/virement US) - aucune coordonnée internationale n'existe pour ce type de compte.
+                        </p>
+                    </div>
+                ` : ""}
             </div>
         </div>
         <div id="fa-transactions-table"></div>
