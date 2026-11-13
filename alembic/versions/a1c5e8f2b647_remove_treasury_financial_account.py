@@ -1,15 +1,19 @@
 """remove treasury financial account column and received_credits table
 
 Revision ID: a1c5e8f2b647
-Revises: 9d083a3ef2a0
+Revises: d9f843b10d81
 Create Date: 2026-11-12 00:00:00.000000
 
 Treasury for platforms (prototype du 2026-11-11) est abandonné - Stripe
 exige une présence physique US incompatible avec les comptes connectés
-Xepay. Cette migration annule d9f843b10d81 (supprimée, elle créait ces
-mêmes objets) pour les environnements où elle avait déjà tourné ; gardes
-d'existence par idempotence, même principe que les migrations qu'elle
-annule.
+Xepay. Cette migration annule d9f843b10d81 (RESTAURÉE le 2026-11-13 -
+une première tentative l'avait supprimée, cassant tout déploiement :
+le serveur avait déjà cette révision dans sa table alembic_version,
+Alembic ne pouvait plus retrouver le fichier pour continuer la chaîne
+à partir de ce point. Ne JAMAIS supprimer un fichier de migration déjà
+déployé, même "leaf" sans dépendant - ajouter une migration inverse
+à la place, comme celle-ci) ; gardes d'existence par idempotence, même
+principe que les migrations qu'elle annule.
 """
 from typing import Sequence, Union
 
@@ -20,7 +24,7 @@ from sqlalchemy import inspect
 
 # revision identifiers, used by Alembic.
 revision: str = 'a1c5e8f2b647'
-down_revision: Union[str, Sequence[str], None] = '9d083a3ef2a0'
+down_revision: Union[str, Sequence[str], None] = 'd9f843b10d81'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
