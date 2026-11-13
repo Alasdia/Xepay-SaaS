@@ -139,7 +139,102 @@
 </nav>
 
 <!-- ─── VUE COURANTE (remplie par le routeur SPA) ─── -->
-<main id="marketing-view"></main>
+<main id="marketing-view">
+<section class="page-hero reveal">
+  <div class="eyebrow">Documentation</div>
+  <h1>Tout pour <mark>utiliser Xepay</mark>.</h1>
+  <p>Pour chaque action courante, le chemin exact à suivre dans votre dashboard, étape par étape.</p>
+</section>
+
+<div class="disclaimer-strip reveal">
+  <div>🏛️</div>
+  <div><strong>À lire avant tout : il vous faut une société reconnue par Stripe.</strong> Sans elle, vous ne pourrez ni encaisser, ni faire l'onboarding avec notre partenaire Verto, ni retirer vers une banque UEMOA. Voir le premier guide ci-dessous — Xepay propose de former une LLC US directement depuis vos paramètres si vous n'en avez pas encore.</div>
+</div>
+
+<section class="faq-section reveal">
+  <div class="section-tag">Guides étape par étape</div>
+  
+  <details class="faq-item guide-item" open>
+    <summary>Le prérequis avant tout : une société reconnue par Stripe<span class="guide-item-summary">Le portail d'entrée — sans ça, impossible d'encaisser ou de retirer</span></summary>
+    <ol>
+      <li>Xepay s'appuie sur Stripe Connect pour traiter vos paiements. Pour créer votre compte Connect, Stripe exige une entité qu'il reconnaît comme un véritable business — dans les faits, la voie la plus simple est une société américaine (LLC), car le compte Connect créé par Xepay est par défaut rattaché aux États-Unis, le pays de notre propre plateforme Stripe.</li><li>Sans cette société, la vérification d'identité (KYC) demandée par Stripe ne peut pas être finalisée : vous ne pourrez ni encaisser de paiement, ni faire l'onboarding avec notre partenaire bancaire Verto, ni retirer vers une banque locale UEMOA.</li><li>Vous avez déjà une société reconnue par Stripe (LLC US ou autre) ? Passez directement à l'étape <strong>Configurer votre compte Stripe Connect</strong> ci-dessous.</li><li>Vous n'en avez pas encore ? Depuis Paramètres → <strong>Entreprise</strong>, utilisez l'option de formation de société (LLC via <strong>Firstbase</strong> ou <strong>Stripe Atlas</strong>) directement proposée dans Xepay — une fois la société créée, revenez à l'étape suivante.</li>
+    </ol>
+  </details>
+  <details class="faq-item guide-item">
+    <summary>Créer un lien de paiement<span class="guide-item-summary">Encaisser un client sans site web</span></summary>
+    <ol>
+      <li>Dans la sidebar de votre dashboard, cliquez sur <strong>Mes liens de paiement</strong>.</li><li>Cliquez sur le bouton <strong>Créer un lien</strong>.</li><li>Renseignez le montant (fixe ou libre) et la devise, puis validez.</li><li>Copiez le lien généré et partagez-le à votre client (WhatsApp, email, réseaux sociaux).</li>
+    </ol>
+  </details>
+  <details class="faq-item guide-item">
+    <summary>Configurer votre compte Stripe Connect<span class="guide-item-summary">Obligatoire avant de pouvoir encaisser et retirer — nécessite une société reconnue par Stripe</span></summary>
+    <ol>
+      <li>Assurez-vous d'avoir déjà une société reconnue par Stripe (voir le guide précédent) — c'est elle qui sera déclarée lors de la vérification.</li><li>Cliquez sur l'icône ⚙️ dans le bandeau en haut de votre dashboard.</li><li>Dans Paramètres, ouvrez l'onglet <strong>Compte Stripe Connect</strong>.</li><li>Cliquez sur <strong>Configurer Stripe</strong> et suivez le parcours de vérification (KYC) proposé par Stripe.</li><li>Une fois validé, votre statut passe à "Activé" — vous pouvez encaisser et retirer.</li>
+    </ol>
+  </details>
+  <details class="faq-item guide-item">
+    <summary>Retirer vers une banque locale UEMOA (Verto)<span class="guide-item-summary">4 étapes pour activer le virement local — nécessite un compte Stripe Connect déjà activé</span></summary>
+    <ol>
+      <li>Depuis Paramètres → <strong>Retraits &amp; comptes bancaires</strong>, démarrez l'enregistrement de votre sous-compte auprès de notre partenaire bancaire agréé <strong>Verto</strong> (vérification KYC/KYB de votre société).</li><li>Une fois votre sous-compte Verto approuvé, ajoutez le compte bancaire USD Verto généré comme compte de paiement sur votre Dashboard Stripe Express — Xepay détecte automatiquement la liaison.</li><li>Enregistrez votre compte bancaire local en zone UEMOA (IBAN, SWIFT/BIC, banque) : c'est la destination finale de vos retraits.</li><li>Vos retraits locaux sont prêts : chaque demande depuis la vue Solde part désormais directement vers votre banque UEMOA, via le wallet USD dédié Verto — Xepay ne détient vos fonds à aucune étape.</li>
+    </ol>
+  </details>
+  <details class="faq-item guide-item">
+    <summary>Retirer vos fonds<span class="guide-item-summary">Envoyer votre solde vers votre destination configurée</span></summary>
+    <ol>
+      <li>Dans la sidebar, cliquez sur <strong>Solde</strong>.</li><li>Cliquez sur le bouton <strong>Retirer des fonds</strong>.</li><li>Indiquez le montant à retirer et confirmez.</li><li>Le retrait part vers la destination que vous avez configurée : votre banque locale UEMOA (via Verto) ou un compte bancaire US/EU enregistré sur votre compte Connect — vous pouvez l'annuler tant qu'il n'est pas finalisé.</li>
+    </ol>
+  </details>
+  <details class="faq-item guide-item">
+    <summary>Suivre vos transactions<span class="guide-item-summary">Historique, filtres et détail de chaque paiement</span></summary>
+    <ol>
+      <li>Dans la sidebar, cliquez sur <strong>Transactions</strong> pour dérouler le sous-menu.</li><li>Choisissez <strong>Paiements</strong> pour vos encaissements, ou <strong>Retraits</strong> pour vos virements sortants.</li><li>Filtrez par devise, statut ou date depuis la vue.</li><li>Cliquez sur une ligne pour en voir le détail complet.</li>
+    </ol>
+  </details>
+  <details class="faq-item guide-item">
+    <summary>Gérer votre activité commerciale<span class="guide-item-summary">Clients, produits, abonnements, factures et moyens de paiement</span></summary>
+    <ol>
+      <li>Dans la sidebar, ouvrez la section <strong>Commerce</strong>.</li><li>Choisissez la rubrique voulue : <strong>Clients</strong>, <strong>Produits</strong>, <strong>Abonnements</strong>, <strong>Factures</strong>, <strong>Moyens de paiement</strong> ou <strong>Risque</strong>.</li><li>Chaque rubrique s'ouvre dans sa propre page, avec ses propres actions de création/gestion.</li>
+    </ol>
+  </details>
+  <details class="faq-item guide-item">
+    <summary>Inviter un membre de votre équipe<span class="guide-item-summary">Donner un accès à un collaborateur, avec un rôle défini — plan Business</span></summary>
+    <ol>
+      <li>Cliquez sur l'icône ⚙️ dans le bandeau en haut de votre dashboard.</li><li>Dans Paramètres, ouvrez l'onglet <strong>Équipe et sécurité</strong>.</li><li>Cliquez sur <strong>Inviter un membre</strong>, renseignez son email et choisissez son rôle.</li><li>Le membre reçoit une invitation par email pour rejoindre votre espace de travail.</li>
+    </ol>
+  </details>
+  <details class="faq-item guide-item">
+    <summary>Activer la double authentification (2FA)<span class="guide-item-summary">Sécuriser l'accès à votre compte</span></summary>
+    <ol>
+      <li>Cliquez sur l'icône ⚙️ dans le bandeau en haut de votre dashboard.</li><li>Dans Paramètres, ouvrez l'onglet <strong>Authentification</strong>.</li><li>Activez la 2FA par application, ou enregistrez une clé de sécurité (passkey).</li><li>Conservez vos codes de secours dans un endroit sûr — ils permettent de récupérer l'accès si vous perdez votre méthode principale.</li>
+    </ol>
+  </details>
+  <details class="faq-item guide-item">
+    <summary>Générer une clé API<span class="guide-item-summary">Intégrer Xepay à votre propre site ou application — plan Pro</span></summary>
+    <ol>
+      <li>Dans la sidebar, cliquez sur <strong>API Access</strong>.</li><li>Générez votre clé API publique et secrète depuis cette page.</li><li>Configurez une URL de webhook si vous voulez recevoir les événements en temps réel.</li><li>Conservez votre clé secrète en sécurité — elle ne sera plus affichée en clair par la suite.</li>
+    </ol>
+  </details>
+</section>
+
+<div class="feat-grid">
+  <div class="feat-card reveal">
+    <div class="section-tag">Sans code</div>
+    <h3>Liens de paiement</h3>
+    <p class="fc-sub">Aucune intégration technique nécessaire : créez un lien de paiement depuis votre dashboard et partagez-le directement. C'est la façon la plus rapide de commencer à encaisser.</p>
+  </div>
+  <div class="feat-card reveal">
+    <div class="section-tag">Avec code</div>
+    <h3>Clés API &amp; webhooks</h3>
+    <p class="fc-sub">Pour intégrer Xepay à votre propre site ou application, générez une clé API depuis vos paramètres et configurez vos webhooks pour recevoir les événements de paiement en temps réel. Voir la page API pour la vue d'ensemble.</p>
+    <a href="/api" class="plan-cta ghost" style="margin-top:12px;display:inline-block;">Voir la page API →</a>
+  </div>
+</div>
+
+<div class="disclaimer-strip reveal">
+  <div>📘</div>
+  <div><strong>Référence technique complète à venir.</strong> En attendant, notre équipe peut vous accompagner directement sur votre intégration — écrivez à <a href="mailto:support@alasdia.com">support@alasdia.com</a>.</div>
+</div>
+</main>
 
 <!-- ─── FOOTER (partagé) ─── -->
 <footer class="site-footer">
