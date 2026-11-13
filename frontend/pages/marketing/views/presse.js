@@ -18,7 +18,7 @@ export function render() {
   <div class="feat-card reveal">
     <div class="section-tag">Le problème qu'on résout</div>
     <h3>Pourquoi Xepay existe</h3>
-    <p class="fc-sub">Encaisser un paiement en ligne depuis l'UEMOA reste souvent plus compliqué que dans d'autres régions : comptes bancaires difficiles à obtenir, outils pensés pour d'autres marchés. Xepay comble cet écart avec une couche de gestion simple posée sur une infrastructure de paiement internationale reconnue.</p>
+    <p class="fc-sub">Faire atterrir l'argent d'un paiement international sur un compte bancaire local en UEMOA demande normalement d'assembler soi-même plusieurs maillons : encaisser via Stripe Connect, faire sortir ces fonds en USD vers un partenaire bancaire capable de les recevoir pour le compte du marchand, puis déclencher le virement final vers la banque locale (IBAN UEMOA). Chaque maillon a ses propres règles de vérification et ne communique pas avec les autres par défaut. Xepay automatise ce parcours de bout en bout — de l'encaissement Stripe Connect au virement UEMOA via notre partenaire bancaire agréé Verto — pour que le marchand n'ait qu'un bouton "Retirer des fonds" à presser, plutôt qu'un flux à reconstruire lui-même.</p>
   </div>
 
   <div class="feat-card reveal">
