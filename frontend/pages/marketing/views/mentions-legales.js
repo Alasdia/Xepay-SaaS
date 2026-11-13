@@ -8,19 +8,19 @@ export function render() {
 </section>
 
 <div class="prose-section reveal">
-  <div class="prose-updated">Dernière mise à jour : [à compléter]</div>
+  <div class="prose-updated">Dernière mise à jour : 13 novembre 2026</div>
 
   <h2>Éditeur du site</h2>
   <p>Le site xepay.finance et la plateforme Xepay sont édités par <strong>Alasdia Technologies LLC</strong>.</p>
   <ul>
-    <li>Forme juridique : [à compléter]</li>
-    <li>Siège social : [à compléter]</li>
-    <li>Numéro d'immatriculation : [à compléter]</li>
+    <li>Forme juridique : Limited Liability Company (LLC)</li>
+    <li>Siège social : 1021 E Lincolnway, Ste 10459, Cheyenne, WY 82001, États-Unis</li>
+    <li>Numéro d'immatriculation : 2026-002005229 (Wyoming Secretary of State)</li>
     <li>Contact : <a href="mailto:support@alasdia.com">support@alasdia.com</a></li>
   </ul>
 
   <h2>Hébergement</h2>
-  <p>Le site est hébergé par [à compléter — ex. Amazon Web Services (AWS), adresse du fournisseur].</p>
+  <p>Les pages web du site sont hébergées par Vercel Inc. Le serveur applicatif (backend) est hébergé sur Amazon Web Services (AWS), via une instance EC2. La base de données est hébergée par Railway.</p>
 
   <h2>Propriété intellectuelle</h2>
   <p>L'ensemble des contenus présents sur ce site (textes, logos, visuels, nom "Xepay") est la propriété d'Alasdia Technologies LLC, sauf mention contraire. Toute reproduction sans autorisation préalable est interdite.</p>

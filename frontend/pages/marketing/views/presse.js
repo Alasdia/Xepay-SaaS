@@ -9,11 +9,30 @@ export function render() {
 </section>
 
 <div class="feat-grid">
-  <div class="feat-card reveal">
-    <div class="section-tag">En une phrase</div>
-    <h3>Qui est Xepay</h3>
-    <p class="fc-sub">Xepay est une plateforme fintech SaaS qui permet aux entrepreneurs de la zone UEMOA d'encaisser des paiements internationaux (XOF, USD, EUR) via Stripe Connect, sans jamais transiter par un compte détenu par Xepay. Développée et exploitée par Alasdia Technologies LLC.</p>
+  <div class="feat-card span2 reveal">
+    <div class="section-tag">Boilerplate — à copier/coller</div>
+    <h3>Présentation standard de Xepay</h3>
+    <p class="fc-sub">Xepay est une plateforme fintech SaaS qui permet aux entrepreneurs et entreprises de la zone UEMOA (Afrique de l'Ouest) d'encaisser des paiements internationaux en XOF, USD et EUR. Construite sur l'infrastructure Stripe Connect, Xepay donne à chaque marchand son propre compte de paiement individuel, ses liens de paiement, sa facturation et son suivi financier — sans jamais détenir elle-même les fonds de ses utilisateurs. La plateforme est développée et exploitée par Alasdia Technologies LLC.</p>
   </div>
+
+  <div class="feat-card reveal">
+    <div class="section-tag">Le problème qu'on résout</div>
+    <h3>Pourquoi Xepay existe</h3>
+    <p class="fc-sub">Encaisser un paiement en ligne depuis l'UEMOA reste souvent plus compliqué que dans d'autres régions : comptes bancaires difficiles à obtenir, outils pensés pour d'autres marchés. Xepay comble cet écart avec une couche de gestion simple posée sur une infrastructure de paiement internationale reconnue.</p>
+  </div>
+
+  <div class="feat-card reveal">
+    <div class="section-tag">Modèle</div>
+    <h3>Zéro détention de fonds</h3>
+    <p class="fc-sub">Chaque marchand dispose de son propre compte Stripe Connect individuel. Xepay ne transite jamais les fonds par un compte qu'elle détiendrait elle-même — elle se concentre sur les outils de pilotage, pas sur la garde des fonds.</p>
+  </div>
+
+  <div class="feat-card reveal">
+    <div class="section-tag">Qui nous sommes</div>
+    <h3>Alasdia Technologies LLC</h3>
+    <p class="fc-sub">Xepay est développée et exploitée par Alasdia Technologies LLC, société basée à Cheyenne (Wyoming, États-Unis). Une équipe restreinte, concentrée sur un seul objectif : rendre les paiements internationaux aussi simples pour un marchand ouest-africain que pour n'importe qui d'autre dans le monde.</p>
+  </div>
+
   <div class="feat-card reveal">
     <div class="section-tag">Contact presse</div>
     <h3>Parlons-en</h3>
