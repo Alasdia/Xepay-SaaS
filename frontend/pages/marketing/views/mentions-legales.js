@@ -20,7 +20,7 @@ export function render() {
   </ul>
 
   <h2>Hébergement</h2>
-  <p>Les pages web du site sont hébergées par Vercel Inc. Le serveur applicatif (backend) est hébergé sur Amazon Web Services (AWS), via une instance EC2. La base de données est hébergée par Railway.</p>
+  <p>Les pages web du site sont hébergées par Vercel Inc. Le serveur applicatif (backend) et la base de données sont hébergés sur Amazon Web Services (AWS), via une instance EC2.</p>
 
   <h2>Propriété intellectuelle</h2>
   <p>L'ensemble des contenus présents sur ce site (textes, logos, visuels, nom "Xepay") est la propriété d'Alasdia Technologies LLC, sauf mention contraire. Toute reproduction sans autorisation préalable est interdite.</p>
