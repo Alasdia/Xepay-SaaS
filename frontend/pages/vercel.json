@@ -34,11 +34,11 @@
     },
     {
       "source": "/carrieres(/)?",
-      "destination": "/marketing.html"
+      "destination": "/carrieres.html"
     },
     {
       "source": "/blog(/)?",
-      "destination": "/marketing.html"
+      "destination": "/blog.html"
     },
     {
       "source": "/presse(/)?",
@@ -54,7 +54,7 @@
     },
     {
       "source": "/statut(/)?",
-      "destination": "/marketing.html"
+      "destination": "/statut.html"
     },
     {
       "source": "/securite(/)?",

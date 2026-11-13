@@ -41,7 +41,11 @@ const SEO = {
   "/centre-aide": { title: "Centre d'aide Xepay | Questions fréquentes", description: "Trouvez des réponses sur votre compte Xepay, les paiements, les liens de paiement et l'utilisation de la plateforme." },
   "/securite": { title: "Sécurité des paiements et des données | Xepay", description: "En savoir plus sur les principes de sécurité de Xepay et la protection des paiements et des données." },
   "/mentions-legales": { title: "Mentions légales | Xepay", description: "Informations légales relatives au site Xepay et à son éditeur, Alasdia Technologies LLC." },
-  "/cookies": { title: "Politique de cookies | Xepay", description: "Consultez les informations de Xepay sur l'utilisation des cookies." }
+  "/cookies": { title: "Politique de cookies | Xepay", description: "Consultez les informations de Xepay sur l'utilisation des cookies." },
+  "/carrieres": { title: "Carrières | Xepay", description: "Découvrez les opportunités pour rejoindre Alasdia Technologies LLC, l'entreprise derrière Xepay." },
+  "/blog": { title: "Blog | Xepay", description: "Contenus à venir sur les paiements internationaux, la zone UEMOA et les coulisses de Xepay." },
+  "/presse": { title: "Presse et kit média | Xepay", description: "Ressources presse Xepay : présentation de la plateforme, contact presse et kit média pour les journalistes et créateurs de contenu." },
+  "/statut": { title: "Statut de la plateforme | Xepay", description: "Disponibilité en temps réel des services Xepay : API, dashboard et paiements." }
 };
 
 function updateSeo(path) {
