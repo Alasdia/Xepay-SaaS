@@ -460,7 +460,19 @@ export async function mount(container, params = {}) {
       : t.commission_xepay - t.stripe_fee;
   }
 
-  
+  // t.stripe_fee_estimated : le Frais Stripe (et donc la part Xepay nette
+  // qui en dépend, voir xepayShare) est une estimation d'après les taux
+  // Stripe publiés, pas le montant exact facturé par Stripe sur CE
+  // paiement (voir stripe_fee_is_estimated, backend/models.py) - direct
+  // charge sur un compte existant, où Stripe ne transmet le frais réel sur
+  // aucune transaction consultable. Préfixé par "≈" plutôt que laissé
+  // identique à un vrai montant pour ne pas le faire passer pour exact.
+  function formatMontantPeutEtreEstime(value, currency, t) {
+    const txt = formatMontant(value, currency);
+    return t.stripe_fee_estimated && value != null ? `≈ ${txt}` : txt;
+  }
+
+
   function renderPaymentRow(t, i) {
     const currency = t.currency_gross ?? "USD";
     const canRefund = t.status === "paid" && t.payment_id;
@@ -486,10 +498,10 @@ export async function mount(container, params = {}) {
           ${formatMontant(t.commission_xepay, currency)}
         </td>
         <td class="amount-cell" onclick="voirDetailActivite(${i})">
-          ${formatMontant(xepayShare(t), currency)}
+          ${formatMontantPeutEtreEstime(xepayShare(t), currency, t)}
         </td>
         <td class="amount-cell" onclick="voirDetailActivite(${i})">
-          ${formatMontant(t.stripe_fee, currency)}
+          ${formatMontantPeutEtreEstime(t.stripe_fee, currency, t)}
         </td>
         <td class="amount-cell" onclick="voirDetailActivite(${i})">
           ${formatMontant(t.amount_net_merchant, currency)}
@@ -973,8 +985,8 @@ export async function mount(container, params = {}) {
         ${detailIdRow("Lien de paiement", d.link_id)}
         ${detailRow("Montant brut", formatMontant(t.amount_gross, currency))}
         ${detailRow("Commission globale", formatMontant(t.commission_xepay, currency))}
-        ${detailRow("Commission Xepay", formatMontant(xepayShare(t), currency))}
-        ${detailRow("Frais Stripe", formatMontant(t.stripe_fee, currency))}
+        ${detailRow("Commission Xepay", formatMontantPeutEtreEstime(xepayShare(t), currency, t))}
+        ${detailRow("Frais Stripe" + (t.stripe_fee_estimated ? " (estimé)" : ""), formatMontant(t.stripe_fee, currency))}
         ${detailRow("Montant net marchand", formatMontant(t.amount_net_merchant, currency))}
         ${detailRow("Statut", statusMap[String(t.status).toLowerCase()] || t.status)}
         ${detailRow("Date", formatDateLikeTable(t.date) ?? "N/A")}

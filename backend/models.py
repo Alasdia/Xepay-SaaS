@@ -638,6 +638,17 @@ class Payment(Base):
     # qui reste dans la devise d'origine du lien).
     application_fee_requested = Column(Float, nullable=True)
     stripe_fee_amount = Column(Float, nullable=True)
+    # True = stripe_fee_amount est une ESTIMATION (taux publiés Stripe -
+    # 2,9% + 0,30 $ domestique, +1,5% carte internationale - voir
+    # _estimate_stripe_fee_amount, routes/webhook/paiement.py), pas le
+    # chiffre exact facturé par Stripe. Direct charge sur un compte
+    # fees_collector="application" (comptes existants) : aucune
+    # BalanceTransaction par transaction ne porte ce frais (confirmé avec
+    # le support Stripe), donc toujours une estimation. None/False pour un
+    # destination charge (legacy) : stripe_fee_amount y est le vrai montant
+    # lu sur balance_tx.fee. Le frontend affiche la distinction plutôt que
+    # de présenter une estimation comme un chiffre exact.
+    stripe_fee_is_estimated = Column(Boolean, nullable=True)
     # amount - application_fee_requested (voir routes/webhook/paiement.py) -
     # c'est le montant réellement réglé par Stripe au compte connecté
     # (amount - application_fee_amount). stripe_fee_amount n'est PAS

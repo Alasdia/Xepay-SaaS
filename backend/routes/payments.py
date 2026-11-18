@@ -210,6 +210,11 @@ def get_activity(
                 "currency_gross": p.currency,
                 "commission_xepay": commission_xepay,
                 "stripe_fee": p.stripe_fee_amount,
+                # True = stripe_fee (et la part Xepay nette qui en dépend)
+                # est une estimation d'après les taux Stripe publiés, pas le
+                # montant exact facturé - voir stripe_fee_is_estimated,
+                # models.py. Le frontend l'affiche distinctement.
+                "stripe_fee_estimated": bool(p.stripe_fee_is_estimated),
                 "amount_net_merchant": amount_net_merchant,
                 "payment_method_type": p.payment_method_type,
                 "source": p.source,
@@ -303,9 +308,17 @@ def get_payments_summary(
         if p.balance_transaction_net is not None
     )
 
+    # True si au moins un paiement entrant dans la somme ci-dessus est une
+    # estimation (voir stripe_fee_is_estimated, models.py) - l'agrégat
+    # entier est alors à prendre comme une approximation, pas un total exact.
+    stripe_fee_estimated = any(
+        p.stripe_fee_is_estimated for p in payments if p.stripe_fee_amount is not None
+    )
+
     return {
         "commission_xepay": commission_xepay,
         "stripe_fee": stripe_fee,
+        "stripe_fee_estimated": stripe_fee_estimated,
         "amount_net_merchant": amount_net_merchant,
         "currency": payments[0].currency if payments else "USD"
     }
