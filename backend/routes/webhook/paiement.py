@@ -82,26 +82,58 @@ def _fetch_settled_charge_data(charge_id, stripe_account=None):
     return charge_dict, balance_tx
 
 
-def _resolve_stripe_fee_amount(charge_id, connected_account_id, destination_balance_tx):
-    """Frais Stripe réel de CETTE charge, en USD.
+def _estimate_stripe_fee_amount(amount_usd, card_country):
+    """Estimation du frais Stripe (USD), d'après les taux publiés
+    stripe.com/pricing : 2,9% + 0,30 $ pour une carte domestique (US, le
+    pays de nos comptes connectés), +1,5% pour une carte internationale.
+    N'inclut PAS le +1% de conversion de devise publié par Stripe (pas
+    déterminable de façon fiable ici - Payment.currency est toujours USD,
+    voir models.py).
+
+    Formule domestique (2,9% + 0,30 $, sans surcharge) vérifiée exacte au
+    centime sur 3 paiements carte réels (Visa, Mastercard) confirmés par
+    Stripe sous l'ancien modèle destination charge, où balance_tx.fee
+    portait encore le vrai montant - voir conversation du 2026-11-18.
+    N'est PAS le montant exact que Stripe facture réellement en direct
+    charge (voir stripe_fee_is_estimated, models.py)."""
+    if amount_usd is None:
+        return None
+    rate = 0.029
+    if card_country and card_country.upper() != "US":
+        rate += 0.015
+    return round(amount_usd * rate + 0.30, 2)
+
+
+def _resolve_stripe_fee_amount(connected_account_id, destination_balance_tx, amount_usd, card_country):
+    """Frais Stripe de CETTE charge, en USD, et si c'est une estimation.
+    Retourne (montant, est_une_estimation).
 
     Destination charge (connected_account_id=None, paiement par lien à
-    l'ancien modèle) : balance_tx.fee de la charge EST le frais Stripe -
-    inchangé, comportement historique de ce webhook.
+    l'ancien modèle) : balance_tx.fee de la charge EST le frais Stripe réel
+    - inchangé, comportement historique de ce webhook.
 
-    Direct charge (connected_account_id posé) : balance_tx.fee de la
-    charge, côté compte connecté, ne porte QUE l'ApplicationFee (fee=0 pour
-    la part Stripe) - ce projet a fees_collector="application" (voir
-    account_configuration, routes/users.py), donc le vrai frais Stripe est
-    une BalanceTransaction séparée, type "stripe_fee", côté solde de la
-    PLATEFORME (jamais de stripe_account ici), source=charge_id. Même
-    recherche déjà faite et confirmée en prod pour les factures/
-    abonnements - voir process_invoice_paid_event, webhook/stripe.py."""
+    Direct charge (connected_account_id posé) : CORRIGÉ le 2026-11-18 -
+    l'ancienne version cherchait une BalanceTransaction séparée de type
+    "stripe_fee" (enum balance_transaction.type) sur le solde de la
+    PLATEFORME. Erreur de compréhension de l'API Stripe, confirmée avec le
+    support Stripe et par de vrais paiements test : ce type ne représente
+    PAS les frais de traitement carte (réservé aux produits Stripe -
+    Radar/Connect/Billing/Identity), et aucune transaction de ce type
+    n'existe jamais pour un paiement carte - stripe_fee_amount était donc
+    systématiquement None. Pire : passer en fees_collector="stripe" pour
+    obtenir le vrai montant par transaction a été testé et rejeté par
+    Stripe ("This account configuration is not supported") tant que
+    dashboard="express" (voir routes/users.py) - changer ça impliquerait de
+    passer en dashboard="full"/"none", un chantier à part. Faute de source
+    fiable par transaction dans ce modèle (seul le Platform Earnings
+    Report, mensuel et live uniquement, donne le chiffre exact), on
+    affiche une ESTIMATION plutôt qu'un tiret muet - voir
+    _estimate_stripe_fee_amount."""
     if not connected_account_id:
-        return destination_balance_tx.fee / 100 if destination_balance_tx else None
-    platform_txs = stripe.BalanceTransaction.list(source=charge_id, limit=10)
-    stripe_fee_tx = next((t for t in platform_txs.data if t.type == "stripe_fee"), None)
-    return abs(stripe_fee_tx.amount) / 100 if stripe_fee_tx else None
+        if not destination_balance_tx:
+            return None, False
+        return destination_balance_tx.fee / 100, False
+    return _estimate_stripe_fee_amount(amount_usd, card_country), True
 
 
 def process_checkout_session_payment(session_dict, user_id, link_id, reference_key, pi_id, event_type, connected_account_id=None):
@@ -140,9 +172,10 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
 
         balance_tx = None
         available_at = None
-        card_brand = card_last4 = card_exp_month = card_exp_year = None
+        card_brand = card_last4 = card_exp_month = card_exp_year = card_country = None
         fee_id = payment_method_id = payment_method_type = None
         fee_amount = stripe_fee_amount = None
+        stripe_fee_is_estimated = None
         application_fee_requested = None
         balance_transaction_net = None
         amount_usd = None
@@ -157,6 +190,10 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             card_last4 = card_info.get("last4")
             card_exp_month = card_info.get("exp_month")
             card_exp_year = card_info.get("exp_year")
+            # Pays d'émission de la carte - uniquement pour
+            # _estimate_stripe_fee_amount (surcharge carte internationale),
+            # jamais affiché tel quel.
+            card_country = card_info.get("country")
             # Apple Pay/Google Pay/Link payés par carte arrivent avec
             # payment_method_details.type == "card" (le wallet est un
             # sous-champ, card.wallet.type) — sans ça, payment_method_type
@@ -199,16 +236,17 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
                 #   la corrigera alors.
                 # - frais Stripe : balance_tx.fee de la charge pour un
                 #   destination charge (comportement historique) ; pour un
-                #   direct charge, cette même balance_tx (côté compte
-                #   connecté) ne porte que l'ApplicationFee - le vrai frais
-                #   Stripe est une BalanceTransaction séparée côté
-                #   plateforme (voir _resolve_stripe_fee_amount).
+                #   direct charge, voir _resolve_stripe_fee_amount - lu sur
+                #   balance_tx.fee (destination charge, réel) ou estimé
+                #   (direct charge, voir stripe_fee_is_estimated).
                 # - net marchand = brut - commission globale (déjà réglé
                 #   par Stripe au Connect : amount - application_fee_amount)
                 #   - PAS brut - commission globale - frais Stripe, qui
                 #   soustrairait le frais Stripe deux fois puisqu'il est
                 #   déjà inclus dans la commission globale.
-                stripe_fee_amount = _resolve_stripe_fee_amount(charge_id, connected_account_id, balance_tx)
+                stripe_fee_amount, stripe_fee_is_estimated = _resolve_stripe_fee_amount(
+                    connected_account_id, balance_tx, amount_usd, card_country
+                )
                 if application_fee_requested is not None:
                     balance_transaction_net = round(amount_usd - application_fee_requested, 2)
                 available_on = balance_tx.available_on
@@ -317,6 +355,7 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
             fee_amount=fee_amount,
             application_fee_requested=application_fee_requested,
             stripe_fee_amount=stripe_fee_amount,
+            stripe_fee_is_estimated=stripe_fee_is_estimated,
             balance_transaction_net=balance_transaction_net,
             available_at=available_at,
             card_brand=card_brand,
@@ -543,11 +582,18 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
                 print(f"⚠️ BalanceTransaction.retrieve a échoué pour {balance_transaction_id} (pi={pi_id}): {e}")
                 return {"status": "ok"}
             amount_usd = balance_tx.amount / 100
-            # Voir _resolve_stripe_fee_amount : en direct charge, le frais
-            # Stripe réel n'est pas sur CETTE balance_transaction (qui ne
-            # porte que l'ApplicationFee côté compte connecté).
-            stripe_fee_amount = _resolve_stripe_fee_amount(payment.charge_id, connected_account_id, balance_tx)
+            # Pays d'émission de la carte, pour _estimate_stripe_fee_amount
+            # (même rôle que card_country dans process_checkout_session_
+            # payment) - lu directement sur l'event, pas de nouvel appel.
+            payment_method_details = object_data.get("payment_method_details") or {}
+            card_country = (payment_method_details.get("card") or {}).get("country")
+            # Voir _resolve_stripe_fee_amount - réel (destination charge) ou
+            # estimé (direct charge, voir stripe_fee_is_estimated).
+            stripe_fee_amount, stripe_fee_is_estimated = _resolve_stripe_fee_amount(
+                connected_account_id, balance_tx, amount_usd, card_country
+            )
             payment.stripe_fee_amount = stripe_fee_amount
+            payment.stripe_fee_is_estimated = stripe_fee_is_estimated
             # application_fee_requested vient désormais de l'event dédié
             # application_fee.created (ApplicationFee.balance_transaction.
             # amount, voir ci-dessous) - jamais de charge.

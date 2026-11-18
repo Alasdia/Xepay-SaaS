@@ -241,26 +241,20 @@ def process_invoice_paid_event(
     )
     created_at = datetime.fromtimestamp(intent.created, tz=timezone.utc)
 
-    # StripeFee réel pour cette charge directe (fees_collector="application"
-    # sur ce compte Connect) : jamais sur la balance_transaction du compte
-    # connecté ci-dessus (son "fee" n'y est que l'Application Fee, pas de
-    # ligne fee_details de type stripe_fee), ni sur celle de l'ApplicationFee
-    # elle-même (fee=0 dessus) - c'est une BalanceTransaction séparée, de
-    # type "stripe_fee", sur le solde de la PLATEFORME elle-même (jamais de
-    # stripe_account= ici), avec pour source l'ID de cette même charge.
-    # Confirmé sur un vrai paiement test. Disponible immédiatement - pas
-    # besoin du rapport "All Fees" (mode live uniquement, délai de 96h).
+    # StripeFee pour cette charge directe - CORRIGÉ le 2026-11-18 : cette
+    # recherche cherchait une balance_transaction de type "stripe_fee" côté
+    # plateforme, qui ne représente jamais les frais de traitement carte
+    # (réservé aux produits Stripe - Radar/Connect/Billing/Identity) ;
+    # confirmé avec le support Stripe, elle ne trouvait donc jamais rien.
+    # Contrairement à process_checkout_session_payment (paiement.py, même
+    # correction), PAS d'estimation ajoutée ici : cette charge est libellée
+    # directement en devise du marchand (XOF, voir `currency` plus haut),
+    # alors que _estimate_stripe_fee_amount applique le taux Stripe publié
+    # en USD (2,9% + 0,30 $) - l'appliquer tel quel à un montant XOF
+    # donnerait un chiffre faux plutôt qu'une absence honnête. Reste donc
+    # None ici jusqu'à une estimation correcte par devise.
     stripe_fee_amount = None
-    if latest_charge:
-        platform_txs = stripe.BalanceTransaction.list(
-            source=latest_charge.id,
-            limit=10,
-        )
-        stripe_fee_tx = next(
-            (t for t in platform_txs.data if t.type == "stripe_fee"), None
-        )
-        if stripe_fee_tx:
-            stripe_fee_amount = float(abs(Decimal(stripe_fee_tx.amount)) / divisor)
+    stripe_fee_is_estimated = None
 
     stripe_description = (
         getattr(latest_charge, "description", None) if latest_charge else None
@@ -387,6 +381,7 @@ def process_invoice_paid_event(
         fee_id=fee_id,
         fee_amount=float(fee_amount),
         stripe_fee_amount=stripe_fee_amount,
+        stripe_fee_is_estimated=stripe_fee_is_estimated,
         # brut - commission globale, jamais - StripeFee en plus : le
         # StripeFee ne touche jamais le marchand sur ce flux (payé par la
         # plateforme, voir stripe_fee_amount ci-dessus) - même principe que
