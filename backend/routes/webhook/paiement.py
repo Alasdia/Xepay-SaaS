@@ -82,26 +82,47 @@ def _fetch_settled_charge_data(charge_id, stripe_account=None):
     return charge_dict, balance_tx
 
 
-def _resolve_stripe_fee_amount(charge_id, connected_account_id, destination_balance_tx):
+def _resolve_stripe_fee_amount(connected_account_id, destination_balance_tx):
     """Frais Stripe réel de CETTE charge, en USD.
 
     Destination charge (connected_account_id=None, paiement par lien à
     l'ancien modèle) : balance_tx.fee de la charge EST le frais Stripe -
     inchangé, comportement historique de ce webhook.
 
-    Direct charge (connected_account_id posé) : balance_tx.fee de la
-    charge, côté compte connecté, ne porte QUE l'ApplicationFee (fee=0 pour
-    la part Stripe) - ce projet a fees_collector="application" (voir
-    account_configuration, routes/users.py), donc le vrai frais Stripe est
-    une BalanceTransaction séparée, type "stripe_fee", côté solde de la
-    PLATEFORME (jamais de stripe_account ici), source=charge_id. Même
-    recherche déjà faite et confirmée en prod pour les factures/
-    abonnements - voir process_invoice_paid_event, webhook/stripe.py."""
+    Direct charge (connected_account_id posé) : CORRIGÉ le 2026-11-18 -
+    l'ancienne version cherchait une BalanceTransaction séparée de type
+    "stripe_fee" (enum balance_transaction.type) sur le solde de la
+    PLATEFORME. Erreur de compréhension de l'API Stripe, confirmée avec le
+    support Stripe et par de vrais paiements test : ce type ne représente
+    PAS les frais de traitement carte (c'est réservé aux frais des produits
+    Stripe - Radar/Connect/Billing/Identity), et aucune transaction de ce
+    type n'existe jamais pour un paiement carte - ce qui explique pourquoi
+    stripe_fee_amount était systématiquement None sur tout paiement en
+    direct charge récent (visible en "-" dans le tableau Paiements).
+
+    Le bon endroit : fee_details (liste imbriquée, avec son propre champ
+    "type" distinct de celui de la transaction) SUR la balance_transaction
+    de la charge elle-même, côté compte connecté (destination_balance_tx,
+    déjà récupérée avec stripe_account=connected_account_id par l'appelant).
+    Pour les comptes "fees_collector": "application" (comptes existants,
+    voir routes/users.py - non modifiable après création), cette
+    balance_transaction ne contient bien QUE l'ApplicationFee : aucune
+    entrée "stripe_fee" dans fee_details, donc None reste la seule réponse
+    honnête (pas de source fiable par transaction dans ce modèle - voir
+    Platform Earnings Report, mensuel, live uniquement). Pour les nouveaux
+    comptes en "fees_collector": "stripe" (PR #42), Stripe déduit son frais
+    directement sur CETTE balance_transaction, qui portera alors une
+    entrée fee_details de type "stripe_fee" en plus de "application_fee" -
+    trouvée ici sans appel Stripe supplémentaire."""
     if not connected_account_id:
         return destination_balance_tx.fee / 100 if destination_balance_tx else None
-    platform_txs = stripe.BalanceTransaction.list(source=charge_id, limit=10)
-    stripe_fee_tx = next((t for t in platform_txs.data if t.type == "stripe_fee"), None)
-    return abs(stripe_fee_tx.amount) / 100 if stripe_fee_tx else None
+    if not destination_balance_tx:
+        return None
+    stripe_fee_detail = next(
+        (d for d in destination_balance_tx.fee_details if d.type == "stripe_fee"),
+        None
+    )
+    return stripe_fee_detail.amount / 100 if stripe_fee_detail else None
 
 
 def process_checkout_session_payment(session_dict, user_id, link_id, reference_key, pi_id, event_type, connected_account_id=None):
@@ -197,18 +218,16 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
                 #   requested - stripe_fee_amount). Peut encore être None
                 #   ici si pas disponible à temps, application_fee.created
                 #   la corrigera alors.
-                # - frais Stripe : balance_tx.fee de la charge pour un
-                #   destination charge (comportement historique) ; pour un
-                #   direct charge, cette même balance_tx (côté compte
-                #   connecté) ne porte que l'ApplicationFee - le vrai frais
-                #   Stripe est une BalanceTransaction séparée côté
-                #   plateforme (voir _resolve_stripe_fee_amount).
+                # - frais Stripe : voir _resolve_stripe_fee_amount - lu dans
+                #   fee_details de cette même balance_tx (None pour les
+                #   comptes "fees_collector": "application" existants, car
+                #   aucune source fiable par transaction dans ce modèle).
                 # - net marchand = brut - commission globale (déjà réglé
                 #   par Stripe au Connect : amount - application_fee_amount)
                 #   - PAS brut - commission globale - frais Stripe, qui
                 #   soustrairait le frais Stripe deux fois puisqu'il est
                 #   déjà inclus dans la commission globale.
-                stripe_fee_amount = _resolve_stripe_fee_amount(charge_id, connected_account_id, balance_tx)
+                stripe_fee_amount = _resolve_stripe_fee_amount(connected_account_id, balance_tx)
                 if application_fee_requested is not None:
                     balance_transaction_net = round(amount_usd - application_fee_requested, 2)
                 available_on = balance_tx.available_on
@@ -543,10 +562,9 @@ async def stripe_payment_webhook(request: Request, background_tasks: BackgroundT
                 print(f"⚠️ BalanceTransaction.retrieve a échoué pour {balance_transaction_id} (pi={pi_id}): {e}")
                 return {"status": "ok"}
             amount_usd = balance_tx.amount / 100
-            # Voir _resolve_stripe_fee_amount : en direct charge, le frais
-            # Stripe réel n'est pas sur CETTE balance_transaction (qui ne
-            # porte que l'ApplicationFee côté compte connecté).
-            stripe_fee_amount = _resolve_stripe_fee_amount(payment.charge_id, connected_account_id, balance_tx)
+            # Voir _resolve_stripe_fee_amount - lit fee_details de cette
+            # même balance_tx (None pour les comptes "application" existants).
+            stripe_fee_amount = _resolve_stripe_fee_amount(connected_account_id, balance_tx)
             payment.stripe_fee_amount = stripe_fee_amount
             # application_fee_requested vient désormais de l'event dédié
             # application_fee.created (ApplicationFee.balance_transaction.

@@ -241,26 +241,26 @@ def process_invoice_paid_event(
     )
     created_at = datetime.fromtimestamp(intent.created, tz=timezone.utc)
 
-    # StripeFee réel pour cette charge directe (fees_collector="application"
-    # sur ce compte Connect) : jamais sur la balance_transaction du compte
-    # connecté ci-dessus (son "fee" n'y est que l'Application Fee, pas de
-    # ligne fee_details de type stripe_fee), ni sur celle de l'ApplicationFee
-    # elle-même (fee=0 dessus) - c'est une BalanceTransaction séparée, de
-    # type "stripe_fee", sur le solde de la PLATEFORME elle-même (jamais de
-    # stripe_account= ici), avec pour source l'ID de cette même charge.
-    # Confirmé sur un vrai paiement test. Disponible immédiatement - pas
-    # besoin du rapport "All Fees" (mode live uniquement, délai de 96h).
+    # StripeFee réel pour cette charge directe - CORRIGÉ le 2026-11-18 (même
+    # erreur que _resolve_stripe_fee_amount dans webhook/paiement.py,
+    # corrigée en même temps - voir son commentaire pour le détail complet) :
+    # balance_transaction.type == "stripe_fee" ne représente jamais les frais
+    # de traitement carte (réservé aux produits Stripe - Radar/Connect/
+    # Billing/Identity), donc cette recherche sur le solde plateforme ne
+    # trouvait jamais rien. Le bon endroit est fee_details (type imbriqué,
+    # distinct) sur la balance_transaction de la charge elle-même, côté
+    # compte connecté (balance_tx ci-dessus, déjà récupérée avec
+    # stripe_account=connected_account_id) : None pour les comptes
+    # "fees_collector": "application" existants (aucune source fiable par
+    # transaction dans ce modèle, confirmé avec le support Stripe), rempli
+    # pour les nouveaux comptes "fees_collector": "stripe" (PR #42).
     stripe_fee_amount = None
-    if latest_charge:
-        platform_txs = stripe.BalanceTransaction.list(
-            source=latest_charge.id,
-            limit=10,
+    if has_balance_tx:
+        stripe_fee_detail = next(
+            (d for d in balance_tx.fee_details if d.type == "stripe_fee"), None
         )
-        stripe_fee_tx = next(
-            (t for t in platform_txs.data if t.type == "stripe_fee"), None
-        )
-        if stripe_fee_tx:
-            stripe_fee_amount = float(abs(Decimal(stripe_fee_tx.amount)) / divisor)
+        if stripe_fee_detail:
+            stripe_fee_amount = float(abs(Decimal(stripe_fee_detail.amount)) / divisor)
 
     stripe_description = (
         getattr(latest_charge, "description", None) if latest_charge else None
