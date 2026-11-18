@@ -131,8 +131,19 @@ def signup(
                     "configuration": account_configuration,
                     "defaults": {
                         "responsibilities": {
-                            "fees_collector": "application",
-                            "losses_collector": "application"
+                            # Stripe facture ses frais de traitement directement
+                            # au compte connecté (visibles en temps réel sur son
+                            # balance_transaction) plutôt qu'à la plateforme -
+                            # avec fees_collector=application, ces frais
+                            # n'existaient nulle part par transaction, seulement
+                            # dans le Platform Earnings Report mensuel (live
+                            # uniquement). losses_collector doit suivre
+                            # fees_collector (contrainte Stripe : losses=
+                            # application exige fees=application) ; ne s'applique
+                            # qu'aux NOUVEAUX comptes, pas rétroactif (confirmé
+                            # avec le support Stripe le 2026-11-18).
+                            "fees_collector": "stripe",
+                            "losses_collector": "stripe"
                         }
                     }
                 },
@@ -417,8 +428,13 @@ def _exchange_google_code(code: str, db: Session, redirect_uri: str, invite_toke
                     "configuration": account_configuration,
                     "defaults": {
                         "responsibilities": {
-                            "fees_collector": "application",
-                            "losses_collector": "application"
+                            # Voir le commentaire équivalent dans /signup plus
+                            # haut dans ce fichier : fees_collector=stripe pour
+                            # que les frais Stripe soient visibles en temps réel
+                            # sur le compte connecté ; losses_collector suit par
+                            # contrainte Stripe. Nouveaux comptes seulement.
+                            "fees_collector": "stripe",
+                            "losses_collector": "stripe"
                         }
                     }
                 },
