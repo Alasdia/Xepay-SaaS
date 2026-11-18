@@ -13,6 +13,7 @@ from backend.services.stripe_service import (create_connect_invoice, create_conn
 from backend.services import commission_service, stripe_branding_service
 from backend.services import rate_limit as rate_limit_service
 from backend.services.email_service import send_account_updated_email, send_payout_success_email, send_payout_failed_email, is_notification_enabled
+from backend.routes.webhook.paiement import _estimate_stripe_fee_amount
 import stripe
 import os
 
@@ -186,11 +187,14 @@ def process_invoice_paid_event(
         stripe_account=connected_account_id,
     )
 
-    # Montant et devise directement depuis le PaymentIntent réglé : déjà
-    # dans la devise de facturation du marchand (XOF pour ce projet), donc
-    # _convert_merchant_amount_to_xof ne fait qu'arrondir (pas de taux de
-    # change appliqué) — mais reste générique si une facture est un jour
-    # libellée dans une autre devise.
+    # Montant et devise directement depuis le PaymentIntent réglé : devise
+    # choisie par le marchand pour sa facture/son abonnement (EUR/USD en
+    # pratique, jamais XOF - confirmé le 2026-11-18, voir conversation du
+    # même jour) - PAS la devise de facturation du marchand. XOF n'est que
+    # la devise de payout au marchand, vers laquelle _convert_merchant_
+    # amount_to_xof convertit toujours ce montant avec un vrai taux de
+    # change (sauf si currency vaut déjà XOF, cas qui n'arrive pas en
+    # pratique mais reste géré).
     currency = intent.currency.upper()
     divisor = (
         Decimal("1")
@@ -246,15 +250,16 @@ def process_invoice_paid_event(
     # plateforme, qui ne représente jamais les frais de traitement carte
     # (réservé aux produits Stripe - Radar/Connect/Billing/Identity) ;
     # confirmé avec le support Stripe, elle ne trouvait donc jamais rien.
-    # Contrairement à process_checkout_session_payment (paiement.py, même
-    # correction), PAS d'estimation ajoutée ici : cette charge est libellée
-    # directement en devise du marchand (XOF, voir `currency` plus haut),
-    # alors que _estimate_stripe_fee_amount applique le taux Stripe publié
-    # en USD (2,9% + 0,30 $) - l'appliquer tel quel à un montant XOF
-    # donnerait un chiffre faux plutôt qu'une absence honnête. Reste donc
-    # None ici jusqu'à une estimation correcte par devise.
-    stripe_fee_amount = None
-    stripe_fee_is_estimated = None
+    # ESTIMÉ depuis le 2026-11-18 (même correction que process_checkout_
+    # session_payment, paiement.py) plutôt que laissé à None : ce flux est
+    # un direct charge sur le même type de compte connecté (solde en USD)
+    # que les liens de paiement - _estimate_stripe_fee_amount (taux publiés
+    # Stripe, 2,9% + 0,30 $ domestique, +1,5% carte internationale) s'y
+    # applique donc de la même façon, avec le pays de la carte déjà lu sur
+    # card_info ci-dessus.
+    card_country = getattr(card_info, "country", None) if card_info else None
+    stripe_fee_amount = _estimate_stripe_fee_amount(float(gross_amount), card_country)
+    stripe_fee_is_estimated = True
 
     stripe_description = (
         getattr(latest_charge, "description", None) if latest_charge else None
@@ -264,9 +269,9 @@ def process_invoice_paid_event(
     # ce flux : c'est un direct charge (stripe_account=connected_account_id
     # partout), l'argent est déjà sur le compte connecté dès le départ (pas
     # de Transfer) — transfer_* ne sont donc pas renseignés sur Payment/
-    # WalletTransaction. stripe_fee_amount, lui, EST récupéré (voir
-    # stripe_fee_amount ci-dessus) depuis le solde plateforme, pas depuis
-    # cette charge.
+    # WalletTransaction. stripe_fee_amount, lui, est une ESTIMATION (voir
+    # stripe_fee_amount ci-dessus) - pas lu depuis cette charge ni depuis
+    # le solde plateforme.
     fee_id = getattr(latest_charge, "application_fee", None) if latest_charge else None
 
     # status reste notre vocabulaire domaine, pas le statut brut Stripe
