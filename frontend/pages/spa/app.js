@@ -9,7 +9,7 @@ import { showToast } from "./shared/toast.js";
 import { mount as mountDashboard } from "./views/dashboard.js";
 import { mount as mountSolde } from "./views/solde.js";
 import { mount as mountTransactions } from "./views/transactions.js";
-import { mount as mountLiens } from "./views/liens.js";
+import { mount as mountLiens, LIEN_SECTIONS, DEFAULT_LIEN_SECTION } from "./views/liens.js";
 import { mount as mountCommerce } from "./views/commerce.js";
 import { mount as mountApi } from "./views/api.js";
 import { mount as mountParametres } from "./views/parametres.js";
@@ -109,7 +109,18 @@ async function init() {
   registerRoute("/dash/workspace/:workspaceId/transactions/retraits", (c, p) => mountTransactions(c, { ...p, fixedType: "withdraw" }), { name: "retraits" });
   registerRoute("/dash/workspace/:workspaceId/transactions/paiements/py/:paymentId", mountPaymentDetail, { name: "transaction-paiement-detail" });
   registerRoute("/dash/workspace/:workspaceId/transactions/retraits/wd/:withdrawalId", mountWithdrawalDetail, { name: "transaction-retrait-detail" });
-  registerRoute("/dash/workspace/:workspaceId/liens", mountLiens, { name: "liens" });
+  // Une route par sous-vue (voir sidebar.html, submenu-liens) : chaque
+  // combinaison usage x montant a sa propre page, même pattern que
+  // /commerce/clients|produits|... ci-dessous. /liens (sans section)
+  // redirige vers la sous-vue par défaut, comme /profil et /securite.
+  Object.keys(LIEN_SECTIONS).forEach((section) => {
+    registerRoute(`/dash/workspace/:workspaceId/liens/${section}`, (c, p) => mountLiens(c, { ...p, section }), { name: section });
+  });
+  registerRoute(
+    "/dash/workspace/:workspaceId/liens",
+    (c, p) => navigate(`/dash/workspace/${encodeURIComponent(p.workspaceId)}/liens/${DEFAULT_LIEN_SECTION}`, { replace: true }),
+    { name: "liens" }
+  );
   // Noms de route identiques aux data-page de la sidebar (clients/produits/
   // ... voir sidebar.html) - avec un préfixe "commerce-" ici, setActiveRoute
   // ne reconnaissait jamais ces routes (comparaison stricte dataset.page ===

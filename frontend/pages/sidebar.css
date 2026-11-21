@@ -113,6 +113,14 @@
     min-width: 0;
     width: auto;
 }
+/* Même règles que .commerce-title ci-dessus, pour le groupe "Liens de
+   paiement" (voir sidebar.html, submenu-liens). */
+#sidebar .liens-title{ transform: none !important;}
+#sidebar .nav-section-title .liens-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+}
 
 /* Sous-menu (Paiements/Retraits/Transferts) : repliée par défaut, affichée
    uniquement via .open (ajoutée par sidebar.js au clic sur .nav-toggle). */
