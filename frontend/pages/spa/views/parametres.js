@@ -2450,7 +2450,7 @@ const BUILDNESS_WIZARD_MODAL_HTML = `
         <div class="p-verto-modal-brands">
           <span class="p-verto-icon-badge"><img src="/favicon.svg" alt="Xepay"></span>
           <span class="p-verto-icon-x">×</span>
-          <span class="p-verto-icon-badge"><i class="fa-solid fa-building-columns" style="color:#b45309; font-size:18px;"></i></span>
+          <span class="p-verto-icon-badge"><img src="/assets/doola-icon.png" alt="doola"></span>
         </div>
         <h5>Xepay &amp; doola</h5>
         <p>doola est notre partenaire spécialisé dans la formation de sociétés américaines (LLC) et l'obtention de l'EIN (identifiant fiscal fédéral) - nécessaire pour activer pleinement votre compte Stripe Connect.</p>
@@ -2462,10 +2462,10 @@ const BUILDNESS_WIZARD_MODAL_HTML = `
       </div>
       <div class="p-verto-modal-right">
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-        <div class="p-buildness-wizard-content">
+        <div class="p-verto-modal-content">
         <h5 class="fw-bold text-dark mb-3" id="p-buildness-wizard-title">Nom et État de la LLC</h5>
         <div class="progress mb-4" style="height:6px;">
-          <div id="p-buildness-wizard-progress" class="progress-bar" style="width:33%; background:#b45309;"></div>
+          <div id="p-buildness-wizard-progress" class="progress-bar" style="width:0%; background:#b45309;"></div>
         </div>
         <form id="p-buildness-wizard-form">
           <div id="p-buildness-wizard-step-1">
@@ -2637,8 +2637,12 @@ function showBuildnessWizardStep(step) {
   }
   const title = document.getElementById("p-buildness-wizard-title");
   if (title) title.textContent = BUILDNESS_WIZARD_STEP_TITLES[step] || "";
+  // (step-1)/(total-1) plutôt que step/total : démarre réellement à 0%
+  // à l'étape 1 (aucune saisie encore validée), pas déjà à 33% - sinon
+  // la barre semble "statique au milieu" dès l'ouverture, signalé le
+  // 2026-11-23. Atteint 100% seulement à l'étape du récapitulatif.
   const progress = document.getElementById("p-buildness-wizard-progress");
-  if (progress) progress.style.width = `${(step / BUILDNESS_WIZARD_STEPS) * 100}%`;
+  if (progress) progress.style.width = `${((step - 1) / (BUILDNESS_WIZARD_STEPS - 1)) * 100}%`;
   document.getElementById("p-buildness-wizard-back").style.display = step > 1 ? "" : "none";
   document.getElementById("p-buildness-wizard-next").style.display = step < BUILDNESS_WIZARD_STEPS ? "" : "none";
   document.getElementById("p-buildness-submit-btn").style.display = step === BUILDNESS_WIZARD_STEPS ? "" : "none";
@@ -3171,6 +3175,7 @@ const VERTO_ONBOARDING_MODAL_HTML = `
       </div>
       <div class="p-verto-modal-right">
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+        <div class="p-verto-modal-content">
         <h5 class="fw-bold text-dark mb-1" id="p-verto-modal-title">Démarrer mon enregistrement</h5>
         <p id="p-verto-onboarding-rejected-notice" class="text-warning small mb-3" style="display:none;"><i class="fa-solid fa-triangle-exclamation"></i> Votre précédente demande a été refusée. Vous pouvez soumettre un nouveau dossier ci-dessous.</p>
 
@@ -3260,6 +3265,7 @@ const VERTO_ONBOARDING_MODAL_HTML = `
               <input type="number" name="rep_ownership" min="1" max="100" value="100" class="form-control form-control-sm text-dark" style="${VERTO_INPUT_STYLE}" required>
             </div>
           </form>
+        </div>
         </div>
 
         <div class="d-flex justify-content-end gap-2 mt-2">

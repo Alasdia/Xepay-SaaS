@@ -918,12 +918,18 @@
 #paramsVertoOnboardingModal .p-verto-field label { display: block; font-weight: 700; color: #1f2937; font-size: 13px; margin-bottom: 4px; }
 #paramsVertoOnboardingModal .p-verto-field .p-verto-field-help { font-size: 12px; color: #6b7280; margin-bottom: 6px; line-height: 1.5; }
 
+/* Même traitement que #paramsBuildnessWizardModal (voir plus haut) -
+   demandé explicitement le 2026-11-23 : "fait le même style pour le
+   modal de verto". */
+#paramsVertoOnboardingModal .p-verto-modal-content { max-width: 60%; margin: 0 auto; }
+
 @media (max-width: 860px) {
   #paramsVertoOnboardingModal .modal-dialog { width: 96vw; height: 94vh; margin: 3vh auto; }
   #paramsVertoOnboardingModal .modal-content { flex-direction: column; }
   #paramsVertoOnboardingModal .p-verto-modal-left { width: 100%; padding: 28px 24px; }
   #paramsVertoOnboardingModal .p-verto-modal-left .p-verto-modal-links { margin-top: 20px; padding-top: 0; }
   #paramsVertoOnboardingModal .p-verto-modal-right { padding: 28px 24px; }
+  #paramsVertoOnboardingModal .p-verto-modal-content { max-width: 100%; margin: 0; }
 }
 
 /* Onglet "Branding" (Compte Stripe Connect) - icône/logo/couleurs. */
@@ -1153,12 +1159,16 @@
 #paramsBuildnessWizardModal .p-verto-modal-right .btn-close { position: absolute; top: 20px; right: 20px; }
 
 /* Le texte/les champs (titre, barre de progression, formulaire) ne
-   remplissent que 60% du bloc de droite, demandé le 2026-11-23 - laisse
-   une respiration à droite plutôt que d'étirer les champs sur toute la
-   largeur disponible. Les boutons Retour/Suivant restent en dehors de ce
-   conteneur (voir le HTML), toujours alignés à droite sur toute la
-   largeur. */
-#paramsBuildnessWizardModal .p-buildness-wizard-content { max-width: 60%; }
+   remplissent que 60% du bloc de droite ET sont centrés dans cette
+   largeur (margin:auto) - demandé le 2026-11-23, laisse une respiration
+   égale de chaque côté plutôt que d'étirer les champs sur toute la
+   largeur disponible ou de les coller à gauche. Les boutons Retour/
+   Suivant restent en dehors de ce conteneur (voir le HTML), toujours
+   alignés à droite sur toute la largeur. Même règle appliquée à
+   #paramsVertoOnboardingModal plus bas (demandé explicitement : "même
+   style pour le modal de verto") - .p-verto-modal-content est donc
+   partagée entre les deux modales, comme .p-verto-field déjà. */
+#paramsBuildnessWizardModal .p-verto-modal-content { max-width: 60%; margin: 0 auto; }
 
 #paramsBuildnessWizardModal .p-verto-field { margin-bottom: 22px; }
 #paramsBuildnessWizardModal .p-verto-field label { display: block; font-weight: 700; color: #1f2937; font-size: 13px; margin-bottom: 4px; }
@@ -1170,5 +1180,5 @@
   #paramsBuildnessWizardModal .p-verto-modal-left { width: 100%; padding: 28px 24px; }
   #paramsBuildnessWizardModal .p-verto-modal-left .p-verto-modal-links { margin-top: 20px; padding-top: 0; }
   #paramsBuildnessWizardModal .p-verto-modal-right { padding: 28px 24px; }
-  #paramsBuildnessWizardModal .p-buildness-wizard-content { max-width: 100%; }
+  #paramsBuildnessWizardModal .p-verto-modal-content { max-width: 100%; margin: 0; }
 }
