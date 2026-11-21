@@ -2363,20 +2363,10 @@ function entrepriseTemplate() {
     ${detailHeader("Entreprise")}
 
     <div class="params-subsection-header">
-      <h6 class="params-subsection-title mb-0">🚀 Créer votre société US avec Firstbase</h6>
-      <a href="https://get.firstbase.io/lzqmlclh3nr9" target="_blank" rel="noopener noreferrer" class="create-client-btn text-decoration-none">
-        Créer ma LLC avec Firstbase <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.75rem;"></i>
-      </a>
+      <h6 class="params-subsection-title mb-0">🏛️ Créer votre société US avec Xepay (Buildness)</h6>
     </div>
-    <p class="params-subsection-sub">Firstbase s'occupe de la création complète de votre LLC américaine à distance : constitution de la société, numéro EIN (identifiant fiscal fédéral), agent enregistré obligatoire, et ouverture d'un compte bancaire professionnel partenaire. Le dossier se remplit entièrement en ligne (pièce d'identité et justificatif d'adresse), et la société est généralement opérationnelle en quelques jours. Une fois votre LLC et son compte bancaire actifs, renseignez ce compte dans vos paramètres de retrait Stripe pour débloquer vos virements.</p>
-
-    <div class="params-subsection-header" style="margin-top: 32px;">
-      <h6 class="params-subsection-title mb-0"><i class="fa-brands fa-stripe"></i> Créer votre société US avec Stripe Atlas</h6>
-      <a href="https://stripe.com/atlas" target="_blank" rel="noopener noreferrer" class="create-client-btn text-decoration-none">
-        Créer ma société avec Stripe Atlas <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.75rem;"></i>
-      </a>
-    </div>
-    <p class="params-subsection-sub">Stripe Atlas est le produit officiel de Stripe pour former une société américaine, directement depuis l'écosystème que vous utilisez déjà pour encaisser vos paiements. Atlas gère la constitution de la société, l'obtention du numéro EIN et l'ouverture d'un compte bancaire associé, avec une intégration native à votre compte Stripe existant — une alternative utile si vous préférez centraliser la gestion de votre activité et de votre société chez un seul prestataire plutôt que d'en ajouter un second. Des frais de dossier Stripe s'appliquent à la constitution ; le détail actualisé est disponible sur leur page.</p>
+    <p class="params-subsection-sub">Formez votre LLC américaine et obtenez votre EIN (identifiant fiscal fédéral) directement depuis Xepay, via notre partenaire doola - prérequis pour activer votre compte Stripe Connect. Remplace les liens externes vers Firstbase/Stripe Atlas : Xepay s'en occupe maintenant lui-même.</p>
+    <div id="p-buildness-container"></div>
 
     <div class="params-subsection-header" style="margin-top: 32px;">
       <h6 class="params-subsection-title mb-0">Informations sur votre entreprise</h6>
@@ -2385,6 +2375,186 @@ function entrepriseTemplate() {
     <p class="params-subsection-sub">Déjà une société ? Détails d'entreprise, représentant légal et documents, gérés directement via Stripe.</p>
     <div id="p-company-widget-container"></div>
   `;
+}
+
+// --- Buildness (LLC US + EIN via doola, voir backend/routes/buildness.py)
+// - vit dans la tuile "Entreprise" (remplace les liens Firstbase/Atlas
+// ci-dessus), même patron que Verto plus bas dans ce fichier : des
+// sections de contenu (.params-row-list/.params-info-row), jamais de
+// KPI - voir l'en-tête de ce fichier ("pas de KPI en lecture"). ---
+
+const BUILDNESS_TERMINAL_STATUSES = new Set(["completed", "failed"]);
+const BUILDNESS_POLL_INTERVAL_MS = 5000;
+let buildnessPollTimer = null;
+
+const BUILDNESS_US_STATES = [
+  ["AL", "Alabama"], ["AK", "Alaska"], ["AZ", "Arizona"], ["AR", "Arkansas"],
+  ["CA", "Californie"], ["CO", "Colorado"], ["CT", "Connecticut"], ["DE", "Delaware"],
+  ["FL", "Floride"], ["GA", "Géorgie"], ["HI", "Hawaï"], ["ID", "Idaho"],
+  ["IL", "Illinois"], ["IN", "Indiana"], ["IA", "Iowa"], ["KS", "Kansas"],
+  ["KY", "Kentucky"], ["LA", "Louisiane"], ["ME", "Maine"], ["MD", "Maryland"],
+  ["MA", "Massachusetts"], ["MI", "Michigan"], ["MN", "Minnesota"], ["MS", "Mississippi"],
+  ["MO", "Missouri"], ["MT", "Montana"], ["NE", "Nebraska"], ["NV", "Nevada"],
+  ["NH", "New Hampshire"], ["NJ", "New Jersey"], ["NM", "Nouveau-Mexique"], ["NY", "New York"],
+  ["NC", "Caroline du Nord"], ["ND", "Dakota du Nord"], ["OH", "Ohio"], ["OK", "Oklahoma"],
+  ["OR", "Oregon"], ["PA", "Pennsylvanie"], ["RI", "Rhode Island"], ["SC", "Caroline du Sud"],
+  ["SD", "Dakota du Sud"], ["TN", "Tennessee"], ["TX", "Texas"], ["UT", "Utah"],
+  ["VT", "Vermont"], ["VA", "Virginie"], ["WA", "Washington"], ["WV", "Virginie-Occidentale"],
+  ["WI", "Wisconsin"], ["WY", "Wyoming"], ["DC", "District de Columbia"],
+];
+
+function buildnessStatusLabel(status) {
+  if (status === "draft") return "Dossier enregistré";
+  if (status === "submitted") return "Envoyé à doola";
+  if (status === "processing") return "LLC en cours de formation";
+  if (status === "completed") return "LLC formée";
+  if (status === "failed") return "Échec";
+  return status;
+}
+
+function buildnessFormHtml() {
+  const options = BUILDNESS_US_STATES.map(
+    ([code, name]) => `<option value="${code}">${name} (${code})</option>`
+  ).join("");
+  return `
+    <form id="p-buildness-form" style="max-width:72%;">
+      <div class="mb-2">
+        <label class="form-label">Nom de la LLC</label>
+        <input type="text" name="company_name" class="form-control form-control-sm" placeholder="Ex: Xepay Ventures LLC" required>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">État de formation souhaité</label>
+        <select name="state" class="form-select form-select-sm" required>
+          <option value="" disabled selected>Choisir un État</option>
+          ${options}
+        </select>
+      </div>
+      <div class="row g-2 mb-2">
+        <div class="col-6">
+          <label class="form-label">Prénom du fondateur</label>
+          <input type="text" name="first_name" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-6">
+          <label class="form-label">Nom du fondateur</label>
+          <input type="text" name="last_name" class="form-control form-control-sm" required>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Email du fondateur</label>
+        <input type="email" name="email" class="form-control form-control-sm" required>
+      </div>
+      <button type="submit" id="p-buildness-submit-btn" class="create-client-btn">Lancer la création de ma LLC</button>
+    </form>
+  `;
+}
+
+function buildnessStatusHtml(data) {
+  const rows = [
+    `<div class="params-info-row"><span>Statut</span><strong>${buildnessStatusLabel(data.status)}</strong></div>`,
+  ];
+  if (data.company_name) rows.push(`<div class="params-info-row"><span>Société</span><strong>${data.company_name}</strong></div>`);
+  if (data.state) rows.push(`<div class="params-info-row"><span>État</span><strong>${data.state}</strong></div>`);
+  if (data.status === "completed" && data.ein_number) {
+    rows.push(`<div class="params-info-row"><span>EIN</span><strong>${data.ein_number}</strong></div>`);
+  }
+  const retryBtn = data.status === "failed"
+    ? `<button type="button" id="p-buildness-retry-btn" class="params-edit-btn mt-2">Réessayer</button>`
+    : "";
+  return `<div class="params-row-list mb-2" style="max-width:72%;">${rows.join("")}</div>${retryBtn}`;
+}
+
+function stopBuildnessPolling() {
+  if (buildnessPollTimer) {
+    clearInterval(buildnessPollTimer);
+    buildnessPollTimer = null;
+  }
+}
+
+async function fetchBuildnessStatus() {
+  const merchantId = getWorkspaceId();
+  const res = await apiFetch(`/buildness/status/${encodeURIComponent(merchantId)}`);
+  if (res.status === 403) {
+    const err = new Error("forbidden");
+    err.isForbidden = true;
+    throw err;
+  }
+  if (!res.ok) throw new Error("Impossible de récupérer le statut Buildness");
+  return res.json();
+}
+
+function renderBuildnessSection(data) {
+  const container = document.getElementById("p-buildness-container");
+  if (!container) return;
+
+  if (!data || !data.status || data.status === "not_started") {
+    container.innerHTML = buildnessFormHtml();
+    container.querySelector("#p-buildness-form").addEventListener("submit", submitBuildnessOnboard);
+    return;
+  }
+
+  container.innerHTML = buildnessStatusHtml(data);
+  const retryBtn = container.querySelector("#p-buildness-retry-btn");
+  if (retryBtn) retryBtn.addEventListener("click", () => renderBuildnessSection({ status: "not_started" }));
+}
+
+function startBuildnessPolling() {
+  stopBuildnessPolling();
+  buildnessPollTimer = setInterval(async () => {
+    try {
+      const data = await fetchBuildnessStatus();
+      renderBuildnessSection(data);
+      if (BUILDNESS_TERMINAL_STATUSES.has(data.status)) stopBuildnessPolling();
+    } catch (err) {
+      if (err.isForbidden) stopBuildnessPolling();
+      // Erreur réseau transitoire : retentée au prochain tick.
+    }
+  }, BUILDNESS_POLL_INTERVAL_MS);
+}
+
+async function submitBuildnessOnboard(e) {
+  e.preventDefault();
+  const form = e.target;
+  const btn = document.getElementById("p-buildness-submit-btn");
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Envoi en cours...";
+
+  const body = {
+    company_name: form.company_name.value.trim(),
+    state: form.state.value,
+    first_name: form.first_name.value.trim(),
+    last_name: form.last_name.value.trim(),
+    email: form.email.value.trim(),
+  };
+
+  try {
+    const res = await apiFetch("/buildness/onboard", { method: "POST", body });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Échec de la demande");
+    showToast("Demande envoyée - suivi en cours", "success");
+    renderBuildnessSection({ status: data.status || "draft", company_name: body.company_name, state: body.state });
+    startBuildnessPolling();
+  } catch (err) {
+    showToast(err.message || "Erreur lors de l'envoi", "error");
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
+}
+
+async function loadBuildnessStatus() {
+  const container = document.getElementById("p-buildness-container");
+  if (container) container.innerHTML = `<p class="params-subsection-sub text-muted">Chargement...</p>`;
+  try {
+    const data = await fetchBuildnessStatus();
+    renderBuildnessSection(data);
+    if (data.status && !BUILDNESS_TERMINAL_STATUSES.has(data.status)) startBuildnessPolling();
+  } catch (err) {
+    if (err.isForbidden) {
+      if (container) container.innerHTML = `<p class="params-subsection-sub">Vous n'avez pas les droits pour gérer la création d'entreprise.</p>`;
+      return;
+    }
+    renderBuildnessSection({ status: "not_started" });
+  }
 }
 
 let companyWidgetLoaded = false;
@@ -2417,6 +2587,8 @@ async function loadCompanyWidget() {
 function mountEntreprise(on) {
   companyWidgetLoaded = false;
   on(document.getElementById("p-company-widget-btn"), "click", loadCompanyWidget);
+  loadBuildnessStatus();
+  return () => stopBuildnessPolling();
 }
 
 // --- Detail : Permissions (rôle minimal par action, configurable par le
