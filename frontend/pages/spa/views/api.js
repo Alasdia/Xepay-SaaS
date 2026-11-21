@@ -5,181 +5,50 @@ import { setViewStyles } from "../core/styleLoader.js";
 const TEMPLATE = `
 <div id="api-content">
 <div class="mb-4">
-  <h1 style="font-size:24px;font-weight:700;"><i class="fa-solid fa-code"></i> API Access</h1>
-  <p class="muted" style="font-size:14px;margin-top:6px;">Gérez vos clés API et configurez vos webhooks pour intégrer Xepay dans vos applications.</p>
+  <h1 class="page-title"><i class="fa-solid fa-code"></i> API Access</h1>
+  <p class="page-subtitle">Gérez vos clés API et configurez vos webhooks pour intégrer Xepay dans vos applications.</p>
 </div>
-<div class="row g-3 mb-4">
-  <div class="col-md-4">
-    <div class="card-dark">
-      <div class="card-title-small">Appels API </div>
-      <div class="stat-value cyan" id="callsThisMonth"></div>
-      <div class="muted" id="growthText"></div>
-    </div>
+<div class="card-epay p-4 mb-4">
+  <h5 class="fw-bold mb-3"><i class="fa-solid fa-key"></i> Clés API</h5>
+  <div class="key-row">
+    <span class="key-label">Publique</span>
+    <span class="key-value" id="pubKey">Chargement...</span>
+    <button class="icon-btn" onclick="copyKey('pubKey')"><i class="fa-regular fa-copy"></i></button>
   </div>
-  <div class="col-md-4">
-    <div class="card-dark">
-      <div class="card-title-small">Taux de succès</div>
-      <div class="stat-value green" id="successRate">0%</div>
-      <div class="muted" id="errorsText" style="font-size:12px;margin-top:4px;"></div>
-    </div>
+  <div class="key-row">
+    <span class="key-label">Secrète</span>
+    <span class="key-value secret" id="secKey">••••••••••••••••</span>
+    <button class="icon-btn" id="toggleBtn" onclick="toggleSecret()"><i class="fa-regular fa-eye"></i></button>
+    <button class="icon-btn" onclick="copyKey('secKey')"><i class="fa-regular fa-copy"></i></button>
   </div>
-  <div class="col-md-4">
-    <div class="card-dark">
-      <div class="card-title-small">Webhooks actifs</div>
-      <div class="stat-value yellow" id="activeWebhooks"></div>
-      <div class="muted" id="webhookText"></div>
-    </div>
+  <div class="d-flex gap-2 mt-3">
+    <button class="btn-api btn-blue" onclick="regenKey()"><i class="fa-solid fa-rotate"></i> Régénérer</button>
+    <button class="btn-api btn-out" onclick="copyKey('pubKey')"><i class="fa-regular fa-copy"></i> Copier</button>
   </div>
-</div>
-<div class="row g-3 mb-4">
-  <div class="col-md-6">
-    <div class="card-dark">
-      <div class="card-title-small"><i class="fa-solid fa-key"></i> Clés API</div>
-      <div class="key-row">
-        <span class="key-label">Publique</span>
-        <span class="key-value" id="pubKey">Chargement...</span>
-        <button class="icon-btn" onclick="copyKey('pubKey')"><i class="fa-regular fa-copy"></i></button>
-      </div>
-      <div class="key-row">
-        <span class="key-label">Secrète</span>
-        <span class="key-value secret" id="secKey">••••••••••••••••</span>
-        <button class="icon-btn" id="toggleBtn" onclick="toggleSecret()"><i class="fa-regular fa-eye"></i></button>
-        <button class="icon-btn" onclick="copyKey('secKey')"><i class="fa-regular fa-copy"></i></button>
-      </div>
-      <div class="d-flex gap-2 mt-3">
-        <button class="btn-api btn-blue" onclick="regenKey()"><i class="fa-solid fa-rotate"></i> Régénérer</button>
-        <button class="btn-api btn-out" onclick="copyKey('pubKey')"><i class="fa-regular fa-copy"></i> Copier</button>
-      </div>
-      <div style="margin-top:14px;padding-top:12px;border-top:1px solid #2a2f5e;font-size:12px;">
-        <span class="muted">Dernière utilisation :</span><br>
-        <span id="lastUsedTime">—</span> — IP <code id="lastUsedIp">—</code>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-6">
-    <div class="card-dark">
-      <div class="card-title-small"><i class="fa-regular fa-copy"></i> Logs récents</div>
-      <div id="logsContainer"></div>
-      <button onclick="toggleLogs()" id="toggleLogsBtn" class="btn-logs">Voir tous les logs →</button>
-    </div>
+  <div class="key-last-used">
+    <span class="muted">Dernière utilisation :</span><br>
+    <span id="lastUsedTime">—</span> — IP <code id="lastUsedIp">—</code>
   </div>
 </div>
-<div class="card-dark">
+<div class="table-wrap mb-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <div class="card-title-small mb-0"><i class="fa-solid fa-link"></i> Webhooks</div>
+    <span class="table-title"><i class="fa-solid fa-link"></i> Webhooks</span>
     <button class="btn-api btn-blue" onclick="openModal()" style="padding:7px 14px;font-size:12px;">+ Ajouter</button>
   </div>
-  <div class="table-wrapper">
-    <table class="wh-table">
-      <thead><tr><th>URL</th><th>Événements</th><th>Statut</th><th>Dernier envoi</th><th>Actions</th></tr></thead>
-      <tbody id="webhookTable"><tr><td colspan="5" class="text-center muted">Chargement des webhooks...</td></tr></tbody>
-    </table>
-  </div>
+  <table class="table table-hover align-middle">
+    <thead><tr><th>URL</th><th>Événements</th><th>Statut</th><th>Dernier envoi</th><th></th></tr></thead>
+    <tbody id="webhookTable"><tr><td colspan="5" class="text-center muted">Chargement des webhooks...</td></tr></tbody>
+  </table>
 </div>
-<div class="card-dark doc-card" style="margin-top:24px; padding:28px; border-radius:18px;">
-  <h2 style="margin-bottom:8px;"><i class="fa-solid fa-satellite-dish"></i> Webhook API</h2>
-  <p style="opacity:0.75; margin-bottom:24px;">Recevez des événements Xepay en temps réel.</p>
-  <h3><i class="fa-solid fa-location-dot"></i>  Endpoint</h3>
-  <div class="code-block">
-    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-    <pre><code class="language-http">POST https://api.xepay.finance/webhooks</code></pre>
+<div class="table-wrap">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <span class="table-title"><i class="fa-regular fa-copy"></i> Logs</span>
   </div>
-  <h3><i class="fa-solid fa-box"></i> Headers</h3>
-  <div class="code-block">
-    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-    <pre><code class="language-http">Content-Type: application/json
-  X-Xepay-Signature: &lt;hmac_sha256_signature&gt;
-  X-Xepay-Event: &lt;event_type&gt;
-  X-Xepay-Timestamp: &lt;unix_timestamp&gt;</code></pre>
-  </div>
-  <h3><i class="fa-solid fa-lock"></i> Webhook Secret</h3>
-  <div class="code-block">
-    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-    <pre><code id="webhookSecretExample">Votre secret apparaît lors de la création du webhook.</code></pre>
-  </div>
-  <h3><i class="fa-solid fa-shield"></i> Signature</h3>
-  <p style="opacity:0.8; margin-bottom:14px;">Chaque webhook est signé par Xepay avec le secret associé au webhook. La signature HMAC SHA256 est calculée sur le corps exact de la requête HTTP.</p>
-  <div class="code-block">
-    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-    <pre><code>HMAC-SHA256(webhook.secret, raw_request_body)</code></pre>
-  </div>
-  <div class="security-box"><i class="fa-brands fa-python"></i>Vérifiez toujours la signature avant de traiter un paiement.</div>
-  <h3 style="margin-top:28px;"><i class="fa-solid fa-file-code"></i> Payload</h3>
-  <div class="code-block">
-    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-    <pre><code class="language-json">{
-    "id": "evt_&lt;event_id&gt;",
-    "timestamp": "&lt;unix_timestamp&gt;",
-    "event": "payment.success",
-    "data": {
-      "amount": "&lt;payment_amount&gt;",
-      "currency": "&lt;payment_currency&gt;",
-      "user_id": "&lt;user_id&gt;",
-      "link_id": "&lt;link_id&gt;"
-    }
-  }</code></pre>
-  </div>
-  <h3><i class="fa-brands fa-node-js"></i> Vérification (Node.js)</h3>
-  <div class="code-block">
-    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-    <pre><code class="language-javascript">const crypto = require("crypto");
-  // rawBody doit être le Buffer brut reçu dans la requête
-  const rawBody = req.rawBody;
-  const signature = req.headers["x-xepay-signature"];
-  const expected = crypto
-    .createHmac("sha256", WEBHOOK_SECRET)
-    .update(rawBody)
-    .digest("hex");
-  if (
-    !signature ||
-    !crypto.timingSafeEqual(
-      Buffer.from(signature, "hex"),
-      Buffer.from(expected, "hex")
-    )
-  ) {
-    throw new Error("Invalid signature");
-  }
-  res.status(200).json({
-    received: true
-  });</code></pre>
-  </div>
-  <h3><i class="fa-brands fa-python"></i> Vérification (Python)</h3>
-  <div class="code-block">
-    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-    <pre><code class="language-python">import hmac
-  import hashlib
-  # raw_body : corps brut de la requête HTTP (bytes)
-  signature = request.headers.get("X-Xepay-Signature")
-  expected = hmac.new(
-    WEBHOOK_SECRET.encode("utf-8"),
-    raw_body,
-    hashlib.sha256
-  ).hexdigest()
-  if not signature or not hmac.compare_digest(expected, signature):
-    raise ValueError("Invalid signature")
-  return {
-    "received": True
-  }</code></pre>
-  </div>
-  <h3><i class="fa-solid fa-rotate"></i> Retries automatiques</h3>
-  <p style="opacity:0.8;">Xepay tente automatiquement de renvoyer les webhooks échoués jusqu'à 3 fois avec un court délai entre chaque tentative.</p>
-  <h3 style="margin-top:28px;"><i class="fa-solid fa-file-lines"></i> Réponses HTTP</h3>
-  <table class="retry-table">
-    <tr><th>Code</th><th>Description</th></tr>
-    <tr><td>200</td><td>Webhook reçu</td></tr>
-    <tr><td>400</td><td>Signature invalide</td></tr>
-    <tr><td>500</td><td>Erreur serveur</td></tr>
+  <table class="table table-hover align-middle">
+    <thead><tr><th>Méthode</th><th>Statut</th><th>Chemin</th><th>Date</th></tr></thead>
+    <tbody id="logsTable"><tr><td colspan="4" class="text-center muted">Chargement des logs...</td></tr></tbody>
   </table>
-  <h3 style="margin-top:28px;">⚡ Événements disponibles</h3>
-  <table class="retry-table">
-    <tr><th>Event</th><th>Description</th></tr>
-    <tr><td>payment.success</td><td>Paiement confirmé</td></tr>
-    <tr><td>payment.failed</td><td>Paiement échoué</td></tr>
-    <tr><td>withdrawal.done</td><td>Retrait envoyé</td></tr>
-    <tr><td>refund.issued</td><td>Remboursement effectué</td></tr>
-  </table>
-  <h3 style="margin-top:28px;"><i class="fa-solid fa-flask"></i> Test rapide</h3>
-  <p style="opacity:0.8;">Utilisez <strong>webhook.site</strong> pour tester et inspecter les requêtes webhook.</p>
+  <button onclick="toggleLogs()" id="toggleLogsBtn" class="btn-api btn-out mt-3">Voir tous les logs →</button>
 </div>
 </div>
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
@@ -217,43 +86,8 @@ const TEMPLATE = `
 </div>
 `;
 
-const PRISM_SCRIPTS = [
-  "https://cdn.jsdelivr.net/npm/prismjs/prism.js",
-  "https://cdn.jsdelivr.net/npm/prismjs/components/prism-python.min.js",
-  "https://cdn.jsdelivr.net/npm/prismjs/components/prism-json.min.js",
-  "https://cdn.jsdelivr.net/npm/prismjs/components/prism-http.min.js",
-];
-
-let prismLoadingPromise = null;
-function ensurePrism() {
-  if (window.Prism) return Promise.resolve();
-  if (prismLoadingPromise) return prismLoadingPromise;
-  prismLoadingPromise = PRISM_SCRIPTS.reduce(
-    (chain, src) =>
-      chain.then(
-        () =>
-          new Promise((resolve, reject) => {
-            const s = document.createElement("script");
-            s.src = src;
-            s.onload = resolve;
-            s.onerror = reject;
-            document.head.appendChild(s);
-          })
-      ),
-    Promise.resolve()
-  );
-  return prismLoadingPromise;
-}
-
 export async function mount(container) {
-  await setViewStyles(["API.css"]);
-  if (!document.getElementById("prism-theme-link")) {
-    const link = document.createElement("link");
-    link.id = "prism-theme-link";
-    link.rel = "stylesheet";
-    link.href = "https://cdn.jsdelivr.net/npm/prismjs/themes/prism-tomorrow.css";
-    document.head.appendChild(link);
-  }
+  await setViewStyles(["API.css", "transactions.css"]);
   container.innerHTML = TEMPLATE;
 
   let secretVisible = false;
@@ -263,13 +97,6 @@ export async function mount(container) {
     const div = document.createElement("div");
     div.textContent = value ?? "";
     return div.innerHTML;
-  }
-
-  function copyCode(button) {
-    const code = button.parentElement.querySelector("code").innerText;
-    navigator.clipboard.writeText(code);
-    button.innerText = "Copied";
-    setTimeout(() => (button.innerText = "Copy"), 1500);
   }
 
   function toggleSecret() {
@@ -313,7 +140,7 @@ export async function mount(container) {
         tr.innerHTML = `
           <td class="url-mono">${escapeHTML(w.url)}</td>
           <td>${eventsHTML}</td>
-          <td><span class="${w.is_active ? "badge-active" : "badge-inactive"}">● ${w.is_active ? "Actif" : "Inactif"}</span></td>
+          <td><span class="status-pill ${w.is_active ? "badge-success" : "badge-danger"}">${w.is_active ? "Actif" : "Inactif"}</span></td>
           <td class="muted" style="font-size:12px;">${lastTriggered}</td>
           <td>
             <button class="icon-btn" onclick="testWebhook('${w.id}')" title="Tester"><i class="fa-solid fa-vial"></i></button>
@@ -354,7 +181,6 @@ export async function mount(container) {
       document.getElementById("ev1").checked = true;
       showToast("Webhook ajouté !", "#00e676");
       await loadWebhooks();
-      await loadStats();
     } catch (error) {
       console.error("Erreur création webhook:", error);
       alert(error.message);
@@ -367,7 +193,6 @@ export async function mount(container) {
     btn.closest("tr").remove();
     showToast("🗑 Supprimé", "#ff4757");
     await loadWebhooks();
-    await loadStats();
   }
 
   async function testWebhook(id) {
@@ -473,17 +298,24 @@ export async function mount(container) {
     const limit = showAllLogs ? 50 : 5;
     const res = await apiFetch(`/logs?limit=${limit}`);
     const logs = await res.json();
-    const container = document.getElementById("logsContainer");
-    container.innerHTML = "";
+    const tbody = document.getElementById("logsTable");
+    tbody.innerHTML = "";
+    if (!logs.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="muted" style="text-align:center;padding:25px;">Aucun appel enregistré</td></tr>`;
+      return;
+    }
     logs.forEach((log) => {
-      const div = document.createElement("div");
-      div.className = "log-row";
-      div.innerHTML = `
-        <span class="log-method ${log.method.toLowerCase()}">${log.method}</span>
-        <span class="${log.status === 200 ? "log-status-ok" : "log-status-err"}">${log.status}</span>
-        <span>${log.path}</span>
+      const tr = document.createElement("tr");
+      const time = log.time
+        ? new Date(log.time).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "medium" })
+        : "—";
+      tr.innerHTML = `
+        <td><span class="log-method ${log.method.toLowerCase()}">${log.method}</span></td>
+        <td><span class="${log.status === 200 ? "log-status-ok" : "log-status-err"}">${log.status}</span></td>
+        <td class="url-mono">${escapeHTML(log.path)}</td>
+        <td class="muted" style="font-size:12px;">${time}</td>
       `;
-      container.appendChild(div);
+      tbody.appendChild(tr);
     });
   }
   function toggleLogs() {
@@ -491,24 +323,6 @@ export async function mount(container) {
     const btn = document.getElementById("toggleLogsBtn");
     btn.textContent = showAllLogs ? "Voir moins" : "Voir tous les logs →";
     loadLogs();
-  }
-
-  async function loadStats() {
-    try {
-      const res = await apiFetch("/logs/stats");
-      if (!res.ok) throw new Error("Erreur chargement statistiques");
-      const data = await res.json();
-      document.getElementById("callsThisMonth").textContent = data.calls_this_month ?? 0;
-      document.getElementById("successRate").textContent = `${Number(data.success_rate ?? 0).toFixed(1)}%`;
-      document.getElementById("activeWebhooks").textContent = data.active_webhooks ?? 0;
-      document.getElementById("webhookText").textContent = `${data.total_webhooks ?? 0} endpoints configurés`;
-      document.getElementById("errorsText").textContent = `${data.errors ?? 0} erreurs`;
-      const growth = Number(data.growth ?? 0);
-      document.getElementById("growthText").textContent =
-        growth > 0 ? `+${growth}% vs mois dernier` : growth < 0 ? `${growth}% vs mois dernier` : "Stable vs mois dernier";
-    } catch (error) {
-      console.error("Erreur statistiques :", error);
-    }
   }
 
   function showSecretPopup(secret) {
@@ -554,7 +368,6 @@ export async function mount(container) {
     document.body.appendChild(modal);
   }
 
-  window.copyCode = copyCode;
   window.toggleSecret = toggleSecret;
   window.copyKey = copyKey;
   window.regenKey = regenKey;
@@ -567,16 +380,13 @@ export async function mount(container) {
   window.copySecret = copySecret;
   window.closeSecretModal = closeSecretModal;
 
-  ensurePrism().then(() => window.Prism?.highlightAllUnder(container));
   loadWebhooks();
   loadApiKeys();
   loadLogs();
-  loadStats();
   loadCurrentUser();
 
   return {
     unmount() {
-      delete window.copyCode;
       delete window.toggleSecret;
       delete window.copyKey;
       delete window.regenKey;
