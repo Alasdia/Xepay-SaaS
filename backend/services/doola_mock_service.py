@@ -2,14 +2,14 @@
 aucun appel réseau, retourne des IDs factices mais plausibles. Nécessaire
 tant que les clés sandbox doola (dk_test_...) n'ont pas été reçues
 (demandées le 2026-11-21, voir conversation du même jour) : permet de
-développer/tester tout le flux BildBus (onboard + webhook) en local dès
+développer/tester tout le flux Buildness (onboard + webhook) en local dès
 aujourd'hui.
 
 Mêmes signatures d'appel que doola_service.py (create_customer,
 create_company, get_company_status) - PAS d'héritage formel depuis une
 classe commune : côté réel, ce sont des fonctions module-level (voir
 doola_service.py), pas une classe, donc il n'y a littéralement rien à
-hériter. Le duck typing suffit ici - routes/bildbus.py appelle
+hériter. Le duck typing suffit ici - routes/buildness.py appelle
 `service.create_customer(...)` de façon identique, que `service` soit ce
 mock ou le module doola_service réel (voir doola_client.py)."""
 

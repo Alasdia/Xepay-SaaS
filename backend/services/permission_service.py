@@ -51,7 +51,7 @@ CAPABILITY_DEFAULTS = {
     "manage_team": "admin",                   # /invites, /users (POST/PUT/DELETE/toggle)
     "withdraw_funds": "owner",                # /withdraw, /withdraw/{id}/process, /withdrawals
     "export_reports": "manager",              # /reports/financial, /reports/connect-session
-    "manage_company_formation": "owner",      # /bildbus/onboard, /bildbus/status/{merchant_id} (routes/bildbus.py)
+    "manage_company_formation": "owner",      # /buildness/onboard, /buildness/status/{merchant_id} (routes/buildness.py)
 }
 
 CAPABILITY_LABELS = {
@@ -65,7 +65,7 @@ CAPABILITY_LABELS = {
     "manage_team": ("Gérer l'équipe", "Inviter, changer le rôle, suspendre ou supprimer un membre."),
     "withdraw_funds": ("Retirer des fonds", "Initier et traiter un retrait depuis le solde disponible."),
     "export_reports": ("Exporter des rapports", "Télécharger un rapport financier ou ouvrir le rapport Stripe intégré."),
-    "manage_company_formation": ("Créer une LLC (BildBus)", "Démarrer la formation d'une LLC américaine et consulter son avancement (EIN, documents)."),
+    "manage_company_formation": ("Créer une LLC (Buildness)", "Démarrer la formation d'une LLC américaine et consulter son avancement (EIN, documents)."),
 }
 
 

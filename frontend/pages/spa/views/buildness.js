@@ -1,5 +1,5 @@
-// Vue BildBus — formation de LLC US + EIN via doola (voir backend/
-// routes/bildbus.py, backend/routes/webhook/doola.py). Un seul fichier,
+// Vue Buildness — formation de LLC US + EIN via doola (voir backend/
+// routes/buildness.py, backend/routes/webhook/doola.py). Un seul fichier,
 // pas de sous-vues (contrairement à commerce.js) : c'est un flux
 // linéaire à une seule étape visible côté marchand - formulaire, puis
 // suivi jusqu'à "completed"/"failed" - jamais plusieurs sections
@@ -10,7 +10,7 @@ import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
 
 // Code ISO 3166-2:US à 2 lettres, requis par doola (voir
-// BildBusOnboardRequest.state, backend/models.py) - liste complète : un
+// BuildnessOnboardRequest.state, backend/models.py) - liste complète : un
 // marchand peut légitimement vouloir former sa LLC dans n'importe quel
 // État, pas seulement les plus courants (Delaware/Wyoming).
 const US_STATES = [
@@ -53,36 +53,36 @@ function formTemplate() {
     ([code, name]) => `<option value="${code}">${name} (${code})</option>`
   ).join("");
   return `
-    <div class="bildbus-header">
-      <h4>🏛️ BildBus - Créer ma LLC américaine</h4>
+    <div class="buildness-header">
+      <h4>🏛️ Buildness - Créer ma LLC américaine</h4>
       <small class="text-muted">Formez votre société aux États-Unis et obtenez votre EIN, nécessaire pour activer Stripe Connect.</small>
     </div>
-    <div class="card-epay p-4 bildbus-form-card">
-      <form id="bildbus-onboard-form">
+    <div class="card-epay p-4 buildness-form-card">
+      <form id="buildness-onboard-form">
         <div class="form-group">
-          <label for="bb-company-name">Nom de la LLC</label>
-          <input type="text" id="bb-company-name" placeholder="Ex: Xepay Ventures LLC" required>
+          <label for="bn-company-name">Nom de la LLC</label>
+          <input type="text" id="bn-company-name" placeholder="Ex: Xepay Ventures LLC" required>
         </div>
         <div class="form-group">
-          <label for="bb-state">État de formation souhaité</label>
-          <select id="bb-state" required>
+          <label for="bn-state">État de formation souhaité</label>
+          <select id="bn-state" required>
             <option value="" disabled selected>Choisir un État</option>
             ${options}
           </select>
         </div>
         <div class="form-group">
-          <label for="bb-first-name">Prénom du fondateur</label>
-          <input type="text" id="bb-first-name" required>
+          <label for="bn-first-name">Prénom du fondateur</label>
+          <input type="text" id="bn-first-name" required>
         </div>
         <div class="form-group">
-          <label for="bb-last-name">Nom du fondateur</label>
-          <input type="text" id="bb-last-name" required>
+          <label for="bn-last-name">Nom du fondateur</label>
+          <input type="text" id="bn-last-name" required>
         </div>
         <div class="form-group">
-          <label for="bb-email">Email du fondateur</label>
-          <input type="email" id="bb-email" required>
+          <label for="bn-email">Email du fondateur</label>
+          <input type="email" id="bn-email" required>
         </div>
-        <button type="submit" id="bildbus-submit-btn" class="bildbus-submit-btn">
+        <button type="submit" id="buildness-submit-btn" class="buildness-submit-btn">
           Lancer la création de ma LLC
         </button>
       </form>
@@ -102,21 +102,21 @@ function statusTemplate(data) {
     : (STEP_INDEX[status] ?? -1);
 
   const stepsHtml = STEPS.map((step, i) => {
-    let cls = "bildbus-step";
+    let cls = "buildness-step";
     let icon = `${i + 1}`;
     if (status === "failed" && i === currentIndex) {
-      cls += " bildbus-step-failed";
+      cls += " buildness-step-failed";
       icon = "✕";
     } else if (i < currentIndex || status === "completed" && i <= currentIndex) {
-      cls += " bildbus-step-done";
+      cls += " buildness-step-done";
       icon = "✓";
     } else if (i === currentIndex) {
-      cls += " bildbus-step-current";
+      cls += " buildness-step-current";
     }
     return `
       <div class="${cls}">
-        <span class="bildbus-step-dot">${icon}</span>
-        <span class="bildbus-step-label">${escapeHTML(step.label)}</span>
+        <span class="buildness-step-dot">${icon}</span>
+        <span class="buildness-step-label">${escapeHTML(step.label)}</span>
       </div>
     `;
   }).join("");
@@ -124,30 +124,30 @@ function statusTemplate(data) {
   const isPolling = !TERMINAL_STATUSES.has(status);
 
   const einBox = status === "completed" && data.ein_number ? `
-    <div class="bildbus-ein-box">
-      <div class="bildbus-ein-label">EIN de ${escapeHTML(data.company_name || "votre LLC")}</div>
-      <div class="bildbus-ein-value">${escapeHTML(data.ein_number)}</div>
+    <div class="buildness-ein-box">
+      <div class="buildness-ein-label">EIN de ${escapeHTML(data.company_name || "votre LLC")}</div>
+      <div class="buildness-ein-value">${escapeHTML(data.ein_number)}</div>
     </div>
   ` : "";
 
   const failedBox = status === "failed" ? `
-    <div class="bildbus-failed-box">
+    <div class="buildness-failed-box">
       La demande a échoué. Vous pouvez réessayer avec de nouvelles informations.
       <div class="mt-2">
-        <button type="button" id="bildbus-retry-btn" class="bildbus-submit-btn">Réessayer</button>
+        <button type="button" id="buildness-retry-btn" class="buildness-submit-btn">Réessayer</button>
       </div>
     </div>
   ` : "";
 
   return `
-    <div class="bildbus-header">
-      <h4>🏛️ BildBus - ${escapeHTML(data.company_name || "Ma LLC")}</h4>
+    <div class="buildness-header">
+      <h4>🏛️ Buildness - ${escapeHTML(data.company_name || "Ma LLC")}</h4>
       <small class="text-muted">
-        ${isPolling ? '<span class="bildbus-spinner"></span>Suivi en temps réel de la formation de votre LLC.' : "Suivi terminé."}
+        ${isPolling ? '<span class="buildness-spinner"></span>Suivi en temps réel de la formation de votre LLC.' : "Suivi terminé."}
       </small>
     </div>
-    <div class="card-epay p-4 bildbus-form-card">
-      <div class="bildbus-stepper">${stepsHtml}</div>
+    <div class="card-epay p-4 buildness-form-card">
+      <div class="buildness-stepper">${stepsHtml}</div>
       ${einBox}
       ${failedBox}
     </div>
@@ -155,7 +155,7 @@ function statusTemplate(data) {
 }
 
 export async function mount(container, params = {}) {
-  await setViewStyles(["commerce.css", "liens.css", "bildbus.css"]);
+  await setViewStyles(["commerce.css", "liens.css", "buildness.css"]);
 
   let pollTimer = null;
 
@@ -168,23 +168,23 @@ export async function mount(container, params = {}) {
 
   async function fetchStatus() {
     const merchantId = getWorkspaceId();
-    const res = await apiFetch(`/bildbus/status/${encodeURIComponent(merchantId)}`);
+    const res = await apiFetch(`/buildness/status/${encodeURIComponent(merchantId)}`);
     if (res.status === 403) {
       const err = new Error("forbidden");
       err.isForbidden = true;
       throw err;
     }
-    if (!res.ok) throw new Error("Impossible de récupérer le statut BildBus");
+    if (!res.ok) throw new Error("Impossible de récupérer le statut Buildness");
     return res.json();
   }
 
   function renderForbidden() {
     stopPolling();
     container.innerHTML = `
-      <div class="bildbus-header">
-        <h4>🏛️ BildBus</h4>
+      <div class="buildness-header">
+        <h4>🏛️ Buildness</h4>
       </div>
-      <div class="card-epay p-4 bildbus-form-card bildbus-failed-box">
+      <div class="card-epay p-4 buildness-form-card buildness-failed-box">
         Vous n'avez pas les droits pour gérer la création d'entreprise.
         Seul le propriétaire du workspace peut démarrer ou suivre ce dossier.
       </div>
@@ -193,7 +193,7 @@ export async function mount(container, params = {}) {
 
   function renderStatus(data) {
     container.innerHTML = statusTemplate(data);
-    const retryBtn = document.getElementById("bildbus-retry-btn");
+    const retryBtn = document.getElementById("buildness-retry-btn");
     if (retryBtn) retryBtn.addEventListener("click", renderForm);
   }
 
@@ -221,21 +221,21 @@ export async function mount(container, params = {}) {
 
   async function onSubmit(e) {
     e.preventDefault();
-    const btn = document.getElementById("bildbus-submit-btn");
+    const btn = document.getElementById("buildness-submit-btn");
     const originalLabel = btn.textContent;
     btn.disabled = true;
     btn.textContent = "Envoi en cours...";
 
     const body = {
-      email: document.getElementById("bb-email").value.trim(),
-      first_name: document.getElementById("bb-first-name").value.trim(),
-      last_name: document.getElementById("bb-last-name").value.trim(),
-      company_name: document.getElementById("bb-company-name").value.trim(),
-      state: document.getElementById("bb-state").value,
+      email: document.getElementById("bn-email").value.trim(),
+      first_name: document.getElementById("bn-first-name").value.trim(),
+      last_name: document.getElementById("bn-last-name").value.trim(),
+      company_name: document.getElementById("bn-company-name").value.trim(),
+      state: document.getElementById("bn-state").value,
     };
 
     try {
-      const res = await apiFetch("/bildbus/onboard", { method: "POST", body });
+      const res = await apiFetch("/buildness/onboard", { method: "POST", body });
       if (res.status === 403) {
         renderForbidden();
         return;
@@ -259,7 +259,7 @@ export async function mount(container, params = {}) {
   function renderForm() {
     stopPolling();
     container.innerHTML = formTemplate();
-    document.getElementById("bildbus-onboard-form").addEventListener("submit", onSubmit);
+    document.getElementById("buildness-onboard-form").addEventListener("submit", onSubmit);
   }
 
   try {
@@ -274,7 +274,7 @@ export async function mount(container, params = {}) {
     if (err.isForbidden) {
       renderForbidden();
     } else {
-      showToast("Impossible de charger le statut BildBus", "error");
+      showToast("Impossible de charger le statut Buildness", "error");
       renderForm();
     }
   }

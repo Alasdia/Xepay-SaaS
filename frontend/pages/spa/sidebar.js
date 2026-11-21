@@ -19,7 +19,7 @@ const ROUTE_BY_PAGE = {
   retraits: "transactions/retraits",
 
   liens: "liens",
-  bildbus: "bildbus",
+  buildness: "buildness",
 
   clients: "commerce/clients",
   produits: "commerce/produits",

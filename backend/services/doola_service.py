@@ -1,6 +1,6 @@
-"""Pont doola pour BildBus (formation de LLC US + obtention de l'EIN pour
-un marchand non-résident, voir routes/bildbus.py, routes/webhook/doola.py,
-BildBusCustomer/BildBusCompany dans models.py) - prérequis à l'activation
+"""Pont doola pour Buildness (formation de LLC US + obtention de l'EIN pour
+un marchand non-résident, voir routes/buildness.py, routes/webhook/doola.py,
+BuildnessCustomer/BuildnessCompany dans models.py) - prérequis à l'activation
 du compte Stripe Connect du marchand.
 
 NON VÉRIFIÉ auprès de la vraie doc/sandbox doola à ce stade : les chemins
@@ -13,8 +13,8 @@ _sub_account_login dans verto_service.py ont été flaggés NON CONFIRMÉ
 jusqu'à vérification réelle.
 
 Client HTTP asynchrone (httpx.AsyncClient) - les deux endpoints
-d'onboarding (routes/bildbus.py) sont eux-mêmes async, contrairement aux
-routes Verto/Stripe existantes (requests, synchrones) : BildBus n'a pas
+d'onboarding (routes/buildness.py) sont eux-mêmes async, contrairement aux
+routes Verto/Stripe existantes (requests, synchrones) : Buildness n'a pas
 leur contrainte historique, donc pas de raison de bloquer l'event loop
 FastAPI ici."""
 
@@ -46,7 +46,7 @@ _LOGGED_BODY_MAX_CHARS = 500
 class DoolaAPIError(RuntimeError):
     """Erreur doola non retentée avec succès (ou non retentable - 4xx) -
     porte le status_code et le corps de réponse brut pour que l'appelant
-    (routes/bildbus.py) puisse distinguer un problème de validation (400)
+    (routes/buildness.py) puisse distinguer un problème de validation (400)
     d'une vraie panne (5xx épuisé après DOOLA_MAX_ATTEMPTS tentatives)."""
 
     def __init__(self, status_code: int | None, body: str):
@@ -148,7 +148,7 @@ async def _request(
 async def create_customer(payload: dict) -> str:
     """POST /v1/partner/customers - crée le "customer" doola (fondateur)
     correspondant à un marchand Xepay. Retourne doolaCustomerId (voir
-    BildBusCustomer.doola_customer_id)."""
+    BuildnessCustomer.doola_customer_id)."""
     data = await _request("POST", "/v1/partner/customers", json_body=payload, idempotent=True)
     return data["doolaCustomerId"]
 
@@ -156,11 +156,11 @@ async def create_customer(payload: dict) -> str:
 async def create_company(customer_id: str, payload: dict) -> dict:
     """POST /v1/partner/companies - crée la LLC pour un customer déjà créé
     (create_customer). entityType="LLC" est forcé ici (jamais passé par
-    l'appelant) : BildBus ne forme QUE des LLC, aucune autre forme
+    l'appelant) : Buildness ne forme QUE des LLC, aucune autre forme
     juridique n'est un cas d'usage actuel - un payload qui tenterait de le
     surcharger serait silencieusement ignoré, donc autant ne pas exposer
     le paramètre du tout. Retourne la réponse brute doola (contient au
-    minimum doolaCompanyId et le statut initial, voir routes/bildbus.py
+    minimum doolaCompanyId et le statut initial, voir routes/buildness.py
     pour ce qui en est extrait)."""
     body = {**payload, "customerId": customer_id, "entityType": "LLC"}
     return await _request("POST", "/v1/partner/companies", json_body=body, idempotent=True)
@@ -171,5 +171,5 @@ async def get_company_status(company_id: str) -> dict:
     l'état d'une company, pour un rattrapage si un webhook (routes/
     webhook/doola.py) a été manqué/jamais livré. Jamais appelé en boucle
     de polling automatique ici - à l'appelant de décider quand (voir
-    GET /bildbus/status)."""
+    GET /buildness/status)."""
     return await _request("GET", f"/v1/partner/companies/{company_id}")

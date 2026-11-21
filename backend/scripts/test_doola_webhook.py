@@ -1,22 +1,22 @@
-"""Script de test local du flux webhook BildBus (voir routes/webhook/
-doola.py, routes/bildbus.py) - vérifie que la base passe bien de
+"""Script de test local du flux webhook Buildness (voir routes/webhook/
+doola.py, routes/buildness.py) - vérifie que la base passe bien de
 "submitted" à "processing" puis "completed" après deux événements webhook
 HMAC valides, et que rejouer le même event_id ne retraite rien une
-seconde fois (idempotence, BildBusWebhookLog.event_id UNIQUE).
+seconde fois (idempotence, BuildnessWebhookLog.event_id UNIQUE).
 
 Usage (le serveur Xepay doit déjà tourner en local, même
 DOOLA_WEBHOOK_SECRET des deux côtés) :
 
     DOOLA_WEBHOOK_SECRET=test_secret python3 -m backend.scripts.test_doola_webhook
 
-Ce script insère BildBusCustomer/BildBusCompany DIRECTEMENT en base (saute
-POST /bildbus/onboard, qui exige une session authentifiée - simuler tout
+Ce script insère BuildnessCustomer/BuildnessCompany DIRECTEMENT en base (saute
+POST /buildness/onboard, qui exige une session authentifiée - simuler tout
 un login ici serait hors sujet) puis pilote POST /webhook/doola en HTTP
 réel, exactement comme le ferait doola - c'est cette partie qu'on veut
 vérifier. Nécessite au moins un utilisateur existant dans la base ciblée
 par DATABASE_URL (backend/database.py), réutilisé comme marchand de test.
 
-La mise à jour de BildBusCompany part en BackgroundTask côté serveur (voir
+La mise à jour de BuildnessCompany part en BackgroundTask côté serveur (voir
 webhook/doola.py) : elle peut donc arriver un peu APRÈS que ce script ait
 reçu la réponse HTTP 200 - _wait_for() retente la lecture en base pendant
 quelques secondes plutôt que de vérifier une seule fois immédiatement."""
@@ -31,9 +31,9 @@ import uuid
 import httpx
 
 from backend.database import SessionLocal
-from backend.models import BildBusCompany, BildBusCustomer, BildBusWebhookLog, UserDB
+from backend.models import BuildnessCompany, BuildnessCustomer, BuildnessWebhookLog, UserDB
 
-BASE_URL = os.getenv("BILDBUS_TEST_BASE_URL", "http://127.0.0.1:8000")
+BASE_URL = os.getenv("BUILDNESS_TEST_BASE_URL", "http://127.0.0.1:8000")
 DOOLA_WEBHOOK_SECRET = os.getenv("DOOLA_WEBHOOK_SECRET", "test_secret")
 
 
@@ -63,7 +63,7 @@ def _send_webhook(event_id: str, event_type: str, doola_company_id: str, extra: 
 def _wait_for(predicate, *, timeout=5.0, interval=0.2):
     """Retente `predicate()` jusqu'à True ou expiration - absorbe le délai
     entre la réponse HTTP (envoyée avant la BackgroundTask, voir webhook/
-    doola.py) et le commit réel de BildBusCompany."""
+    doola.py) et le commit réel de BuildnessCompany."""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if predicate():
@@ -83,12 +83,12 @@ def main():
         doola_company_id = f"mock_co_{uuid.uuid4().hex[:12]}"
 
         customer = (
-            db.query(BildBusCustomer)
-            .filter(BildBusCustomer.xepay_merchant_id == user.id)
+            db.query(BuildnessCustomer)
+            .filter(BuildnessCustomer.xepay_merchant_id == user.id)
             .first()
         )
         if not customer:
-            customer = BildBusCustomer(
+            customer = BuildnessCustomer(
                 xepay_merchant_id=user.id,
                 doola_customer_id=f"mock_cus_{uuid.uuid4().hex[:12]}",
                 email=user.email or "test@example.com",
@@ -99,7 +99,7 @@ def main():
             db.commit()
             db.refresh(customer)
 
-        company = BildBusCompany(
+        company = BuildnessCompany(
             customer_id=customer.id,
             doola_company_id=doola_company_id,
             company_name="Test LLC",
@@ -130,13 +130,13 @@ def main():
         print(f"OK - status = {company.status}, ein_number = {company.ein_number}")
 
         # 3) Idempotence : rejouer EXACTEMENT le même event_id (même
-        # payload) ne doit rien retraiter - un seul BildBusWebhookLog pour
+        # payload) ne doit rien retraiter - un seul BuildnessWebhookLog pour
         # cet event_id, company.updated_at inchangé (la 2e livraison ne
         # relance même pas la BackgroundTask, voir webhook/doola.py).
         updated_at_before = company.updated_at
         log_count_before = (
-            db.query(BildBusWebhookLog)
-            .filter(BildBusWebhookLog.event_id == ein_event_id)
+            db.query(BuildnessWebhookLog)
+            .filter(BuildnessWebhookLog.event_id == ein_event_id)
             .count()
         )
         resp = _send_webhook(ein_event_id, "ein.issued", doola_company_id, {"einNumber": "12-3456789"})
@@ -144,8 +144,8 @@ def main():
         time.sleep(1)  # laisse le temps à une éventuelle (mauvaise) 2e BackgroundTask de s'exécuter
         db.refresh(company)
         log_count_after = (
-            db.query(BildBusWebhookLog)
-            .filter(BildBusWebhookLog.event_id == ein_event_id)
+            db.query(BuildnessWebhookLog)
+            .filter(BuildnessWebhookLog.event_id == ein_event_id)
             .count()
         )
         assert log_count_before == log_count_after == 1, (
