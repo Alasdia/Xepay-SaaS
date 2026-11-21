@@ -18,7 +18,12 @@ const ROUTE_BY_PAGE = {
   paiements: "transactions/paiements",
   retraits: "transactions/retraits",
 
-  liens: "liens",
+  "unique-fixe": "liens/unique-fixe",
+  "unique-libre": "liens/unique-libre",
+  "quota-fixe": "liens/quota-fixe",
+  "quota-libre": "liens/quota-libre",
+  "illimite-fixe": "liens/illimite-fixe",
+  "illimite-libre": "liens/illimite-libre",
 
   clients: "commerce/clients",
   produits: "commerce/produits",
@@ -73,6 +78,13 @@ export async function initSidebar() {
     commerceTitle.addEventListener("click", () => {
       setSubmenuOpen("submenu-commerce", true);
       navigate(routeFor("clients"));
+    });
+  }
+  const liensTitle = container.querySelector(".liens-title");
+  if (liensTitle) {
+    liensTitle.addEventListener("click", () => {
+      setSubmenuOpen("submenu-liens", true);
+      navigate(routeFor("unique-fixe"));
     });
   }
   container.addEventListener("click", (e) => {
@@ -130,6 +142,9 @@ export function setActiveRoute(routeName) {
   }
   if (["clients", "produits", "abonnements", "factures", "moyens-paiement", "risque"].includes(effectiveRouteName)) {
     setSubmenuOpen("submenu-commerce", true);
+  }
+  if (["unique-fixe", "unique-libre", "quota-fixe", "quota-libre", "illimite-fixe", "illimite-libre"].includes(effectiveRouteName)) {
+    setSubmenuOpen("submenu-liens", true);
   }
   // Les liens du menu doivent toujours pointer vers le workspace courant,
   // même après un changement de workspace en cours de session.

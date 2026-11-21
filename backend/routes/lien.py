@@ -157,20 +157,39 @@ def get_dashboard_links(
 def get_links(
     limit: int = 10,
     offset: int = 0,
+    # Filtres optionnels - utilisés par la vue "Liens de paiement", qui a
+    # une sous-vue par combinaison usage x montant plutôt qu'une liste
+    # unique mélangeant les 6 types (voir spa/views/liens.js). Absents,
+    # le comportement est inchangé (tous les liens du workspace).
+    usage: str = None,
+    amount_mode: str = None,
     db: Session = Depends(get_db),
     user: UserDB = Depends(get_current_user),
     workspace_id: str = Header(
         None,
         alias="X-Workspace-Id"
     )
-):  
+):
     owner_id = get_workspace_owner_id(user, workspace_id, db)
-    links = (
+    query = (
         db.query(Link)
         .filter(Link.user_id == owner_id)
         .filter(Link.source == "links")
         .filter(Link.deleted == False)
-        .filter(Link.archived == False) 
+        .filter(Link.archived == False)
+    )
+    if usage == "unique":
+        query = query.filter(Link.max_uses == 1)
+    elif usage == "quota":
+        query = query.filter(Link.max_uses.isnot(None), Link.max_uses > 1)
+    elif usage == "unlimited":
+        query = query.filter(Link.max_uses.is_(None))
+    if amount_mode == "fixed":
+        query = query.filter(Link.amount.isnot(None))
+    elif amount_mode == "flexible":
+        query = query.filter(Link.amount.is_(None))
+    links = (
+        query
         .order_by(Link.created_at.desc())
         .offset(offset)
         .limit(limit)

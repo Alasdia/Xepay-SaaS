@@ -1,17 +1,105 @@
-// Vue "Mes liens de paiement" — port fidèle de liens.html + liens.js.
+// Vue "Liens de paiement" — globale, avec une sous-vue dédiée par
+// combinaison usage x montant (voir sidebar.html, submenu-liens, et
+// app.js qui enregistre une route par section). Chaque sous-vue a son
+// propre formulaire de création (déjà figé sur son type, pas de
+// sélecteur) et sa propre liste, filtrée côté backend (GET /links?usage=
+// &amount_mode=, voir routes/lien.py) plutôt que mélangée dans une seule
+// liste générique - même principe que commerce.js (Clients/Produits/...).
 import { apiFetch } from "../core/apiClient.js";
 import { isAuthenticated } from "../core/state.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { initDetailsDrawer } from "../shared/detailsDrawer.js";
 import { renderMetadataSection } from "./commerce.js";
 
-const TEMPLATE = `
+export const DEFAULT_LIEN_SECTION = "unique-fixe";
+
+// usage : "unique" (max_uses=1), "quota" (max_uses=N>1 choisi au
+// formulaire), "unlimited" (max_uses jamais envoyé). amountMode : "fixed"
+// (champ Montant) ou "flexible" (bornes min/max optionnelles, le client
+// choisit au paiement - voir pay-flexible.html).
+export const LIEN_SECTIONS = {
+  "unique-fixe": {
+    usage: "unique",
+    amountMode: "fixed",
+    icon: "fa-bolt",
+    title: "Usage unique — Montant fixe",
+    subtitle: "Un paiement à un montant fixe, puis le lien devient inutilisable.",
+    emptyLabel: "Aucun lien usage unique créé",
+  },
+  "unique-libre": {
+    usage: "unique",
+    amountMode: "flexible",
+    icon: "fa-hand-holding-dollar",
+    title: "Usage unique — Montant libre",
+    subtitle: "Un paiement à un montant choisi par le client, puis le lien devient inutilisable.",
+    emptyLabel: "Aucun lien usage unique à montant libre créé",
+  },
+  "quota-fixe": {
+    usage: "quota",
+    amountMode: "fixed",
+    icon: "fa-layer-group",
+    title: "Quota — Montant fixe",
+    subtitle: "Réutilisable à montant fixe jusqu'à un nombre de paiements limité.",
+    emptyLabel: "Aucun lien à quota créé",
+  },
+  "quota-libre": {
+    usage: "quota",
+    amountMode: "flexible",
+    icon: "fa-layer-group",
+    title: "Quota — Montant libre",
+    subtitle: "Réutilisable jusqu'à un nombre de paiements limité, montant choisi par le client.",
+    emptyLabel: "Aucun lien à quota et montant libre créé",
+  },
+  "illimite-fixe": {
+    usage: "unlimited",
+    amountMode: "fixed",
+    icon: "fa-infinity",
+    title: "Illimité — Montant fixe",
+    subtitle: "Réutilisable à montant fixe sans limite de paiements.",
+    emptyLabel: "Aucun lien illimité créé",
+  },
+  "illimite-libre": {
+    usage: "unlimited",
+    amountMode: "flexible",
+    icon: "fa-infinity",
+    title: "Illimité — Montant libre",
+    subtitle: "Réutilisable sans limite de paiements, montant choisi par le client.",
+    emptyLabel: "Aucun lien illimité à montant libre créé",
+  },
+};
+
+function buildTemplate(config) {
+  const amountFieldHtml =
+    config.amountMode === "fixed"
+      ? `
+      <div class="form-group" id="montant-fixe-group">
+        <label for="montant-lien">Montant <small>(obligatoire)</small></label>
+        <input type="number" id="montant-lien" placeholder="0.00">
+      </div>`
+      : `
+      <div class="form-group" id="montant-flexible-group">
+        <label>Bornes <small>(optionnelles - le client choisit le montant)</small></label>
+        <div style="display:flex; gap:8px;">
+          <input type="number" id="montant-min-lien" placeholder="Min (optionnel)" style="flex:1;">
+          <input type="number" id="montant-max-lien" placeholder="Max (optionnel)" style="flex:1;">
+        </div>
+      </div>`;
+  const quotaFieldHtml =
+    config.usage === "quota"
+      ? `
+      <div class="form-group" id="quota-group">
+        <label for="quota-lien">Nombre de paiements autorisés <small>(obligatoire, 2 ou plus)</small></label>
+        <input type="number" id="quota-lien" min="2" placeholder="Ex: 50">
+      </div>`
+      : "";
+
+  return `
 <div id="main-content-inner" class="w-100">
   <div class="mb-4">
     <div class="d-flex justify-content-between align-items-center">
       <div>
-        <h4 class="fw-bold mb-1">🔗 Mes liens de paiement</h4>
-        <small class="text-muted">Créez et partagez vos liens pour recevoir des paiements internationaux</small>
+        <h4 class="fw-bold mb-1"><i class="fa-solid ${config.icon}"></i> ${config.title}</h4>
+        <small class="text-muted">${config.subtitle}</small>
       </div>
       <button class="create-client-btn open-lien-modal">+ Nouveau lien</button>
     </div>
@@ -20,7 +108,7 @@ const TEMPLATE = `
     <div id="liste-liens"></div>
   </div>
   <div id="aucun-lien" class="text-center py-5 d-none">
-    <p class="text-muted">Aucun lien de paiement créé</p>
+    <p class="text-muted">${config.emptyLabel}</p>
     <button class="create-client-btn open-lien-modal">+ Créer mon premier lien</button>
   </div>
 </div>
@@ -40,7 +128,7 @@ const TEMPLATE = `
   <div class="customer-modal">
     <div class="customer-modal-header">
       <div>
-        <h3><i class="fa-solid fa-link"></i> Créer un lien de paiement</h3>
+        <h3><i class="fa-solid ${config.icon}"></i> Créer un lien — ${config.title}</h3>
       </div>
       <button type="button" class="customer-modal-close" id="close-create-lien">×</button>
     </div>
@@ -49,29 +137,8 @@ const TEMPLATE = `
         <label for="nom-lien">Nom du lien</label>
         <input type="text" id="nom-lien" placeholder="Ex: Freelance Design, Boutique...">
       </div>
-      <div class="form-group">
-        <label for="type-lien">Type de lien</label>
-        <select id="type-lien">
-          <option value="unique" selected>Usage unique</option>
-          <option value="multi_fixe">Usage multiple, montant fixe</option>
-          <option value="multi_flexible">Usage multiple, montant libre</option>
-        </select>
-      </div>
-      <div class="form-group d-none" id="quota-group">
-        <label for="quota-lien">Limiter à un nombre de paiements <small>(optionnel, illimité si vide)</small></label>
-        <input type="number" id="quota-lien" min="1" placeholder="Illimité">
-      </div>
-      <div class="form-group" id="montant-fixe-group">
-        <label for="montant-lien">Montant <small>(obligatoire)</small></label>
-        <input type="number" id="montant-lien" placeholder="0.00">
-      </div>
-      <div class="form-group d-none" id="montant-flexible-group">
-        <label>Bornes <small>(optionnelles - le client choisit le montant)</small></label>
-        <div style="display:flex; gap:8px;">
-          <input type="number" id="montant-min-lien" placeholder="Min (optionnel)" style="flex:1;">
-          <input type="number" id="montant-max-lien" placeholder="Max (optionnel)" style="flex:1;">
-        </div>
-      </div>
+      ${quotaFieldHtml}
+      ${amountFieldHtml}
       <div class="form-group">
         <label for="devise-lien">Devise</label>
         <select id="devise-lien">
@@ -88,30 +155,16 @@ const TEMPLATE = `
     </form>
   </div>
 </div>
-<div class="modal fade" id="modalLienGenere" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content border-0" style="background:#0d1b6e; color:white;">
-      <div class="modal-header border-0">
-        <h5 class="modal-title fw-bold">✅ Lien créé avec succès !</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body text-center">
-        <p class="text-muted mb-3">Partagez ce lien avec votre client</p>
-        <div class="p-3 rounded mb-3" style="background:rgba(255,255,255,0.1);">
-          <code id="lien-genere" class="text-warning" style="word-break:break-all; font-size:0.9rem;"></code>
-        </div>
-        <button class="btn btn-warning fw-bold w-100" onclick="copierLienGenere()">📋 Copier le lien</button>
-      </div>
-    </div>
-  </div>
-</div>
 `;
+}
 
-export async function mount(container) {
+export async function mount(container, params = {}) {
+  const sectionKey = LIEN_SECTIONS[params.section] ? params.section : DEFAULT_LIEN_SECTION;
+  const config = LIEN_SECTIONS[sectionKey];
+
   await setViewStyles(["responsive.css", "liens.css", "commerce.css"]);
-  container.innerHTML = TEMPLATE;
+  container.innerHTML = buildTemplate(config);
 
-  let links = [];
   let offset = 0;
   const limit = 10;
   let isLoading = false;
@@ -142,22 +195,6 @@ export async function mount(container) {
     if (event.target === creationModal) creationModal.classList.remove("open");
   });
 
-  // Bascule les champs du formulaire de création selon le type choisi :
-  // quota (nombre de paiements) uniquement pour les types multi-usage,
-  // bornes min/max uniquement pour le montant libre (qui masque alors le
-  // champ "Montant" fixe, le client le choisira lui-même au paiement).
-  const typeLienSelect = container.querySelector("#type-lien");
-  function updateLienFormVisibility() {
-    const type = typeLienSelect.value;
-    const isFlexible = type === "multi_flexible";
-    const isMultiUse = type !== "unique";
-    container.querySelector("#quota-group").classList.toggle("d-none", !isMultiUse);
-    container.querySelector("#montant-fixe-group").classList.toggle("d-none", isFlexible);
-    container.querySelector("#montant-flexible-group").classList.toggle("d-none", !isFlexible);
-  }
-  typeLienSelect.addEventListener("change", updateLienFormVisibility);
-  updateLienFormVisibility();
-
   async function chargerLiens() {
     const listeLiens = document.getElementById("liste-liens");
     const aucun = document.getElementById("aucun-lien");
@@ -167,7 +204,9 @@ export async function mount(container) {
       window.location.href = "/login";
       return;
     }
-    const res = await apiFetch(`/links?limit=${limit}&offset=${offset}`);
+    const res = await apiFetch(
+      `/links?limit=${limit}&offset=${offset}&usage=${config.usage}&amount_mode=${config.amountMode}`
+    );
     if (!res.ok) {
       const error = await res.text();
       console.error("❌ Erreur API :", error);
@@ -317,7 +356,6 @@ export async function mount(container) {
 
   async function genererLien() {
     const name = document.getElementById("nom-lien").value || "Lien de paiement";
-    const type = document.getElementById("type-lien").value;
     const currency = document.getElementById("devise-lien").value;
     const errorBox = document.getElementById("error-box");
     errorBox.style.display = "none";
@@ -325,7 +363,7 @@ export async function mount(container) {
     const payload = { currency, source: "links" };
     if (name) payload.name = name;
 
-    if (type === "multi_flexible") {
+    if (config.amountMode === "flexible") {
       const rawMin = document.getElementById("montant-min-lien").value;
       const rawMax = document.getElementById("montant-max-lien").value;
       if (rawMin) payload.min_amount = parseFloat(rawMin);
@@ -351,12 +389,19 @@ export async function mount(container) {
       payload.amount = amount;
     }
 
-    if (type === "unique") {
+    if (config.usage === "unique") {
       payload.max_uses = 1;
-    } else {
+    } else if (config.usage === "quota") {
       const rawQuota = document.getElementById("quota-lien").value;
-      if (rawQuota) payload.max_uses = parseInt(rawQuota, 10);
+      const quota = parseInt(rawQuota, 10);
+      if (!rawQuota || isNaN(quota) || quota < 2) {
+        errorBox.innerText = "Indiquez un nombre de paiements autorisés (2 ou plus)";
+        errorBox.style.display = "block";
+        return;
+      }
+      payload.max_uses = quota;
     }
+    // config.usage === "unlimited" : max_uses n'est jamais envoyé.
 
     const res = await apiFetch("/links", { method: "POST", body: payload });
     if (!res.ok) {
@@ -370,12 +415,12 @@ export async function mount(container) {
     successBox.style.display = "block";
     creationModal.classList.remove("open");
     document.getElementById("nom-lien").value = "";
-    document.getElementById("montant-lien").value = "";
-    document.getElementById("montant-min-lien").value = "";
-    document.getElementById("montant-max-lien").value = "";
-    document.getElementById("quota-lien").value = "";
-    document.getElementById("type-lien").value = "unique";
-    updateLienFormVisibility();
+    // Selon la section, seul un sous-ensemble de ces champs existe dans le
+    // DOM (voir buildTemplate) - requêtes protégées pour ne pas planter.
+    if (document.getElementById("montant-lien")) document.getElementById("montant-lien").value = "";
+    if (document.getElementById("montant-min-lien")) document.getElementById("montant-min-lien").value = "";
+    if (document.getElementById("montant-max-lien")) document.getElementById("montant-max-lien").value = "";
+    if (document.getElementById("quota-lien")) document.getElementById("quota-lien").value = "";
     offset = 0;
     document.getElementById("liste-liens").innerHTML = "";
     await chargerLiens();
