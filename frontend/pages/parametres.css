@@ -1040,9 +1040,12 @@
    long qu'attendu sur un petit écran. Le formulaire vit entièrement dans
    #paramsBuildnessWizardModal (voir plus bas). */
 .params-promo-card {
-  background: rgba(180, 83, 9, 0.06);
+  /* Opacité du fond réduite de 30% par rapport à 0,06 -> 0,042 (toujours
+     au-dessus de l'opacité de la bordure, 0,04 - voir le commentaire plus
+     haut). border-radius remonté à 8px (demandé le 2026-11-23). */
+  background: rgba(180, 83, 9, 0.042);
   border: 1px solid rgba(180, 83, 9, 0.04);
-  border-radius: 2px;
+  border-radius: 8px;
   padding: 32px;
   margin-bottom: 32px;
   min-height: 45vh;
@@ -1149,6 +1152,14 @@
 }
 #paramsBuildnessWizardModal .p-verto-modal-right .btn-close { position: absolute; top: 20px; right: 20px; }
 
+/* Le texte/les champs (titre, barre de progression, formulaire) ne
+   remplissent que 60% du bloc de droite, demandé le 2026-11-23 - laisse
+   une respiration à droite plutôt que d'étirer les champs sur toute la
+   largeur disponible. Les boutons Retour/Suivant restent en dehors de ce
+   conteneur (voir le HTML), toujours alignés à droite sur toute la
+   largeur. */
+#paramsBuildnessWizardModal .p-buildness-wizard-content { max-width: 60%; }
+
 #paramsBuildnessWizardModal .p-verto-field { margin-bottom: 22px; }
 #paramsBuildnessWizardModal .p-verto-field label { display: block; font-weight: 700; color: #1f2937; font-size: 13px; margin-bottom: 4px; }
 #paramsBuildnessWizardModal .p-verto-field .p-verto-field-help { font-size: 12px; color: #6b7280; margin-bottom: 6px; line-height: 1.5; }
@@ -1159,4 +1170,5 @@
   #paramsBuildnessWizardModal .p-verto-modal-left { width: 100%; padding: 28px 24px; }
   #paramsBuildnessWizardModal .p-verto-modal-left .p-verto-modal-links { margin-top: 20px; padding-top: 0; }
   #paramsBuildnessWizardModal .p-verto-modal-right { padding: 28px 24px; }
+  #paramsBuildnessWizardModal .p-buildness-wizard-content { max-width: 100%; }
 }
