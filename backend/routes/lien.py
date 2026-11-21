@@ -29,7 +29,7 @@ import os
 import uuid
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import text, extract
+from sqlalchemy import text
 from backend.models import LinkDashboardResponse
 from backend.models import PayRequest, Wallet
 from backend.services.stripe_service import create_checkout_session
@@ -55,35 +55,7 @@ def create_link(
 
 ):
     owner_id = membership.workspace_id
-    current_month = datetime.now(timezone.utc).month
-    current_year = datetime.now(timezone.utc).year
-    links_count = db.query(Link).filter(Link.user_id == owner_id, extract("month", Link.created_at) == current_month, extract("year", Link.created_at) == current_year).count()
-    now = datetime.now(timezone.utc)
-    start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
-    if now.month == 12:
-        end = datetime(now.year + 1, 1, 1, tzinfo=timezone.utc)
-    else:
-        end = datetime(now.year, now.month + 1, 1, tzinfo=timezone.utc)
-    paid_count = (
-        db.query(Payment.link_id)
-        .join(Link, Payment.link_id == Link.id)
-        .filter(Link.user_id == owner_id)
-        .filter(Payment.status.in_(["paid", "success", "réussi"]))
-        .filter(Payment.created_at >= start)
-        .filter(Payment.created_at < end)
-        .distinct()
-        .count()
-    )
-    PLAN_LIMITS = {"free": {"paid": 10, "links": 30}, "pro": {"paid": 100, "links": 200}, "business": {"paid": float("inf"), "links": float("inf")}}
-    plan = getattr(user, "plan", "free")
-    limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
-    PAID_LIMIT = limits["paid"]
-    LINK_LIMIT = limits["links"]
-    if paid_count >= PAID_LIMIT:
-        raise HTTPException(status_code=403, detail="Limite de paiements atteinte (10/mois)")
-    if links_count >= LINK_LIMIT:
-        raise HTTPException(status_code=403, detail="Limite de liens atteinte (30/mois)")
-    internal_id = generate_prefixed_id("lk") 
+    internal_id = generate_prefixed_id("lk")
     expires_at= datetime.now(timezone.utc) + timedelta(minutes=10)
     raw_token = generate_prefixed_id("pl")
     hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
@@ -249,27 +221,6 @@ def get_payment(token: str):
     user = db.query(UserDB).filter(UserDB.id == link.user_id).first()
     if not user:
         return {"error": "user not found"}
-    now = datetime.now(timezone.utc)
-    start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
-    if now.month == 12:
-        end = datetime(now.year + 1, 1, 1, tzinfo=timezone.utc)
-    else:
-        end = datetime(now.year, now.month + 1, 1, tzinfo=timezone.utc)
-    paid_count = (
-      db.query(Payment.link_id)
-        .join(Link, Payment.link_id == Link.id)
-        .filter(Link.user_id == user.id)
-        .filter(Payment.status.in_(["paid", "success"]))
-        .filter(Payment.created_at >= start)
-        .filter(Payment.created_at < end)
-        .distinct()
-        .count()
-    )
-    PLAN_LIMITS = {"free": {"paid": 10}, "pro": {"paid": 100}, "business": {"paid": float("inf")}}
-    plan = getattr(user, "plan", "free")
-    PAID_LIMIT = PLAN_LIMITS[plan]["paid"]
-    if paid_count >= PAID_LIMIT:
-        return RedirectResponse("/static/limit.html", status_code=303)
     url = create_checkout_session(db=db, mode="payment", email=user.email, user_id=user.id, amount=link.amount, link_id=link.id, currency=link.currency,)
     return RedirectResponse(url, status_code=303)
 

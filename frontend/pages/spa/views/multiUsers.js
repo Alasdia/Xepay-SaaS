@@ -5,23 +5,11 @@
 import { apiFetch } from "../core/apiClient.js";
 import { getWorkspaceId, setWorkspaceId } from "../core/state.js";
 import { setViewStyles } from "../core/styleLoader.js";
-import { refreshPlanBadge } from "../sidebar.js";
 
 const TEMPLATE = `
-<div id="businessLock" class="feature-lock d-none">
-  <div class="feature-lock-card">
-    <div class="lock-icon"><i class="fa-solid fa-lock"></i></div>
-    <h2>Multi-utilisateurs</h2>
-    <p>Invitez des collaborateurs, gérez les rôles, les permissions et plusieurs espaces de travail.</p>
-    <div class="lock-features">
-      <span>✓ Équipes</span><span>✓ Permissions</span><span>✓ Workspaces</span><span>✓ Collaboration</span>
-    </div>
-    <button class="btn btn-warning fw-bold" onclick="upgrade('business')">⚡ Passer à Business</button>
-  </div>
-</div>
   <div class="header">
     <div>
-      <div class="header-title text-muted"><i class="fa-solid fa-users"></i> Multi-utilisateurs <span class="badge-web3 business">BUSINESS</span></div>
+      <div class="header-title text-muted"><i class="fa-solid fa-users"></i> Multi-utilisateurs</div>
       <p>Gérez votre équipe, les rôles et les permissions d'accès à votre espace marchand.</p>
     </div>
     <div style="display:flex; gap:10px;">
@@ -97,20 +85,6 @@ export async function mount(container) {
   function on(target, type, fn) {
     target.addEventListener(type, fn);
     boundListeners.push({ target, type, fn });
-  }
-
-  async function checkBusinessAccess() {
-    const res = await apiFetch("/me");
-    const user = await res.json();
-    const lock = document.getElementById("businessLock");
-    if (user.plan !== "business") {
-      container.classList.add("workspace-locked");
-      lock.classList.remove("d-none");
-      return false;
-    }
-    container.classList.remove("workspace-locked");
-    lock.classList.add("d-none");
-    return true;
   }
 
   async function loadUsers() {
@@ -290,9 +264,7 @@ export async function mount(container) {
         setWorkspaceId(select.value);
         users = [];
         renderTable();
-        await refreshPlanBadge();
-        const allowed = await checkBusinessAccess();
-        if (allowed) await loadUsers();
+        await loadUsers();
       });
     } catch (err) {
       console.error("Erreur loadWorkspaces:", err);
@@ -313,7 +285,6 @@ export async function mount(container) {
   window.cycleRole = cycleRole;
   window.toggleSuspend = toggleSuspend;
   window.deleteUser = deleteUser;
-  // window.upgrade est exposé globalement par app.js (modale partagée persistante)
 
   const clockTimer = setInterval(() => {
     const now = new Date();
@@ -323,23 +294,14 @@ export async function mount(container) {
 
   (async () => {
     await loadWorkspaces();
-    await refreshPlanBadge();
-    const allowed = await checkBusinessAccess();
-    if (allowed) {
-      await loadUsers();
-      await loadInvites();
-    }
+    await loadUsers();
+    await loadInvites();
   })();
 
   return {
     unmount() {
       timers.forEach(clearInterval);
       boundListeners.forEach(({ target, type, fn }) => target.removeEventListener(type, fn));
-      // #main-content est le conteneur partagé et persistant entre les vues :
-      // une classe posée dessus (plutôt que sur un enfant détruit avec
-      // innerHTML) doit être explicitement retirée pour ne pas "fuiter" vers
-      // la vue suivante.
-      container.classList.remove("workspace-locked");
       delete window.openModal;
       delete window.closeModal;
       delete window.cycleRole;

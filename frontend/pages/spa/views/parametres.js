@@ -12,7 +12,6 @@ import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
 import { clearSession, getWorkspaceId, setWorkspaceId } from "../core/state.js";
 import { navigate } from "../core/router.js";
-import { refreshPlanBadge } from "../sidebar.js";
 import { getCurrency, getRate, formatMoney } from "../core/currency.js";
 
 // Les routes réelles sont /dash/workspace/:workspaceId/parametres(/:section)
@@ -113,7 +112,7 @@ function overviewTemplate() {
         ${sectionTitle("Paramètres du compte")}
         <div class="params-tiles-grid">
           ${tile("stripe", "fa-brands fa-stripe", "Compte Stripe Connect", "Nom, identifiant et type de compte, statut des paiements et virements, éléments requis par Stripe, et suppression du compte")}
-          ${tile("plans-et-frais", "fa-solid fa-crown", "Plans et frais", "Plan actuel, paiements et liens consommés ce mois, résiliation de l'abonnement et commission Xepay dégressive selon votre volume")}
+          ${tile("commission", "fa-solid fa-percent", "Commission", "Taux de commission Xepay dégressif selon votre volume encaissé ce mois")}
           ${tile("equipe", "fa-solid fa-users", "Équipe et sécurité", "Membres, rôles et invitations de l'équipe, 2FA, clés d'accès et sessions, et journal d'activité du workspace")}
           ${tile("entreprise", "fa-solid fa-building", "Entreprise", "Créer votre société (Firstbase/Atlas), ou gérer raison sociale, représentant légal et documents via Stripe")}
           ${tile("permissions", "fa-solid fa-user-shield", "Permissions", "Rôle minimal requis pour chaque action sensible de l'équipe - personnalisable, réservé au propriétaire du workspace")}
@@ -145,29 +144,6 @@ function detailHeader(title) {
     </div>
   `;
 }
-
-const CANCEL_SUB_MODAL_HTML = `
-<div class="modal fade" id="paramsCancelSubModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-sm">
-    <div class="modal-content border-0 shadow-lg" style="border-radius: 14px;">
-      <div class="modal-body p-3">
-        <div class="d-flex align-items-center gap-2 mb-2 text-danger">
-          <i class="fa-solid fa-circle-exclamation fs-5"></i>
-          <h6 class="fw-bold text-dark mb-0">Confirmer la résiliation</h6>
-        </div>
-        <p class="text-secondary small mb-2" style="font-size: 0.85rem; line-height: 1.4;">
-          Vous conserverez vos fonctionnalités payantes jusqu'à la fin de la période en cours. Aucun nouveau prélèvement ne sera effectué.
-        </p>
-        <p class="text-muted small mb-3" style="font-size: 0.8rem;">À la date d'échéance, votre compte repassera automatiquement sur le plan <strong>Free</strong>.</p>
-        <div class="d-flex justify-content-end gap-2 pt-2 border-top">
-          <button type="button" class="btn btn-light btn-sm fw-bold px-3 py-1" style="font-size: 0.8rem; border-radius: 6px;" data-bs-dismiss="modal">Annuler</button>
-          <button type="button" class="btn btn-danger btn-sm fw-bold px-3 py-1" style="font-size: 0.8rem; border-radius: 6px;" id="p-btn-confirm-cancel">Résilier</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-`;
 
 const PASSKEY_NAME_MODAL_HTML = `
 <div class="modal fade" id="paramsPasskeyNameModal" tabindex="-1" aria-hidden="true">
@@ -1735,27 +1711,14 @@ function mountStripe(on) {
   loadStripeDetails();
 }
 
-// --- Detail : Plans et frais ---
-function plansEtFraisTemplate() {
+// --- Detail : Commission (ex-"Plans et frais", retiré le 2026-11-23 avec
+// tout le mécanisme de plan Free/Pro/Business - demande explicite de
+// l'utilisateur, "c'est à l'ancienne". Seule la commission dégressive par
+// volume (commission_service.py, un mécanisme entièrement à part) est
+// conservée - voir GET /me/commission, backend/routes/users.py. ---
+function commissionTemplate() {
   return `
-    ${detailHeader("Plans et frais")}
-    <div class="params-subsection-header">
-      <h6 class="params-subsection-title mb-0">Plan actuel</h6>
-      <button type="button" id="p-btn-manage-billing" class="params-edit-btn">Gérer la facturation</button>
-    </div>
-    <p id="p-payment-failed-alert" class="params-subsection-sub text-danger d-none mb-2">Votre dernier paiement a échoué — mettez à jour votre carte pour conserver votre accès.</p>
-    <div class="params-row-list mb-5">
-      <div class="params-info-row"><span>Plan</span><strong id="p-plan-row-name">—</strong></div>
-      <div class="params-info-row"><span>Paiements reçus ce mois</span><strong id="p-plan-row-paid">—</strong></div>
-      <div class="params-info-row"><span>Liens créés ce mois</span><strong id="p-plan-row-links">—</strong></div>
-    </div>
-
-    <div class="params-subsection-header">
-      <h6 class="params-subsection-title mb-0">Résiliation</h6>
-      <button type="button" id="p-btn-cancel-sub" class="params-danger-btn">Résilier mon abonnement</button>
-    </div>
-    <p class="params-subsection-sub mb-5">Résilie votre abonnement payant. Vous conservez l'accès à vos fonctionnalités actuelles jusqu'à la fin de la période déjà payée, puis votre compte repasse automatiquement au plan Free. Aucune donnée n'est supprimée.</p>
-
+    ${detailHeader("Commission")}
     <h6 class="params-subsection-title">Frais Xepay</h6>
     <p class="params-subsection-sub">La commission Xepay baisse automatiquement avec votre volume encaissé dans le mois en cours : plus vous encaissez, plus votre taux baisse sur ce qui dépasse chaque palier — jamais rétroactivement sur ce qui est déjà encaissé. Elle est déduite automatiquement du montant transféré sur votre compte Stripe Connect, quel que soit le type de paiement (lien, abonnement ou facture) — vous n'avez rien à calculer ni à reverser vous-même. Les montants ci-dessous sont convertis dans la devise choisie dans le sélecteur de la vue Accueil. Les factures/abonnements facturés en EUR ne sont pas encore pris en compte dans ce volume (conversion à venir) — seuls vos paiements en USD, y compris tous vos liens de paiement quelle que soit leur devise d'origine, y comptent pour l'instant.</p>
     <div class="params-row-list mb-4">
@@ -1772,7 +1735,7 @@ function plansEtFraisTemplate() {
   `;
 }
 
-// Les seuils renvoyés par /me/plan (commission.tiers) sont en USD (voir
+// Les seuils renvoyés par /me/commission (tiers) sont en USD (voir
 // backend/services/commission_service.py) - convertis ici uniquement pour
 // l'affichage, dans la devise choisie dans le sélecteur de la vue Accueil
 // (core/currency.js) ; la logique de palier côté backend reste en USD,
@@ -1782,8 +1745,8 @@ function formatAmountUsd(usdValue) {
   return formatMoney(usdValue * getRate("USD", currency), currency);
 }
 
-// Visualisation "escalier" du barème renvoyé par /me/plan (commission.
-// tiers) - jamais dupliqué en dur ici, pour ne jamais pouvoir afficher un
+// Visualisation "escalier" du barème renvoyé par /me/commission (tiers)
+// - jamais dupliqué en dur ici, pour ne jamais pouvoir afficher un
 // taux différent de celui réellement appliqué (voir backend/services/
 // commission_service.py). Chaque palier affiche sa plage et son taux ;
 // celui déjà dépassé ce mois-ci est rempli en entier, le palier actuel
@@ -1821,90 +1784,20 @@ function commissionStairsHtml(tiers, currentRate, volumeUsd) {
   }).join("");
 }
 
-async function confirmCancelSubscription(cancelSubModalInstance) {
-  const btn = document.getElementById("p-btn-confirm-cancel");
-  if (btn) {
-    btn.disabled = true;
-    btn.innerText = "Résiliation...";
-  }
+async function mountCommissionData() {
   try {
-    const res = await apiFetch("/me/plan/cancel", { method: "POST" });
-    const data = await res.json();
-    if (cancelSubModalInstance) cancelSubModalInstance.hide();
-    if (res.ok) {
-      showToast(data.message || "Abonnement résilié avec succès.", "warning");
-      await mountPlansEtFraisData();
-    } else {
-      showToast(data.detail || "Échec de l'annulation", "error");
-    }
+    const res = await apiFetch("/me/commission");
+    const commission = await res.json();
+    document.getElementById("p-commission-volume").innerText = formatAmountUsd(commission.volume_this_month);
+    document.getElementById("p-commission-rate").innerText = `${Math.round(commission.current_rate * 100)}%`;
+    document.getElementById("p-commission-stairs").innerHTML = commissionStairsHtml(commission.tiers, commission.current_rate, commission.volume_this_month);
   } catch (err) {
-    console.error("Erreur annulation :", err);
-    showToast("Erreur de connexion au serveur", "error");
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerText = "Oui, résilier";
-    }
+    console.error("Erreur chargement commission:", err);
   }
 }
 
-async function mountPlansEtFraisData() {
-  try {
-    const res = await apiFetch("/me/plan");
-    const data = await res.json();
-    const alertBox = document.getElementById("p-payment-failed-alert");
-    if (alertBox) alertBox.classList.toggle("d-none", data.subscription_status !== "past_due");
-    const planName = (data.plan || "free");
-    document.getElementById("p-plan-row-name").innerText = planName.charAt(0).toUpperCase() + planName.slice(1);
-    const paidLimit = data.usage?.paid_limit;
-    document.getElementById("p-plan-row-paid").innerText = `${data.usage?.paid_count ?? 0}${paidLimit != null ? " / " + paidLimit : " (illimité)"}`;
-    const linksLimit = data.usage?.links_limit;
-    document.getElementById("p-plan-row-links").innerText = `${data.usage?.links_used ?? 0}${linksLimit != null ? " / " + linksLimit : " (illimité)"}`;
-    localStorage.setItem("plan", data.plan || "free");
-
-    const commission = data.commission;
-    if (commission) {
-      document.getElementById("p-commission-volume").innerText = formatAmountUsd(commission.volume_this_month);
-      document.getElementById("p-commission-rate").innerText = `${Math.round(commission.current_rate * 100)}%`;
-      document.getElementById("p-commission-stairs").innerHTML = commissionStairsHtml(commission.tiers, commission.current_rate, commission.volume_this_month);
-    }
-  } catch (err) {
-    console.error("Erreur chargement plan:", err);
-  }
-}
-
-function mountPlansEtFrais(on) {
-  document.body.insertAdjacentHTML("beforeend", CANCEL_SUB_MODAL_HTML);
-  let cancelSubModalInstance = null;
-  on(document.getElementById("p-btn-manage-billing"), "click", async () => {
-    try {
-      const res = await apiFetch("/me/create-portal-session", { method: "POST" });
-      const data = await res.json();
-      if (res.ok && data.url) window.location.href = data.url;
-      else showToast(data.detail || "Impossible d'accéder au portail de facturation.", "error");
-    } catch (err) {
-      console.error("Erreur redirection portail:", err);
-    }
-  });
-  on(document.getElementById("p-btn-cancel-sub"), "click", () => {
-    cancelSubModalInstance = bootstrap.Modal.getOrCreateInstance(document.getElementById("paramsCancelSubModal"));
-    cancelSubModalInstance.show();
-  });
-  on(document.getElementById("p-btn-confirm-cancel"), "click", () => confirmCancelSubscription(cancelSubModalInstance));
-  mountPlansEtFraisData();
-  return () => {
-    const modalEl = document.getElementById("paramsCancelSubModal");
-    const instance = modalEl && bootstrap.Modal.getInstance(modalEl);
-    if (instance) {
-      instance.hide();
-      instance.dispose();
-      document.body.classList.remove("modal-open");
-      document.body.style.removeProperty("overflow");
-      document.body.style.removeProperty("padding-right");
-      document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
-    }
-    modalEl?.remove();
-  };
+function mountCommission() {
+  mountCommissionData();
 }
 
 // --- Detail : Sessions actives ---
@@ -2009,9 +1902,6 @@ function equipeTemplate() {
   `;
 }
 
-function teamLockedHtml() {
-  return `<p class="text-muted">La gestion d'équipe est réservée au plan Business. <a href="javascript:void(0)" id="p-team-upgrade-link">Voir les plans et frais</a></p>`;
-}
 
 function teamMemberRowHtml(u) {
   const roleLabel = TEAM_ROLE_LABELS[u.role] || u.role;
@@ -2134,7 +2024,6 @@ async function switchTeamWorkspace(workspaceId) {
   // le propriétaire ne pourrait jamais répondre à "qui a accédé à mon
   // workspace, et quand ?". Best-effort : n'empêche jamais la bascule.
   apiFetch("/security/log-workspace-access", { method: "POST" }).catch(() => {});
-  await refreshPlanBadge();
   // navigate() (plutôt que loadTeam() seul) remet aussi l'URL en cohérence
   // avec le workspace actif : le routeur resynchronise workspace_id depuis
   // le segment d'URL à chaque navigation (voir app.js, onRouteChange) - si
@@ -2149,10 +2038,7 @@ async function loadTeam() {
   try {
     const res = await apiFetch("/users");
     if (res.status === 403) {
-      const data = await res.json().catch(() => ({}));
-      body.innerHTML = data.detail === "Fonctionnalité réservée à un plan supérieur"
-        ? teamLockedHtml()
-        : `<p class="text-muted">Accès à l'équipe non autorisé.</p>`;
+      body.innerHTML = `<p class="text-muted">Accès à l'équipe non autorisé.</p>`;
       return;
     }
     if (!res.ok) throw new Error("Erreur");
@@ -2306,10 +2192,6 @@ function mountEquipe(on) {
     const trigger = e.target.closest(".row-menu-trigger");
     if (trigger) {
       toggleParamsRowMenu(trigger);
-      return;
-    }
-    if (e.target.closest("#p-team-upgrade-link")) {
-      navigateToSection("plans-et-frais");
       return;
     }
     const actionBtn = e.target.closest("[data-team-action]");
@@ -3710,7 +3592,7 @@ const SECTIONS = {
   "authentification": { title: "Authentification", template: authentificationTemplate, mount: (on) => mountAuthentification(on) },
   "notifications": { title: "Paramètres de notifications", template: notificationsTemplate, mount: (on) => mountNotifications(on) },
   "stripe": { title: "Compte Stripe Connect", template: stripeTemplate, mount: (on) => mountStripe(on) },
-  "plans-et-frais": { title: "Plans et frais", template: plansEtFraisTemplate, mount: (on) => mountPlansEtFrais(on) },
+  "commission": { title: "Commission", template: commissionTemplate, mount: () => mountCommission() },
   "equipe": { title: "Équipe et sécurité", template: equipeTemplate, mount: (on) => mountEquipe(on) },
   "entreprise": { title: "Entreprise", template: entrepriseTemplate, mount: (on) => mountEntreprise(on) },
   "permissions": { title: "Permissions", template: permissionsTemplate, mount: (on) => mountPermissions(on) },

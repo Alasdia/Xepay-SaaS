@@ -1,11 +1,9 @@
 // Point d'entrée unique de la SPA — chargé par dashboard.html (le shell).
-// Déclare les routes, démarre le router, monte la sidebar partagée et la
-// modale upgrade partagée une seule fois pour toute la session.
+// Déclare les routes, démarre le router, monte la sidebar partagée.
 import { registerRoute, configure, start, navigate } from "./core/router.js";
 import { isAuthenticated, setSession, getWorkspaceId, setWorkspaceId } from "./core/state.js";
 import { apiFetch } from "./core/apiClient.js";
 import { initSidebar, setActiveRoute } from "./sidebar.js";
-import { ensureModalLoaded, upgrade } from "./shared/modalUpgrade.js";
 import { showToast } from "./shared/toast.js";
 
 import { mount as mountDashboard } from "./views/dashboard.js";
@@ -141,7 +139,6 @@ async function init() {
   );
 
   await initSidebar();
-  await ensureModalLoaded();
 
   // Icône ⚙️ du bandeau jaune (#top-banner, dashboard.html) - navigue vers
   // la vue Paramètres (ex-pages Profil/KYC + Sécurité, voir
@@ -157,13 +154,6 @@ async function init() {
   document.getElementById("notifications-btn")?.addEventListener("click", () => {
     showToast("Aucune nouvelle notification");
   });
-
-  // La modale upgrade partagée (modal-upgrade.html) est chargée une seule
-  // fois pour toute la session et reste dans le DOM en permanence — ses
-  // boutons de plan (onclick="upgrade('pro')"/"upgrade('business')")
-  // doivent donc rester joignables quelle que soit la vue active, y compris
-  // Profil/Sécurité qui n'exposent pas leur propre window.upgrade.
-  window.upgrade = upgrade;
 
   // Voile "léger" (.overlay-soft-dim, voir sidebar.css) sur le backdrop
   // Bootstrap de TOUT modal standard, une seule fois pour toute la

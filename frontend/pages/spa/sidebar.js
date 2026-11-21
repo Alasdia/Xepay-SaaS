@@ -1,14 +1,14 @@
 // Sidebar partagée — montée UNE SEULE FOIS par le shell (dashboard.html),
 // jamais démontée pendant la session SPA. Reprend le comportement de
-// l'ancien sidebar.js (fetch du fragment, badge plan, hamburger mobile,
-// logout) en l'adaptant à la navigation SPA : les liens du menu ne
-// rechargent plus la page (router.navigate) et pointent déjà vers le futur
-// schéma /dash/workspace/{workspace_id}/....
+// l'ancien sidebar.js (fetch du fragment, hamburger mobile, logout) en
+// l'adaptant à la navigation SPA : les liens du menu ne rechargent plus
+// la page (router.navigate) et pointent déjà vers le futur schéma
+// /dash/workspace/{workspace_id}/.... Le badge de plan Free/Pro/Business
+// a été retiré le 2026-11-23 avec tout le mécanisme de plan.
 
 import { apiFetch } from "./core/apiClient.js";
-import { getWorkspaceId, setWorkspaceId, clearSession, setPlan } from "./core/state.js";
+import { getWorkspaceId, setWorkspaceId, clearSession } from "./core/state.js";
 import { navigate } from "./core/router.js";
-import { showUpgradeModal } from "./shared/modalUpgrade.js";
 
 // data-page (déjà présent dans sidebar.html) -> segment de route SPA
 const ROUTE_BY_PAGE = {
@@ -100,20 +100,13 @@ export async function initSidebar() {
   });
 
   await ensureValidWorkspace();
-  await loadUser();
-
-  container.querySelectorAll(".upgrade-btn").forEach((btn) =>
-    btn.addEventListener("click", () => showUpgradeModal())
-  );
 
   setupHamburger(container);
 
-  // Référencées par des onclick= inline dans sidebar.html — exposées une
+  // Référencée par un onclick= inline dans sidebar.html — exposée une
   // fois pour toute la durée de vie de l'app (la sidebar n'est jamais
   // démontée pendant la session).
   window.logout = logout;
-  window.checkApiAccess = checkApiAccess;
-  window.checkMultiUsersAccess = checkMultiUsersAccess;
 }
 
 // Routes de détail -> route de section dont elles doivent garder le
@@ -148,14 +141,6 @@ export function setActiveRoute(routeName) {
   });
 }
 
-// Exposée pour les vues qui doivent rafraîchir le badge de plan partagé de
-// la sidebar après un changement de workspace (dashboard, multi-users —
-// dans l'ancien MPA elles ciblaient directement #badge-plan par ID, qui
-// vit physiquement dans le fragment sidebar.html).
-export async function refreshPlanBadge() {
-  return loadUser();
-}
-
 // Auto-corrige un workspace_id absent/invalide en localStorage AVANT tout
 // autre appel (loadUser, puis chaque vue) - jusqu'ici, seule la page
 // Multi-users validait/corrigeait ce choix (loadWorkspaces), donc un
@@ -183,33 +168,6 @@ async function ensureValidWorkspace() {
   }
 }
 
-async function loadUser() {
-  try {
-    const res = await apiFetch("/me/user-plan");
-    if (!res.ok) {
-      // apiFetch ne transforme que les 401 (refresh) : un 403/404/500 ici
-      // (ex: X-Workspace-Id pointant vers le mauvais workspace) renvoie un
-      // corps d'erreur ({"detail": ...}), pas un vrai user - ne jamais le
-      // traiter comme tel (plan.toUpperCase() plantait sur plan undefined).
-      console.error("ERREUR loadUser (sidebar): /me/user-plan a répondu", res.status);
-      return;
-    }
-    const user = await res.json();
-    window.GLOBAL_PLAN = user;
-    setPlan(user.plan);
-    updatePlanUI(user.plan);
-  } catch (err) {
-    console.error("ERREUR loadUser (sidebar):", err);
-  }
-}
-
-function updatePlanUI(plan) {
-  const badge = document.getElementById("badge-plan");
-  if (!badge || !plan) return;
-  badge.className = "badge " + plan;
-  badge.textContent = plan.toUpperCase();
-}
-
 async function logout() {
   try {
     // Révoque le refresh token côté serveur et efface les cookies de
@@ -221,16 +179,6 @@ async function logout() {
   }
   clearSession();
   window.location.href = "/login";
-}
-
-function checkApiAccess() {
-  const plan = window.GLOBAL_PLAN?.plan;
-  if (plan === "free") sessionStorage.setItem("openApiUpgrade", "true");
-}
-
-function checkMultiUsersAccess() {
-  const plan = window.GLOBAL_PLAN?.plan;
-  if (plan !== "business") sessionStorage.setItem("openMultiUsersUpgrade", "true");
 }
 
 function setupHamburger(root) {
