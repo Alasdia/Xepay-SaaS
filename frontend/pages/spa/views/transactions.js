@@ -4,7 +4,6 @@
 import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
-import { showUpgradeModal } from "../shared/modalUpgrade.js";
 import { navigate } from "../core/router.js";
 import { getWorkspaceId } from "../core/state.js";
 import { getCurrency, getRate, formatMoney } from "../core/currency.js";
@@ -15,14 +14,6 @@ const STRIPE_PUBLISHABLE_KEY =
   "pk_test_51ULZVC0I86XW25IrioDmxFoRvLJhP3QC6wJ11Qil9UmVrVtiYxxnY9gyxoM7X6VPxJaKtUGF8K1j9q1dsnUU2uhB0057G12ETb";
 
 const TEMPLATE = `
-<div id="transactions-lock" class="lock-overlay" style="display: none;">
-  <div class="lock-card">
-    <div class="lock-icon"><i class="fa-solid fa-lock"></i></div>
-    <h3>Historique des transactions</h3>
-    <p>Débloquez l'historique complet, les statistiques avancées, l'export CSV et PDF avec le plan Pro.</p>
-    <button class="btn btn-warning fw-bold" onclick="upgrade('pro')">⚡ Passer au Pro</button>
-  </div>
-</div>
 <div id="transactions-normal-view">
   <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
     <div>
@@ -52,10 +43,8 @@ const TEMPLATE = `
             <div class="commerce-kpi-paiements-text">
               <span class="commerce-kpi-label text-muted">Paiements réussis ce mois</span>
               <strong class="commerce-kpi-value text-muted"><span id="links-created">0</span></strong>
-              <span class="commerce-kpi-sub text-muted"><span id="links-paid" style="font-weight:700;">0</span></span>
             </div>
           </div>
-          <div class="mini-progress"><div id="links-progress-bar" class="mini-progress-bar" style="width: 0%;"></div></div>
         </div>
         <div class="commerce-kpi commerce-kpi-display commerce-kpi-lg commerce-kpi-paiements position-relative" id="successCard">
           <div class="commerce-kpi-paiements-row">
@@ -1085,21 +1074,12 @@ export async function mount(container, params = {}) {
     document.getElementById("total-xof").innerText = formatMoney((stats.total_received || 0) * getRate("XOF", currency), currency);
     document.getElementById("success-rate").innerText = (stats.success_rate || 0) + "%";
     renderStatusChart(stats.paid_links || 0, stats.pending_links || 0, stats.failed_links || 0);
-  }
-
-  function renderLinksKPI(plan) {
-    const usage = plan.usage || {};
+    // "Paiements réussis ce mois" - même compteur que paid_links ci-dessus,
+    // repris de usage.paid_count (voir GET /me/plan) jusqu'au retrait du
+    // mécanisme de plan le 2026-11-23 : /stats a toujours porté ce même
+    // chiffre (paid_count/paid_links), aucune nouvelle donnée nécessaire.
     const createdEl = document.getElementById("links-created");
-    const paidEl = document.getElementById("links-paid");
-    const barEl = document.getElementById("links-progress-bar");
-    const linksLimitText = usage.links_limit === null ? "Illimité" : usage.links_limit;
-    const paidLimitText = usage.paid_limit === null ? "Illimité" : usage.paid_limit;
-    if (createdEl) createdEl.innerText = `${usage.paid_count ?? 0} / ${paidLimitText}`;
-    if (paidEl) paidEl.innerText = `Sur un maximum de ${linksLimitText} liens offert`;
-    if (barEl) {
-      const pct = usage.paid_limit > 0 ? Math.min(100, (usage.paid_count / usage.paid_limit) * 100) : 0;
-      barEl.style.width = pct + "%";
-    }
+    if (createdEl) createdEl.innerText = stats.paid_count ?? 0;
   }
 
   async function loadStats() {
@@ -1112,19 +1092,6 @@ export async function mount(container, params = {}) {
       renderStats(stats);
     } catch (error) {
       console.error("Erreur stats:", error);
-    }
-  }
-
-  async function loadPlan() {
-    try {
-      const res = await apiFetch("/me/plan");
-      const data = await res.json();
-      window.GLOBAL_PLAN = data;
-      const paidLimit = data.usage ? data.usage.paid_limit : data.paid_limit;
-      renderLinksKPI(data);
-      return paidLimit;
-    } catch (err) {
-      console.error("Erreur loadPlan:", err);
     }
   }
 
@@ -1141,10 +1108,6 @@ export async function mount(container, params = {}) {
     btn.innerHTML = `<i class="bi bi-hourglass-split me-1"></i> Génération en cours...`;
     try {
       const res = await apiFetch(`/reports/financial?start_date=${startDate}&end_date=${endDate}`);
-      if (res.status === 403) {
-        showUpgradeModal();
-        return;
-      }
       if (!res.ok) {
         let message = "Erreur lors de la génération du rapport";
         try {
@@ -1206,10 +1169,6 @@ export async function mount(container, params = {}) {
     if (startDate) params.append("start_date", startDate);
     if (endDate) params.append("end_date", endDate);
     const res = await apiFetch(`/export/csv?${params}`);
-    if (res.status === 403) {
-      showUpgradeModal();
-      return;
-    }
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -1308,12 +1267,6 @@ export async function mount(container, params = {}) {
     on(successCard, "mouseenter", () => (chartTooltip.style.display = "block"));
     on(successCard, "mouseleave", () => (chartTooltip.style.display = "none"));
   }
-  const modalUpgradeEl = document.getElementById("modalUpgrade");
-  const onShownUpgrade = () => {
-    document.querySelectorAll("#modalUpgrade .reveal").forEach((el, index) => setTimeout(() => el.classList.add("visible"), index * 100));
-  };
-  on(modalUpgradeEl, "shown.bs.modal", onShownUpgrade);
-
   let widgetsLoaded = false;
   const showStripeBtn = document.getElementById("showStripeActivityBtn");
   const backBtn = document.getElementById("backToTransactionsBtn");
@@ -1380,24 +1333,10 @@ export async function mount(container, params = {}) {
     updatePaymentsViewMode();
   }
 
-  // window.upgrade est exposé globalement par app.js (modale partagée persistante)
   window.voirDetailActivite = voirDetailActivite;
 
-  (async () => {
-    const res = await apiFetch("/me");
-    const user = await res.json();
-    const lock = document.getElementById("transactions-lock");
-    if (user.plan === "free") {
-      document.body.classList.add("locked-page");
-      lock.style.display = "flex";
-      return;
-    }
-    document.body.classList.remove("locked-page");
-    lock.style.display = "none";
-    loadStats();
-    chargerTransactions();
-    loadPlan();
-  })();
+  loadStats();
+  chargerTransactions();
 
   return {
     unmount() {
@@ -1426,7 +1365,6 @@ export async function mount(container, params = {}) {
       document.getElementById("payment-action-menu")?.remove();
       if (statusChart) statusChart.destroy();
       boundListeners.forEach(({ target, type, fn }) => target.removeEventListener(type, fn));
-      document.body.classList.remove("locked-page");
       delete window.voirDetailActivite;
     },
   };

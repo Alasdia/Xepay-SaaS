@@ -10,7 +10,7 @@ from backend.auth import get_current_user
 from backend.services.workspace_service import (
     get_workspace_owner_id
 )
-from backend.middleware.authorization import require_member, require_pro_or_business
+from backend.middleware.authorization import require_member
 from backend.models import WorkspaceUser
 from datetime import timedelta
 from backend.models import Payment, Link
@@ -117,7 +117,7 @@ def get_activity(
     start_date: str = None,
     end_date: str = None,
     db: Session = Depends(get_db),
-    user=Depends(require_pro_or_business),
+    user=Depends(get_current_user),
     workspace_id: str = Header(None, alias="X-Workspace-Id")
 ):
     owner_id = get_workspace_owner_id(user, workspace_id, db)
@@ -274,7 +274,7 @@ def get_activity(
 @router.get("/payments-summary")
 def get_payments_summary(
     db: Session = Depends(get_db),
-    user=Depends(require_pro_or_business),
+    user=Depends(get_current_user),
     workspace_id: str = Header(None, alias="X-Workspace-Id")
 ):
     """Résumé Xepay (Commission Xepay / Frais Stripe / Net marchand) affiché
@@ -327,7 +327,7 @@ def get_payments_summary(
 def get_payment_detail(
     payment_id: str,
     db: Session = Depends(get_db),
-    user=Depends(require_pro_or_business),
+    user=Depends(get_current_user),
     workspace_id: str = Header(None, alias="X-Workspace-Id")
 ):
     owner_id = get_workspace_owner_id(user, workspace_id, db)

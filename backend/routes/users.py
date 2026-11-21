@@ -8,7 +8,7 @@ from backend.services.workspace_service import (
     get_workspace_owner_id
 )
 from backend.security import verify_password, create_2fa_pending_token
-from backend.middleware.authorization import require_member, require_owner, normalize_role, require_business, require_capability
+from backend.middleware.authorization import require_member, require_owner, normalize_role, require_capability
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import text
 from datetime import datetime, timezone
@@ -1020,10 +1020,6 @@ def get_me(
 
     return {
         "email": user.email,
-        "plan": getattr(workspace_owner, "plan", "free"),
-        "subscription_status": getattr(workspace_owner, "subscription_status", "active"),
-        "cancel_at_period_end": getattr(workspace_owner, "cancel_at_period_end", False),
-        "plan_expires_at": getattr(workspace_owner, "plan_expires_at", None),
         "wallet": {
             "balance": wallet.balance,
             "created_at": wallet.created_at
@@ -1103,11 +1099,6 @@ def get_profile(
         "email": owner.email,
         "phone": profile.phone,
         "phone_verified": profile.phone_verified,
-        "plan": owner.plan,
-        "plan_started_at": owner.plan_started_at,
-        "plan_expires_at": owner.plan_expires_at,
-        "subscription_status": owner.subscription_status,
-        "cancel_at_period_end": owner.cancel_at_period_end,
         # Personnel à current_user, jamais au propriétaire du workspace
         # actif : un membre invité consultant un workspace dont il n'est
         # pas propriétaire voyait/pilotait la 2FA et le compte Google du
@@ -1144,181 +1135,34 @@ def update_profile(
     return {"full_name": profile.full_name, "phone": profile.phone}
 
 
-@router.get("/me/user-plan")
-def get_my_plan(
-    current_user=Depends(get_current_user),
+@router.get("/me/commission")
+def get_commission(
     db: Session = Depends(get_db),
-    workspace_id: str = Header(
-        None,
-        alias="X-Workspace-Id"
-    )
+    membership: WorkspaceUser = Depends(require_capability("view_commission_rate")),
 ):
-    owner_id = get_workspace_owner_id(
-        current_user,
-        workspace_id,
-        db
-    )
+    """Commission dégressive par volume mensuel (voir
+    backend/services/commission_service.py) - exposée ici plutôt que
+    dupliquée en dur côté frontend, pour que la tuile Commission
+    (Paramètres) ne puisse jamais afficher un barème différent de celui
+    réellement appliqué aux paiements de ce workspace.
 
-    user = db.query(UserDB).filter(UserDB.id == owner_id).first()
-
-    if not user:
-        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
-
-    return {
-        "email": user.email,
-        "plan": user.plan
-    }
-
-@router.get("/me/plan")
-def get_plan(
-    db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_capability("view_billing_plan")),
-
-):
+    Remplace GET /me/plan, GET /me/user-plan, POST /me/plan/cancel et
+    POST /me/create-portal-session (retirés le 2026-11-23 avec tout le
+    mécanisme de plan Free/Pro/Business - demande explicite de l'utilisateur,
+    "c'est à l'ancienne") : la commission dégressive est un mécanisme
+    entièrement à part (basé sur le volume mensuel encaissé, jamais sur un
+    plan), c'est tout ce qui est conservé de ces anciens endpoints."""
     owner_id = membership.workspace_id
-    
-    PLAN_LIMITS = {
-        "free": {"paid": 10, "links": 30},
-        "pro": {"paid": 100, "links": 200},
-        "business": {"paid": None, "links": None}
-    }
-    workspace_user = db.query(UserDB).filter(
-        UserDB.id == owner_id
-    ).first()
-
-    if not workspace_user:
-        raise HTTPException(status_code=404, detail="Propriétaire du workspace introuvable")
-    
-    db.refresh(workspace_user)
-
-    plan = getattr(workspace_user, "plan", "free")
-    limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
-    
     now = datetime.now(timezone.utc)
-    start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-    if start.month == 12:
-        end = start.replace(year=start.year + 1, month=1)
-    else:
-        end = start.replace(month=start.month + 1)
-
-    links_count = db.query(Link).filter(
-        Link.user_id == owner_id,
-        Link.created_at >= start,
-        Link.created_at < end
-    ).count()
-
-    paid_count = (
-      db.query(Payment.link_id)
-        .join(Link, Payment.link_id == Link.id)
-        .filter(Link.user_id == owner_id)
-        .filter(Payment.status.in_(["paid", "success", "réussi"]))
-        .filter(Payment.created_at >= start)
-        .filter(Payment.created_at < end)
-        .distinct()
-    )   .count()
-
-    links = db.query(Link).all()
-
-    for l in links:
-        print(
-            "LINK:",
-            l.id,
-            "USER_ID:",
-            l.user_id,
-            "CREATED_AT:",
-            l.created_at
-        )
-    is_expired = False
-    if workspace_user.plan_expires_at:
-        is_expired = workspace_user.plan_expires_at < now
-
-    default_status = "none" if plan == "free" else "active"
-
-    # Commission dégressive par volume mensuel (voir
-    # backend/services/commission_service.py) - exposée ici plutôt que
-    # dupliquée en dur côté frontend, pour que la section Plans et frais
-    # (Paramètres) ne puisse jamais afficher un barème différent de celui
-    # réellement appliqué aux paiements de ce workspace.
     commission_volume_this_month = commission_service.workspace_volume_this_month(db, owner_id)
     commission_rate = commission_service.resolve_commission_rate(db, owner_id, now=now)
 
     return {
-        "plan": plan if not is_expired else "free",
-        "subscription_status": getattr(workspace_user, "subscription_status", None) or default_status,
-        "cancel_at_period_end": getattr(workspace_user, "cancel_at_period_end", False),
-        "plan_started_at": workspace_user.plan_started_at,
-        "plan_expires_at": workspace_user.plan_expires_at,
-        "is_expired": is_expired,
-        "stripe_customer_id": getattr(workspace_user, "stripe_customer_id", None),
-        "stripe_subscription_id": getattr(workspace_user, "stripe_subscription_id", None),
-        "usage": {
-            "links_used": links_count,
-            "links_limit": limits["links"],
-            "paid_count": paid_count,
-            "paid_limit": limits["paid"]
-        },
-        "commission": {
-            "current_rate": float(commission_rate),
-            "volume_this_month": float(commission_volume_this_month),
-            "tiers": commission_service.commission_tiers_public(),
-        }
+        "current_rate": float(commission_rate),
+        "volume_this_month": float(commission_volume_this_month),
+        "tiers": commission_service.commission_tiers_public(),
     }
-@router.post("/me/plan/cancel")
-def cancel_user_subscription(
-    db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_capability("manage_billing_subscription")),
-):
-    # L'abonnement/le client Stripe appartiennent au PROPRIÉTAIRE du
-    # workspace, jamais à qui appelle cette route - current_user suffisait
-    # tant que cette route était figée à require_owner (role=="owner" =>
-    # current_user.id == membership.workspace_id, toujours), mais pas
-    # maintenant que manage_billing_subscription peut être ouverte à un
-    # rôle plus large par le owner (voir permission_service.py) : un
-    # manager appelant cette route doit résilier L'ABONNEMENT DU
-    # WORKSPACE, pas chercher un abonnement sur son propre compte.
-    owner = db.query(UserDB).filter(UserDB.id == membership.workspace_id).first()
-    stripe_sub_id = owner.stripe_subscription_id if owner else None
-
-    if not stripe_sub_id:
-        raise HTTPException(status_code=400, detail="Aucun abonnement actif trouvé")
-
-    try:
-        stripe.Subscription.modify(
-            stripe_sub_id,
-            cancel_at_period_end=True
-        )
-
-        owner.cancel_at_period_end = True
-        db.commit()
-
-        return {"message": "Abonnement résilié avec succès pour la fin de période"}
-
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
-@router.post("/me/create-portal-session")
-def create_portal_session(
-    db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_capability("manage_billing_subscription")),
-):
-    # Même principe que cancel_user_subscription ci-dessus : le client
-    # facturé est celui du PROPRIÉTAIRE du workspace - via customer_account
-    # (configuration "customer" du compte v2, voir account_configuration
-    # dans /signup et l'inscription Google), plus un Customer v1 séparé
-    # (stripe_customer_id, devenu obsolète pour tout nouveau compte).
-    profile = db.query(Profile).filter(Profile.user_id == membership.workspace_id).first()
-    if not profile or not profile.stripe_account_id:
-        raise HTTPException(status_code=400, detail="Compte Stripe introuvable")
-    try:
-        session = stripe.billing_portal.Session.create(
-            customer_account=profile.stripe_account_id,
-            return_url=f"{PUBLIC_API_URL}/profil.html",
-            stripe_version="2025-09-30.preview",
-        )
-        return {"url": session.url}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/dashboard")
@@ -1330,7 +1174,6 @@ def dashboard():
 def get_users(
     membership: WorkspaceUser = Depends(require_member),
     db: Session = Depends(get_db),
-    _: UserDB = Depends(require_business)
 ):
     workspace_id = membership.workspace_id
 
@@ -1364,7 +1207,6 @@ def create_user(
     data: dict,
     membership: WorkspaceUser = Depends(require_capability("manage_team")),
     db: Session = Depends(get_db),
-    _: UserDB = Depends(require_business)
 ):
     workspace_id = membership.workspace_id
 
@@ -1414,7 +1256,6 @@ def create_invite(
     membership: WorkspaceUser = Depends(require_capability("manage_team")),
     db: Session = Depends(get_db),
     current_user: UserDB = Depends(get_current_user),
-    _: UserDB = Depends(require_business)
 ):
     workspace_id = membership.workspace_id
     email = data.get("email")
@@ -1475,7 +1316,6 @@ def create_invite(
 def get_invites(
     membership: WorkspaceUser = Depends(require_capability("manage_team")),
     db: Session = Depends(get_db),
-    _: UserDB = Depends(require_business)
 ):
     workspace_id = membership.workspace_id
 
@@ -1580,7 +1420,6 @@ def update_role(
     data: dict,
     db: Session = Depends(get_db),
     membership: WorkspaceUser = Depends(require_capability("manage_team")),
-    _: UserDB = Depends(require_business)
 ):
 
     user = db.query(UserDB).filter(UserDB.id == user_id).first()
@@ -1614,7 +1453,6 @@ def toggle_user(
     user_id: str,
     db: Session = Depends(get_db),
     membership: WorkspaceUser = Depends(require_capability("manage_team")),
-    _: UserDB = Depends(require_business)
 ):
     user = db.query(UserDB).filter(UserDB.id == user_id).first()
 
@@ -1648,7 +1486,6 @@ def delete_user(
     db: Session = Depends(get_db),
     membership: WorkspaceUser = Depends(require_capability("manage_team")),
     current_user: UserDB = Depends(get_current_user),
-    _: UserDB = Depends(require_business)
 ):
     user = db.query(UserDB).filter(UserDB.id == user_id).first()
 

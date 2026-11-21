@@ -5,7 +5,7 @@ import uuid
 from backend.database import get_db
 from backend.models import Wallet, Withdrawal, WithdrawRequest, WalletTransaction, WebhookDeliveryLog, Webhook, RefundRequest
 from backend.services.webhook_service import send_webhook_event
-from backend.middleware.authorization import require_pro_or_business, require_capability
+from backend.middleware.authorization import require_capability
 from backend.models import WorkspaceUser
 from backend.auth import get_current_user
 from backend.services.workspace_service import (
@@ -756,7 +756,7 @@ def refund_payment(
 def get_withdrawal_detail(
     withdrawal_id: str,
     db: Session = Depends(get_db),
-    user=Depends(require_pro_or_business),
+    user=Depends(get_current_user),
     workspace_id: str = Header(None, alias="X-Workspace-Id")
 ):
     owner_id = get_workspace_owner_id(user, workspace_id, db)

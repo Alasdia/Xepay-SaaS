@@ -1,10 +1,8 @@
-from datetime import datetime, timezone
 from fastapi import Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import UserDB, WorkspaceUser
 from backend.auth import get_current_user
-from backend.services.workspace_service import get_workspace_owner_id
 from backend.services import permission_service
 
 
@@ -70,34 +68,3 @@ def require_capability(capability_key: str):
         return membership
 
     return checker
-
-
-def require_plan(*allowed_plans: str):
-    """Fabrique une dependency qui exige que le plan effectif du workspace actif
-    (celui de son owner) soit dans la liste. Un plan pro/business expiré est
-    traité comme free. Retourne le UserDB authentifié (pas la membership),
-    pour que les routes existantes continuent d'utiliser current_user.id
-    sans changement de logique métier."""
-    allowed = set(allowed_plans)
-
-    def checker(
-        x_workspace_id: str = Header(None, alias="X-Workspace-Id"),
-        current_user: UserDB = Depends(get_current_user),
-        db: Session = Depends(get_db)
-    ) -> UserDB:
-        owner_id = get_workspace_owner_id(current_user, x_workspace_id, db)
-        owner = db.query(UserDB).filter(UserDB.id == owner_id).first()
-
-        plan = getattr(owner, "plan", "free") if owner else "free"
-        if owner and owner.plan_expires_at and owner.plan_expires_at < datetime.now(timezone.utc):
-            plan = "free"
-
-        if plan not in allowed:
-            raise HTTPException(403, "Fonctionnalité réservée à un plan supérieur")
-
-        return current_user
-
-    return checker
-
-require_pro_or_business = require_plan("pro", "business")
-require_business = require_plan("business")

@@ -11,11 +11,17 @@ rôle concerné.
 Ce module ne couvre QUE les actions déjà gardées par un rôle au-dessus du
 plancher actuel (require_manager/require_admin/require_owner) - les
 actions déjà ouvertes à tout membre (require_member, qui inclut déjà
-"lecteur") n'ont rien à configurer, il n'existe rien de plus bas. Les
-dependencies de PLAN (require_pro_or_business/require_business) restent
-entièrement séparées : elles portent sur l'abonnement SaaS du workspace,
-pas sur le rôle d'un membre à l'intérieur de ce workspace - jamais
-mélangées ici.
+"lecteur") n'ont rien à configurer, il n'existe rien de plus bas.
+
+Le mécanisme de plan Free/Pro/Business (require_pro_or_business/
+require_business dans middleware/authorization.py) a été entièrement
+retiré le 2026-11-23 (demande explicite de l'utilisateur) - toutes les
+fonctionnalités qu'il réservait (clés API/webhooks/logs, export, liens
+internationaux, équipe multi-utilisateurs) sont désormais ouvertes à
+tout workspace, peu importe un plan qui n'existe plus côté accès. Seule
+la commission dégressive par volume (commission_service.py), un
+mécanisme entièrement séparé, a été conservée - voir view_commission_rate
+ci-dessous.
 """
 
 from sqlalchemy.orm import Session
@@ -46,8 +52,7 @@ CAPABILITY_DEFAULTS = {
     "view_stripe_account_info": "manager",    # GET /stripe/status, /stripe/business-details
     "manage_stripe_account_config": "owner",  # /onboarding, /stripe/login-link, /stripe/account-session
     "manage_workspace_profile": "manager",    # GET/PATCH /profile
-    "view_billing_plan": "manager",           # GET /me/plan
-    "manage_billing_subscription": "owner",   # /me/plan/cancel, /me/create-portal-session
+    "view_commission_rate": "manager",        # GET /me/commission
     "manage_team": "admin",                   # /invites, /users (POST/PUT/DELETE/toggle)
     "withdraw_funds": "owner",                # /withdraw, /withdraw/{id}/process, /withdrawals
     "export_reports": "manager",              # /reports/financial, /reports/connect-session
@@ -60,8 +65,7 @@ CAPABILITY_LABELS = {
     "view_stripe_account_info": ("Consulter le compte Stripe Connect", "Voir le statut de vérification et les informations du compte Stripe Connect."),
     "manage_stripe_account_config": ("Configurer le compte Stripe Connect", "Lancer l'onboarding Stripe, accéder au Dashboard Stripe, modifier les informations Stripe du compte."),
     "manage_workspace_profile": ("Modifier les informations du compte", "Voir et modifier le nom/téléphone de contact affichés pour ce workspace."),
-    "view_billing_plan": ("Consulter le plan et la facturation", "Voir le plan actuel, la consommation du mois et la commission Xepay."),
-    "manage_billing_subscription": ("Gérer l'abonnement Xepay", "Résilier l'abonnement ou accéder au portail de facturation Stripe."),
+    "view_commission_rate": ("Consulter la commission Xepay", "Voir le taux de commission dégressif actuel et le volume encaissé ce mois."),
     "manage_team": ("Gérer l'équipe", "Inviter, changer le rôle, suspendre ou supprimer un membre."),
     "withdraw_funds": ("Retirer des fonds", "Initier et traiter un retrait depuis le solde disponible."),
     "export_reports": ("Exporter des rapports", "Télécharger un rapport financier ou ouvrir le rapport Stripe intégré."),
