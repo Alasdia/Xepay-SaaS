@@ -18,6 +18,16 @@ name: Deploy backend to AWS EC2
 # silencieusement, ce qui est déjà géré sans crash (voir doola_client.py),
 # mais autant que le fichier .env de prod reflète dès maintenant les clés
 # qu'il faudra renseigner une fois reçues de doola.
+#
+# Le "sleep 5" fixe avant le curl de santé (remplacé le 2026-11-22 par la
+# boucle "timeout 30 ... until curl" ci-dessous) a produit un faux négatif
+# sur le déploiement de BildBus/Buildness (run du 2026-11-21) : le serveur
+# a mis un peu plus de 5s à redémarrer (chaîne d'imports plus lourde),
+# le curl est arrivé trop tôt, et le pipeline a signalé un échec alors
+# que le serveur, vérifié depuis l'extérieur quelques secondes plus tard,
+# tournait déjà normalement avec le nouveau code. La boucle retente le
+# curl chaque seconde pendant 30s max - vert dès que /health répond, rouge
+# seulement si rien n'a répondu au bout des 30s (timeout propre, exit 124).
 on:
   push:
     branches: [main]
@@ -56,7 +66,7 @@ jobs:
               "grep -q '^BILDBUS_ALLOW_MOCK=' .env || echo 'BILDBUS_ALLOW_MOCK=false' >> .env",
               "set -a; . ./.env; set +a; ./venv/bin/alembic upgrade head",
               "systemctl restart xepay-backend",
-              "sleep 5",
+              "timeout 30 bash -c 'until curl -sf -o /dev/null http://127.0.0.1:8000/health; do sleep 1; done'",
               "curl -sf http://127.0.0.1:8000/health"
             ]
           }
