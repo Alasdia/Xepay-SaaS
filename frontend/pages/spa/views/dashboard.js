@@ -563,7 +563,14 @@ export async function mount(container) {
       links: (Array.isArray(linksData) ? linksData : []).map((l) => ({
         ts: toTimestamp(l.created_at),
         value: l.amount || 0,
-        status: l.status,
+        // "exhausted" (lien multi-usage dont le quota de paiements est
+        // atteint, voir GET /links) compte ici comme "paid" : il a bien
+        // généré du revenu, c'est juste la raison pour laquelle il n'est
+        // plus payable qui diffère d'un lien usage unique déjà payé une
+        // fois. Sans ça, ces liens disparaîtraient silencieusement des
+        // compteurs payé/en attente/expiré ci-dessous (aucun ne matche
+        // "exhausted").
+        status: l.status === "exhausted" ? "paid" : l.status,
         currency: (l.currency || "USD").toUpperCase(),
         // Commission Xepay RÉELLEMENT appliquée à ce paiement (voir
         // netRatioForItem) - exposée par GET /links (LinkDashboardResponse.

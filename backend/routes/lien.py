@@ -1,9 +1,7 @@
 from fastapi import APIRouter
 import stripe
 from fastapi.responses import RedirectResponse
-from uuid import uuid4
 from datetime import datetime, timezone, timedelta
-from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from backend.models import Link
 from fastapi import Depends
@@ -14,7 +12,6 @@ from fastapi import Header
 from backend.database import get_db, SessionLocal
 from backend.models import LinkCreate
 from backend.models import Link, Payment
-from backend.models import PaymentResponse
 from backend.middleware.authorization import require_capability
 from backend.models import Link, WorkspaceUser, generate_prefixed_id
 from backend.services.stripe_service import create_checkout_session
@@ -23,16 +20,10 @@ from backend.models import Payment
 from backend.models import UserDB
 from fastapi import HTTPException
 from backend.auth import get_current_user
-from backend.models import LinkResponse
 import hashlib
 import os
-import uuid
-from fastapi.templating import Jinja2Templates
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy import text
 from backend.models import LinkDashboardResponse
-from backend.models import PayRequest, Wallet
-from backend.services.stripe_service import create_checkout_session
+from backend.models import FlexibleLinkCheckout
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
@@ -42,21 +33,50 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 # liens déjà générés avec l'ancien domaine à chaque changement.
 PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "https://api.xepay.finance")
 
+# Durée de validité par défaut d'un lien à usage unique (max_uses=1) quand
+# le marchand n'en précise pas (LinkCreate.expires_in_minutes) - un lien
+# multi-usage (quota ou illimité) n'expire jamais par défaut, voir
+# create_link.
+ONE_TIME_LINK_DEFAULT_EXPIRY_MINUTES = 30
+
 router = APIRouter()
 
-print(Link.__table__.columns.keys())
+
+def _resolve_link_status(successful_count: int, link: Link, now: datetime) -> str:
+    """Statut d'un lien à partir du nombre de paiements réussis déjà
+    reçus - un lien épuisé (quota atteint, ou usage unique déjà payé)
+    reste "paid"/"exhausted" même après sa date d'expiration, jamais
+    rétrogradé en "expired" (la vraie raison pour laquelle il n'est plus
+    payable, c'est qu'il a rempli son rôle, pas le temps écoulé)."""
+    if link.max_uses is not None and successful_count >= link.max_uses:
+        return "paid" if link.max_uses == 1 else "exhausted"
+    if link.expires_at and link.expires_at < now:
+        return "expired"
+    return "pending"
 
 @router.post("/links")
 def create_link(
-    data: LinkCreate, 
+    data: LinkCreate,
     db: Session = Depends(get_db),
     user: UserDB = Depends(get_current_user),
     membership: WorkspaceUser = Depends(require_capability("create_payment_links"))
 
 ):
+    if data.amount is not None and (data.min_amount is not None or data.max_amount is not None):
+        raise HTTPException(status_code=400, detail="Un lien à montant fixe ne peut pas avoir de bornes min/max")
+    if data.amount is None and data.min_amount is not None and data.max_amount is not None and data.min_amount > data.max_amount:
+        raise HTTPException(status_code=400, detail="Le montant minimum doit être inférieur ou égal au montant maximum")
+    if data.max_uses is not None and data.max_uses < 1:
+        raise HTTPException(status_code=400, detail="max_uses doit être supérieur ou égal à 1")
+
     owner_id = membership.workspace_id
     internal_id = generate_prefixed_id("lk")
-    expires_at= datetime.now(timezone.utc) + timedelta(minutes=10)
+    if data.expires_in_minutes is not None:
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=data.expires_in_minutes)
+    elif data.max_uses == 1:
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=ONE_TIME_LINK_DEFAULT_EXPIRY_MINUTES)
+    else:
+        expires_at = None
     raw_token = generate_prefixed_id("pl")
     hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
     link = Link(
@@ -72,6 +92,9 @@ def create_link(
         active=True,
         expires_at=expires_at,
         source=getattr(data, "source", "dashboard"),
+        max_uses=data.max_uses,
+        min_amount=data.min_amount,
+        max_amount=data.max_amount,
         link_metadata={
             "user_id": membership.user_id,
             "workspace_id": membership.workspace_id,
@@ -112,20 +135,17 @@ def get_dashboard_links(
         .filter(Payment.created_at >= start_month)\
         .count()
     link_ids = [link.id for link in links]
-    payments_by_link = {}
+    successful_counts = {}
     if link_ids:
-        for p in db.query(Payment).filter(Payment.link_id.in_(link_ids)).all():
-            payments_by_link.setdefault(p.link_id, p)
+        for p in (
+            db.query(Payment)
+            .filter(Payment.link_id.in_(link_ids), Payment.status == "paid")
+            .all()
+        ):
+            successful_counts[p.link_id] = successful_counts.get(p.link_id, 0) + 1
     result = []
     for link in links:
-        print("SOURCE:", link.source)
-        payment = payments_by_link.get(link.id)
-        if payment:
-            status = payment.status
-        elif link.expires_at and link.expires_at < now:
-            status = "expired"
-        else:
-            status = "pending"
+        status = _resolve_link_status(successful_counts.get(link.id, 0), link, now)
         result.append({
             "id": link.id,
             "url": link.url,
@@ -157,16 +177,27 @@ def get_links(
         .all()
     )
     link_ids = [link.id for link in links]
-    payments_by_link = {}
+    # Paiements réussis par lien, du plus récent au plus ancien - un lien
+    # multi-usage peut en avoir plusieurs, le premier de chaque liste sert
+    # à afficher le montant/devise réellement payés le plus récemment.
+    successful_payments_by_link = {}
     if link_ids:
-        for p in db.query(Payment).filter(Payment.link_id.in_(link_ids)).all():
-            payments_by_link.setdefault(p.link_id, p)
+        for p in (
+            db.query(Payment)
+            .filter(Payment.link_id.in_(link_ids), Payment.status == "paid")
+            .order_by(Payment.created_at.desc())
+            .all()
+        ):
+            successful_payments_by_link.setdefault(p.link_id, []).append(p)
     emails_by_id = _emails_by_user_id(db, [link.link_metadata for link in links])
     result = []
     now = datetime.now(timezone.utc)
     for link in links:
-        payment = payments_by_link.get(link.id)
-        if payment:
+        payments = successful_payments_by_link.get(link.id, [])
+        successful_count = len(payments)
+        status = _resolve_link_status(successful_count, link, now)
+        last_payment = payments[0] if payments else None
+        if last_payment:
             # amount/currency (jamais amount_local/currency_local) : le montant
             # brut réellement payé par le client, dans sa devise d'origine —
             # amount_local/currency_local sont le montant déjà net de la
@@ -175,26 +206,22 @@ def get_links(
             # pour un lien pending/expired (link.amount/link.currency, bruts
             # aussi) : les utiliser ici produisait une incohérence de devise
             # et un montant ~6% trop bas selon le statut du lien.
-            amount = payment.amount
-            currency = payment.currency
-            status = "paid"
+            amount = last_payment.amount
+            currency = last_payment.currency
             # Même devise que `amount` ci-dessus (USD, voir
             # process_checkout_session_payment) - toujours renseigné pour
             # un paiement par lien depuis l'introduction de la commission
             # dégressive (backend/services/commission_service.py), jamais
             # une estimation recalculée ici.
-            fee_amount = payment.application_fee_requested
-        elif link.expires_at < now:
-            amount = link.amount
-            currency = link.currency
-            status = "expired"
-            fee_amount = None
+            fee_amount = last_payment.application_fee_requested
         else:
+            # Lien pas encore payé : amount vaut None pour un lien à
+            # montant flexible (voir LinkDashboardResponse), le frontend
+            # affiche alors min_amount/max_amount à la place.
             amount = link.amount
             currency = link.currency
-            status = "pending"
             fee_amount = None
-        is_active = link.expires_at > now
+        is_active = link.expires_at is None or link.expires_at > now
         result.append(LinkDashboardResponse(
             id=link.id,
             name=link.name,
@@ -208,6 +235,10 @@ def get_links(
             created_at=link.created_at,
             metadata=_enrich_metadata(link.link_metadata, emails_by_id),
             fee_amount=fee_amount,
+            max_uses=link.max_uses,
+            min_amount=link.min_amount,
+            max_amount=link.max_amount,
+            successful_payments_count=successful_count,
         ))
     return result
 
@@ -216,13 +247,81 @@ def get_payment(token: str):
     db = SessionLocal()
     hashed = hashlib.sha256(token.encode()).hexdigest()
     link = db.query(Link).filter(Link.token == hashed).first()
-    if not link:
+    if not link or link.deleted:
         return {"error": "invalid"}
+    now = datetime.now(timezone.utc)
+    successful_count = db.query(Payment).filter(Payment.link_id == link.id, Payment.status == "paid").count()
+    if link.max_uses is not None and successful_count >= link.max_uses:
+        return {"error": "already_paid" if link.max_uses == 1 else "exhausted"}
+    if link.expires_at and link.expires_at < now:
+        return {"error": "expired"}
     user = db.query(UserDB).filter(UserDB.id == link.user_id).first()
     if not user:
         return {"error": "user not found"}
-    url = create_checkout_session(db=db, mode="payment", email=user.email, user_id=user.id, amount=link.amount, link_id=link.id, currency=link.currency,)
-    return RedirectResponse(url, status_code=303)
+    if link.amount is not None:
+        url = create_checkout_session(db=db, mode="payment", email=user.email, user_id=user.id, amount=link.amount, link_id=link.id, currency=link.currency,)
+        return RedirectResponse(url, status_code=303)
+    # Montant flexible : le montant n'est pas connu tant que le client ne
+    # l'a pas saisi - redirige vers la page publique dédiée plutôt que de
+    # créer une session Stripe à l'aveugle (voir /pay/{token}/info et
+    # POST /pay/{token}/checkout ci-dessous).
+    return RedirectResponse(f"https://app.xepay.finance/pay-flexible.html?token={token}", status_code=303)
+
+
+@router.get("/pay/{token}/info")
+def get_payment_info(token: str, db: Session = Depends(get_db)):
+    """Infos publiques nécessaires à pay-flexible.html pour afficher le
+    formulaire de saisie du montant d'un lien à montant flexible."""
+    hashed = hashlib.sha256(token.encode()).hexdigest()
+    link = db.query(Link).filter(Link.token == hashed).first()
+    if not link or link.deleted:
+        return {"error": "invalid"}
+    if link.amount is not None:
+        return {"error": "not_flexible"}
+    now = datetime.now(timezone.utc)
+    successful_count = db.query(Payment).filter(Payment.link_id == link.id, Payment.status == "paid").count()
+    if link.max_uses is not None and successful_count >= link.max_uses:
+        return {"error": "already_paid" if link.max_uses == 1 else "exhausted"}
+    if link.expires_at and link.expires_at < now:
+        return {"error": "expired"}
+    return {
+        "name": link.name,
+        "currency": link.currency,
+        "min_amount": link.min_amount,
+        "max_amount": link.max_amount,
+    }
+
+
+@router.post("/pay/{token}/checkout")
+def create_flexible_checkout(token: str, data: FlexibleLinkCheckout, db: Session = Depends(get_db)):
+    """Crée la session Stripe d'un lien à montant flexible, une fois le
+    montant choisi par le client sur pay-flexible.html. Revalide tout
+    (validité du lien, bornes min/max) côté serveur - jamais confiance
+    dans ce qu'envoie ce frontend public, y compris le montant lui-même."""
+    hashed = hashlib.sha256(token.encode()).hexdigest()
+    link = db.query(Link).filter(Link.token == hashed).first()
+    if not link or link.deleted:
+        return {"error": "invalid"}
+    if link.amount is not None:
+        return {"error": "not_flexible"}
+    now = datetime.now(timezone.utc)
+    successful_count = db.query(Payment).filter(Payment.link_id == link.id, Payment.status == "paid").count()
+    if link.max_uses is not None and successful_count >= link.max_uses:
+        return {"error": "already_paid" if link.max_uses == 1 else "exhausted"}
+    if link.expires_at and link.expires_at < now:
+        return {"error": "expired"}
+    amount = data.amount
+    if amount is None or amount <= 0:
+        return {"error": "invalid_amount"}
+    if link.min_amount is not None and amount < link.min_amount:
+        return {"error": "amount_too_low"}
+    if link.max_amount is not None and amount > link.max_amount:
+        return {"error": "amount_too_high"}
+    user = db.query(UserDB).filter(UserDB.id == link.user_id).first()
+    if not user:
+        return {"error": "user not found"}
+    url = create_checkout_session(db=db, mode="payment", email=user.email, user_id=user.id, amount=amount, link_id=link.id, currency=link.currency)
+    return {"url": url}
 
 @router.post("/create-checkout-session")
 def create_checkout(
@@ -294,23 +393,25 @@ def get_link_detail(
     if not link:
         raise HTTPException(status_code=404, detail="Lien introuvable")
 
-    payment = db.query(Payment).filter(Payment.link_id == link.id).first()
+    payments = (
+        db.query(Payment)
+        .filter(Payment.link_id == link.id, Payment.status == "paid")
+        .order_by(Payment.created_at.desc())
+        .all()
+    )
+    successful_count = len(payments)
     now = datetime.now(timezone.utc)
-    if payment:
+    status = _resolve_link_status(successful_count, link, now)
+    last_payment = payments[0] if payments else None
+    if last_payment:
         # Voir get_links ci-dessus : amount/currency (montant brut, devise
         # d'origine), jamais amount_local/currency_local (net XOF).
-        amount = payment.amount
-        currency = payment.currency
-        status = "paid"
-    elif link.expires_at < now:
-        amount = link.amount
-        currency = link.currency
-        status = "expired"
+        amount = last_payment.amount
+        currency = last_payment.currency
     else:
         amount = link.amount
         currency = link.currency
-        status = "pending"
-    is_active = link.expires_at > now
+    is_active = link.expires_at is None or link.expires_at > now
     emails_by_id = _emails_by_user_id(db, [link.link_metadata])
 
     return LinkDashboardResponse(
@@ -324,5 +425,9 @@ def get_link_detail(
         url=link.url,
         expires_at=link.expires_at,
         created_at=link.created_at,
-        metadata=_enrich_metadata(link.link_metadata, emails_by_id)
+        metadata=_enrich_metadata(link.link_metadata, emails_by_id),
+        max_uses=link.max_uses,
+        min_amount=link.min_amount,
+        max_amount=link.max_amount,
+        successful_payments_count=successful_count,
     )

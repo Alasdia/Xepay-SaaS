@@ -83,29 +83,53 @@ class SecurityAlertsRequest(BaseModel):
 
 class LinkCreate(BaseModel):
     name: Optional[str] = None
-    amount: float
+    # amount: None = montant flexible (voir min_amount/max_amount) ; sinon
+    # montant fixe, identique à chaque paiement sur ce lien.
+    amount: Optional[float] = None
     currency: str = "USD"
     source: str = "dashboard"
+    # max_uses : None = illimité, 1 = usage unique, N = quota de paiements
+    # réussis avant que le lien ne devienne inutilisable.
+    max_uses: Optional[int] = None
+    # Bornes optionnelles pour un montant flexible - ignorées (doivent être
+    # absentes) si amount est fourni, voir la validation dans create_link.
+    min_amount: Optional[float] = None
+    max_amount: Optional[float] = None
+    # Durée de validité explicite, en minutes. Si absent, create_link
+    # applique une valeur par défaut qui dépend de max_uses (courte pour un
+    # usage unique, aucune expiration pour un lien multi-usage).
+    expires_in_minutes: Optional[int] = None
+
+class FlexibleLinkCheckout(BaseModel):
+    """Montant choisi par le client sur pay-flexible.html pour un lien à
+    montant flexible (Link.amount IS NULL) - revérifié contre
+    min_amount/max_amount côté serveur avant de créer la session Stripe,
+    jamais fait confiance tel quel (voir POST /pay/{token}/checkout)."""
+    amount: float
 
 class LinkResponse(BaseModel):
     id: str
     token: str
-    amount: float
+    amount: Optional[float] = None
     currency: str
-    name: Optional[str] 
+    name: Optional[str]
     url: str
     active: bool
+    max_uses: Optional[int] = None
+    min_amount: Optional[float] = None
+    max_amount: Optional[float] = None
 
 class LinkDashboardResponse(BaseModel):
     id: str
     name: str
-    amount: float
+    # None pour un lien à montant flexible sans paiement encore reçu.
+    amount: Optional[float] = None
     currency: str
     status: str
     active: bool
     archived: bool
     url: str
-    expires_at: datetime
+    expires_at: Optional[datetime] = None
     created_at: datetime
     metadata: Optional[dict] = None
     # Commission Xepay RÉELLEMENT appliquée au paiement de ce lien (None
@@ -115,6 +139,13 @@ class LinkDashboardResponse(BaseModel):
     # jamais un taux fixe par source : la commission est dégressive par
     # volume mensuel (backend/services/commission_service.py).
     fee_amount: Optional[float] = None
+    max_uses: Optional[int] = None
+    min_amount: Optional[float] = None
+    max_amount: Optional[float] = None
+    # Nombre de paiements réussis déjà reçus sur ce lien - toujours >= 0,
+    # utile pour un lien multi-usage ("12 payés" / "12/50 payés") pour
+    # lequel `status` reste "pending" tant que max_uses n'est pas atteint.
+    successful_payments_count: int = 0
 
     class Config:
         from_attributes = True
@@ -720,16 +751,22 @@ class Link(Base):
     token = Column(String, unique=True)
     user_id = Column(String, ForeignKey("users.id"), index=True)
     email = Column(String)
-    amount = Column(Float)
+    # NULL = montant flexible, le client choisit (voir min_amount/max_amount).
+    amount = Column(Float, nullable=True)
     currency = Column(String, nullable=False, default="USD")
     name = Column(String)
     url = Column(String)
-    source = Column(String, default="dashboard") 
-    expires_at = Column(DateTime(timezone=True))
+    source = Column(String, default="dashboard")
+    # NULL = pas d'expiration (lien multi-usage sans limite de durée).
+    expires_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True))
     deleted = Column(Boolean, default=False)
     active = Column(Boolean)
     archived = Column(Boolean, default=False)
+    # NULL = illimité, 1 = usage unique, N = quota de paiements réussis.
+    max_uses = Column(Integer, nullable=True)
+    min_amount = Column(Float, nullable=True)
+    max_amount = Column(Float, nullable=True)
     # Createur (membership.user_id) + workspace (membership.workspace_id) au
     # moment de la creation du lien - nomme link_metadata (pas "metadata",
     # reserve par Base.metadata chez SQLAlchemy, voir Payment.stripe_metadata).
