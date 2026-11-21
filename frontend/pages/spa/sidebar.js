@@ -19,7 +19,6 @@ const ROUTE_BY_PAGE = {
   retraits: "transactions/retraits",
 
   liens: "liens",
-  buildness: "buildness",
 
   clients: "commerce/clients",
   produits: "commerce/produits",

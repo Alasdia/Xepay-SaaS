@@ -12,7 +12,6 @@ import { mount as mountDashboard } from "./views/dashboard.js";
 import { mount as mountSolde } from "./views/solde.js";
 import { mount as mountTransactions } from "./views/transactions.js";
 import { mount as mountLiens } from "./views/liens.js";
-import { mount as mountBuildness } from "./views/buildness.js";
 import { mount as mountCommerce } from "./views/commerce.js";
 import { mount as mountApi } from "./views/api.js";
 import { mount as mountMultiUsers } from "./views/multiUsers.js";
@@ -114,7 +113,6 @@ async function init() {
   registerRoute("/dash/workspace/:workspaceId/transactions/paiements/py/:paymentId", mountPaymentDetail, { name: "transaction-paiement-detail" });
   registerRoute("/dash/workspace/:workspaceId/transactions/retraits/wd/:withdrawalId", mountWithdrawalDetail, { name: "transaction-retrait-detail" });
   registerRoute("/dash/workspace/:workspaceId/liens", mountLiens, { name: "liens" });
-  registerRoute("/dash/workspace/:workspaceId/buildness", mountBuildness, { name: "buildness" });
   // Noms de route identiques aux data-page de la sidebar (clients/produits/
   // ... voir sidebar.html) - avec un préfixe "commerce-" ici, setActiveRoute
   // ne reconnaissait jamais ces routes (comparaison stricte dataset.page ===
