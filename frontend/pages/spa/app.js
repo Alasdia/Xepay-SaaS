@@ -12,7 +12,6 @@ import { mount as mountTransactions } from "./views/transactions.js";
 import { mount as mountLiens } from "./views/liens.js";
 import { mount as mountCommerce } from "./views/commerce.js";
 import { mount as mountApi } from "./views/api.js";
-import { mount as mountMultiUsers } from "./views/multiUsers.js";
 import { mount as mountParametres } from "./views/parametres.js";
 import { mountPayment as mountPaymentDetail, mountWithdrawal as mountWithdrawalDetail } from "./views/transactionDetail.js";
 
@@ -122,7 +121,6 @@ async function init() {
   registerRoute("/dash/workspace/:workspaceId/commerce/moyens-paiement", (c, p) => mountCommerce(c, { ...p, section: "moyens-paiement" }), { name: "moyens-paiement" });
   registerRoute("/dash/workspace/:workspaceId/commerce/risque", (c, p) => mountCommerce(c, { ...p, section: "risque" }),{ name: "risque" });
   registerRoute("/dash/workspace/:workspaceId/api", mountApi, { name: "api" });
-  registerRoute("/dash/workspace/:workspaceId/multi-users", mountMultiUsers, { name: "multi-users" });
   registerRoute("/dash/workspace/:workspaceId/parametres", mountParametres, { name: "parametres" });
   registerRoute("/dash/workspace/:workspaceId/parametres/:section", mountParametres, { name: "parametres-detail" });
   // Anciennes pages dédiées, retirées de la sidebar : leur contenu vit
@@ -136,6 +134,11 @@ async function init() {
     "/dash/workspace/:workspaceId/securite",
     (c, p) => navigate(`/dash/workspace/${encodeURIComponent(p.workspaceId)}/parametres`, { replace: true }),
     { name: "securite" }
+  );
+  registerRoute(
+    "/dash/workspace/:workspaceId/multi-users",
+    (c, p) => navigate(`/dash/workspace/${encodeURIComponent(p.workspaceId)}/parametres/equipe`, { replace: true }),
+    { name: "multi-users" }
   );
 
   await initSidebar();

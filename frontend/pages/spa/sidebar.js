@@ -28,7 +28,6 @@ const ROUTE_BY_PAGE = {
   risque: "commerce/risque",
 
   api: "api",
-  "multi-users": "multi-users",
   profile: "profil",
   securité: "securite",
 };
