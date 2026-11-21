@@ -50,30 +50,95 @@
     color: #dc2626;
 }
 /* =========================================================
-   PAGE HEADER
+   SOUS-VUE : BANDEAU STICKY (icône + titre + description)
 ========================================================= */
 
-.page-header {
+/* Bandeau sticky en haut de chaque sous-vue de Commerce et de Liens de
+   paiement (même mécanisme que la barre titre sticky de Transactions,
+   voir transactions.css) : reste visible pendant que le contenu (KPI/
+   filtres/tableau/liste) défile dessous. Chargé par les 3 vues
+   globales (commerce.js le charge directement, liens.js/transactions.js
+   le chargent en plus de leur propre CSS), défini une seule fois ici.
+   ~20% de la hauteur visible par design (min-height) : le texte de
+   description doit rester à 1-2 phrases pour ne jamais paraître vide à
+   cette taille. */
+.subview-sticky-intro {
+    position: sticky;
+    top: 0;
+    z-index: 20;
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 18px;
+    gap: 20px;
+    min-height: 20vh;
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 28px 0;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 16px rgba(17, 24, 39, 0.03);
 }
 
-.page-header h1 {
+.subview-sticky-intro-main {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    min-width: 0;
+}
+
+.subview-sticky-intro-icon {
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: rgba(180, 83, 9, 0.1);
+    color: #b45309;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 22px;
-    font-weight: 600;
+}
+
+.subview-sticky-intro-body {
+    min-width: 0;
+}
+
+.subview-sticky-intro-body h1 {
+    font-size: 22px;
+    font-weight: 700;
     letter-spacing: -0.01em;
-    margin: 0 0 6px;
+    margin: 0 0 8px;
     color: #111827;
 }
 
-.page-header p {
-    font-size: 12px;
+.subview-sticky-intro-body p {
+    font-size: 13.5px;
     color: #6b7280;
+    line-height: 1.6;
     margin: 0;
+    max-width: 640px;
 }
 
+@media (max-width: 768px) {
+    .subview-sticky-intro {
+        min-height: unset;
+        padding: 20px 0;
+        gap: 14px;
+    }
+    .subview-sticky-intro-main {
+        gap: 12px;
+    }
+    .subview-sticky-intro-icon {
+        width: 44px;
+        height: 44px;
+        font-size: 18px;
+    }
+    .subview-sticky-intro-body h1 {
+        font-size: 18px;
+    }
+    .subview-sticky-intro-body p {
+        font-size: 12px;
+    }
+}
 
 /* =========================================================
    CARDS
@@ -416,18 +481,6 @@
 ========================================================= */
 
 @media (max-width: 768px) {
-
-    .page-header {
-        margin-bottom: 14px;
-    }
-
-    .page-header h1 {
-        font-size: 20px;
-    }
-
-    .page-header p {
-        font-size: 11px;
-    }
 
     .commerce-card {
         padding: 14px;
@@ -1216,10 +1269,6 @@
 ========================================================= */
 
 @media (max-width: 768px) {
-
-    .page-header {
-        align-items: center;
-    }
 
     .create-client-btn {
         padding: 8px 11px;

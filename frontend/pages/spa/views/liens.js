@@ -23,7 +23,7 @@ export const LIEN_SECTIONS = {
     amountMode: "fixed",
     icon: "fa-bolt",
     title: "Usage unique — Montant fixe",
-    subtitle: "Un paiement à un montant fixe, puis le lien devient inutilisable.",
+    subtitle: "Le réflexe sûr pour une vente ponctuelle à prix fixe : facture freelance, acompte, article vendu une fois. Le lien s'auto-désactive dès le premier paiement réussi, aucun risque de double règlement.",
     emptyLabel: "Aucun lien usage unique créé",
   },
   "unique-libre": {
@@ -31,7 +31,7 @@ export const LIEN_SECTIONS = {
     amountMode: "flexible",
     icon: "fa-hand-holding-dollar",
     title: "Usage unique — Montant libre",
-    subtitle: "Un paiement à un montant choisi par le client, puis le lien devient inutilisable.",
+    subtitle: "Pour un don unique ou une prestation sur devis où le client fixe lui-même le montant. Comme son équivalent à montant fixe, il devient inutilisable après le premier paiement.",
     emptyLabel: "Aucun lien usage unique à montant libre créé",
   },
   "quota-fixe": {
@@ -39,7 +39,7 @@ export const LIEN_SECTIONS = {
     amountMode: "fixed",
     icon: "fa-layer-group",
     title: "Quota — Montant fixe",
-    subtitle: "Réutilisable à montant fixe jusqu'à un nombre de paiements limité.",
+    subtitle: "Pensé pour un stock limité : billets d'événement, places en nombre fixe, édition limitée à prix unique. Vous choisissez combien de paiements il peut recevoir avant de s'arrêter automatiquement.",
     emptyLabel: "Aucun lien à quota créé",
   },
   "quota-libre": {
@@ -47,7 +47,7 @@ export const LIEN_SECTIONS = {
     amountMode: "flexible",
     icon: "fa-layer-group",
     title: "Quota — Montant libre",
-    subtitle: "Réutilisable jusqu'à un nombre de paiements limité, montant choisi par le client.",
+    subtitle: "Pour une collecte plafonnée ou une pré-vente à nombre de participants limité, montant libre pour chacun. Se désactive dès que le nombre de paiements fixé est atteint.",
     emptyLabel: "Aucun lien à quota et montant libre créé",
   },
   "illimite-fixe": {
@@ -55,7 +55,7 @@ export const LIEN_SECTIONS = {
     amountMode: "fixed",
     icon: "fa-infinity",
     title: "Illimité — Montant fixe",
-    subtitle: "Réutilisable à montant fixe sans limite de paiements.",
+    subtitle: "Le lien boutique classique : produit ou service à prix fixe, partagé publiquement, payable autant de fois que nécessaire. Idéal pour une vente récurrente ou un lien affiché en permanence.",
     emptyLabel: "Aucun lien illimité créé",
   },
   "illimite-libre": {
@@ -63,7 +63,7 @@ export const LIEN_SECTIONS = {
     amountMode: "flexible",
     icon: "fa-infinity",
     title: "Illimité — Montant libre",
-    subtitle: "Réutilisable sans limite de paiements, montant choisi par le client.",
+    subtitle: "Le format pot de dons ou soutien libre : chacun paie ce qu'il veut, sans limite de montant ni de nombre de paiements. Parfait pour un créateur, une cagnotte ou un partenaire fidèle.",
     emptyLabel: "Aucun lien illimité à montant libre créé",
   },
 };
@@ -95,16 +95,17 @@ function buildTemplate(config) {
 
   return `
 <div id="main-content-inner" class="w-100">
-  <div class="mb-4">
-    <div class="d-flex justify-content-between align-items-center">
-      <div>
-        <h4 class="fw-bold mb-1"><i class="fa-solid ${config.icon}"></i> ${config.title}</h4>
-        <small class="text-muted">${config.subtitle}</small>
+  <div class="subview-sticky-intro">
+    <div class="subview-sticky-intro-main">
+      <div class="subview-sticky-intro-icon"><i class="fa-solid ${config.icon}"></i></div>
+      <div class="subview-sticky-intro-body">
+        <h1>${config.title}</h1>
+        <p>${config.subtitle}</p>
       </div>
-      <button class="create-client-btn open-lien-modal">+ Nouveau lien</button>
     </div>
+    <button class="create-client-btn open-lien-modal">+ Nouveau lien</button>
   </div>
-  <div id="liste-liens-container" style="height: 75vh; overflow-y: auto;">
+  <div id="liste-liens-container" style="height: 65vh; overflow-y: auto;">
     <div id="liste-liens"></div>
   </div>
   <div id="aucun-lien" class="text-center py-5 d-none">
