@@ -2462,8 +2462,9 @@ const BUILDNESS_WIZARD_MODAL_HTML = `
       </div>
       <div class="p-verto-modal-right">
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+        <div class="p-buildness-wizard-content">
         <h5 class="fw-bold text-dark mb-3" id="p-buildness-wizard-title">Nom et État de la LLC</h5>
-        <div class="progress mb-4" style="height:6px; max-width:320px;">
+        <div class="progress mb-4" style="height:6px;">
           <div id="p-buildness-wizard-progress" class="progress-bar" style="width:33%; background:#b45309;"></div>
         </div>
         <form id="p-buildness-wizard-form">
@@ -2502,6 +2503,7 @@ const BUILDNESS_WIZARD_MODAL_HTML = `
             <div class="params-row-list" id="p-buildness-wizard-recap"></div>
           </div>
         </form>
+        </div>
         <div class="d-flex justify-content-end gap-2 mt-4">
           <button type="button" id="p-buildness-wizard-back" class="btn btn-light" style="display:none;">Retour</button>
           <button type="button" id="p-buildness-wizard-next" class="create-client-btn">Suivant</button>
@@ -2563,7 +2565,7 @@ function buildnessPromoActionsHtml(data) {
 function buildnessCardHtml(data) {
   return `
     <div class="params-promo-card">
-      <h3 class="params-promo-title">Créer votre entreprise avec Xepay Buildness aux États-Unis</h3>
+      <h3 class="params-promo-title">Créer votre entreprise aux États-Unis avec Xepay Buildness</h3>
       <p class="params-promo-sub">Pour encaisser vos paiements via Stripe Connect en toute légalité aux États-Unis, il vous faut une société américaine (LLC) et son EIN (identifiant fiscal fédéral délivré par l'IRS) - sans ça, Stripe limite ou bloque l'activation complète de votre compte. Xepay s'occupe de toute la constitution avec notre partenaire doola : choix de l'État, dépôt des statuts, obtention de l'EIN - sans démarche administrative ni déplacement de votre côté.</p>
       ${buildnessPromoActionsHtml(data)}
     </div>
