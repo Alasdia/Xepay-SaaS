@@ -4,7 +4,6 @@ Disallow: /dash/
 Disallow: /dashboard.html
 Disallow: /profil.html
 Disallow: /transactions.html
-Disallow: /multi-users.html
 Disallow: /liens.html
 Disallow: /report.html
 

@@ -16,7 +16,7 @@
 
 /* Fond par défaut de tous les modals Bootstrap de l'app n'ayant pas déjà
    leur propre fond (voir les overrides dans commerce.css/dashboard.css/
-   API.css/profil.css/multi-users.css/transactions.css, qui gagnent par
+   API.css/profil.css/transactions.css, qui gagnent par
    spécificité d'ID). Chargé une seule fois dans sidebar.css car c'est le
    seul fichier toujours présent, quelle que soit la vue SPA active (voir
    dashboard.html). Exclus volontairement : #modalUpgrade (dark premium),
@@ -131,8 +131,8 @@
 /* Libellés de groupe ("Gestion", "Compte") : même langage visuel que les
    kpi-label utilisés ailleurs dans l'app (petit, majuscules, discret). */
 #sidebar .nav-section-label{ font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af; font-weight:700; padding:14px 10px 4px; }
-/* Règle partagée par les 7 vues SPA (Dashboard, Transactions, Liens, API,
-   Multi-users, Profil, Sécurité) : chaque vue peut surcharger padding/width
+/* Règle partagée par les vues SPA (Dashboard, Transactions, Liens, API,
+   Paramètres) : chaque vue peut surcharger padding/width
    selon ses besoins propres, mais le dégagement de base pour la sidebar
    fixe (260px) doit rester unique et cohérent ici, pas redéclaré par vue. */
 #main-content { background: #ffffff; position: relative; z-index: 1; margin-left: 18%; margin-top: 5vh; padding: 28px 40px; width: calc(100% - 18%); overflow-x: hidden; }

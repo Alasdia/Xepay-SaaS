@@ -2,9 +2,9 @@
 // dashboard.js, profil.js, sécurité.js et transactions.js (4 des 7 copies
 // dupliquées relevées dans l'audit). API.js utilise un toast structurellement
 // différent (#toast/#toastMsg, sans conteneur empilable) conservé tel quel
-// dans sa propre vue pour ne pas altérer son rendu visuel. liens.js et
-// multi-users.js utilisent alert() natif et n'ont pas de #toast-container
-// dans leur markup : non touchés, pour ne pas introduire de changement UI/UX.
+// dans sa propre vue pour ne pas altérer son rendu visuel. liens.js
+// utilise alert() natif et n'a pas de #toast-container dans son markup :
+// non touché, pour ne pas introduire de changement UI/UX.
 
 export function showToast(message, type = "success") {
   const container = document.getElementById("toast-container");

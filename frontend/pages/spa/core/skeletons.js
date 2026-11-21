@@ -164,23 +164,6 @@ ${tableCard(4)}
   </div>
 </div>`,
 
-  // Multi-users : 4 stats, barre de recherche + filtres, table d'équipe.
-  "multi-users": () => `
-${head(2)}
-<div class="sk-row cols-4">
-  ${kpiCard()}${kpiCard()}${kpiCard()}${kpiCard()}
-</div>
-<div class="sk-card sk-between" style="margin-bottom: 16px;">
-  <div class="sk-shimmer sk-input sk-w-35"></div>
-  <div class="sk-chips">
-    <div class="sk-shimmer sk-badge"></div>
-    <div class="sk-shimmer sk-badge"></div>
-    <div class="sk-shimmer sk-badge"></div>
-    <div class="sk-shimmer sk-badge"></div>
-  </div>
-</div>
-${tableCard(5)}`,
-
   // Profil : jauge de complétion + cartes KYC/Stripe sur 2 colonnes.
   profil: () => `
 <div class="sk-head">
