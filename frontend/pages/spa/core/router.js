@@ -101,6 +101,15 @@ async function render(pathname) {
     currentUnmount = null;
   }
 
+  // Filet de sécurité : un tiroir de détails (shared/detailsDrawer.js)
+  // laissé ouvert au moment de naviguer ailleurs ne se referme jamais lui-
+  // même (son overlay disparaît avec le reste de #main-content, mais ses
+  // effets posés sur <body> - classes + --xepay-drawer-width - lui, non),
+  // donnant l'impression que la vue suivante garde une marge "réservée" à
+  // un tiroir qui n'existe plus. On les retire ici à chaque navigation,
+  // peu importe quelle vue les avait posés.
+  document.body.classList.remove("xepay-drawer-open", "xepay-drawer-instant");
+
   if (!found) {
     console.warn("Route inconnue:", pathname);
     onRouteChange(null, {});

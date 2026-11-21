@@ -55,27 +55,38 @@
 
 /* Bandeau sticky en haut de chaque sous-vue de Commerce et de Liens de
    paiement (même mécanisme que la barre titre sticky de Transactions,
-   voir transactions.css) : reste visible pendant que le contenu (KPI/
-   filtres/tableau/liste) défile dessous. Chargé par les 3 vues
-   globales (commerce.js le charge directement, liens.js/transactions.js
-   le chargent en plus de leur propre CSS), défini une seule fois ici.
-   ~20% de la hauteur visible par design (min-height) : le texte de
-   description doit rester à 1-2 phrases pour ne jamais paraître vide à
-   cette taille. */
+   voir transactions.css) : reste visible pendant que le contenu (filtres/
+   tableau/liste) défile dessous. Chargé par les 3 vues globales
+   (commerce.js le charge directement, liens.js/transactions.js le
+   chargent en plus de leur propre CSS), défini une seule fois ici.
+   ~35% de la hauteur visible par design (min-height) : icône+titre+
+   description sur une ligne (.subview-sticky-intro-top), puis les KPI de
+   la sous-vue juste dessous quand elle en a (Commerce uniquement - voir
+   #clients-summary etc. dans commerce.js, désormais DANS ce bandeau
+   plutôt qu'au-dessus du tableau). flex-direction:column : une sous-vue
+   sans KPI (Liens) n'a qu'une seule "ligne" et reste centrée dans la
+   hauteur disponible via justify-content. */
 .subview-sticky-intro {
     position: sticky;
     top: 0;
     z-index: 20;
     display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 18px;
+    min-height: 35vh;
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 24px 0;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 16px rgba(17, 24, 39, 0.03);
+}
+
+.subview-sticky-intro-top {
+    display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 20px;
-    min-height: 20vh;
-    background: #ffffff;
-    border-bottom: 1px solid #e5e7eb;
-    padding: 28px 0;
-    margin-bottom: 24px;
-    box-shadow: 0 4px 16px rgba(17, 24, 39, 0.03);
 }
 
 .subview-sticky-intro-main {
@@ -110,8 +121,11 @@
     color: #111827;
 }
 
+/* +20% par rapport à la taille/graisse d'origine (13.5px/normal) :
+   13.5px -> 16px, poids 400 -> 500. */
 .subview-sticky-intro-body p {
-    font-size: 13.5px;
+    font-size: 16px;
+    font-weight: 500;
     color: #6b7280;
     line-height: 1.6;
     margin: 0;
@@ -122,6 +136,9 @@
     .subview-sticky-intro {
         min-height: unset;
         padding: 20px 0;
+        gap: 14px;
+    }
+    .subview-sticky-intro-top {
         gap: 14px;
     }
     .subview-sticky-intro-main {
@@ -135,8 +152,9 @@
     .subview-sticky-intro-body h1 {
         font-size: 18px;
     }
+    /* +20% par rapport à la taille mobile d'origine (12px -> 14px). */
     .subview-sticky-intro-body p {
-        font-size: 12px;
+        font-size: 14px;
     }
 }
 

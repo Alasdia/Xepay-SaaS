@@ -143,7 +143,15 @@
    Paramètres) : chaque vue peut surcharger padding/width
    selon ses besoins propres, mais le dégagement de base pour la sidebar
    fixe (260px) doit rester unique et cohérent ici, pas redéclaré par vue. */
-#main-content { background: #ffffff; position: relative; z-index: 1; margin-left: 18%; margin-top: 5vh; padding: 28px 40px; width: calc(100% - 18%); overflow-x: hidden; }
+/* overflow-y:visible explicite : sans lui, la seule présence d'overflow-x
+   (même à "hidden") suffit à faire d'#main-content son propre conteneur
+   de scroll (la spec calcule alors overflow-y à "auto" plutôt que
+   "visible") - #main-content ne défile jamais lui-même (hauteur "auto",
+   c'est <body> qui défile), donc il devient un conteneur de scroll qui ne
+   bouge jamais, et tout position:sticky posé à l'intérieur (voir
+   .subview-sticky-intro, commerce.css) se fige par rapport à LUI au lieu
+   du vrai scroll de la page - visuellement, la sticky ne "colle" jamais. */
+#main-content { background: #ffffff; position: relative; z-index: 1; margin-left: 18%; margin-top: 5vh; padding: 28px 40px; width: calc(100% - 18%); overflow-x: hidden; overflow-y: visible; }
 /* Seule zone scrollable de la sidebar (liste de liens) : l'en-tête (logo +
    badge plan) au-dessus et le bloc Upgrade/Déconnexion en dessous restent
    fixes, hors de ce flux — flex:1 lui laisse exactement l'espace restant. */
