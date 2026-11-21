@@ -4,7 +4,6 @@ from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.orm import Session
 
 from backend.auth import get_current_user
-from backend.middleware.authorization import require_pro_or_business
 from backend.database import get_db
 
 from backend.models import (
@@ -37,7 +36,7 @@ router = APIRouter()
 
 @router.get("/export/csv")
 def export_csv(
-    user=Depends(require_pro_or_business),
+    user=Depends(get_current_user),
     db: Session = Depends(get_db),
     status: str = Query(None),
     start_date: str = Query(None),
@@ -112,7 +111,7 @@ def export_csv(
 
 @router.get("/export/pdf")
 def export_pdf(
-    user=Depends(require_pro_or_business),
+    user=Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
 

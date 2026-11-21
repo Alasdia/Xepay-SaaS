@@ -3,17 +3,9 @@ import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 
 const TEMPLATE = `
-<div id="featureLock" class="feature-lock d-none">
-  <div class="feature-lock-card">
-    <div class="lock-icon"><i class="fa-solid fa-lock"></i></div>
-    <h2>API Access</h2>
-    <p>Débloquez les clés API, webhooks et logs temps réel avec le plan Pro.</p>
-    <button class="btn btn-warning fw-bold" onclick="upgrade('pro')">⚡ Passer au Pro</button>
-  </div>
-</div>
 <div id="api-content">
 <div class="mb-4">
-  <h1 style="font-size:24px;font-weight:700;"><i class="fa-solid fa-code"></i> API Access <span class="badge pro">PRO</span></h1>
+  <h1 style="font-size:24px;font-weight:700;"><i class="fa-solid fa-code"></i> API Access</h1>
   <p class="muted" style="font-size:14px;margin-top:6px;">Gérez vos clés API et configurez vos webhooks pour intégrer Xepay dans vos applications.</p>
 </div>
 <div class="row g-3 mb-4">
@@ -444,7 +436,6 @@ export async function mount(container) {
   async function loadCurrentUser() {
     const res = await apiFetch("/me");
     const user = await res.json();
-    localStorage.setItem("plan", user.plan);
     if (user.session) {
       document.getElementById("lastUsedTime").textContent = formatLastLogin(user.session.last_seen);
       document.getElementById("lastUsedIp").textContent = user.session.ip || "—";
@@ -563,27 +554,6 @@ export async function mount(container) {
     document.body.appendChild(modal);
   }
 
-  function showLockedOverlay() {
-    document.getElementById("featureLock").classList.remove("d-none");
-  }
-
-  async function initPlan() {
-    const user = await loadCurrentUser();
-    if (user.plan === "free") {
-      document.body.classList.add("locked-page");
-      showLockedOverlay();
-    }
-  }
-
-  const onShownUpgrade = (e) => {
-    if (e.target.id === "modalUpgrade") {
-      document.querySelectorAll("#modalUpgrade .reveal").forEach((el, index) => {
-        setTimeout(() => el.classList.add("visible"), index * 100);
-      });
-    }
-  };
-  document.addEventListener("shown.bs.modal", onShownUpgrade);
-
   window.copyCode = copyCode;
   window.toggleSecret = toggleSecret;
   window.copyKey = copyKey;
@@ -596,19 +566,16 @@ export async function mount(container) {
   window.toggleLogs = toggleLogs;
   window.copySecret = copySecret;
   window.closeSecretModal = closeSecretModal;
-  // window.upgrade est exposé globalement par app.js (modale partagée persistante)
 
   ensurePrism().then(() => window.Prism?.highlightAllUnder(container));
   loadWebhooks();
   loadApiKeys();
   loadLogs();
   loadStats();
-  initPlan();
+  loadCurrentUser();
 
   return {
     unmount() {
-      document.body.classList.remove("locked-page");
-      document.removeEventListener("shown.bs.modal", onShownUpgrade);
       delete window.copyCode;
       delete window.toggleSecret;
       delete window.copyKey;

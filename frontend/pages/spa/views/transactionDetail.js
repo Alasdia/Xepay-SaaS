@@ -9,7 +9,6 @@ import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { navigate } from "../core/router.js";
 import { getWorkspaceId } from "../core/state.js";
-import { showUpgradeModal } from "../shared/modalUpgrade.js";
 import { getCurrency, getRate, formatMoney } from "../core/currency.js";
 
 const statusMap = { paid: "Réussi", pending: "En attente", expired: "Échoué" };
@@ -119,9 +118,6 @@ async function mountDetail(container, { endpoint, render }) {
         const data = await res.json();
         if (typeof data.detail === "string") message = data.detail;
       } catch (e) {}
-      if (res.status === 403 && message.toLowerCase().includes("plan")) {
-        showUpgradeModal();
-      }
       showError(message);
     } else {
       const item = await res.json();

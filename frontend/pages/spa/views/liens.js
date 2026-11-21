@@ -2,19 +2,10 @@
 import { apiFetch } from "../core/apiClient.js";
 import { isAuthenticated } from "../core/state.js";
 import { setViewStyles } from "../core/styleLoader.js";
-import { updateUpgradeModal } from "../shared/modalUpgrade.js";
 import { initDetailsDrawer } from "../shared/detailsDrawer.js";
 import { renderMetadataSection } from "./commerce.js";
 
 const TEMPLATE = `
-<div id="links-lock" class="d-none">
-  <div class="lock-card">
-    <div class="lock-icon"><i class="fa-solid fa-lock"></i></div>
-    <h2>Liens de paiement</h2>
-    <p>Débloquez les liens de paiement internationaux avec le plan Pro.</p>
-    <button class="btn btn-warning fw-bold" onclick="upgrade('pro')">⚡ Passer au Pro</button>
-  </div>
-</div>
 <div id="main-content-inner" class="w-100">
   <div class="mb-4">
     <div class="d-flex justify-content-between align-items-center">
@@ -24,18 +15,6 @@ const TEMPLATE = `
       </div>
       <button class="create-client-btn open-lien-modal">+ Nouveau lien</button>
     </div>
-  </div>
-  <div class="card-epay p-3 mb-4">
-    <div class="d-flex justify-content-between align-items-center">
-      <span>Liens utilisés</span>
-      <span id="compteur-liens" class="fw-bold">0 / 10</span>
-    </div>
-    <div class="progress mt-2" style="height: 6px;">
-      <div id="barre-liens" class="progress-bar bg-warning" style="width: 0%"></div>
-    </div>
-    <small class="text-muted mt-1 d-block">
-      Plan Free — <a href="#" class="text-warning" onclick="showUpgradeModal()">Upgrader pour plus de liens</a>
-    </small>
   </div>
   <div id="liste-liens-container" style="height: 75vh; overflow-y: auto;">
     <div id="liste-liens"></div>
@@ -143,21 +122,8 @@ export async function mount(container) {
     if (event.target === creationModal) creationModal.classList.remove("open");
   });
 
-  async function checkPlanLock() {
-    const res = await apiFetch("/me");
-    const user = await res.json();
-    if (user.plan === "free") {
-      document.body.classList.add("locked-page");
-      document.getElementById("links-lock").classList.remove("d-none");
-      return true;
-    }
-    return false;
-  }
-
   async function chargerLiens() {
     const listeLiens = document.getElementById("liste-liens");
-    const compteur = document.getElementById("compteur-liens");
-    const barre = document.getElementById("barre-liens");
     const aucun = document.getElementById("aucun-lien");
     if (!listeLiens || isLoading) return;
     isLoading = true;
@@ -176,9 +142,6 @@ export async function mount(container) {
       return;
     }
     const liens = await res.json();
-    const totalLiens = offset + liens.length;
-    if (compteur) compteur.innerText = `${totalLiens}/${limit}`;
-    if (barre) barre.style.width = `${(totalLiens / limit) * 100}%`;
     if (liens.length === 0 && offset === 0) {
       aucun.classList.remove("d-none");
       isLoading = false;
@@ -373,13 +336,6 @@ export async function mount(container) {
     }
   }
 
-  function showUpgradeModal(feature = null) {
-    const plan = window.GLOBAL_PLAN?.plan;
-    updateUpgradeModal(plan, feature);
-    const modal = new bootstrap.Modal(document.getElementById("modalUpgrade"));
-    modal.show();
-  }
-
   const onScroll = () => {
     const scrollBox = document.getElementById("liste-liens-container");
     if (!scrollBox) return;
@@ -391,13 +347,8 @@ export async function mount(container) {
   scrollBox.addEventListener("scroll", onScroll);
 
   window.genererLien = genererLien;
-  window.showUpgradeModal = showUpgradeModal;
-  // window.upgrade est exposé globalement par app.js (modale partagée persistante)
 
-  (async () => {
-    const locked = await checkPlanLock();
-    if (!locked) chargerLiens();
-  })();
+  chargerLiens();
 
   return {
     unmount() {
@@ -405,10 +356,8 @@ export async function mount(container) {
       // modals de création de commerce.js) : il est retiré du DOM
       // automatiquement avec le reste de #main-content par le router,
       // plus besoin de le gérer/disposer à part.
-      document.body.classList.remove("locked-page");
       scrollBox.removeEventListener("scroll", onScroll);
       delete window.genererLien;
-      delete window.showUpgradeModal;
     },
   };
 }
