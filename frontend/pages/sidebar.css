@@ -149,10 +149,14 @@
 ========================================================= */
 
 /* Décale l'icône/le libellé de chaque vue de 5% de la largeur de la
-   sidebar, pour laisser la place au tronc + à son coude. */
+   sidebar + 20px fixes : les 20px ne sont pas cosmétiques, ils sont
+   nécessaires pour laisser la place à un coude visible ET à l'espace
+   de 14px avant l'icône (voir ::before ci-dessous) - 5% seul ne
+   suffit pas, ça ne fait que ~7-10px de large selon la taille d'écran,
+   moins que le gap demandé à lui seul. */
 #sidebar-nav-scroll .nav-link:not(.nav-sublink){
     position: relative;
-    padding-left: 5%;
+    padding-left: calc(5% + 20px);
 }
 
 /* Tronc de niveau 1 : porté par la liste elle-même (pas par une vue en
@@ -170,16 +174,16 @@
     border-radius: 2px;
 }
 
-/* Coude de niveau 1 : chaque vue tire son propre connecteur depuis le
-   tronc, en s'arrêtant 14px avant le début de son icône (tronc à 2%,
-   icône à 5% - voir padding-left ci-dessus - donc largeur 3% moins ce
-   gap) plutôt que de la toucher presque directement. */
+/* Coude de niveau 1 : visible depuis le tronc (2%) jusqu'à 14px avant
+   l'icône (qui démarre à calc(5% + 20px) ci-dessus) - largeur
+   calc(3% + 6px) = (5% + 20px - 14px) - 2%, donc un trait net ET un
+   vrai espace de 14px avant l'icône, ni l'un ni l'autre sacrifié. */
 #sidebar-nav-scroll .nav-link:not(.nav-sublink)::before{
     content: "";
     position: absolute;
     top: 50%;
     left: 2%;
-    width: calc(3% - 14px);
+    width: calc(3% + 6px);
     height: 2px;
     background: #d1d5db;
     border-radius: 2px;
@@ -189,11 +193,11 @@
    ARBRE GÉNÉALOGIQUE — NIVEAU 2 : sous-vues de Transactions/Liens de
    paiement/Commerce (les 3 seules avec sous-menu). Ambre, pour se
    distinguer du tronc gris de niveau 1 ci-dessus. Tout ancré sur
-   calc(5% + 9px) = centre horizontal de l'icône de la vue parente
-   (padding-left:5% ci-dessus + moitié des 18px de largeur de
-   .nav-link i), pour que ce niveau naisse visuellement de cette icône
-   une fois décalée, plutôt que d'une colonne qui ne lui correspond
-   plus.
+   calc(5% + 29px) = centre horizontal de l'icône de la vue parente
+   (padding-left:calc(5% + 20px) ci-dessus + moitié des 18px de
+   largeur de .nav-link i), pour que ce niveau naisse visuellement de
+   cette icône une fois décalée, plutôt que d'une colonne qui ne lui
+   correspond plus.
 ========================================================= */
 
 /* Tronc vertical : porté par le sous-menu lui-même (disparaît avec lui
@@ -205,7 +209,7 @@
     position: absolute;
     top: 0;
     bottom: 0;
-    left: calc(5% + 9px);
+    left: calc(5% + 29px);
     width: 2px;
     background: rgba(180, 83, 9, 0.28);
     border-radius: 2px;
@@ -219,7 +223,7 @@
     content: "";
     position: absolute;
     top: 50%;
-    left: calc(5% + 9px);
+    left: calc(5% + 29px);
     width: 11px;
     height: 2px;
     background: rgba(180, 83, 9, 0.28);
@@ -236,7 +240,7 @@
 #sidebar .nav-section-title::after{
     content: "";
     position: absolute;
-    left: calc(5% + 9px);
+    left: calc(5% + 29px);
     bottom: -8px;
     width: 2px;
     height: 8px;
