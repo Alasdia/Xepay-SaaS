@@ -2448,7 +2448,7 @@ const BUILDNESS_WIZARD_MODAL_HTML = `
     <div class="modal-content border-0 shadow-lg">
       <div class="p-verto-modal-left">
         <div class="p-verto-modal-brands">
-          <span class="p-verto-icon-badge"><img src="/favicon.svg" alt="Xepay"></span>
+          <span class="p-verto-icon-badge"><img src="/favicon.svg" alt="Xepay" class="xepay-icon"></span>
           <span class="p-verto-icon-x">×</span>
           <span class="p-verto-icon-badge"><img src="/assets/doola-icon.png" alt="doola"></span>
         </div>
@@ -3090,7 +3090,7 @@ const VERTO_ONBOARDING_MODAL_HTML = `
     <div class="modal-content border-0 shadow-lg">
       <div class="p-verto-modal-left">
         <div class="p-verto-modal-brands">
-          <span class="p-verto-icon-badge"><img src="/favicon.svg" alt="Xepay"></span>
+          <span class="p-verto-icon-badge"><img src="/favicon.svg" alt="Xepay" class="xepay-icon"></span>
           <span class="p-verto-icon-x">×</span>
           <span class="p-verto-icon-badge"><img src="/assets/verto-icon.png" alt="Verto"></span>
         </div>
