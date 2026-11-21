@@ -8,32 +8,44 @@ const TEMPLATE = `
   <h1 class="page-title"><i class="fa-solid fa-code"></i> API Access</h1>
   <p class="page-subtitle">Gérez vos clés API et configurez vos webhooks pour intégrer Xepay dans vos applications.</p>
 </div>
-<div class="card-epay p-4 mb-4">
-  <h5 class="fw-bold mb-3"><i class="fa-solid fa-key"></i> Clés API</h5>
-  <div class="key-row">
-    <span class="key-label">Publique</span>
-    <span class="key-value" id="pubKey">Chargement...</span>
-    <button class="icon-btn" onclick="copyKey('pubKey')"><i class="fa-regular fa-copy"></i></button>
+<div class="mb-5">
+  <div class="params-subsection-header">
+    <h6 class="params-subsection-title mb-0">Clés API</h6>
+    <button type="button" class="create-client-btn" onclick="regenKey()">Régénérer</button>
   </div>
-  <div class="key-row">
-    <span class="key-label">Secrète</span>
-    <span class="key-value secret" id="secKey">••••••••••••••••</span>
-    <button class="icon-btn" id="toggleBtn" onclick="toggleSecret()"><i class="fa-regular fa-eye"></i></button>
-    <button class="icon-btn" onclick="copyKey('secKey')"><i class="fa-regular fa-copy"></i></button>
-  </div>
-  <div class="d-flex gap-2 mt-3">
-    <button class="btn-api btn-blue" onclick="regenKey()"><i class="fa-solid fa-rotate"></i> Régénérer</button>
-    <button class="btn-api btn-out" onclick="copyKey('pubKey')"><i class="fa-regular fa-copy"></i> Copier</button>
-  </div>
-  <div class="key-last-used">
-    <span class="muted">Dernière utilisation :</span><br>
-    <span id="lastUsedTime">—</span> — IP <code id="lastUsedIp">—</code>
+  <p class="params-subsection-sub">Vos identifiants pour authentifier les requêtes à l'API Xepay.</p>
+  <div class="params-row-list">
+    <div class="params-info-row">
+      <span>Clé publique</span>
+      <div class="params-row-right">
+        <strong id="pubKey">Chargement...</strong>
+        <button type="button" class="params-edit-btn" onclick="copyKey('pubKey')">Copier</button>
+      </div>
+    </div>
+    <div class="params-info-row">
+      <span>Clé secrète</span>
+      <div class="params-row-right">
+        <strong id="secKey">••••••••••••••••</strong>
+        <button type="button" class="params-edit-btn" id="toggleBtn" onclick="toggleSecret()">Afficher</button>
+        <button type="button" class="params-edit-btn" onclick="copyKey('secKey')">Copier</button>
+      </div>
+    </div>
+    <div class="params-info-row">
+      <span>Dernière utilisation</span>
+      <div class="params-row-right">
+        <strong id="lastUsedTime">—</strong>
+        <span class="text-muted" style="font-size:12px;">IP <code id="lastUsedIp">—</code></span>
+      </div>
+    </div>
   </div>
 </div>
 <div class="table-wrap mb-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <span class="table-title"><i class="fa-solid fa-link"></i> Webhooks</span>
-    <button class="btn-api btn-blue" onclick="openModal()" style="padding:7px 14px;font-size:12px;">+ Ajouter</button>
+    <span class="table-title">Webhooks</span>
+    <div class="d-flex align-items-center gap-2">
+      <span id="nbWebhooks" class="count-badge">0 webhook</span>
+      <button type="button" class="create-client-btn" onclick="openModal()">+ Ajouter</button>
+    </div>
   </div>
   <table class="table table-hover align-middle">
     <thead><tr><th>URL</th><th>Événements</th><th>Statut</th><th>Dernier envoi</th><th></th></tr></thead>
@@ -42,13 +54,14 @@ const TEMPLATE = `
 </div>
 <div class="table-wrap">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <span class="table-title"><i class="fa-regular fa-copy"></i> Logs</span>
+    <span class="table-title">Logs</span>
+    <span id="nbLogs" class="count-badge">0 appel</span>
   </div>
   <table class="table table-hover align-middle">
     <thead><tr><th>Méthode</th><th>Statut</th><th>Chemin</th><th>Date</th></tr></thead>
     <tbody id="logsTable"><tr><td colspan="4" class="text-center muted">Chargement des logs...</td></tr></tbody>
   </table>
-  <button onclick="toggleLogs()" id="toggleLogsBtn" class="btn-api btn-out mt-3">Voir tous les logs →</button>
+  <button type="button" onclick="toggleLogs()" id="toggleLogsBtn" class="params-edit-btn mt-2">Voir tous les logs →</button>
 </div>
 </div>
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
@@ -87,7 +100,7 @@ const TEMPLATE = `
 `;
 
 export async function mount(container) {
-  await setViewStyles(["API.css", "transactions.css"]);
+  await setViewStyles(["API.css", "transactions.css", "parametres.css"]);
   container.innerHTML = TEMPLATE;
 
   let secretVisible = false;
@@ -101,14 +114,18 @@ export async function mount(container) {
 
   function toggleSecret() {
     const el = document.getElementById("secKey");
+    const btn = document.getElementById("toggleBtn");
     if (secretVisible) {
       el.textContent = "••••••••••••";
+      btn.textContent = "Afficher";
       secretVisible = false;
     } else {
       el.textContent = el.dataset.real;
+      btn.textContent = "Masquer";
       secretVisible = true;
       setTimeout(() => {
         el.textContent = "sk_live_••••••••";
+        btn.textContent = "Afficher";
         secretVisible = false;
       }, 3000);
     }
@@ -127,6 +144,7 @@ export async function mount(container) {
       const data = await res.json();
       const tbody = document.getElementById("webhookTable");
       tbody.innerHTML = "";
+      document.getElementById("nbWebhooks").textContent = `${data.length} webhook${data.length > 1 ? "s" : ""}`;
       if (!data.length) {
         tbody.innerHTML = `<tr><td colspan="5" class="muted" style="text-align:center;padding:25px;">Aucun webhook configuré</td></tr>`;
         return;
@@ -300,6 +318,7 @@ export async function mount(container) {
     const logs = await res.json();
     const tbody = document.getElementById("logsTable");
     tbody.innerHTML = "";
+    document.getElementById("nbLogs").textContent = `${logs.length} appel${logs.length > 1 ? "s" : ""}`;
     if (!logs.length) {
       tbody.innerHTML = `<tr><td colspan="4" class="muted" style="text-align:center;padding:25px;">Aucun appel enregistré</td></tr>`;
       return;
