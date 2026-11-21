@@ -107,7 +107,7 @@ function buildTemplate(config) {
       <button class="create-client-btn open-lien-modal">+ Nouveau lien</button>
     </div>
   </div>
-  <div id="liste-liens-container" style="height: 65vh; overflow-y: auto;">
+  <div id="liste-liens-container">
     <div id="liste-liens"></div>
   </div>
   <div id="aucun-lien" class="text-center py-5 d-none">
@@ -480,15 +480,18 @@ export async function mount(container, params = {}) {
     }
   }
 
+  // Scroll de la PAGE (jamais d'une boîte interne, voir buildTemplate) :
+  // #liste-liens-container n'a plus sa propre hauteur/overflow bornés,
+  // c'est <body> qui défile désormais - condition nécessaire pour que
+  // .subview-sticky-intro (position:sticky) ait quelque chose contre quoi
+  // se bloquer (voir PR #64 pour le même constat côté #main-content).
   const onScroll = () => {
-    const scrollBox = document.getElementById("liste-liens-container");
-    if (!scrollBox) return;
-    if (scrollBox.scrollTop + scrollBox.clientHeight >= scrollBox.scrollHeight - 50) {
+    const doc = document.documentElement;
+    if (window.scrollY + window.innerHeight >= doc.scrollHeight - 50) {
       chargerLiens();
     }
   };
-  const scrollBox = document.getElementById("liste-liens-container");
-  scrollBox.addEventListener("scroll", onScroll);
+  window.addEventListener("scroll", onScroll);
 
   window.genererLien = genererLien;
 
@@ -500,7 +503,7 @@ export async function mount(container, params = {}) {
       // modals de création de commerce.js) : il est retiré du DOM
       // automatiquement avec le reste de #main-content par le router,
       // plus besoin de le gérer/disposer à part.
-      scrollBox.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", onScroll);
       delete window.genererLien;
     },
   };
