@@ -5,6 +5,19 @@ name: Deploy backend to AWS EC2
 # authentification GitHub Actions -> AWS par OIDC (pas de clé statique).
 # Complète le déploiement Railway existant (.railway/railway.ts), ne le
 # remplace pas.
+#
+# Ce pipeline n'injecte PAS de secrets via SSM Parameter Store/Secrets
+# Manager : .env est un fichier statique déjà présent sur l'instance EC2
+# (jamais versionné, jamais touché par ce workflow), simplement sourcé par
+# la commande alembic ci-dessous. Les deux lignes "grep -q ... || echo ..."
+# (ajoutées le 2026-11-22 pour BildBus/doola) ne font qu'ajouter les clés
+# DOOLA_API_KEY/DOOLA_WEBHOOK_SECRET/BILDBUS_ALLOW_MOCK à ce fichier SI
+# ELLES SONT ABSENTES (idempotent, jamais d'écrasement d'une vraie valeur
+# déjà en place) - sans ça, le premier déploiement après l'ajout de ces
+# variables dans le code aurait laissé os.getenv(...) renvoyer None
+# silencieusement, ce qui est déjà géré sans crash (voir doola_client.py),
+# mais autant que le fichier .env de prod reflète dès maintenant les clés
+# qu'il faudra renseigner une fois reçues de doola.
 on:
   push:
     branches: [main]
@@ -38,6 +51,9 @@ jobs:
               "git fetch origin main",
               "git reset --hard origin/main",
               "./venv/bin/pip install -r requirements.txt",
+              "grep -q '^DOOLA_API_KEY=' .env || echo 'DOOLA_API_KEY=' >> .env",
+              "grep -q '^DOOLA_WEBHOOK_SECRET=' .env || echo 'DOOLA_WEBHOOK_SECRET=' >> .env",
+              "grep -q '^BILDBUS_ALLOW_MOCK=' .env || echo 'BILDBUS_ALLOW_MOCK=false' >> .env",
               "set -a; . ./.env; set +a; ./venv/bin/alembic upgrade head",
               "systemctl restart xepay-backend",
               "sleep 5",
