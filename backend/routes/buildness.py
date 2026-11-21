@@ -1,7 +1,7 @@
-"""Routes BildBus (formation de LLC US + EIN via doola, voir
-services/doola_service.py, services/doola_mock_service.py,
-routes/webhook/doola.py) - prérequis à l'activation du compte Stripe
-Connect d'un marchand non-résident."""
+"""Routes Buildness (anciennement "BildBus", renommé le 2026-11-22 -
+formation de LLC US + EIN via doola, voir services/doola_service.py,
+services/doola_mock_service.py, routes/webhook/doola.py) - prérequis à
+l'activation du compte Stripe Connect d'un marchand non-résident."""
 
 import logging
 
@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models import BildBusCustomer, BildBusCompany, BildBusOnboardRequest, WorkspaceUser
+from backend.models import BuildnessCustomer, BuildnessCompany, BuildnessOnboardRequest, WorkspaceUser
 from backend.middleware.authorization import require_capability
 from backend.services.doola_client import get_doola_service, DoolaNotConfiguredError
 from backend.services.doola_service import DoolaAPIError
@@ -18,9 +18,9 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.post("/bildbus/onboard", status_code=202)
-async def onboard_bildbus(
-    body: BildBusOnboardRequest,
+@router.post("/buildness/onboard", status_code=202)
+async def onboard_buildness(
+    body: BuildnessOnboardRequest,
     membership: WorkspaceUser = Depends(require_capability("manage_company_formation")),
     db: Session = Depends(get_db),
 ):
@@ -37,15 +37,15 @@ async def onboard_bildbus(
     try:
         doola = get_doola_service()
     except DoolaNotConfiguredError:
-        # Ni vraie clé doola, ni BILDBUS_ALLOW_MOCK - voir doola_client.py.
+        # Ni vraie clé doola, ni BUILDNESS_ALLOW_MOCK - voir doola_client.py.
         # 503 explicite plutôt qu'un appel réseau avec une clé vide/absente
         # qui échouerait plus bas de façon confuse, ou (pire) qu'un
         # basculement silencieux sur le mock en production.
-        raise HTTPException(503, "BildBus n'est pas encore disponible. Réessayez plus tard.")
+        raise HTTPException(503, "Buildness n'est pas encore disponible. Réessayez plus tard.")
 
     customer = (
-        db.query(BildBusCustomer)
-        .filter(BildBusCustomer.xepay_merchant_id == merchant_id)
+        db.query(BuildnessCustomer)
+        .filter(BuildnessCustomer.xepay_merchant_id == merchant_id)
         .first()
     )
     if not customer:
@@ -59,7 +59,7 @@ async def onboard_bildbus(
             logger.exception("Echec creation customer doola pour merchant_id=%s", merchant_id)
             raise HTTPException(502, "Erreur lors de la creation du dossier. Reessayez plus tard.")
 
-        customer = BildBusCustomer(
+        customer = BuildnessCustomer(
             xepay_merchant_id=merchant_id,
             doola_customer_id=doola_customer_id,
             email=body.email,
@@ -75,7 +75,7 @@ async def onboard_bildbus(
     # doola_company_id est nullable précisément pour permettre ce brouillon,
     # voir models.py) : même en cas d'échec total de l'appel doola
     # ci-dessous, le marchand garde une trace de sa demande.
-    company = BildBusCompany(
+    company = BuildnessCompany(
         customer_id=customer.id,
         company_name=body.company_name,
         state=body.state,
@@ -114,8 +114,8 @@ async def onboard_bildbus(
     return {"status": company.status, "company_id": company.id}
 
 
-@router.get("/bildbus/status/{merchant_id}")
-def get_bildbus_status(
+@router.get("/buildness/status/{merchant_id}")
+def get_buildness_status(
     merchant_id: str,
     membership: WorkspaceUser = Depends(require_capability("manage_company_formation")),
     db: Session = Depends(get_db),
@@ -130,17 +130,17 @@ def get_bildbus_status(
         raise HTTPException(403, "Acces refuse.")
 
     customer = (
-        db.query(BildBusCustomer)
-        .filter(BildBusCustomer.xepay_merchant_id == merchant_id)
+        db.query(BuildnessCustomer)
+        .filter(BuildnessCustomer.xepay_merchant_id == merchant_id)
         .first()
     )
     if not customer:
         return {"status": "not_started"}
 
     company = (
-        db.query(BildBusCompany)
-        .filter(BildBusCompany.customer_id == customer.id)
-        .order_by(BildBusCompany.created_at.desc())
+        db.query(BuildnessCompany)
+        .filter(BuildnessCompany.customer_id == customer.id)
+        .order_by(BuildnessCompany.created_at.desc())
         .first()
     )
     if not company:

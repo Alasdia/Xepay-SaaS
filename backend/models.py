@@ -193,9 +193,9 @@ class VertoBeneficiaryRequest(BaseModel):
     beneficiary_postal_code: str
     beneficiary_state_or_province: str
 
-class BildBusOnboardRequest(BaseModel):
+class BuildnessOnboardRequest(BaseModel):
     # Fondateur + LLC en un seul formulaire côté UI Xepay - voir
-    # routes/bildbus.py, qui scinde l'appel en create_customer (une seule
+    # routes/buildness.py, qui scinde l'appel en create_customer (une seule
     # fois par marchand) puis create_company (voir services/
     # doola_service.py/doola_mock_service.py). state : code d'État US à 2
     # lettres (ex. "DE") - pas de validation de forme ici, doola rejette
@@ -740,23 +740,26 @@ class Link(Base):
     def __repr__(self):
         return f"<Link id={self.id} name={self.name} amount={self.amount}>"
 
-# --- BildBus (création de LLC US + EIN via l'API partenaire doola, voir
-# services/doola_service.py, routes/bildbus.py, routes/webhook/doola.py) -
+# --- Buildness (renommé le 2026-11-22, anciennement "BildBus" - tables/
+# routes/fichiers renommés en conséquence, voir la migration dédiée et
+# routes/buildness.py ; doola_service.py/doola_mock_service.py/doola_
+# client.py gardent leur nom, nommés d'après le partenaire doola, pas le
+# produit Xepay). Création de LLC US + EIN via l'API partenaire doola -
 # prérequis pour qu'un marchand non-résident obtienne les papiers
 # nécessaires à l'activation de son compte Stripe Connect. ---
 
-class BildBusCustomer(Base):
+class BuildnessCustomer(Base):
     """Le "customer" doola (personne/fondateur) correspondant à un
     workspace Xepay - distinct de la société elle-même (voir
-    BildBusCompany). xepay_merchant_id UNIQUE : un seul customer doola par
-    marchand, jamais recréé à chaque appel - même raison que
+    BuildnessCompany). xepay_merchant_id UNIQUE : un seul customer doola
+    par marchand, jamais recréé à chaque appel - même raison que
     UniqueConstraint("verto_company_id") sur Profile (voir
     services/verto_service.py/routes/verto.py) : ferme la fenêtre de
     course d'un double-clic sur "Démarrer" qui créerait sinon un second
     customer doola orphelin à chaque tentative."""
-    __tablename__ = "bildbus_customers"
+    __tablename__ = "buildness_customers"
 
-    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("bbcus"))
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("bncus"))
     xepay_merchant_id = Column(String, ForeignKey("users.id"), unique=True, nullable=False)
     doola_customer_id = Column(String, unique=True, nullable=False)
     email = Column(String, nullable=False)
@@ -764,13 +767,13 @@ class BildBusCustomer(Base):
     last_name = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    companies = relationship("BildBusCompany", back_populates="customer")
+    companies = relationship("BuildnessCompany", back_populates="customer")
 
 
-class BildBusCompany(Base):
+class BuildnessCompany(Base):
     """Une société (LLC) en cours de formation ou formée chez doola pour
-    un BildBusCustomer. status reflète le cycle de vie côté Xepay, PAS le
-    statut brut doola (voir routes/webhook/doola.py pour le mapping
+    un BuildnessCustomer. status reflète le cycle de vie côté Xepay, PAS
+    le statut brut doola (voir routes/webhook/doola.py pour le mapping
     événement -> status) :
     - draft : formulaire reçu côté Xepay, appel doola pas encore confirmé.
     - submitted : create_company a réussi, doola a accusé réception.
@@ -781,15 +784,15 @@ class BildBusCompany(Base):
     last_successful_step (ajouté le 2026-11-22) : dernière étape qui a
     RÉELLEMENT réussi (draft/submitted/processing/completed - jamais
     "failed", qui n'est pas une étape mais l'absence de la suivante) -
-    mis à jour UNIQUEMENT sur les branches de succès (routes/bildbus.py,
+    mis à jour UNIQUEMENT sur les branches de succès (routes/buildness.py,
     routes/webhook/doola.py), jamais touché sur un échec. Un statut
     "failed" garde donc toujours la trace du point d'arrêt réel, pour que
     le frontend affiche le stepper à la bonne étape plutôt que de
     supposer que l'échec a eu lieu à la toute dernière étape."""
-    __tablename__ = "bildbus_companies"
+    __tablename__ = "buildness_companies"
 
-    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("bbco"))
-    customer_id = Column(String, ForeignKey("bildbus_customers.id"), nullable=False)
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("bnco"))
+    customer_id = Column(String, ForeignKey("buildness_customers.id"), nullable=False)
     doola_company_id = Column(String, unique=True, nullable=True)
     company_name = Column(String, nullable=False)
     state = Column(String, nullable=False)
@@ -799,18 +802,18 @@ class BildBusCompany(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
-    customer = relationship("BildBusCustomer", back_populates="companies")
+    customer = relationship("BuildnessCustomer", back_populates="companies")
 
 
-class BildBusWebhookLog(Base):
+class BuildnessWebhookLog(Base):
     """Trace de chaque événement webhook doola déjà traité - event_id
     UNIQUE est le filet de sécurité qui empêche un même événement
     (livraison dupliquée, retry doola) d'être appliqué deux fois à
-    BildBusCompany (voir routes/webhook/doola.py, qui vérifie d'abord
+    BuildnessCompany (voir routes/webhook/doola.py, qui vérifie d'abord
     cette table avant tout traitement)."""
-    __tablename__ = "bildbus_webhook_logs"
+    __tablename__ = "buildness_webhook_logs"
 
-    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("bbwhlg"))
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("bnwhlg"))
     event_id = Column(String, unique=True, nullable=False)
     event_type = Column(String, nullable=False)
     payload = Column(JSON, nullable=True)

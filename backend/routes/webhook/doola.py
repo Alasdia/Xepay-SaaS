@@ -1,5 +1,5 @@
-"""Webhook doola (voir services/doola_service.py, routes/bildbus.py,
-BildBusWebhookLog/BildBusCompany dans models.py).
+"""Webhook doola (voir services/doola_service.py, routes/buildness.py,
+BuildnessWebhookLog/BuildnessCompany dans models.py).
 
 AVERTISSEMENT (même mise en garde que webhook/verto.py) : le nom du
 header de signature ("X-Doola-Signature"), le schéma HMAC-SHA256 sur le
@@ -24,7 +24,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from sqlalchemy.exc import IntegrityError
 
 from backend.database import SessionLocal
-from backend.models import BildBusCompany, BildBusWebhookLog
+from backend.models import BuildnessCompany, BuildnessWebhookLog
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -57,8 +57,8 @@ def _apply_doola_event(event_type: str, payload: dict) -> None:
             return
 
         company = (
-            db.query(BildBusCompany)
-            .filter(BildBusCompany.doola_company_id == str(doola_company_id))
+            db.query(BuildnessCompany)
+            .filter(BuildnessCompany.doola_company_id == str(doola_company_id))
             .first()
         )
         if not company:
@@ -113,7 +113,7 @@ async def doola_webhook(request: Request, background_tasks: BackgroundTasks):
     # contrainte et reçoit la même réponse 200 - jamais traitée deux fois.
     db = SessionLocal()
     try:
-        db.add(BildBusWebhookLog(
+        db.add(BuildnessWebhookLog(
             event_id=str(event_id),
             event_type=str(event_type),
             payload=payload,
@@ -125,7 +125,7 @@ async def doola_webhook(request: Request, background_tasks: BackgroundTasks):
         return {"ok": True}
     db.close()
 
-    # BackgroundTasks : la mise à jour de BildBusCompany part en tâche de
+    # BackgroundTasks : la mise à jour de BuildnessCompany part en tâche de
     # fond pour répondre 200 à doola sans attendre - demandé explicitement
     # (le cahier des charges), au-delà de ce que Stripe/Verto ont besoin
     # ici (eux ne déportent que l'appel SORTANT vers le webhook du
