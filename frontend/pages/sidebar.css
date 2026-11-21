@@ -138,15 +138,60 @@
 #sidebar .nav-link.nav-sublink{ padding-left:34px; font-size:14px; }
 
 /* =========================================================
-   ARBRE GÉNÉALOGIQUE — connecteurs visuels entre une vue (Transactions/
-   Liens de paiement/Commerce, les 3 seules avec sous-menu) et ses
-   sous-vues. Purement cosmétique : aucun changement de structure ou de
-   comportement, juste des traits ::before/::after par-dessus la nav
-   existante, dans l'espace déjà réservé par padding-left:34px ci-dessus.
-   left:19px = centre horizontal de l'icône de la vue parente (padding
-   10px + moitié de sa largeur 18px, voir .nav-link/.nav-link i) : le
-   tronc et les coudes partent visuellement de là, pas d'une colonne
-   arbitraire.
+   ARBRE GÉNÉALOGIQUE — NIVEAU 1 : TOUTES les vues de la sidebar, avec
+   ou sans sous-menu (Accueil/Solde/API compris), et toute vue ajoutée
+   plus tard - le sélecteur cible .nav-link génériquement (à l'intérieur
+   de la liste scrollable, donc jamais Déconnexion, en dehors), jamais
+   une vue précise par son nom. Tronc continu GRIS sur toute la hauteur
+   de la liste. :not(.nav-sublink) exclut explicitement les sous-liens,
+   qui restent sur leur propre système de NIVEAU 2 (en ambre) plus bas -
+   la couleur distingue les deux profondeurs d'un coup d'œil.
+========================================================= */
+
+/* Décale l'icône/le libellé de chaque vue de 5% de la largeur de la
+   sidebar, pour laisser la place au tronc + à son coude. */
+#sidebar-nav-scroll .nav-link:not(.nav-sublink){
+    position: relative;
+    padding-left: 5%;
+}
+
+/* Tronc de niveau 1 : porté par la liste elle-même (pas par une vue en
+   particulier) - une seule ligne continue, quel que soit le nombre de
+   vues actuelles ou futures. */
+#sidebar-nav-scroll ul.nav{ position: relative; }
+#sidebar-nav-scroll ul.nav::before{
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 2%;
+    width: 2px;
+    background: #d1d5db;
+    border-radius: 2px;
+}
+
+/* Coude de niveau 1 : chaque vue tire son propre connecteur depuis le
+   tronc jusqu'au début de son icône. */
+#sidebar-nav-scroll .nav-link:not(.nav-sublink)::before{
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 2%;
+    width: 2.5%;
+    height: 2px;
+    background: #d1d5db;
+    border-radius: 2px;
+}
+
+/* =========================================================
+   ARBRE GÉNÉALOGIQUE — NIVEAU 2 : sous-vues de Transactions/Liens de
+   paiement/Commerce (les 3 seules avec sous-menu). Ambre, pour se
+   distinguer du tronc gris de niveau 1 ci-dessus. Tout ancré sur
+   calc(5% + 9px) = centre horizontal de l'icône de la vue parente
+   (padding-left:5% ci-dessus + moitié des 18px de largeur de
+   .nav-link i), pour que ce niveau naisse visuellement de cette icône
+   une fois décalée, plutôt que d'une colonne qui ne lui correspond
+   plus.
 ========================================================= */
 
 /* Tronc vertical : porté par le sous-menu lui-même (disparaît avec lui
@@ -158,7 +203,7 @@
     position: absolute;
     top: 0;
     bottom: 0;
-    left: 19px;
+    left: calc(5% + 9px);
     width: 2px;
     background: rgba(180, 83, 9, 0.28);
     border-radius: 2px;
@@ -172,7 +217,7 @@
     content: "";
     position: absolute;
     top: 50%;
-    left: 19px;
+    left: calc(5% + 9px);
     width: 11px;
     height: 2px;
     background: rgba(180, 83, 9, 0.28);
@@ -180,8 +225,8 @@
 }
 
 /* Petit connecteur entre l'icône de la vue parente et le tronc de son
-   sous-menu : fait "naître" visuellement la ligne de l'icône plutôt
-   que de la faire flotter sous elle, sans dépendre de l'état ouvert/
+   sous-menu : fait "naître" visuellement le niveau 2 de l'icône plutôt
+   que de le faire flotter sous elle, sans dépendre de l'état ouvert/
    fermé (reste discret même replié, comme une amorce de branche). */
 #sidebar .nav-link-row,
 #sidebar .nav-section-title{ position: relative; }
@@ -189,7 +234,7 @@
 #sidebar .nav-section-title::after{
     content: "";
     position: absolute;
-    left: 19px;
+    left: calc(5% + 9px);
     bottom: -8px;
     width: 2px;
     height: 8px;
