@@ -96,14 +96,16 @@ function buildTemplate(config) {
   return `
 <div id="main-content-inner" class="w-100">
   <div class="subview-sticky-intro">
-    <div class="subview-sticky-intro-main">
-      <div class="subview-sticky-intro-icon"><i class="fa-solid ${config.icon}"></i></div>
-      <div class="subview-sticky-intro-body">
-        <h1>${config.title}</h1>
-        <p>${config.subtitle}</p>
+    <div class="subview-sticky-intro-top">
+      <div class="subview-sticky-intro-main">
+        <div class="subview-sticky-intro-icon"><i class="fa-solid ${config.icon}"></i></div>
+        <div class="subview-sticky-intro-body">
+          <h1>${config.title}</h1>
+          <p>${config.subtitle}</p>
+        </div>
       </div>
+      <button class="create-client-btn open-lien-modal">+ Nouveau lien</button>
     </div>
-    <button class="create-client-btn open-lien-modal">+ Nouveau lien</button>
   </div>
   <div id="liste-liens-container" style="height: 65vh; overflow-y: auto;">
     <div id="liste-liens"></div>

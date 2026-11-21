@@ -535,25 +535,27 @@ async function renderClients(container) {
 
     container.innerHTML = `
         <div class="subview-sticky-intro">
-            <div class="subview-sticky-intro-main">
-                <div class="subview-sticky-intro-icon"><i class="fa-solid fa-users"></i></div>
-                <div class="subview-sticky-intro-body">
-                    <h1>Clients</h1>
-                    <p>Votre répertoire clients Stripe Connect : coordonnées et historique de chaque client, au même endroit. Indispensable dès qu'une même personne est facturée ou abonnée plus d'une fois.</p>
+            <div class="subview-sticky-intro-top">
+                <div class="subview-sticky-intro-main">
+                    <div class="subview-sticky-intro-icon"><i class="fa-solid fa-users"></i></div>
+                    <div class="subview-sticky-intro-body">
+                        <h1>Clients</h1>
+                        <p>Votre répertoire clients Stripe Connect : coordonnées et historique de chaque client, au même endroit. Indispensable dès qu'une même personne est facturée ou abonnée plus d'une fois.</p>
+                    </div>
                 </div>
+
+                <button
+                    type="button"
+                    class="create-client-btn"
+                    id="open-create-client"
+                >
+                    + Créer un client
+                </button>
             </div>
 
-            <button
-                type="button"
-                class="create-client-btn"
-                id="open-create-client"
-            >
-                + Créer un client
-            </button>
+            <!-- KPI : ZONE INDÉPENDANTE DU TABLEAU -->
+            <div id="clients-summary"></div>
         </div>
-
-        <!-- KPI : ZONE INDÉPENDANTE DU TABLEAU -->
-        <div id="clients-summary"></div>
 
         <div id="clients-list"></div>
 
@@ -1285,26 +1287,27 @@ async function renderProducts(container) {
 
     container.innerHTML = `
         <div class="subview-sticky-intro">
-            <div class="subview-sticky-intro-main">
-                <div class="subview-sticky-intro-icon"><i class="fa-solid fa-box"></i></div>
-                <div class="subview-sticky-intro-body">
-                    <h1>Produits</h1>
-                    <p>Votre catalogue : produits et tarifs réutilisables pour vos factures et abonnements. Créez-les une fois, facturez-les autant de fois que nécessaire, sans ressaisir le prix à chaque vente.</p>
+            <div class="subview-sticky-intro-top">
+                <div class="subview-sticky-intro-main">
+                    <div class="subview-sticky-intro-icon"><i class="fa-solid fa-box"></i></div>
+                    <div class="subview-sticky-intro-body">
+                        <h1>Produits</h1>
+                        <p>Votre catalogue : produits et tarifs réutilisables pour vos factures et abonnements. Créez-les une fois, facturez-les autant de fois que nécessaire, sans ressaisir le prix à chaque vente.</p>
+                    </div>
                 </div>
+
+                <button
+                    type="button"
+                    class="create-client-btn"
+                    id="open-create-product"
+                >
+                    + Créer un produit
+                </button>
             </div>
 
-            <button
-                type="button"
-                class="create-client-btn"
-                id="open-create-product"
-            >
-                + Créer un produit
-            </button>
-
+            <!-- KPI : ZONE INDÉPENDANTE DU TABLEAU -->
+            <div id="products-summary"></div>
         </div>
-
-        <!-- KPI : ZONE INDÉPENDANTE DU TABLEAU -->
-        <div id="products-summary"></div>
 
         <div id="products-list"></div>
 
@@ -2486,26 +2489,27 @@ async function renderSubscriptions(container) {
 
     container.innerHTML = `
         <div class="subview-sticky-intro">
-            <div class="subview-sticky-intro-main">
-                <div class="subview-sticky-intro-icon"><i class="fa-solid fa-repeat"></i></div>
-                <div class="subview-sticky-intro-body">
-                    <h1>Abonnements</h1>
-                    <p>La facturation récurrente automatisée : définissez un cycle (mensuel, annuel...) et Xepay prélève vos clients à chaque échéance, sans intervention de votre part.</p>
+            <div class="subview-sticky-intro-top">
+                <div class="subview-sticky-intro-main">
+                    <div class="subview-sticky-intro-icon"><i class="fa-solid fa-repeat"></i></div>
+                    <div class="subview-sticky-intro-body">
+                        <h1>Abonnements</h1>
+                        <p>La facturation récurrente automatisée : définissez un cycle (mensuel, annuel...) et Xepay prélève vos clients à chaque échéance, sans intervention de votre part.</p>
+                    </div>
                 </div>
+
+                <button
+                    type="button"
+                    class="create-client-btn"
+                    id="open-create-subscription-modal"
+                >
+                    + Créer un abonnement
+                </button>
             </div>
 
-            <button
-                type="button"
-                class="create-client-btn"
-                id="open-create-subscription-modal"
-            >
-                + Créer un abonnement
-            </button>
-
+            <!-- KPI : ZONE INDÉPENDANTE DU TABLEAU -->
+            <div id="subscriptions-summary"></div>
         </div>
-
-        <!-- KPI : ZONE INDÉPENDANTE DU TABLEAU -->
-        <div id="subscriptions-summary"></div>
 
         <div id="subscriptions-list"></div>
 
@@ -4147,23 +4151,25 @@ async function renderInvoices(container) {
 
       container.innerHTML = `
         <div class="subview-sticky-intro">
-            <div class="subview-sticky-intro-main">
-                <div class="subview-sticky-intro-icon"><i class="fa-solid fa-file-invoice"></i></div>
-                <div class="subview-sticky-intro-body">
-                    <h1>Factures</h1>
-                    <p>Pour une prestation ponctuelle facturée formellement : devis accepté, mission freelance, vente B2B. Un document professionnel envoyé au client, payable en un clic.</p>
+            <div class="subview-sticky-intro-top">
+                <div class="subview-sticky-intro-main">
+                    <div class="subview-sticky-intro-icon"><i class="fa-solid fa-file-invoice"></i></div>
+                    <div class="subview-sticky-intro-body">
+                        <h1>Factures</h1>
+                        <p>Pour une prestation ponctuelle facturée formellement : devis accepté, mission freelance, vente B2B. Un document professionnel envoyé au client, payable en un clic.</p>
+                    </div>
                 </div>
+                <button
+                    type="button"
+                    class="create-client-btn"
+                    id="open-create-invoice-modal"
+                >
+                    + Créer une facture
+                </button>
             </div>
-            <button
-                type="button"
-                class="create-client-btn"
-                id="open-create-invoice-modal"
-            >
-                + Créer une facture
-            </button>
+            <!-- KPI : ZONE INDÉPENDANTE DU TABLEAU -->
+            <div id="invoices-summary"></div>
         </div>
-        <!-- KPI : ZONE INDÉPENDANTE DU TABLEAU -->
-        <div id="invoices-summary"></div>
         <div id="invoices-list"></div>
         <!-- MODAL CRÉATION FACTURE -->
         <div
@@ -5443,17 +5449,19 @@ async function renderPaymentMethods(container) {
 
     container.innerHTML = `
         <div class="subview-sticky-intro">
-            <div class="subview-sticky-intro-main">
-                <div class="subview-sticky-intro-icon"><i class="fa-solid fa-credit-card"></i></div>
-                <div class="subview-sticky-intro-body">
-                    <h1>Moyens de paiement</h1>
-                    <p>Les réglages de votre compte Stripe connecté : quelles cartes et quels wallets (Apple Pay, Google Pay...) vous acceptez. À ajuster une fois pour couvrir plus de clients, dans plus de pays.</p>
+            <div class="subview-sticky-intro-top">
+                <div class="subview-sticky-intro-main">
+                    <div class="subview-sticky-intro-icon"><i class="fa-solid fa-credit-card"></i></div>
+                    <div class="subview-sticky-intro-body">
+                        <h1>Moyens de paiement</h1>
+                        <p>Les réglages de votre compte Stripe connecté : quelles cartes et quels wallets (Apple Pay, Google Pay...) vous acceptez. À ajuster une fois pour couvrir plus de clients, dans plus de pays.</p>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- KPI : ZONE INDÉPENDANTE DU TABLEAU -->
-        <div id="payment-methods-summary"></div>
+            <!-- KPI : ZONE INDÉPENDANTE DU TABLEAU -->
+            <div id="payment-methods-summary"></div>
+        </div>
 
         <!-- TABLEAU : ZONE INDÉPENDANTE -->
         <div id="payment-methods-table"></div>
@@ -6279,11 +6287,13 @@ async function renderRisk(container) {
 
     container.innerHTML = `
         <div class="subview-sticky-intro">
-            <div class="subview-sticky-intro-main">
-                <div class="subview-sticky-intro-icon"><i class="fa-solid fa-shield-halved"></i></div>
-                <div class="subview-sticky-intro-body">
-                    <h1>Risque</h1>
-                    <p>Votre filet de sécurité anti-fraude : alertes Radar, paiements à risque élevé et litiges Stripe remontés ici en premier. À consulter régulièrement pour réagir avant qu'un litige ne s'aggrave.</p>
+            <div class="subview-sticky-intro-top">
+                <div class="subview-sticky-intro-main">
+                    <div class="subview-sticky-intro-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <div class="subview-sticky-intro-body">
+                        <h1>Risque</h1>
+                        <p>Votre filet de sécurité anti-fraude : alertes Radar, paiements à risque élevé et litiges Stripe remontés ici en premier. À consulter régulièrement pour réagir avant qu'un litige ne s'aggrave.</p>
+                    </div>
                 </div>
             </div>
         </div>
