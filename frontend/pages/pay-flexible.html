@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xepay — Paiement</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="pay-flexible.css">
+</head>
+<body>
+<div class="pf-card">
+  <div class="pf-logo">XEPAY</div>
+
+  <div id="pf-loading" class="pf-state">Chargement...</div>
+  <div id="pf-error" class="pf-state pf-error-state pf-hidden"></div>
+
+  <form id="pf-form" class="pf-hidden">
+    <h1 id="pf-name">Paiement Xepay</h1>
+    <p id="pf-hint" class="pf-hint">Choisissez le montant que vous souhaitez payer.</p>
+    <label for="pf-amount">Montant</label>
+    <div class="pf-amount-row">
+      <input type="number" id="pf-amount" step="0.01" min="0" placeholder="0.00" inputmode="decimal">
+      <span id="pf-currency"></span>
+    </div>
+    <div id="pf-form-error" class="pf-error pf-hidden"></div>
+    <button type="submit" id="pf-submit">Payer →</button>
+  </form>
+</div>
+<script src="pay-flexible.js" defer></script>
+</body>
+</html>
