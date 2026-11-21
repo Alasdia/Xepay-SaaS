@@ -2436,26 +2436,46 @@ function buildnessWizardStateOptionsHtml() {
   ).join("");
 }
 
+// Même composant que #paramsVertoOnboardingModal (voir plus bas dans ce
+// fichier) : bande de marque fixe à gauche, contenu à droite qui change
+// étape par étape - demandé explicitement le 2026-11-23. CSS dupliqué
+// sous #paramsBuildnessWizardModal dans parametres.css (mêmes classes
+// .p-verto-modal-*, même raison que pour .create-client-btn plus haut :
+// éviter de dépendre d'un sélecteur scopé à l'ID du modal Verto).
 const BUILDNESS_WIZARD_MODAL_HTML = `
 <div class="modal fade" id="paramsBuildnessWizardModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog">
     <div class="modal-content border-0 shadow-lg">
-      <div class="modal-header border-0 pb-0">
-        <h5 class="modal-title fw-bold">Créer ma société</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      <div class="p-verto-modal-left">
+        <div class="p-verto-modal-brands">
+          <span class="p-verto-icon-badge"><img src="/favicon.svg" alt="Xepay"></span>
+          <span class="p-verto-icon-x">×</span>
+          <span class="p-verto-icon-badge"><i class="fa-solid fa-building-columns" style="color:#b45309; font-size:18px;"></i></span>
+        </div>
+        <h5>Xepay &amp; doola</h5>
+        <p>doola est notre partenaire spécialisé dans la formation de sociétés américaines (LLC) et l'obtention de l'EIN (identifiant fiscal fédéral) - nécessaire pour activer pleinement votre compte Stripe Connect.</p>
+        <p>Les informations ci-contre sont transmises à doola pour constituer votre société. Comptez généralement quelques jours ouvrés entre la soumission du dossier et l'obtention de l'EIN.</p>
+        <div class="p-verto-modal-links">
+          <a href="/politique-confidentialite" target="_blank" rel="noopener">Politique de confidentialité</a>
+          <a href="/conditions-utilisation" target="_blank" rel="noopener">Conditions d'utilisation</a>
+        </div>
       </div>
-      <div class="modal-body pt-2">
-        <div class="progress mb-4" style="height:6px;">
+      <div class="p-verto-modal-right">
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+        <h5 class="fw-bold text-dark mb-3" id="p-buildness-wizard-title">Nom et État de la LLC</h5>
+        <div class="progress mb-4" style="height:6px; max-width:320px;">
           <div id="p-buildness-wizard-progress" class="progress-bar" style="width:33%; background:#b45309;"></div>
         </div>
         <form id="p-buildness-wizard-form">
           <div id="p-buildness-wizard-step-1">
-            <div class="mb-2">
-              <label class="form-label">Nom de la LLC</label>
+            <div class="p-verto-field">
+              <label>Nom de la LLC</label>
+              <p class="p-verto-field-help">Le nom exact que vous souhaitez déposer auprès de l'État.</p>
               <input type="text" name="company_name" class="form-control" placeholder="Ex: Xepay Ventures LLC" required>
             </div>
-            <div class="mb-2">
-              <label class="form-label">État de formation souhaité</label>
+            <div class="p-verto-field">
+              <label>État de formation souhaité</label>
+              <p class="p-verto-field-help">L'État américain où votre LLC sera enregistrée (ex: Delaware, Wyoming).</p>
               <select name="state" class="form-select" required>
                 <option value="" disabled selected>Choisir un État</option>
                 ${buildnessWizardStateOptionsHtml()}
@@ -2463,31 +2483,30 @@ const BUILDNESS_WIZARD_MODAL_HTML = `
             </div>
           </div>
           <div id="p-buildness-wizard-step-2" style="display:none;">
-            <div class="row g-2 mb-2">
-              <div class="col-6">
-                <label class="form-label">Prénom du fondateur</label>
-                <input type="text" name="first_name" class="form-control" required>
-              </div>
-              <div class="col-6">
-                <label class="form-label">Nom du fondateur</label>
-                <input type="text" name="last_name" class="form-control" required>
+            <div class="p-verto-field">
+              <label>Prénom et nom du fondateur</label>
+              <p class="p-verto-field-help">La personne qui dirige/possède la société - vérifiée par doola.</p>
+              <div class="row g-2">
+                <div class="col-6"><input type="text" name="first_name" class="form-control" placeholder="Prénom" required></div>
+                <div class="col-6"><input type="text" name="last_name" class="form-control" placeholder="Nom" required></div>
               </div>
             </div>
-            <div class="mb-2">
-              <label class="form-label">Email du fondateur</label>
+            <div class="p-verto-field">
+              <label>Email du fondateur</label>
+              <p class="p-verto-field-help">Utilisé par doola pour le suivi de votre dossier.</p>
               <input type="email" name="email" class="form-control" required>
             </div>
           </div>
           <div id="p-buildness-wizard-step-3" style="display:none;">
-            <p class="params-subsection-sub" style="max-width:100%;">Vérifiez vos informations avant de lancer la création.</p>
-            <div class="params-row-list" id="p-buildness-wizard-recap" style="max-width:100%;"></div>
+            <p class="p-verto-field-help">Vérifiez vos informations avant de lancer la création.</p>
+            <div class="params-row-list" id="p-buildness-wizard-recap"></div>
           </div>
         </form>
-      </div>
-      <div class="modal-footer border-0 pt-0">
-        <button type="button" id="p-buildness-wizard-back" class="btn btn-outline-secondary" style="display:none;">Retour</button>
-        <button type="button" id="p-buildness-wizard-next" class="btn btn-primary params-promo-wizard-btn">Suivant</button>
-        <button type="submit" form="p-buildness-wizard-form" id="p-buildness-submit-btn" class="btn btn-primary params-promo-wizard-btn" style="display:none;">Lancer la création de ma LLC</button>
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" id="p-buildness-wizard-back" class="btn btn-light" style="display:none;">Retour</button>
+          <button type="button" id="p-buildness-wizard-next" class="create-client-btn">Suivant</button>
+          <button type="submit" form="p-buildness-wizard-form" id="p-buildness-submit-btn" class="create-client-btn" style="display:none;">Lancer la création de ma LLC</button>
+        </div>
       </div>
     </div>
   </div>
@@ -2508,11 +2527,14 @@ function buildnessStatusLabel(status) {
 function buildnessPromoActionsHtml(data) {
   const status = data && data.status;
 
+  // Boutons de la carte = même style que "Se connecter" plus bas sur
+  // cette page (.create-client-btn) - demandé explicitement le
+  // 2026-11-23, jamais .btn-primary/.btn-outline-secondary Bootstrap.
   if (!status || status === "not_started") {
     return `
       <div class="params-promo-actions">
-        <button type="button" id="p-buildness-cta-btn" class="btn btn-primary">Créer ma société</button>
-        <button type="button" id="p-buildness-info-btn" class="btn btn-outline-secondary">En savoir plus</button>
+        <button type="button" id="p-buildness-cta-btn" class="create-client-btn">Créer ma société</button>
+        <button type="button" id="p-buildness-info-btn" class="create-client-btn">En savoir plus</button>
       </div>
     `;
   }
@@ -2521,8 +2543,8 @@ function buildnessPromoActionsHtml(data) {
     return `
       <div class="params-promo-status params-promo-status-failed">⚠️ La création a échoué.</div>
       <div class="params-promo-actions">
-        <button type="button" id="p-buildness-cta-btn" class="btn btn-primary">Réessayer</button>
-        <button type="button" id="p-buildness-info-btn" class="btn btn-outline-secondary">En savoir plus</button>
+        <button type="button" id="p-buildness-cta-btn" class="create-client-btn">Réessayer</button>
+        <button type="button" id="p-buildness-info-btn" class="create-client-btn">En savoir plus</button>
       </div>
     `;
   }
@@ -2541,9 +2563,8 @@ function buildnessPromoActionsHtml(data) {
 function buildnessCardHtml(data) {
   return `
     <div class="params-promo-card">
-      <span class="params-promo-badge">Xepay Buildness</span>
-      <h3 class="params-promo-title">Constituer une entreprise aux États-Unis</h3>
-      <p class="params-promo-sub">Créez votre LLC, obtenez votre EIN et activez votre compte Stripe Connect, directement depuis Xepay.</p>
+      <h3 class="params-promo-title">Créer votre entreprise avec Xepay Buildness aux États-Unis</h3>
+      <p class="params-promo-sub">Pour encaisser vos paiements via Stripe Connect en toute légalité aux États-Unis, il vous faut une société américaine (LLC) et son EIN (identifiant fiscal fédéral délivré par l'IRS) - sans ça, Stripe limite ou bloque l'activation complète de votre compte. Xepay s'occupe de toute la constitution avec notre partenaire doola : choix de l'État, dépôt des statuts, obtention de l'EIN - sans démarche administrative ni déplacement de votre côté.</p>
       ${buildnessPromoActionsHtml(data)}
     </div>
   `;
@@ -2600,12 +2621,20 @@ function renderBuildnessWizardRecap() {
   `;
 }
 
+const BUILDNESS_WIZARD_STEP_TITLES = {
+  1: "Nom et État de la LLC",
+  2: "Informations du fondateur",
+  3: "Récapitulatif",
+};
+
 function showBuildnessWizardStep(step) {
   buildnessWizardStep = step;
   for (let i = 1; i <= BUILDNESS_WIZARD_STEPS; i++) {
     const el = document.getElementById(`p-buildness-wizard-step-${i}`);
     if (el) el.style.display = i === step ? "" : "none";
   }
+  const title = document.getElementById("p-buildness-wizard-title");
+  if (title) title.textContent = BUILDNESS_WIZARD_STEP_TITLES[step] || "";
   const progress = document.getElementById("p-buildness-wizard-progress");
   if (progress) progress.style.width = `${(step / BUILDNESS_WIZARD_STEPS) * 100}%`;
   document.getElementById("p-buildness-wizard-back").style.display = step > 1 ? "" : "none";

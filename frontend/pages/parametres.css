@@ -1031,38 +1031,36 @@
 
 /* Carte de présentation "Entreprise" (Buildness) - même patron que les
    cartes promo Firstbase/Atlas qu'elle remplace, mais sans champ de
-   formulaire visible (voir entrepriseTemplate/buildnessCardHtml) :
-   fond légèrement teinté (ton brand #b45309), coins arrondis, marges
-   généreuses. Le formulaire vit dans #paramsBuildnessWizardModal. */
+   formulaire visible (voir entrepriseTemplate/buildnessCardHtml). Révisé
+   le 2026-11-23 : fond en opacité réelle (rgba, pas un hex clair) et
+   bordure à une opacité égale ou inférieure au fond - jamais l'inverse,
+   qui ferait ressortir le contour plus que le fond qu'il délimite.
+   min-height plutôt que height : ~45% de la hauteur visible du detail
+   "Entreprise" (45vh) sans jamais rogner le contenu si le texte est plus
+   long qu'attendu sur un petit écran. Le formulaire vit entièrement dans
+   #paramsBuildnessWizardModal (voir plus bas). */
 .params-promo-card {
-  background: linear-gradient(135deg, #fff7ed 0%, #fef3e2 100%);
-  border: 1px solid #fde4c0;
-  border-radius: 16px;
+  background: rgba(180, 83, 9, 0.06);
+  border: 1px solid rgba(180, 83, 9, 0.04);
+  border-radius: 2px;
   padding: 32px;
   margin-bottom: 32px;
-}
-.params-promo-badge {
-  display: inline-block;
-  background: rgba(180, 83, 9, 0.12);
-  color: #b45309;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  padding: 4px 10px;
-  border-radius: 999px;
-  margin-bottom: 14px;
+  min-height: 45vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 .params-promo-title {
   font-size: 24px;
   font-weight: 800;
   color: #111827;
-  margin: 0 0 10px;
+  margin: 0 0 12px;
 }
 .params-promo-sub {
   font-size: 14px;
   color: #4b5563;
-  max-width: 480px;
+  line-height: 1.6;
+  max-width: 640px;
   margin-bottom: 20px;
 }
 .params-promo-actions {
@@ -1092,26 +1090,73 @@
 }
 .params-promo-steps li { margin-bottom: 10px; }
 
-/* Bouton principal "marque Xepay" - même valeur #b45309 que .btn-primary
-   dans multi-users.css/accueil.css (--gold), jamais définie globalement
-   (chaque vue l'override localement), donc redéclarée ici pour que ce
-   bouton Bootstrap natif porte la couleur de marque sur cette page. */
-.params-promo-actions .btn-primary,
-.params-promo-wizard-btn.btn-primary {
-  background: #b45309;
-  border-color: #b45309;
-  color: #ffffff;
-  font-weight: 600;
-}
-.params-promo-actions .btn-primary:hover,
-.params-promo-wizard-btn.btn-primary:hover {
-  background: #92400e;
-  border-color: #92400e;
-}
-
 @media (max-width: 480px) {
-  .params-promo-card { padding: 20px; }
+  .params-promo-card { padding: 20px; min-height: unset; }
   .params-promo-title { font-size: 20px; }
   .params-promo-actions { flex-direction: column; }
-  .params-promo-actions .btn { width: 100%; }
+  .params-promo-actions .btn,
+  .params-promo-actions .create-client-btn { width: 100%; justify-content: center; }
+}
+
+/* Modale "Créer ma société" (Buildness/doola) - EXACT même composant que
+   #paramsVertoOnboardingModal plus bas dans ce fichier (bande de marque
+   à gauche fixe, contenu à droite qui change étape par étape) : classes
+   .p-verto-modal-* réutilisées à l'identique (pas de nouvelles classes),
+   seul le sélecteur d'ID change - même raison que .params-edit-btn/
+   .create-client-btn plus haut (dupliqué plutôt que chargé depuis un
+   autre fichier). Demandé explicitement le 2026-11-23 : "utilise le même
+   modal... composants de verto". */
+#paramsBuildnessWizardModal { z-index: 999999 !important; }
+#paramsBuildnessWizardModal .modal-dialog {
+  width: 90vw;
+  max-width: 1320px;
+  height: 90vh;
+  margin: 5vh auto;
+}
+#paramsBuildnessWizardModal .modal-content {
+  height: 100%;
+  flex-direction: row;
+  overflow: hidden;
+  border-radius: 16px;
+}
+#paramsBuildnessWizardModal .p-verto-modal-left {
+  width: 38%;
+  flex-shrink: 0;
+  background: rgba(180, 83, 9, 0.75);
+  color: #ffffff;
+  padding: 48px 40px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+#paramsBuildnessWizardModal .p-verto-modal-brands { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
+#paramsBuildnessWizardModal .p-verto-modal-brands .p-verto-icon-badge { width: 44px; height: 44px; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+#paramsBuildnessWizardModal .p-verto-modal-brands .p-verto-icon-badge img { height: 22px; width: 22px; object-fit: contain; }
+#paramsBuildnessWizardModal .p-verto-modal-brands .p-verto-icon-x { color: rgba(255,255,255,.85); font-size: 18px; }
+#paramsBuildnessWizardModal .p-verto-modal-left h5 { color: #ffffff; font-weight: 700; margin-bottom: 16px; }
+#paramsBuildnessWizardModal .p-verto-modal-left p { color: rgba(255, 255, 255, 0.92); font-size: 13.5px; line-height: 1.65; }
+#paramsBuildnessWizardModal .p-verto-modal-left .p-verto-modal-links { margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding-top: 24px; }
+#paramsBuildnessWizardModal .p-verto-modal-left .p-verto-modal-links a { color: rgba(255, 255, 255, 0.85); font-size: 12.5px; text-decoration: underline; }
+#paramsBuildnessWizardModal .p-verto-modal-left .p-verto-modal-links a:hover { color: #ffffff; }
+
+#paramsBuildnessWizardModal .p-verto-modal-right {
+  flex: 1;
+  min-width: 0;
+  background: #fdfaf8;
+  padding: 44px 56px;
+  overflow-y: auto;
+  position: relative;
+}
+#paramsBuildnessWizardModal .p-verto-modal-right .btn-close { position: absolute; top: 20px; right: 20px; }
+
+#paramsBuildnessWizardModal .p-verto-field { margin-bottom: 22px; }
+#paramsBuildnessWizardModal .p-verto-field label { display: block; font-weight: 700; color: #1f2937; font-size: 13px; margin-bottom: 4px; }
+#paramsBuildnessWizardModal .p-verto-field .p-verto-field-help { font-size: 12px; color: #6b7280; margin-bottom: 6px; line-height: 1.5; }
+
+@media (max-width: 860px) {
+  #paramsBuildnessWizardModal .modal-dialog { width: 96vw; height: 94vh; margin: 3vh auto; }
+  #paramsBuildnessWizardModal .modal-content { flex-direction: column; }
+  #paramsBuildnessWizardModal .p-verto-modal-left { width: 100%; padding: 28px 24px; }
+  #paramsBuildnessWizardModal .p-verto-modal-left .p-verto-modal-links { margin-top: 20px; padding-top: 0; }
+  #paramsBuildnessWizardModal .p-verto-modal-right { padding: 28px 24px; }
 }
