@@ -19,16 +19,27 @@ name: Deploy backend to AWS EC2
 # mais autant que le fichier .env de prod reflète dès maintenant les clés
 # qu'il faudra renseigner une fois reçues de doola.
 #
-# Le "sleep 5" fixe avant le curl de santé (remplacé le 2026-11-22 par la
-# boucle "timeout 30 ... until curl" ci-dessous) a produit un faux négatif
-# sur le déploiement de Buildness (run du 2026-11-21, alors encore nommé
-# "BildBus") : le serveur
-# a mis un peu plus de 5s à redémarrer (chaîne d'imports plus lourde),
-# le curl est arrivé trop tôt, et le pipeline a signalé un échec alors
-# que le serveur, vérifié depuis l'extérieur quelques secondes plus tard,
-# tournait déjà normalement avec le nouveau code. La boucle retente le
-# curl chaque seconde pendant 30s max - vert dès que /health répond, rouge
-# seulement si rien n'a répondu au bout des 30s (timeout propre, exit 124).
+# Le "sleep 5" fixe avant le curl de santé a produit un faux négatif sur
+# le déploiement de Buildness (run du 2026-11-21, alors encore nommé
+# "BildBus") : le serveur a mis un peu plus de 5s à redémarrer (chaîne
+# d'imports plus lourde), le curl est arrivé trop tôt, et le pipeline a
+# signalé un échec alors que le serveur, vérifié depuis l'extérieur
+# quelques secondes plus tard, tournait déjà normalement.
+#
+# Remplacé une première fois (même jour) par "timeout 30 bash -c 'until
+# curl ...; do sleep 1; done'" - qui a en réalité fonctionné sur les deux
+# déploiements suivants (runs PR #47 et #48, tous deux "success", serveur
+# vérifié sain derrière), MAIS imbriquait un bash -c '...' à guillemets
+# simples dans une chaîne JSON elle-même dans un heredoc YAML - une
+# imbrication de guillemets sur 3 niveaux, fragile à relire/maintenir
+# même quand elle marche. Réécrit le 2026-11-22 (2e fois) en une boucle
+# "until" à plat (pas de bash -c, pas de "timeout" externe, juste un
+# compteur $i borné à 30), pour que chaque niveau de guillemets reste
+# visible d'un coup d'œil. Techniquement, "set -e" (posé plus haut) n'a
+# jamais empêché cette boucle de retenter : la condition d'un
+# while/until est explicitement exemptée d'errexit par bash (POSIX) -
+# seul le curl FINAL après la boucle (hors condition, donc soumis à
+# set -e) fait échouer le script si les 30 tentatives n'ont rien donné.
 on:
   push:
     branches: [main]
@@ -47,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::372684705781:role/GithubActions-Xepay-Deploy
           aws-region: ${{ env.AWS_REGION }}
@@ -67,7 +78,7 @@ jobs:
               "grep -q '^BUILDNESS_ALLOW_MOCK=' .env || echo 'BUILDNESS_ALLOW_MOCK=false' >> .env",
               "set -a; . ./.env; set +a; ./venv/bin/alembic upgrade head",
               "systemctl restart xepay-backend",
-              "timeout 30 bash -c 'until curl -sf -o /dev/null http://127.0.0.1:8000/health; do sleep 1; done'",
+              "i=0; until curl -sf -o /dev/null http://127.0.0.1:8000/health || [ $i -ge 30 ]; do i=$((i+1)); sleep 1; done",
               "curl -sf http://127.0.0.1:8000/health"
             ]
           }
