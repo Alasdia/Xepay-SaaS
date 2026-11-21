@@ -2463,51 +2463,38 @@ const BUILDNESS_WIZARD_MODAL_HTML = `
       <div class="p-verto-modal-right">
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
         <div class="p-verto-modal-content">
-        <h5 class="fw-bold text-dark mb-3" id="p-buildness-wizard-title">Nom et État de la LLC</h5>
-        <div class="progress mb-4" style="height:6px;">
-          <div id="p-buildness-wizard-progress" class="progress-bar" style="width:0%; background:#b45309;"></div>
-        </div>
+        <h5 class="fw-bold text-dark mb-3">Créer ma société</h5>
         <form id="p-buildness-wizard-form">
-          <div id="p-buildness-wizard-step-1">
-            <div class="p-verto-field">
-              <label>Nom de la LLC</label>
-              <p class="p-verto-field-help">Le nom exact que vous souhaitez déposer auprès de l'État.</p>
-              <input type="text" name="company_name" class="form-control" placeholder="Ex: Xepay Ventures LLC" required>
-            </div>
-            <div class="p-verto-field">
-              <label>État de formation souhaité</label>
-              <p class="p-verto-field-help">L'État américain où votre LLC sera enregistrée (ex: Delaware, Wyoming).</p>
-              <select name="state" class="form-select" required>
-                <option value="" disabled selected>Choisir un État</option>
-                ${buildnessWizardStateOptionsHtml()}
-              </select>
+          <div class="p-verto-field">
+            <label>Nom de la LLC</label>
+            <p class="p-verto-field-help">Le nom exact que vous souhaitez déposer auprès de l'État.</p>
+            <input type="text" name="company_name" class="form-control" placeholder="Ex: Xepay Ventures LLC" required>
+          </div>
+          <div class="p-verto-field">
+            <label>État de formation souhaité</label>
+            <p class="p-verto-field-help">L'État américain où votre LLC sera enregistrée (ex: Delaware, Wyoming).</p>
+            <select name="state" class="form-select" required>
+              <option value="" disabled selected>Choisir un État</option>
+              ${buildnessWizardStateOptionsHtml()}
+            </select>
+          </div>
+          <div class="p-verto-field">
+            <label>Prénom et nom du fondateur</label>
+            <p class="p-verto-field-help">La personne qui dirige/possède la société - vérifiée par doola.</p>
+            <div class="row g-2">
+              <div class="col-6"><input type="text" name="first_name" class="form-control" placeholder="Prénom" required></div>
+              <div class="col-6"><input type="text" name="last_name" class="form-control" placeholder="Nom" required></div>
             </div>
           </div>
-          <div id="p-buildness-wizard-step-2" style="display:none;">
-            <div class="p-verto-field">
-              <label>Prénom et nom du fondateur</label>
-              <p class="p-verto-field-help">La personne qui dirige/possède la société - vérifiée par doola.</p>
-              <div class="row g-2">
-                <div class="col-6"><input type="text" name="first_name" class="form-control" placeholder="Prénom" required></div>
-                <div class="col-6"><input type="text" name="last_name" class="form-control" placeholder="Nom" required></div>
-              </div>
-            </div>
-            <div class="p-verto-field">
-              <label>Email du fondateur</label>
-              <p class="p-verto-field-help">Utilisé par doola pour le suivi de votre dossier.</p>
-              <input type="email" name="email" class="form-control" required>
-            </div>
-          </div>
-          <div id="p-buildness-wizard-step-3" style="display:none;">
-            <p class="p-verto-field-help">Vérifiez vos informations avant de lancer la création.</p>
-            <div class="params-row-list" id="p-buildness-wizard-recap"></div>
+          <div class="p-verto-field">
+            <label>Email du fondateur</label>
+            <p class="p-verto-field-help">Utilisé par doola pour le suivi de votre dossier.</p>
+            <input type="email" name="email" class="form-control" required>
           </div>
         </form>
         </div>
         <div class="d-flex justify-content-end gap-2 mt-4">
-          <button type="button" id="p-buildness-wizard-back" class="btn btn-light" style="display:none;">Retour</button>
-          <button type="button" id="p-buildness-wizard-next" class="create-client-btn">Suivant</button>
-          <button type="submit" form="p-buildness-wizard-form" id="p-buildness-submit-btn" class="create-client-btn" style="display:none;">Lancer la création de ma LLC</button>
+          <button type="submit" form="p-buildness-wizard-form" id="p-buildness-submit-btn" class="create-client-btn">Lancer la création de ma LLC</button>
         </div>
       </div>
     </div>
@@ -2587,67 +2574,17 @@ function renderBuildnessSection(data) {
   }
 }
 
-// --- Processus en 3 étapes (modale Bootstrap, insérée dans
+// --- Formulaire en une seule étape (modale Bootstrap, insérée dans
 // document.body par mountEntreprise - voir VERTO_ONBOARDING_MODAL_HTML
-// pour le même patron). Un seul <form>, les 3 "étapes" ne sont que des
-// div masquées/affichées : submitBuildnessOnboard (plus bas, logique
-// métier INCHANGÉE depuis la version précédente) lit les mêmes champs
-// nommés, qu'ils aient été visibles à l'étape 1/2/3 ou non. ---
-
-const BUILDNESS_WIZARD_STEPS = 3;
-let buildnessWizardStep = 1;
-
-function buildnessWizardStepFields(step) {
-  const el = document.getElementById(`p-buildness-wizard-step-${step}`);
-  return el ? Array.from(el.querySelectorAll("input[required], select[required]")) : [];
-}
-
-function validateBuildnessWizardStep(step) {
-  for (const field of buildnessWizardStepFields(step)) {
-    if (!field.reportValidity()) return false;
-  }
-  return true;
-}
-
-function renderBuildnessWizardRecap() {
-  const form = document.getElementById("p-buildness-wizard-form");
-  const recap = document.getElementById("p-buildness-wizard-recap");
-  if (!form || !recap) return;
-  const stateEntry = BUILDNESS_US_STATES.find(([code]) => code === form.state.value);
-  const stateLabel = stateEntry ? `${stateEntry[1]} (${stateEntry[0]})` : (form.state.value || "—");
-  recap.innerHTML = `
-    <div class="params-info-row"><span>LLC</span><strong>${form.company_name.value}</strong></div>
-    <div class="params-info-row"><span>État</span><strong>${stateLabel}</strong></div>
-    <div class="params-info-row"><span>Fondateur</span><strong>${form.first_name.value} ${form.last_name.value}</strong></div>
-    <div class="params-info-row"><span>Email</span><strong>${form.email.value}</strong></div>
-  `;
-}
-
-const BUILDNESS_WIZARD_STEP_TITLES = {
-  1: "Nom et État de la LLC",
-  2: "Informations du fondateur",
-  3: "Récapitulatif",
-};
-
-function showBuildnessWizardStep(step) {
-  buildnessWizardStep = step;
-  for (let i = 1; i <= BUILDNESS_WIZARD_STEPS; i++) {
-    const el = document.getElementById(`p-buildness-wizard-step-${i}`);
-    if (el) el.style.display = i === step ? "" : "none";
-  }
-  const title = document.getElementById("p-buildness-wizard-title");
-  if (title) title.textContent = BUILDNESS_WIZARD_STEP_TITLES[step] || "";
-  // (step-1)/(total-1) plutôt que step/total : démarre réellement à 0%
-  // à l'étape 1 (aucune saisie encore validée), pas déjà à 33% - sinon
-  // la barre semble "statique au milieu" dès l'ouverture, signalé le
-  // 2026-11-23. Atteint 100% seulement à l'étape du récapitulatif.
-  const progress = document.getElementById("p-buildness-wizard-progress");
-  if (progress) progress.style.width = `${((step - 1) / (BUILDNESS_WIZARD_STEPS - 1)) * 100}%`;
-  document.getElementById("p-buildness-wizard-back").style.display = step > 1 ? "" : "none";
-  document.getElementById("p-buildness-wizard-next").style.display = step < BUILDNESS_WIZARD_STEPS ? "" : "none";
-  document.getElementById("p-buildness-submit-btn").style.display = step === BUILDNESS_WIZARD_STEPS ? "" : "none";
-  if (step === BUILDNESS_WIZARD_STEPS) renderBuildnessWizardRecap();
-}
+// pour le même patron de bande de marque à gauche/contenu à droite).
+// Simplifié le 2026-11-23 (était en 3 étapes avec barre de progression)
+// : 5 champs au total ne justifiaient pas un stepper - tout tient sur un
+// seul écran, avec défilement vertical de .p-verto-modal-right si
+// nécessaire (overflow-y:auto déjà posé sur cette classe). La validation
+// native du navigateur (attributs required + comportement par défaut du
+// <form>) suffit avant soumission, plus besoin de la valider "étape par
+// étape". submitBuildnessOnboard (plus bas) lit les mêmes champs nommés,
+// logique métier inchangée. ---
 
 function openBuildnessWizard() {
   const form = document.getElementById("p-buildness-wizard-form");
@@ -2657,7 +2594,6 @@ function openBuildnessWizard() {
     submitBtn.disabled = false;
     submitBtn.textContent = "Lancer la création de ma LLC";
   }
-  showBuildnessWizardStep(1);
   bootstrap.Modal.getOrCreateInstance(document.getElementById("paramsBuildnessWizardModal")).show();
 }
 
@@ -2776,13 +2712,6 @@ function mountEntreprise(on) {
 
   document.body.insertAdjacentHTML("beforeend", BUILDNESS_INFO_MODAL_HTML);
   document.body.insertAdjacentHTML("beforeend", BUILDNESS_WIZARD_MODAL_HTML);
-  on(document.getElementById("p-buildness-wizard-next"), "click", () => {
-    if (!validateBuildnessWizardStep(buildnessWizardStep)) return;
-    showBuildnessWizardStep(Math.min(buildnessWizardStep + 1, BUILDNESS_WIZARD_STEPS));
-  });
-  on(document.getElementById("p-buildness-wizard-back"), "click", () => {
-    showBuildnessWizardStep(Math.max(buildnessWizardStep - 1, 1));
-  });
 
   loadBuildnessStatus();
 
