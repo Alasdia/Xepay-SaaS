@@ -136,6 +136,65 @@
 #sidebar .nav-submenu.open{ max-height:320px; }
 /* Sous-liens : même style que .nav-link, juste indenté et sans icône dédiée. */
 #sidebar .nav-link.nav-sublink{ padding-left:34px; font-size:14px; }
+
+/* =========================================================
+   ARBRE GÉNÉALOGIQUE — connecteurs visuels entre une vue (Transactions/
+   Liens de paiement/Commerce, les 3 seules avec sous-menu) et ses
+   sous-vues. Purement cosmétique : aucun changement de structure ou de
+   comportement, juste des traits ::before/::after par-dessus la nav
+   existante, dans l'espace déjà réservé par padding-left:34px ci-dessus.
+   left:19px = centre horizontal de l'icône de la vue parente (padding
+   10px + moitié de sa largeur 18px, voir .nav-link/.nav-link i) : le
+   tronc et les coudes partent visuellement de là, pas d'une colonne
+   arbitraire.
+========================================================= */
+
+/* Tronc vertical : porté par le sous-menu lui-même (disparaît avec lui
+   au repli, via le max-height:0/overflow:hidden déjà existant - rien à
+   synchroniser en JS). */
+#sidebar .nav-submenu{ position: relative; }
+#sidebar .nav-submenu::before{
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 19px;
+    width: 2px;
+    background: rgba(180, 83, 9, 0.28);
+    border-radius: 2px;
+}
+
+/* Coude horizontal : chaque sous-lien tire son propre connecteur depuis
+   le tronc jusqu'à sa propre icône (ou le début de son texte pour
+   Paiements/Retraits, qui n'en ont pas). */
+#sidebar .nav-link.nav-sublink{ position: relative; }
+#sidebar .nav-link.nav-sublink::before{
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 19px;
+    width: 11px;
+    height: 2px;
+    background: rgba(180, 83, 9, 0.28);
+    border-radius: 2px;
+}
+
+/* Petit connecteur entre l'icône de la vue parente et le tronc de son
+   sous-menu : fait "naître" visuellement la ligne de l'icône plutôt
+   que de la faire flotter sous elle, sans dépendre de l'état ouvert/
+   fermé (reste discret même replié, comme une amorce de branche). */
+#sidebar .nav-link-row,
+#sidebar .nav-section-title{ position: relative; }
+#sidebar .nav-link-row::after,
+#sidebar .nav-section-title::after{
+    content: "";
+    position: absolute;
+    left: 19px;
+    bottom: -8px;
+    width: 2px;
+    height: 8px;
+    background: rgba(180, 83, 9, 0.28);
+}
 /* Libellés de groupe ("Gestion", "Compte") : même langage visuel que les
    kpi-label utilisés ailleurs dans l'app (petit, majuscules, discret). */
 #sidebar .nav-section-label{ font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af; font-weight:700; padding:14px 10px 4px; }
