@@ -171,13 +171,15 @@
 }
 
 /* Coude de niveau 1 : chaque vue tire son propre connecteur depuis le
-   tronc jusqu'au début de son icône. */
+   tronc, en s'arrêtant 14px avant le début de son icône (tronc à 2%,
+   icône à 5% - voir padding-left ci-dessus - donc largeur 3% moins ce
+   gap) plutôt que de la toucher presque directement. */
 #sidebar-nav-scroll .nav-link:not(.nav-sublink)::before{
     content: "";
     position: absolute;
     top: 50%;
     left: 2%;
-    width: 2.5%;
+    width: calc(3% - 14px);
     height: 2px;
     background: #d1d5db;
     border-radius: 2px;
