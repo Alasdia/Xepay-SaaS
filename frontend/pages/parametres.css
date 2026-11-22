@@ -851,6 +851,36 @@
   z-index: 1;
 }
 
+/* Boutons Précédent/Suivant de pagination (10 par page, voir
+   paramsPaginationHtml dans parametres.js) - même classe/style que
+   Commerce/Liens/Transactions (commerce.css), dupliquée ici car Paramètres
+   ne charge jamais commerce.css. */
+.pagination-nav-btn {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  color: #374151;
+  font-size: 9px;
+  line-height: 1;
+  cursor: pointer;
+  transition: .2s;
+}
+.pagination-nav-btn:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: #111827;
+}
+.pagination-nav-btn:disabled {
+  opacity: .4;
+  cursor: default;
+}
+
 /* Modal d'onboarding Verto en page scindée (90% du viewport), demandé le
    2026-11-07 à la place d'un modal classique : gauche = image de marque
    Xepay/Verto (fond teinté brand à 75% d'opacité), droite = formulaire
