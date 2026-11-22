@@ -48,6 +48,30 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
 .retrait-btn{ background:transparent !important; border:1px solid #d1d5db !important; color:#374151 !important; font-weight:600; font-size:13px; height:32px; padding:0 12px; display:inline-flex; align-items:center; gap:6px; border-radius:8px; transition:.2s; }
 .btn-export:hover,
 .retrait-btn:hover{ background:#f9fafb !important; border-color:#9ca3af !important; color:#111827 !important; transform:none; }
+
+/* Boutons "carte" du modal de choix de remboursement
+   (REFUND_CHOICE_MODAL_HTML, transactions.js) : titre + description sur
+   deux lignes qui doivent respirer - jamais .btn-export (hauteur fixe
+   32px, pensée pour un bouton icône+texte sur une seule ligne, qui
+   écrasait/superposait ces deux lignes l'une sur l'autre). */
+.refund-choice-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  height: auto;
+  padding: 14px 16px;
+  background: transparent;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: .2s;
+}
+.refund-choice-btn:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
 /* Menu Action "..." (colonne Actions du tableau Paiements) : déclencheur
    carré, menu en position fixed attaché à <body> (voir ACTION_MENU_HTML
    dans transactions.js) pour échapper au overflow:hidden/auto du tableau. */
