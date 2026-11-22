@@ -113,8 +113,8 @@ function buildTemplate(config) {
   <div class="d-flex justify-content-between align-items-center mt-3">
     <span id="liens-pagination-info" class="text-muted">Page 1</span>
     <div class="d-flex gap-2">
-      <button id="liens-prev-page" type="button" class="btn btn-export" disabled><i class="bi bi-chevron-left"></i></button>
-      <button id="liens-next-page" type="button" class="btn btn-export"><i class="bi bi-chevron-right"></i></button>
+      <button id="liens-prev-page" type="button" class="pagination-nav-btn" disabled><i class="bi bi-chevron-left"></i></button>
+      <button id="liens-next-page" type="button" class="pagination-nav-btn"><i class="bi bi-chevron-right"></i></button>
     </div>
   </div>
   <div id="aucun-lien" class="text-center py-5 d-none">

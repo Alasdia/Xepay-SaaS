@@ -133,10 +133,10 @@ const TEMPLATE = `
         <div class="d-flex justify-content-between align-items-center mt-3">
           <span id="pagination-info" class="text-muted">Page 1</span>
           <div class="d-flex gap-2">
-            <button id="prev-page" class="btn btn-export" disabled>
+            <button id="prev-page" class="pagination-nav-btn" disabled>
               <i class="bi bi-chevron-left"></i>
             </button>
-            <button id="next-page" class="btn btn-export">
+            <button id="next-page" class="pagination-nav-btn">
               <i class="bi bi-chevron-right"></i>
             </button>
           </div>
