@@ -2158,13 +2158,13 @@ async function loadTeamWorkspaces() {
   }
 }
 
-async function switchTeamWorkspace(workspaceId) {
-  // Overlay plein écran bloquant affiché IMMÉDIATEMENT au clic (même
-  // principe que le "Changement de compte" de Stripe), masqué seulement
-  // une fois la nouvelle vue Dashboard réellement montée (await
-  // navigate(), voir core/router.js) - jamais sur un simple timer, pour
-  // ne jamais le cacher avant que le nouveau contexte soit prêt.
-  showWorkspaceSwitchOverlay();
+async function switchTeamWorkspace(workspaceId, workspaceName) {
+  // Petit modal de chargement affiché IMMÉDIATEMENT au clic (même principe
+  // que le "Changement de compte" de Stripe), masqué seulement une fois la
+  // nouvelle vue Dashboard réellement montée (await navigate(), voir
+  // core/router.js) - jamais sur un simple timer, pour ne jamais le cacher
+  // avant que le nouveau contexte soit prêt.
+  showWorkspaceSwitchOverlay(workspaceName);
   try {
     setWorkspaceId(workspaceId);
     // Journalise l'accès à CE workspace (Journal d'activité) - la connexion
@@ -2342,7 +2342,10 @@ function mountEquipe(on) {
     bootstrap.Modal.getOrCreateInstance(document.getElementById("paramsInviteModal")).show();
   });
   on(document.getElementById("p-invite-send-btn"), "click", sendTeamInvite);
-  on(document.getElementById("p-team-workspace-switcher"), "change", (e) => switchTeamWorkspace(e.target.value));
+  on(document.getElementById("p-team-workspace-switcher"), "change", (e) => {
+    const name = e.target.options[e.target.selectedIndex]?.textContent || "";
+    switchTeamWorkspace(e.target.value, name);
+  });
 
   on(document.getElementById("p-team-body"), "click", (e) => {
     const kpiBtn = e.target.closest("[data-team-filter]");

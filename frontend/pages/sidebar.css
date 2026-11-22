@@ -14,27 +14,49 @@
    entier qui doit passer au-dessus. */
 #top-banner { position: fixed; top: 0; left: 0; width: 100%; height: 5vh; background: rgba(180, 83, 9, 0.9); z-index: 500001; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; gap: 16px; }
 
-/* Overlay plein écran bloquant pendant un changement de workspace (voir
-   spa/shared/workspaceSwitchOverlay.js) - z-index au-dessus de TOUT
-   (#sidebar 500000, #top-banner 500001 inclus) pour empêcher toute
-   interaction avec la page en arrière-plan pendant le chargement. */
+/* Petit modal de chargement pendant un changement de workspace (voir
+   spa/shared/workspaceSwitchOverlay.js) - le VOILE DE FOND (cet élément,
+   #workspace-switch-overlay) couvre tout l'écran et bloque l'interaction
+   (z-index au-dessus de #sidebar 500000/#top-banner 500001 inclus), mais
+   la boîte elle-même (.workspace-switch-box) reste petite et centrée -
+   jamais un plein écran opaque. Même fond/bordure que les autres petits
+   modals de l'app (ex: refundChoiceModal). */
 #workspace-switch-overlay {
   position: fixed;
   inset: 0;
   z-index: 2000000;
-  background: rgba(17, 24, 39, 0.75);
+  background: rgba(17, 24, 39, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.workspace-switch-box {
+  background: #fdfaf8;
+  border: 1px solid rgba(0, 0, 0, .175);
+  border-radius: 0.5rem;
+  padding: 28px 32px;
+  width: min(320px, 90vw);
+  text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 16px;
-  color: #ffffff;
-  font-size: 15px;
-  font-weight: 600;
+  gap: 14px;
 }
-#workspace-switch-overlay .spinner-border {
-  width: 2.5rem;
-  height: 2.5rem;
+.workspace-switch-box h6 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+.workspace-switch-box .spinner-border {
+  color: #b45309;
+  width: 2.25rem;
+  height: 2.25rem;
+}
+.workspace-switch-box p {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
 }
 
 /* Fond par défaut de tous les modals Bootstrap de l'app n'ayant pas déjà
