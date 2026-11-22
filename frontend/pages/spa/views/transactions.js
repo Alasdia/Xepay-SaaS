@@ -793,7 +793,7 @@ export async function mount(container, params = {}) {
     const net = t.amount_net_merchant;
     const hasNetOption = net != null && net < gross;
     const netOptionHtml = hasNetOption ? `
-      <button type="button" class="btn btn-export text-start p-3" id="refund-choice-net" style="border: 1px solid #d1d5db; border-radius: 10px;">
+      <button type="button" class="refund-choice-btn" id="refund-choice-net">
         <div class="fw-bold">Rembourser le montant net reçu — ${formatMontant(net, currency)}</div>
         <div class="text-muted small mt-1">Le client récupère ${formatMontant(net, currency)} au lieu de ${formatMontant(gross, currency)} — la commission Xepay reste à sa charge. Votre solde Stripe n'est pas affecté.</div>
       </button>
@@ -801,7 +801,7 @@ export async function mount(container, params = {}) {
     return `
       <p class="text-muted mb-3">La commission Xepay n'est jamais remboursée, quel que soit le choix ci-dessous — Stripe ne rend pas non plus son propre frais de traitement sur un remboursement.</p>
       <div class="d-flex flex-column gap-2">
-        <button type="button" class="btn btn-export text-start p-3" id="refund-choice-full" style="border: 1px solid #d1d5db; border-radius: 10px;">
+        <button type="button" class="refund-choice-btn" id="refund-choice-full">
           <div class="fw-bold">Rembourser le montant total — ${formatMontant(gross, currency)}</div>
           <div class="text-muted small mt-1">Le client récupère l'intégralité de son paiement. Votre solde Stripe absorbe la commission non rendue (régularisé sur votre prochain versement).</div>
         </button>
