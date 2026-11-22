@@ -18,6 +18,41 @@
     width: 100%;
 }
 
+/* Boutons Précédent/Suivant de pagination (Transactions, Liens de
+   paiement, Commerce - voir PR #72) : un simple chevron, jamais la
+   taille d'un bouton avec texte comme .btn-export - dont certaines de
+   ces vues ne chargent même pas le CSS (transactions.css, jamais
+   chargé par Commerce seul), d'où le rendu par défaut du navigateur
+   bien trop grand constaté. Classe dédiée, nettement plus compacte.
+   ("-95% par rapport à la taille actuelle" donnerait ~1.6px,
+   invisible/inutilisable - ramené à une taille très réduite mais
+   encore cliquable à la place.) */
+.pagination-nav-btn {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid #d1d5db;
+    border-radius: 5px;
+    color: #374151;
+    font-size: 9px;
+    line-height: 1;
+    cursor: pointer;
+    transition: .2s;
+}
+.pagination-nav-btn:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+    color: #111827;
+}
+.pagination-nav-btn:disabled {
+    opacity: .4;
+    cursor: default;
+}
+
 .payment-method-type {
     display: grid;
     grid-template-columns: 200px 80px;

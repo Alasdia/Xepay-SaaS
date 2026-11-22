@@ -994,8 +994,8 @@ async function renderClients(container) {
                 <div class="d-flex justify-content-between align-items-center mt-3">
                     <span id="customers-pagination-info" class="text-muted">Page ${customersPageNumber}</span>
                     <div class="d-flex gap-2">
-                        <button id="customers-prev-page" type="button" class="btn btn-export" ${customersPageNumber <= 1 ? "disabled" : ""}><i class="bi bi-chevron-left"></i></button>
-                        <button id="customers-next-page" type="button" class="btn btn-export" ${customersPageStart + customersPageSize >= filteredCustomers.length ? "disabled" : ""}><i class="bi bi-chevron-right"></i></button>
+                        <button id="customers-prev-page" type="button" class="pagination-nav-btn" ${customersPageNumber <= 1 ? "disabled" : ""}><i class="bi bi-chevron-left"></i></button>
+                        <button id="customers-next-page" type="button" class="pagination-nav-btn" ${customersPageStart + customersPageSize >= filteredCustomers.length ? "disabled" : ""}><i class="bi bi-chevron-right"></i></button>
                     </div>
                 </div>
             `;
@@ -1966,8 +1966,8 @@ async function renderProducts(container) {
                 <div class="d-flex justify-content-between align-items-center mt-3">
                     <span id="products-pagination-info" class="text-muted">Page ${productsPageNumber}</span>
                     <div class="d-flex gap-2">
-                        <button id="products-prev-page" type="button" class="btn btn-export" ${productsPageNumber <= 1 ? "disabled" : ""}><i class="bi bi-chevron-left"></i></button>
-                        <button id="products-next-page" type="button" class="btn btn-export" ${productsPageStart + productsPageSize >= filteredProducts.length ? "disabled" : ""}><i class="bi bi-chevron-right"></i></button>
+                        <button id="products-prev-page" type="button" class="pagination-nav-btn" ${productsPageNumber <= 1 ? "disabled" : ""}><i class="bi bi-chevron-left"></i></button>
+                        <button id="products-next-page" type="button" class="pagination-nav-btn" ${productsPageStart + productsPageSize >= filteredProducts.length ? "disabled" : ""}><i class="bi bi-chevron-right"></i></button>
                     </div>
                 </div>
             `;
@@ -3843,8 +3843,8 @@ async function renderSubscriptions(container) {
                 <div class="d-flex justify-content-between align-items-center mt-3">
                     <span id="subscriptions-pagination-info" class="text-muted">Page ${subscriptionsPageNumber}</span>
                     <div class="d-flex gap-2">
-                        <button id="subscriptions-prev-page" type="button" class="btn btn-export" ${subscriptionsPageNumber <= 1 ? "disabled" : ""}><i class="bi bi-chevron-left"></i></button>
-                        <button id="subscriptions-next-page" type="button" class="btn btn-export" ${subscriptionsPageStart + subscriptionsPageSize >= filteredSubscriptions.length ? "disabled" : ""}><i class="bi bi-chevron-right"></i></button>
+                        <button id="subscriptions-prev-page" type="button" class="pagination-nav-btn" ${subscriptionsPageNumber <= 1 ? "disabled" : ""}><i class="bi bi-chevron-left"></i></button>
+                        <button id="subscriptions-next-page" type="button" class="pagination-nav-btn" ${subscriptionsPageStart + subscriptionsPageSize >= filteredSubscriptions.length ? "disabled" : ""}><i class="bi bi-chevron-right"></i></button>
                     </div>
                 </div>
 
@@ -5322,8 +5322,8 @@ async function renderInvoices(container) {
                 <div class="d-flex justify-content-between align-items-center mt-3">
                     <span id="invoices-pagination-info" class="text-muted">Page ${invoicesPageNumber}</span>
                     <div class="d-flex gap-2">
-                        <button id="invoices-prev-page" type="button" class="btn btn-export" ${invoicesPageNumber <= 1 ? "disabled" : ""}><i class="bi bi-chevron-left"></i></button>
-                        <button id="invoices-next-page" type="button" class="btn btn-export" ${invoicesPageStart + invoicesPageSize >= filteredInvoices.length ? "disabled" : ""}><i class="bi bi-chevron-right"></i></button>
+                        <button id="invoices-prev-page" type="button" class="pagination-nav-btn" ${invoicesPageNumber <= 1 ? "disabled" : ""}><i class="bi bi-chevron-left"></i></button>
+                        <button id="invoices-next-page" type="button" class="pagination-nav-btn" ${invoicesPageStart + invoicesPageSize >= filteredInvoices.length ? "disabled" : ""}><i class="bi bi-chevron-right"></i></button>
                     </div>
                 </div>
 
@@ -6349,8 +6349,8 @@ async function renderPaymentMethods(container) {
                 <div class="d-flex justify-content-between align-items-center mt-3">
                     <span id="methods-pagination-info" class="text-muted">Page ${methodsPageNumber}</span>
                     <div class="d-flex gap-2">
-                        <button id="methods-prev-page" type="button" class="btn btn-export" ${methodsPageNumber <= 1 ? "disabled" : ""}><i class="bi bi-chevron-left"></i></button>
-                        <button id="methods-next-page" type="button" class="btn btn-export" ${methodsPageStart + methodsPageSize >= filteredMethods.length ? "disabled" : ""}><i class="bi bi-chevron-right"></i></button>
+                        <button id="methods-prev-page" type="button" class="pagination-nav-btn" ${methodsPageNumber <= 1 ? "disabled" : ""}><i class="bi bi-chevron-left"></i></button>
+                        <button id="methods-next-page" type="button" class="pagination-nav-btn" ${methodsPageStart + methodsPageSize >= filteredMethods.length ? "disabled" : ""}><i class="bi bi-chevron-right"></i></button>
                     </div>
                 </div>
             `;
