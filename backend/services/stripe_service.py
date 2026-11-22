@@ -7,6 +7,34 @@ import stripe
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
+def ensure_merchant_stripe_account(db, profile: Profile, user: UserDB):
+    """Garantit que `profile` a un compte Stripe Connect Express (le crée
+    sinon, avec la capacité tax_reporting_us_1099_k demandée) et renvoie
+    l'objet Account Stripe (créé ou déjà existant). Partagée par
+    l'onboarding hébergé (routes/users.py, POST /onboarding, AccountLink
+    - redirection externe) et l'onboarding intégré (routes/webhook/
+    stripe.py, POST /stripe/onboarding-session, AccountSession -
+    ConnectAccountOnboarding dans l'UI Xepay) pour ne jamais dupliquer
+    cette logique de création entre les deux flux."""
+    if not profile.stripe_account_id:
+        account = stripe.Account.create(
+            type="express",
+            email=user.email,
+        )
+        try:
+            stripe.Account.modify(
+                account.id,
+                capabilities={
+                    "tax_reporting_us_1099_k": {"requested": True}
+                }
+            )
+        except stripe.error.StripeError as e:
+            print("❌ ERREUR tax_reporting_us_1099_k :", repr(e))
+        profile.stripe_account_id = account.id
+        db.commit()
+        return account
+    return stripe.Account.retrieve(profile.stripe_account_id)
+
 def create_checkout_session(
     db,
     mode,
