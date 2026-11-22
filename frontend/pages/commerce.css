@@ -977,6 +977,25 @@
     box-shadow: 0 20px 50px rgba(0, 0, 0, .18);
 }
 
+/* Fond/bordure/ombre alignés sur les autres modals d'action de l'app
+   (ex: refundChoiceModal, Bootstrap) : arrondi, pas d'ombre - uniquement
+   pour les modals de CRÉATION/ACTION (jamais les 4 modals de DÉTAILS, qui
+   gardent le .customer-modal de base ci-dessus - demande explicite du
+   2026-11-22 de ne jamais toucher les détails). #create-card-modal/
+   #card-details-modal (fonctionnalité carte retirée) volontairement
+   absents - CSS mort, aucune trace dans commerce.js. */
+#modalCreationLien .customer-modal,
+#create-client-modal .customer-modal,
+#create-product-modal .customer-modal,
+#create-subscription-modal .customer-modal,
+#create-invoice-modal .customer-modal,
+#subscription-quantity-modal .customer-modal,
+#invoice-edit-modal .customer-modal {
+    border: 1px solid rgba(0, 0, 0, .175);
+    border-radius: 0.5rem;
+    box-shadow: none;
+}
+
 .customer-details-modal {
     width: min(650px, 100%);
 }
