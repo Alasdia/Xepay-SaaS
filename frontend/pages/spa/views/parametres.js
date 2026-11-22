@@ -265,7 +265,7 @@ function informationsPersonnellesTemplate() {
     </div>
 
     <h6 class="params-subsection-title">Mot de passe</h6>
-    <p class="params-subsection-sub">Celui de votre propre compte Xepay - jamais celui du propriétaire de ce workspace si vous n'en êtes pas vous-même le propriétaire.</p>
+    <p class="params-subsection-sub">Celui de votre propre compte de connexion : <strong id="p-own-email-password">—</strong> - jamais celui du propriétaire de ce workspace si vous n'en êtes pas vous-même le propriétaire.</p>
     <div class="params-row-list mb-5">
       <div class="params-info-row">
         <span>Mot de passe</span>
@@ -277,7 +277,7 @@ function informationsPersonnellesTemplate() {
       <h6 class="params-subsection-title">Sessions actives</h6>
       <button type="button" id="p-sessions-revoke-others-btn" class="create-client-btn">Se déconnecter de toutes les autres sessions</button>
     </div>
-    <p class="params-subsection-sub">Tous les lieux où vous, personnellement, êtes connecté à Xepay - jamais les sessions du propriétaire de ce workspace si vous n'en êtes pas vous-même le propriétaire.</p>
+    <p class="params-subsection-sub">Tous les lieux où votre propre compte de connexion (<strong id="p-own-email-sessions">—</strong>) est connecté à Xepay - jamais les sessions du propriétaire de ce workspace si vous n'en êtes pas vous-même le propriétaire.</p>
     <div class="params-table-well">
       <div class="table-wrap params-table-scroll">
         <table class="table params-mini-table">
@@ -839,6 +839,8 @@ function mountInformationsPersonnelles(on) {
       const res = await apiFetch("/profile");
       const data = await res.json();
       document.getElementById("p-profile-email").innerText = data.email || "—";
+      document.getElementById("p-own-email-password").innerText = data.own_email || "—";
+      document.getElementById("p-own-email-sessions").innerText = data.own_email || "—";
       profileFieldValues.full_name = data.full_name || "";
       profileFieldValues.phone = data.phone || "";
       renderCoordonneesDisplay();

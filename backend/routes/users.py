@@ -1091,6 +1091,15 @@ def get_profile(
         # pas propriétaire voyait/pilotait la 2FA et le compte Google du
         # PROPRIÉTAIRE à la place des siens (Authentification, Équipe et
         # sécurité > Sécurité du compte).
+        # own_email : email de CURRENT_USER (jamais du propriétaire du
+        # workspace actif, contrairement à "email" ci-dessus) - affiché à
+        # côté de Mot de passe/Sessions actives pour que ce soit toujours
+        # sans ambiguïté QUEL compte ces deux actions concernent, quel que
+        # soit le workspace actif (signalé le 2026-11-22 : un admin pouvait
+        # croire modifier le mot de passe/déconnecter les sessions du
+        # propriétaire du workspace affiché, alors que ces deux actions
+        # restent strictement personnelles à current_user).
+        "own_email": current_user.email,
         "two_factor_enabled": current_user.two_factor_enabled,
         "two_factor_backup_code_generated_at": current_user.two_factor_backup_code_generated_at,
         "google_linked": current_user.google_id is not None,
