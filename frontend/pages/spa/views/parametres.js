@@ -78,6 +78,53 @@ document.addEventListener("click", (event) => {
   closeParamsRowMenu();
 });
 
+// --- Pagination des tableaux (10 par page) ---
+// Même principe que Commerce/Liens/Transactions (PR #72) : la liste
+// complète reste chargée telle quelle (aucun changement de fetch), seul le
+// découpage par page affiché est fait ici côté client. Partagé par les 7
+// tableaux de Paramètres (Membres de l'équipe, Invitations, Permissions,
+// Sessions actives, Workspaces, Clés d'accès, Journal d'activité) pour ne
+// jamais dupliquer ce mécanisme.
+const PARAMS_PAGE_SIZE = 10;
+
+function paramsPageSlice(items, page) {
+  const start = (page - 1) * PARAMS_PAGE_SIZE;
+  return items.slice(start, start + PARAMS_PAGE_SIZE);
+}
+
+// idPrefix doit être unique par tableau (ex: "p-sessions") - les boutons
+// générés ici sont lus par délégation depuis le conteneur stable du
+// tableau (voir chaque mount*), jamais re-liés individuellement puisque
+// recréés à chaque re-rendu.
+function paramsPaginationHtml(idPrefix, page, totalItems) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / PARAMS_PAGE_SIZE));
+  if (totalPages <= 1) return "";
+  return `
+    <div class="d-flex justify-content-between align-items-center mt-2" data-pagination-prefix="${idPrefix}">
+      <span class="text-muted" style="font-size:12.5px;">Page ${page} / ${totalPages}</span>
+      <div class="d-flex gap-2">
+        <button type="button" data-page-action="prev" class="pagination-nav-btn" ${page <= 1 ? "disabled" : ""}><i class="fa-solid fa-chevron-left"></i></button>
+        <button type="button" data-page-action="next" class="pagination-nav-btn" ${page >= totalPages ? "disabled" : ""}><i class="fa-solid fa-chevron-right"></i></button>
+      </div>
+    </div>
+  `;
+}
+
+// À appeler une fois par tableau paginé, sur son conteneur stable (jamais
+// remplacé par innerHTML - seul son contenu l'est) : délègue les clics
+// prev/next vers getPage/setPage/rerender fournis par l'appelant, sans
+// jamais devoir ré-attacher de listener à chaque re-rendu.
+function wireParamsPagination(on, container, idPrefix, getPage, setPage, rerender) {
+  on(container, "click", (e) => {
+    const wrap = e.target.closest(`[data-pagination-prefix="${idPrefix}"]`);
+    if (!wrap) return;
+    const btn = e.target.closest("[data-page-action]");
+    if (!btn) return;
+    setPage(btn.dataset.pageAction === "prev" ? getPage() - 1 : getPage() + 1);
+    rerender();
+  });
+}
+
 function tile(section, icon, title, sub, danger = false) {
   return `
     <button type="button" class="params-tile${danger ? " params-tile--danger" : ""}" data-section="${section}">
@@ -243,6 +290,7 @@ function informationsPersonnellesTemplate() {
         </table>
       </div>
     </div>
+    <div id="p-sessions-pagination"></div>
 
     <h6 class="params-subsection-title mt-5">Workspaces</h6>
     <p class="params-subsection-sub">La liste des workspaces dont vous êtes membre.</p>
@@ -265,6 +313,7 @@ function informationsPersonnellesTemplate() {
         </table>
       </div>
     </div>
+    <div id="p-workspaces-pagination"></div>
   `;
 }
 
@@ -482,22 +531,35 @@ function passkeyRowMenuHtml(id) {
   `;
 }
 
+let passkeysList = [];
+let passkeysPage = 1;
+
+function renderPasskeysTable() {
+  const tbody = document.getElementById("p-passkeys-tbody");
+  const pagination = document.getElementById("p-passkeys-pagination");
+  if (!tbody) return;
+  tbody.innerHTML = passkeysList.length
+    ? paramsPageSlice(passkeysList, passkeysPage).map((p) => `
+        <tr>
+          <td>${p.name}</td>
+          <td>${formatSessionTime(p.created_at)}</td>
+          <td>${p.last_used_at ? formatSessionTime(p.last_used_at) : "Jamais utilisée"}</td>
+          <td>${passkeyRowMenuHtml(p.id)}</td>
+        </tr>
+      `).join("")
+    : `<tr><td colspan="4" class="text-muted">Aucune clé d'accès enregistrée.</td></tr>`;
+  if (pagination) pagination.innerHTML = paramsPaginationHtml("p-passkeys", passkeysPage, passkeysList.length);
+}
+
 async function loadPasskeys() {
   const tbody = document.getElementById("p-passkeys-tbody");
   try {
     const res = await apiFetch("/passkeys");
     const list = await res.json();
     if (!res.ok) throw new Error("Erreur");
-    tbody.innerHTML = list.length
-      ? list.map((p) => `
-          <tr>
-            <td>${p.name}</td>
-            <td>${formatSessionTime(p.created_at)}</td>
-            <td>${p.last_used_at ? formatSessionTime(p.last_used_at) : "Jamais utilisée"}</td>
-            <td>${passkeyRowMenuHtml(p.id)}</td>
-          </tr>
-        `).join("")
-      : `<tr><td colspan="4" class="text-muted">Aucune clé d'accès enregistrée.</td></tr>`;
+    passkeysList = list;
+    passkeysPage = 1;
+    renderPasskeysTable();
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="4" class="text-muted">Erreur de chargement.</td></tr>`;
   }
@@ -615,15 +677,28 @@ function sessionRowHtml(s) {
   `;
 }
 
+let sessionsList = [];
+let sessionsPage = 1;
+
+function renderSessionsTable() {
+  const tbody = document.getElementById("p-sessions-tbody");
+  const pagination = document.getElementById("p-sessions-pagination");
+  if (!tbody) return;
+  tbody.innerHTML = sessionsList.length
+    ? paramsPageSlice(sessionsList, sessionsPage).map(sessionRowHtml).join("")
+    : `<tr><td colspan="5" class="text-muted">Aucune session active.</td></tr>`;
+  if (pagination) pagination.innerHTML = paramsPaginationHtml("p-sessions", sessionsPage, sessionsList.length);
+}
+
 async function loadSessions() {
   const tbody = document.getElementById("p-sessions-tbody");
   try {
     const res = await apiFetch("/sessions");
     const list = await res.json();
     if (!res.ok) throw new Error("Erreur");
-    tbody.innerHTML = list.length
-      ? list.map(sessionRowHtml).join("")
-      : `<tr><td colspan="5" class="text-muted">Aucune session active.</td></tr>`;
+    sessionsList = list;
+    sessionsPage = 1;
+    renderSessionsTable();
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="5" class="text-muted">Erreur de chargement.</td></tr>`;
   }
@@ -669,30 +744,43 @@ function workspaceRowMenuHtml(id, isOwn) {
   `;
 }
 
+let workspacesList = [];
+let workspacesPage = 1;
+
+function renderWorkspacesTable() {
+  const tbody = document.getElementById("p-workspaces-tbody");
+  const pagination = document.getElementById("p-workspaces-pagination");
+  if (!tbody) return;
+  // Cette table liste TOUS les workspaces (comportement voulu, pas
+  // filtré sur l'actif) - mais sans aucune marque, rien ne distingue
+  // visuellement celui réellement sélectionné, d'où la confusion après
+  // un changement de workspace. Même pattern que "Actuelle" sur Sessions
+  // actives.
+  const activeId = getWorkspaceId();
+  tbody.innerHTML = workspacesList.length
+    ? paramsPageSlice(workspacesList, workspacesPage).map((w) => `
+        <tr>
+          <td>${w.name}</td>
+          <td>${w.id}</td>
+          <td>${w.owner_email}</td>
+          <td>${w.role}</td>
+          <td>${formatSessionTime(w.created_at)}</td>
+          <td class="text-end">${String(w.id) === activeId ? "Actuel" : workspaceRowMenuHtml(w.id, w.is_own_workspace)}</td>
+        </tr>
+      `).join("")
+    : `<tr><td colspan="6" class="text-muted">Aucun workspace.</td></tr>`;
+  if (pagination) pagination.innerHTML = paramsPaginationHtml("p-workspaces", workspacesPage, workspacesList.length);
+}
+
 async function loadWorkspaces() {
   const tbody = document.getElementById("p-workspaces-tbody");
   try {
     const res = await apiFetch("/workspaces/me");
     const list = await res.json();
     if (!res.ok) throw new Error("Erreur");
-    // Cette table liste TOUS les workspaces (comportement voulu, pas
-    // filtré sur l'actif) - mais sans aucune marque, rien ne distingue
-    // visuellement celui réellement sélectionné, d'où la confusion après
-    // un changement de workspace. Même pattern que "Actuelle" sur Sessions
-    // actives.
-    const activeId = getWorkspaceId();
-    tbody.innerHTML = list.length
-      ? list.map((w) => `
-          <tr>
-            <td>${w.name}</td>
-            <td>${w.id}</td>
-            <td>${w.owner_email}</td>
-            <td>${w.role}</td>
-            <td>${formatSessionTime(w.created_at)}</td>
-            <td class="text-end">${String(w.id) === activeId ? "Actuel" : workspaceRowMenuHtml(w.id, w.is_own_workspace)}</td>
-          </tr>
-        `).join("")
-      : `<tr><td colspan="6" class="text-muted">Aucun workspace.</td></tr>`;
+    workspacesList = list;
+    workspacesPage = 1;
+    renderWorkspacesTable();
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="6" class="text-muted">Erreur de chargement.</td></tr>`;
   }
@@ -733,6 +821,9 @@ function mountInformationsPersonnelles(on) {
     closeParamsRowMenu();
     if (actionBtn.dataset.workspaceAction === "leave") leaveWorkspace(id);
   });
+
+  wireParamsPagination(on, document.getElementById("p-sessions-pagination"), "p-sessions", () => sessionsPage, (p) => { sessionsPage = p; }, renderSessionsTable);
+  wireParamsPagination(on, document.getElementById("p-workspaces-pagination"), "p-workspaces", () => workspacesPage, (p) => { workspacesPage = p; }, renderWorkspacesTable);
 
   on(document.getElementById("p-coordonnees-edit-btn"), "click", toggleCoordonneesEdit);
   renderPasswordDisplay();
@@ -799,6 +890,7 @@ function authentificationTemplate() {
         </table>
       </div>
     </div>
+    <div id="p-passkeys-pagination"></div>
   `;
 }
 
@@ -997,6 +1089,8 @@ function mountAuthentification(on) {
     if (actionBtn.dataset.passkeyAction === "rename") renamePasskey(id);
     else if (actionBtn.dataset.passkeyAction === "delete") deletePasskey(id);
   });
+
+  wireParamsPagination(on, document.getElementById("p-passkeys-pagination"), "p-passkeys", () => passkeysPage, (p) => { passkeysPage = p; }, renderPasskeysTable);
 
   (async () => {
     try {
@@ -1994,7 +2088,7 @@ function filterTeamUsers(users, activeFilter) {
   return users;
 }
 
-function teamContentHtml(users, invites, activeFilter) {
+function teamContentHtml(users, invites, activeFilter, membersPage, invitesPage) {
   const filtered = filterTeamUsers(users, activeFilter);
   return `
     ${teamKpiHtml(users, invites, activeFilter)}
@@ -2002,10 +2096,11 @@ function teamContentHtml(users, invites, activeFilter) {
       <div class="table-wrap params-table-scroll">
         <table class="table params-mini-table">
           <thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th><th>Dernière connexion</th><th></th></tr></thead>
-          <tbody>${filtered.length ? filtered.map(teamMemberRowHtml).join("") : `<tr><td colspan="6" class="text-muted">Aucun membre pour ce filtre.</td></tr>`}</tbody>
+          <tbody>${filtered.length ? paramsPageSlice(filtered, membersPage).map(teamMemberRowHtml).join("") : `<tr><td colspan="6" class="text-muted">Aucun membre pour ce filtre.</td></tr>`}</tbody>
         </table>
       </div>
     </div>
+    ${paramsPaginationHtml("p-team-members", membersPage, filtered.length)}
     ${invites.length ? `
       <h6 class="params-subsection-title mt-5" id="p-team-invites-anchor">Invitations en attente</h6>
       <p class="params-subsection-sub">Invitations envoyées, pas encore acceptées.</p>
@@ -2013,10 +2108,11 @@ function teamContentHtml(users, invites, activeFilter) {
         <div class="table-wrap params-table-scroll">
           <table class="table params-mini-table">
             <thead><tr><th>Email</th><th>Rôle</th><th>Expire dans</th></tr></thead>
-            <tbody>${invites.map(teamInviteRowHtml).join("")}</tbody>
+            <tbody>${paramsPageSlice(invites, invitesPage).map(teamInviteRowHtml).join("")}</tbody>
           </table>
         </div>
       </div>
+      ${paramsPaginationHtml("p-team-invites", invitesPage, invites.length)}
     ` : ""}
   `;
 }
@@ -2024,6 +2120,8 @@ function teamContentHtml(users, invites, activeFilter) {
 let teamUsers = [];
 let teamInvites = [];
 let teamActiveFilter = null;
+let teamMembersPage = 1;
+let teamInvitesPage = 1;
 
 // Sélecteur de workspace (Équipe) - même logique que multiUsers.js :
 // liste les workspaces dont on est membre, présélectionne celui déjà
@@ -2083,6 +2181,8 @@ async function loadTeam() {
       if (invRes.ok) teamInvites = await invRes.json();
     } catch (e) {}
     teamActiveFilter = null;
+    teamMembersPage = 1;
+    teamInvitesPage = 1;
     renderTeamContent();
   } catch (err) {
     body.innerHTML = `<p class="text-muted">Erreur de chargement.</p>`;
@@ -2091,7 +2191,7 @@ async function loadTeam() {
 
 function renderTeamContent() {
   const body = document.getElementById("p-team-body");
-  if (body) body.innerHTML = teamContentHtml(teamUsers, teamInvites, teamActiveFilter);
+  if (body) body.innerHTML = teamContentHtml(teamUsers, teamInvites, teamActiveFilter, teamMembersPage, teamInvitesPage);
 }
 
 async function changeTeamMemberRole(u) {
@@ -2172,24 +2272,35 @@ function securityEventRowHtml(e) {
   return `<tr><td>${e.description}</td><td>${e.actor_email || "—"}</td><td>${e.ip || "—"}</td><td>${formatSessionTime(e.created_at)}</td></tr>`;
 }
 
+let securityEventsList = [];
+let securityHistoryPage = 1;
+
+function renderSecurityHistoryTable() {
+  const body = document.getElementById("p-security-history-body");
+  if (!body) return;
+  body.innerHTML = securityEventsList.length
+    ? `
+      <div class="params-table-well">
+        <div class="table-wrap params-table-scroll">
+          <table class="table params-mini-table">
+            <thead><tr><th>Événement</th><th>Auteur</th><th>Adresse IP</th><th>Date</th></tr></thead>
+            <tbody>${paramsPageSlice(securityEventsList, securityHistoryPage).map(securityEventRowHtml).join("")}</tbody>
+          </table>
+        </div>
+      </div>
+      ${paramsPaginationHtml("p-security-history", securityHistoryPage, securityEventsList.length)}
+    `
+    : `<p class="text-muted">Aucun événement enregistré pour le moment.</p>`;
+}
+
 async function loadSecurityHistory() {
   const body = document.getElementById("p-security-history-body");
   try {
     const res = await apiFetch("/security/events");
     if (!res.ok) throw new Error("Erreur");
-    const events = await res.json();
-    body.innerHTML = events.length
-      ? `
-        <div class="params-table-well">
-          <div class="table-wrap params-table-scroll">
-            <table class="table params-mini-table">
-              <thead><tr><th>Événement</th><th>Auteur</th><th>Adresse IP</th><th>Date</th></tr></thead>
-              <tbody>${events.map(securityEventRowHtml).join("")}</tbody>
-            </table>
-          </div>
-        </div>
-      `
-      : `<p class="text-muted">Aucun événement enregistré pour le moment.</p>`;
+    securityEventsList = await res.json();
+    securityHistoryPage = 1;
+    renderSecurityHistoryTable();
   } catch (err) {
     body.innerHTML = `<p class="text-muted">Erreur de chargement.</p>`;
   }
@@ -2222,6 +2333,17 @@ function mountEquipe(on) {
         return;
       }
       teamActiveFilter = teamActiveFilter === filter ? null : filter;
+      teamMembersPage = 1;
+      renderTeamContent();
+      return;
+    }
+    const pageWrap = e.target.closest("[data-pagination-prefix]");
+    if (pageWrap) {
+      const pageBtn = e.target.closest("[data-page-action]");
+      if (!pageBtn) return;
+      const dir = pageBtn.dataset.pageAction === "prev" ? -1 : 1;
+      if (pageWrap.dataset.paginationPrefix === "p-team-members") teamMembersPage += dir;
+      else if (pageWrap.dataset.paginationPrefix === "p-team-invites") teamInvitesPage += dir;
       renderTeamContent();
       return;
     }
@@ -2244,6 +2366,8 @@ function mountEquipe(on) {
   on(document.getElementById("p-sec-nav-2fa"), "click", () => navigateToSection("authentification", "2fa"));
   on(document.getElementById("p-sec-nav-passkeys"), "click", () => navigateToSection("authentification", "passkeys"));
   on(document.getElementById("p-sec-nav-sessions"), "click", () => navigateToSection("informations-personnelles", "sessions"));
+
+  wireParamsPagination(on, document.getElementById("p-security-history-body"), "p-security-history", () => securityHistoryPage, (p) => { securityHistoryPage = p; }, renderSecurityHistoryTable);
 
   loadTeamWorkspaces();
   loadTeam();
@@ -2688,21 +2812,35 @@ function permissionRowHtml(cap) {
   `;
 }
 
-function permissionsTableHtml(capabilities) {
+function permissionsTableHtml(capabilities, page) {
   return `
     <div class="params-table-well">
       <div class="table-wrap params-table-scroll">
         <table class="table params-mini-table">
           <thead><tr><th>Action</th><th>Rôle minimal</th><th></th></tr></thead>
-          <tbody>${capabilities.map(permissionRowHtml).join("")}</tbody>
+          <tbody>${paramsPageSlice(capabilities, page).map(permissionRowHtml).join("")}</tbody>
         </table>
       </div>
     </div>
+    ${paramsPaginationHtml("p-permissions", page, capabilities.length)}
   `;
 }
 
+let permissionsCapabilities = [];
+let permissionsPage = 1;
+
 function mountPermissions(on) {
   const body = document.getElementById("p-permissions-body");
+
+  on(body, "click", (e) => {
+    const pageWrap = e.target.closest('[data-pagination-prefix="p-permissions"]');
+    if (!pageWrap) return;
+    const pageBtn = e.target.closest("[data-page-action]");
+    if (!pageBtn) return;
+    permissionsPage += pageBtn.dataset.pageAction === "prev" ? -1 : 1;
+    body.innerHTML = permissionsTableHtml(permissionsCapabilities, permissionsPage);
+    wireRows();
+  });
 
   function wireRows() {
     body.querySelectorAll(".p-permission-select").forEach((select) => {
@@ -2714,7 +2852,8 @@ function mountPermissions(on) {
           const res = await apiFetch(`/workspace/permissions/${encodeURIComponent(key)}`, { method: "PUT", body: { min_role: minRole } });
           const data = await res.json();
           if (!res.ok) throw new Error(data.detail || "Erreur lors de la mise à jour");
-          body.innerHTML = permissionsTableHtml(data.capabilities);
+          permissionsCapabilities = data.capabilities;
+          body.innerHTML = permissionsTableHtml(permissionsCapabilities, permissionsPage);
           wireRows();
           showToast("Permission mise à jour");
         } catch (err) {
@@ -2731,7 +2870,8 @@ function mountPermissions(on) {
           const res = await apiFetch(`/workspace/permissions/${encodeURIComponent(key)}/reset`, { method: "POST" });
           const data = await res.json();
           if (!res.ok) throw new Error(data.detail || "Erreur lors de la réinitialisation");
-          body.innerHTML = permissionsTableHtml(data.capabilities);
+          permissionsCapabilities = data.capabilities;
+          body.innerHTML = permissionsTableHtml(permissionsCapabilities, permissionsPage);
           wireRows();
           showToast("Permission réinitialisée");
         } catch (err) {
@@ -2751,7 +2891,9 @@ function mountPermissions(on) {
       }
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Erreur de chargement");
-      body.innerHTML = permissionsTableHtml(data.capabilities);
+      permissionsCapabilities = data.capabilities;
+      permissionsPage = 1;
+      body.innerHTML = permissionsTableHtml(permissionsCapabilities, permissionsPage);
       wireRows();
     } catch (err) {
       body.innerHTML = permissionsMessageHtml("Erreur de chargement.");
