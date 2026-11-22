@@ -248,6 +248,7 @@ function informationsPersonnellesTemplate() {
       <h6 class="params-subsection-title mb-0">Coordonnées</h6>
       <button type="button" id="p-coordonnees-edit-btn" class="params-edit-btn">Modifier</button>
     </div>
+    <p class="params-subsection-sub">Nom et téléphone affichés pour ce workspace (facturation, Stripe) - partagés avec son propriétaire si vous n'en êtes pas vous-même le propriétaire.</p>
     <div class="params-row-list mb-5">
       <div class="params-info-row">
         <span>Nom complet</span>
@@ -261,6 +262,11 @@ function informationsPersonnellesTemplate() {
         <span>Téléphone</span>
         <div class="params-row-right" id="p-field-right-phone"></div>
       </div>
+    </div>
+
+    <h6 class="params-subsection-title">Mot de passe</h6>
+    <p class="params-subsection-sub">Celui de votre propre compte Xepay - jamais celui du propriétaire de ce workspace si vous n'en êtes pas vous-même le propriétaire.</p>
+    <div class="params-row-list mb-5">
       <div class="params-info-row">
         <span>Mot de passe</span>
         <div class="params-row-right" id="p-field-right-password"></div>
@@ -271,7 +277,7 @@ function informationsPersonnellesTemplate() {
       <h6 class="params-subsection-title">Sessions actives</h6>
       <button type="button" id="p-sessions-revoke-others-btn" class="create-client-btn">Se déconnecter de toutes les autres sessions</button>
     </div>
-    <p class="params-subsection-sub">Tous les lieux où vous êtes connecté à Xepay.</p>
+    <p class="params-subsection-sub">Tous les lieux où vous, personnellement, êtes connecté à Xepay - jamais les sessions du propriétaire de ce workspace si vous n'en êtes pas vous-même le propriétaire.</p>
     <div class="params-table-well">
       <div class="table-wrap params-table-scroll">
         <table class="table params-mini-table">
@@ -849,6 +855,7 @@ function mountInformationsPersonnelles(on) {
 function authentificationTemplate() {
   return `
     ${detailHeader("Authentification")}
+    <p class="params-subsection-sub mb-5">Ces réglages concernent uniquement votre propre compte Xepay - jamais celui du propriétaire de ce workspace si vous n'en êtes pas vous-même le propriétaire.</p>
 
     <div class="params-subsection-header">
       <h6 class="params-subsection-title">Compte Google</h6>
