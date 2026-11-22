@@ -110,6 +110,13 @@ function buildTemplate(config) {
   <div id="liste-liens-container">
     <div id="liste-liens"></div>
   </div>
+  <div class="d-flex justify-content-between align-items-center mt-3">
+    <span id="liens-pagination-info" class="text-muted">Page 1</span>
+    <div class="d-flex gap-2">
+      <button id="liens-prev-page" type="button" class="btn btn-export" disabled><i class="bi bi-chevron-left"></i></button>
+      <button id="liens-next-page" type="button" class="btn btn-export"><i class="bi bi-chevron-right"></i></button>
+    </div>
+  </div>
   <div id="aucun-lien" class="text-center py-5 d-none">
     <p class="text-muted">${config.emptyLabel}</p>
     <button class="create-client-btn open-lien-modal">+ Créer mon premier lien</button>
@@ -171,6 +178,17 @@ export async function mount(container, params = {}) {
   let offset = 0;
   const limit = 10;
   let isLoading = false;
+  let pageNumber = 1;
+  let hasNextPage = true;
+
+  function updatePagination() {
+    const prevBtn = document.getElementById("liens-prev-page");
+    const nextBtn = document.getElementById("liens-next-page");
+    const info = document.getElementById("liens-pagination-info");
+    if (prevBtn) prevBtn.disabled = pageNumber <= 1;
+    if (nextBtn) nextBtn.disabled = !hasNextPage;
+    if (info) info.textContent = `Page ${pageNumber}`;
+  }
 
   const detailsModal = container.querySelector("#lien-details-modal");
   initDetailsDrawer(detailsModal, detailsModal.querySelector(".customer-modal"));
@@ -198,6 +216,9 @@ export async function mount(container, params = {}) {
     if (event.target === creationModal) creationModal.classList.remove("open");
   });
 
+  // Pagination par page (Précédent/Suivant, 10 lignes qui REMPLACENT les
+  // précédentes) - même mécanisme que Transactions (voir transactions.js,
+  // chargerTransactions) plutôt que le scroll infini d'avant.
   async function chargerLiens() {
     const listeLiens = document.getElementById("liste-liens");
     const aucun = document.getElementById("aucun-lien");
@@ -220,37 +241,36 @@ export async function mount(container, params = {}) {
       return;
     }
     const liens = await res.json();
-    if (liens.length === 0 && offset === 0) {
+    listeLiens.innerHTML = "";
+    if (liens.length === 0 && pageNumber === 1) {
       aucun.classList.remove("d-none");
-      isLoading = false;
-      return;
     } else {
       aucun.classList.add("d-none");
+      liens
+        .filter((lien) => !lien.archived)
+        .forEach((lien) => {
+          const info = getStatusInfo(lien);
+          const div = document.createElement("div");
+          div.className = `lien-card lien-compact ${info.accent}`;
+          div.setAttribute("data-id", lien.id);
+          div.innerHTML = `
+            <span class="lien-compact-dot"></span>
+            <span class="lien-compact-url">${lien.url}</span>
+            <div class="lien-compact-actions">${renderQuickActions(lien)}</div>
+            <i class="fa-solid fa-chevron-right lien-compact-chevron"></i>
+          `;
+          div.addEventListener("click", () => showLienDetails(lien));
+          const copyIcon = div.querySelector('[data-action="copy"]');
+          if (copyIcon) copyIcon.addEventListener("click", (event) => { event.stopPropagation(); copier(lien.url); });
+          const archiveIcon = div.querySelector('[data-action="archive"]');
+          if (archiveIcon) archiveIcon.addEventListener("click", (event) => { event.stopPropagation(); archiverLien(lien.id); });
+          const deleteIcon = div.querySelector('[data-action="delete"]');
+          if (deleteIcon) deleteIcon.addEventListener("click", (event) => { event.stopPropagation(); supprimer(lien.id); });
+          listeLiens.appendChild(div);
+        });
     }
-    offset += liens.length;
-
-    liens
-      .filter((lien) => !lien.archived)
-      .forEach((lien) => {
-        const info = getStatusInfo(lien);
-        const div = document.createElement("div");
-        div.className = `lien-card lien-compact ${info.accent}`;
-        div.setAttribute("data-id", lien.id);
-        div.innerHTML = `
-          <span class="lien-compact-dot"></span>
-          <span class="lien-compact-url">${lien.url}</span>
-          <div class="lien-compact-actions">${renderQuickActions(lien)}</div>
-          <i class="fa-solid fa-chevron-right lien-compact-chevron"></i>
-        `;
-        div.addEventListener("click", () => showLienDetails(lien));
-        const copyIcon = div.querySelector('[data-action="copy"]');
-        if (copyIcon) copyIcon.addEventListener("click", (event) => { event.stopPropagation(); copier(lien.url); });
-        const archiveIcon = div.querySelector('[data-action="archive"]');
-        if (archiveIcon) archiveIcon.addEventListener("click", (event) => { event.stopPropagation(); archiverLien(lien.id); });
-        const deleteIcon = div.querySelector('[data-action="delete"]');
-        if (deleteIcon) deleteIcon.addEventListener("click", (event) => { event.stopPropagation(); supprimer(lien.id); });
-        listeLiens.appendChild(div);
-      });
+    hasNextPage = liens.length === limit;
+    updatePagination();
     isLoading = false;
   }
 
@@ -467,9 +487,9 @@ export async function mount(container, params = {}) {
         });
         setTimeout(() => carte.remove(), 250);
       }
-      // Même mécanisme que supprimer() : charge la page suivante pour
-      // compenser la carte retirée (chargerLiens ajoute à la suite sans
-      // réinitialiser offset, donc pas de doublon).
+      // Recharge la page courante (même offset) : le lien archivé en
+      // moins est remplacé par celui qui glisse depuis la page suivante,
+      // sans doublon ni trou dans la pagination.
       await chargerLiens();
     } catch (error) {
       if (carte) {
@@ -480,18 +500,23 @@ export async function mount(container, params = {}) {
     }
   }
 
-  // Scroll de la PAGE (jamais d'une boîte interne, voir buildTemplate) :
-  // #liste-liens-container n'a plus sa propre hauteur/overflow bornés,
-  // c'est <body> qui défile désormais - condition nécessaire pour que
-  // .subview-sticky-intro (position:sticky) ait quelque chose contre quoi
-  // se bloquer (voir PR #64 pour le même constat côté #main-content).
-  const onScroll = () => {
-    const doc = document.documentElement;
-    if (window.scrollY + window.innerHeight >= doc.scrollHeight - 50) {
-      chargerLiens();
-    }
+  // Pagination : boutons Précédent/Suivant (même mécanisme que
+  // Transactions, voir transactions.js) - remplace le scroll infini
+  // d'avant.
+  const onNextPage = async () => {
+    if (isLoading || !hasNextPage) return;
+    pageNumber++;
+    offset = (pageNumber - 1) * limit;
+    await chargerLiens();
   };
-  window.addEventListener("scroll", onScroll);
+  const onPrevPage = async () => {
+    if (isLoading || pageNumber <= 1) return;
+    pageNumber--;
+    offset = (pageNumber - 1) * limit;
+    await chargerLiens();
+  };
+  document.getElementById("liens-next-page")?.addEventListener("click", onNextPage);
+  document.getElementById("liens-prev-page")?.addEventListener("click", onPrevPage);
 
   window.genererLien = genererLien;
 
@@ -502,8 +527,8 @@ export async function mount(container, params = {}) {
       // #modalCreationLien fait maintenant partie de TEMPLATE (comme les
       // modals de création de commerce.js) : il est retiré du DOM
       // automatiquement avec le reste de #main-content par le router,
-      // plus besoin de le gérer/disposer à part.
-      window.removeEventListener("scroll", onScroll);
+      // plus besoin de le gérer/disposer à part. Pareil pour les boutons
+      // de pagination (Prev/Next), détruits avec le reste du DOM.
       delete window.genererLien;
     },
   };

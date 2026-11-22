@@ -808,7 +808,17 @@ async function renderClients(container) {
 
             const summaryEl = container.querySelector("#clients-summary");
 
-            function renderTable(filter = "all") {
+            // Pagination 10 par 10 (Précédent/Suivant, même mécanisme que
+            // Transactions) - purement côté client : la liste complète est
+            // déjà en mémoire (customers, récupérée en un seul appel
+            // ci-dessus), donc le KPI et le filtre "Avec solde" continuent
+            // de porter sur l'ensemble réel, jamais juste la page affichée.
+            const customersPageSize = 10;
+            let customersPageNumber = 1;
+
+            function renderTable(filter = "all", { resetPage = true } = {}) {
+
+                if (resetPage) customersPageNumber = 1;
 
                 const filteredCustomers = filter === "balance"
                     ? customers.filter(c => (c.balance ?? 0) > 0)
@@ -824,6 +834,9 @@ async function renderClients(container) {
 
                     return;
                 }
+
+            const customersPageStart = (customersPageNumber - 1) * customersPageSize;
+            const pageCustomers = filteredCustomers.slice(customersPageStart, customersPageStart + customersPageSize);
 
             list.innerHTML = `
                 <div class="table-wrap">
@@ -861,7 +874,7 @@ async function renderClients(container) {
 
                             <tbody>
 
-                                ${filteredCustomers.map(customer => `
+                                ${pageCustomers.map(customer => `
 
                                     <tr>
 
@@ -977,7 +990,26 @@ async function renderClients(container) {
 
                     </div>
                 </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <span id="customers-pagination-info" class="text-muted">Page ${customersPageNumber}</span>
+                    <div class="d-flex gap-2">
+                        <button id="customers-prev-page" type="button" class="btn btn-export" ${customersPageNumber <= 1 ? "disabled" : ""}><i class="bi bi-chevron-left"></i></button>
+                        <button id="customers-next-page" type="button" class="btn btn-export" ${customersPageStart + customersPageSize >= filteredCustomers.length ? "disabled" : ""}><i class="bi bi-chevron-right"></i></button>
+                    </div>
+                </div>
             `;
+
+            list.querySelector("#customers-prev-page")?.addEventListener("click", () => {
+                if (customersPageNumber <= 1) return;
+                customersPageNumber--;
+                renderTable(filter, { resetPage: false });
+            });
+            list.querySelector("#customers-next-page")?.addEventListener("click", () => {
+                if (customersPageStart + customersPageSize >= filteredCustomers.length) return;
+                customersPageNumber++;
+                renderTable(filter, { resetPage: false });
+            });
 
             /* =================================================
                MENU D'ACTIONS PAR LIGNE (•••)
@@ -1678,7 +1710,17 @@ async function renderProducts(container) {
 
             const summaryEl = container.querySelector("#products-summary");
 
-            function renderTable(filter = "all") {
+            // Pagination 10 par 10 (Précédent/Suivant, même mécanisme que
+            // Transactions) - purement côté client : la liste complète est
+            // déjà en mémoire (products, récupérée en un seul appel
+            // ci-dessus), donc le KPI et les filtres Actifs/Archivés
+            // continuent de porter sur l'ensemble réel.
+            const productsPageSize = 10;
+            let productsPageNumber = 1;
+
+            function renderTable(filter = "all", { resetPage = true } = {}) {
+
+                if (resetPage) productsPageNumber = 1;
 
                 const filteredProducts = filter === "active"
                     ? products.filter(p => p.active)
@@ -1700,6 +1742,8 @@ async function renderProducts(container) {
 
                 }
 
+            const productsPageStart = (productsPageNumber - 1) * productsPageSize;
+            const pageProducts = filteredProducts.slice(productsPageStart, productsPageStart + productsPageSize);
 
             /* =================================================
                TABLE PRODUITS
@@ -1737,7 +1781,7 @@ async function renderProducts(container) {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${filteredProducts.map(product => {
+                                ${pageProducts.map(product => {
                                     const prices =
                                         product.prices || [];
                                     const price =
@@ -1918,7 +1962,26 @@ async function renderProducts(container) {
                         </table>
                     </div>
                 </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <span id="products-pagination-info" class="text-muted">Page ${productsPageNumber}</span>
+                    <div class="d-flex gap-2">
+                        <button id="products-prev-page" type="button" class="btn btn-export" ${productsPageNumber <= 1 ? "disabled" : ""}><i class="bi bi-chevron-left"></i></button>
+                        <button id="products-next-page" type="button" class="btn btn-export" ${productsPageStart + productsPageSize >= filteredProducts.length ? "disabled" : ""}><i class="bi bi-chevron-right"></i></button>
+                    </div>
+                </div>
             `;
+
+            list.querySelector("#products-prev-page")?.addEventListener("click", () => {
+                if (productsPageNumber <= 1) return;
+                productsPageNumber--;
+                renderTable(filter, { resetPage: false });
+            });
+            list.querySelector("#products-next-page")?.addEventListener("click", () => {
+                if (productsPageStart + productsPageSize >= filteredProducts.length) return;
+                productsPageNumber++;
+                renderTable(filter, { resetPage: false });
+            });
 
             /* =================================================
                MENU D'ACTIONS PAR LIGNE (•••)
@@ -3334,7 +3397,17 @@ async function renderSubscriptions(container) {
                 }
             }
 
-            function renderTable(filter = "all") {
+            // Pagination 10 par 10 (Précédent/Suivant, même mécanisme que
+            // Transactions) - purement côté client : la liste complète est
+            // déjà en mémoire (subscriptions, récupérée en un seul appel
+            // ci-dessus), donc les KPI par statut continuent de porter
+            // sur l'ensemble réel.
+            const subscriptionsPageSize = 10;
+            let subscriptionsPageNumber = 1;
+
+            function renderTable(filter = "all", { resetPage = true } = {}) {
+
+                if (resetPage) subscriptionsPageNumber = 1;
 
                 const filteredSubscriptions = subscriptions.filter(
                     subscription => matchesSubscriptionFilter(subscription, filter)
@@ -3356,6 +3429,8 @@ async function renderSubscriptions(container) {
 
                 }
 
+            const subscriptionsPageStart = (subscriptionsPageNumber - 1) * subscriptionsPageSize;
+            const pageSubscriptions = filteredSubscriptions.slice(subscriptionsPageStart, subscriptionsPageStart + subscriptionsPageSize);
 
             list.innerHTML = `
 
@@ -3424,7 +3499,7 @@ async function renderSubscriptions(container) {
 
                             <tbody>
 
-                                ${filteredSubscriptions.map(subscription => {
+                                ${pageSubscriptions.map(subscription => {
 
                                     const item =
                                         subscription.items?.data?.[0];
@@ -3765,7 +3840,26 @@ async function renderSubscriptions(container) {
 
                 </div>
 
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <span id="subscriptions-pagination-info" class="text-muted">Page ${subscriptionsPageNumber}</span>
+                    <div class="d-flex gap-2">
+                        <button id="subscriptions-prev-page" type="button" class="btn btn-export" ${subscriptionsPageNumber <= 1 ? "disabled" : ""}><i class="bi bi-chevron-left"></i></button>
+                        <button id="subscriptions-next-page" type="button" class="btn btn-export" ${subscriptionsPageStart + subscriptionsPageSize >= filteredSubscriptions.length ? "disabled" : ""}><i class="bi bi-chevron-right"></i></button>
+                    </div>
+                </div>
+
             `;
+
+            list.querySelector("#subscriptions-prev-page")?.addEventListener("click", () => {
+                if (subscriptionsPageNumber <= 1) return;
+                subscriptionsPageNumber--;
+                renderTable(filter, { resetPage: false });
+            });
+            list.querySelector("#subscriptions-next-page")?.addEventListener("click", () => {
+                if (subscriptionsPageStart + subscriptionsPageSize >= filteredSubscriptions.length) return;
+                subscriptionsPageNumber++;
+                renderTable(filter, { resetPage: false });
+            });
 
             /* =================================================
                MENU D'ACTIONS PAR LIGNE (•••)
@@ -4838,6 +4932,16 @@ async function renderInvoices(container) {
 
             const summaryEl = container.querySelector("#invoices-summary");
 
+            // Pagination 10 par 10 (Précédent/Suivant, même mécanisme que
+            // Transactions) - purement côté client : la liste complète est
+            // déjà en mémoire (invoices, récupérée en un seul appel
+            // ci-dessus), donc les KPI et les filtres par statut
+            // continuent de porter sur l'ensemble réel, jamais juste la
+            // page affichée. resetPage=false uniquement pour un clic
+            // Précédent/Suivant, qui ne doit pas revenir à la page 1.
+            const invoicesPageSize = 10;
+            let invoicesPageNumber = 1;
+
             function isInvoiceLate(invoice) {
                 return (
                     invoice.status === "open" &&
@@ -4856,7 +4960,9 @@ async function renderInvoices(container) {
                 }
             }
 
-            function renderTable(filter = "all") {
+            function renderTable(filter = "all", { resetPage = true } = {}) {
+
+                if (resetPage) invoicesPageNumber = 1;
 
                 const filteredInvoices = invoices.filter(
                     invoice => matchesInvoiceFilter(invoice, filter)
@@ -4872,6 +4978,9 @@ async function renderInvoices(container) {
                     `;
                     return;
                 }
+
+                const invoicesPageStart = (invoicesPageNumber - 1) * invoicesPageSize;
+                const pageInvoices = filteredInvoices.slice(invoicesPageStart, invoicesPageStart + invoicesPageSize);
             /* =================================================
                TABLEAU
             ================================================= */
@@ -4935,7 +5044,7 @@ async function renderInvoices(container) {
 
                             <tbody>
 
-                                ${filteredInvoices.map(invoice => {
+                                ${pageInvoices.map(invoice => {
 
                                     const amountDue =
                                         invoice.amount_due != null
@@ -5210,7 +5319,26 @@ async function renderInvoices(container) {
 
                 </div>
 
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <span id="invoices-pagination-info" class="text-muted">Page ${invoicesPageNumber}</span>
+                    <div class="d-flex gap-2">
+                        <button id="invoices-prev-page" type="button" class="btn btn-export" ${invoicesPageNumber <= 1 ? "disabled" : ""}><i class="bi bi-chevron-left"></i></button>
+                        <button id="invoices-next-page" type="button" class="btn btn-export" ${invoicesPageStart + invoicesPageSize >= filteredInvoices.length ? "disabled" : ""}><i class="bi bi-chevron-right"></i></button>
+                    </div>
+                </div>
+
             `;
+
+            list.querySelector("#invoices-prev-page")?.addEventListener("click", () => {
+                if (invoicesPageNumber <= 1) return;
+                invoicesPageNumber--;
+                renderTable(filter, { resetPage: false });
+            });
+            list.querySelector("#invoices-next-page")?.addEventListener("click", () => {
+                if (invoicesPageStart + invoicesPageSize >= filteredInvoices.length) return;
+                invoicesPageNumber++;
+                renderTable(filter, { resetPage: false });
+            });
 
             /* =================================================
                MENU D'ACTIONS PAR LIGNE (•••)
@@ -6041,7 +6169,16 @@ async function renderPaymentMethods(container) {
            TABLEAU
         ========================================================= */
 
-        function renderTable(filter = "all") {
+        // Pagination 10 par 10 (Précédent/Suivant, même mécanisme que
+        // Transactions) - purement côté client : la liste complète
+        // (methods) est déjà en mémoire, donc le KPI et les filtres
+        // Actifs/Inactifs/Bloqués continuent de porter sur l'ensemble réel.
+        const methodsPageSize = 10;
+        let methodsPageNumber = 1;
+
+        function renderTable(filter = "all", { resetPage = true } = {}) {
+
+            if (resetPage) methodsPageNumber = 1;
 
             let filteredMethods = methods;
 
@@ -6069,6 +6206,9 @@ async function renderPaymentMethods(container) {
                 );
             }
 
+            const methodsPageStart = (methodsPageNumber - 1) * methodsPageSize;
+            const pageMethods = filteredMethods.slice(methodsPageStart, methodsPageStart + methodsPageSize);
+
             tableContainer.innerHTML = `
                 <div class="table-wrap">
 
@@ -6094,7 +6234,7 @@ async function renderPaymentMethods(container) {
                                 ${
                                     filteredMethods.length
 
-                                        ? filteredMethods.map(
+                                        ? pageMethods.map(
                                             method => {
 
                                                 const statusLabel =
@@ -6205,7 +6345,26 @@ async function renderPaymentMethods(container) {
                     </div>
 
                 </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <span id="methods-pagination-info" class="text-muted">Page ${methodsPageNumber}</span>
+                    <div class="d-flex gap-2">
+                        <button id="methods-prev-page" type="button" class="btn btn-export" ${methodsPageNumber <= 1 ? "disabled" : ""}><i class="bi bi-chevron-left"></i></button>
+                        <button id="methods-next-page" type="button" class="btn btn-export" ${methodsPageStart + methodsPageSize >= filteredMethods.length ? "disabled" : ""}><i class="bi bi-chevron-right"></i></button>
+                    </div>
+                </div>
             `;
+
+            tableContainer.querySelector("#methods-prev-page")?.addEventListener("click", () => {
+                if (methodsPageNumber <= 1) return;
+                methodsPageNumber--;
+                renderTable(filter, { resetPage: false });
+            });
+            tableContainer.querySelector("#methods-next-page")?.addEventListener("click", () => {
+                if (methodsPageStart + methodsPageSize >= filteredMethods.length) return;
+                methodsPageNumber++;
+                renderTable(filter, { resetPage: false });
+            });
         }
 
         /* =========================================================
