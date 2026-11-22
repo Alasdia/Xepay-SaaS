@@ -225,41 +225,45 @@ function informationsPersonnellesTemplate() {
       <button type="button" id="p-sessions-revoke-others-btn" class="create-client-btn">Se déconnecter de toutes les autres sessions</button>
     </div>
     <p class="params-subsection-sub">Tous les lieux où vous êtes connecté à Xepay.</p>
-    <div class="table-wrap">
-      <table class="table params-mini-table">
-        <thead>
-          <tr>
-            <th>Lieu</th>
-            <th>Appareil</th>
-            <th>Adresse IP</th>
-            <th>Heure</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="p-sessions-tbody">
-          <tr><td colspan="5" class="text-muted">Chargement...</td></tr>
-        </tbody>
-      </table>
+    <div class="params-table-well">
+      <div class="table-wrap params-table-scroll">
+        <table class="table params-mini-table">
+          <thead>
+            <tr>
+              <th>Lieu</th>
+              <th>Appareil</th>
+              <th>Adresse IP</th>
+              <th>Heure</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="p-sessions-tbody">
+            <tr><td colspan="5" class="text-muted">Chargement...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <h6 class="params-subsection-title mt-5">Workspaces</h6>
     <p class="params-subsection-sub">La liste des workspaces dont vous êtes membre.</p>
-    <div class="table-wrap">
-      <table class="table params-mini-table">
-        <thead>
-          <tr>
-            <th>Nom</th>
-            <th>Id</th>
-            <th>Propriétaire</th>
-            <th>Rôle</th>
-            <th>Date</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="p-workspaces-tbody">
-          <tr><td colspan="6" class="text-muted">Chargement...</td></tr>
-        </tbody>
-      </table>
+    <div class="params-table-well">
+      <div class="table-wrap params-table-scroll">
+        <table class="table params-mini-table">
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Id</th>
+              <th>Propriétaire</th>
+              <th>Rôle</th>
+              <th>Date</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="p-workspaces-tbody">
+            <tr><td colspan="6" class="text-muted">Chargement...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   `;
 }
@@ -778,20 +782,22 @@ function authentificationTemplate() {
       <button type="button" id="p-passkey-add-btn" class="create-client-btn">+ Ajouter une clé d'accès</button>
     </div>
     <p class="params-subsection-sub">Connectez-vous en toute sécurité à l'aide de vos données biométriques, du code PIN de votre appareil ou de votre clé de sécurité.</p>
-    <div class="table-wrap">
-      <table class="table params-mini-table">
-        <thead>
-          <tr>
-            <th>Nom de la clé</th>
-            <th>Date d'ajout</th>
-            <th>Dernière utilisation</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="p-passkeys-tbody">
-          <tr><td colspan="4" class="text-muted">Chargement...</td></tr>
-        </tbody>
-      </table>
+    <div class="params-table-well">
+      <div class="table-wrap params-table-scroll">
+        <table class="table params-mini-table">
+          <thead>
+            <tr>
+              <th>Nom de la clé</th>
+              <th>Date d'ajout</th>
+              <th>Dernière utilisation</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="p-passkeys-tbody">
+            <tr><td colspan="4" class="text-muted">Chargement...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   `;
 }
@@ -2003,11 +2009,13 @@ function teamContentHtml(users, invites, activeFilter) {
     ${invites.length ? `
       <h6 class="params-subsection-title mt-5" id="p-team-invites-anchor">Invitations en attente</h6>
       <p class="params-subsection-sub">Invitations envoyées, pas encore acceptées.</p>
-      <div class="table-wrap">
-        <table class="table params-mini-table">
-          <thead><tr><th>Email</th><th>Rôle</th><th>Expire dans</th></tr></thead>
-          <tbody>${invites.map(teamInviteRowHtml).join("")}</tbody>
-        </table>
+      <div class="params-table-well">
+        <div class="table-wrap params-table-scroll">
+          <table class="table params-mini-table">
+            <thead><tr><th>Email</th><th>Rôle</th><th>Expire dans</th></tr></thead>
+            <tbody>${invites.map(teamInviteRowHtml).join("")}</tbody>
+          </table>
+        </div>
       </div>
     ` : ""}
   `;
@@ -2172,11 +2180,13 @@ async function loadSecurityHistory() {
     const events = await res.json();
     body.innerHTML = events.length
       ? `
-        <div class="table-wrap">
-          <table class="table params-mini-table">
-            <thead><tr><th>Événement</th><th>Auteur</th><th>Adresse IP</th><th>Date</th></tr></thead>
-            <tbody>${events.map(securityEventRowHtml).join("")}</tbody>
-          </table>
+        <div class="params-table-well">
+          <div class="table-wrap params-table-scroll">
+            <table class="table params-mini-table">
+              <thead><tr><th>Événement</th><th>Auteur</th><th>Adresse IP</th><th>Date</th></tr></thead>
+              <tbody>${events.map(securityEventRowHtml).join("")}</tbody>
+            </table>
+          </div>
         </div>
       `
       : `<p class="text-muted">Aucun événement enregistré pour le moment.</p>`;
