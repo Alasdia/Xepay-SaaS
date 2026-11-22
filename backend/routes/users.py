@@ -738,7 +738,10 @@ def stripe_status(
 def _format_address(addr) -> Optional[str]:
     if not addr:
         return None
-    parts = [addr.get("line1"), addr.get("line2"), addr.get("postal_code"), addr.get("city"), addr.get("state"), addr.get("country")]
+    # addr est un objet StripeObject imbriqué (ex: Account.Company.Address),
+    # pas un dict - stripe-python >=12 lève AttributeError sur .get() pour
+    # ces objets (seul le StripeObject racine garde une interface dict-like).
+    parts = [getattr(addr, "line1", None), getattr(addr, "line2", None), getattr(addr, "postal_code", None), getattr(addr, "city", None), getattr(addr, "state", None), getattr(addr, "country", None)]
     return ", ".join(p for p in parts if p) or None
 
 
