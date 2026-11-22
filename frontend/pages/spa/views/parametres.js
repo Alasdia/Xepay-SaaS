@@ -1961,7 +1961,7 @@ const TEAM_ROLE_LABELS = { owner: "Propriétaire", admin: "Admin", manager: "Man
 const TEAM_INVITE_MODAL_HTML = `
 <div class="modal fade" id="paramsInviteModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-sm">
-    <div class="modal-content border-0 shadow-lg" style="border-radius: 14px;">
+    <div class="modal-content">
       <div class="modal-body p-3">
         <h6 class="fw-bold text-dark mb-3">Inviter un membre</h6>
         <input type="email" id="p-invite-email" class="form-control form-control-sm mb-2" placeholder="email@entreprise.com">
