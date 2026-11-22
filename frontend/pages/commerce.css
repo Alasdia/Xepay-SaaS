@@ -103,7 +103,12 @@
    hauteur disponible via justify-content. */
 .subview-sticky-intro {
     position: sticky;
-    top: 0;
+    /* top:5vh (pas 0) : #top-banner est fixed, hauteur 5vh, z-index au-dessus
+       de ce bandeau (sidebar.css) - avec top:0, une fois collé, le haut du
+       bandeau (icône+titre) se retrouvait sous #top-banner au lieu de
+       juste en dessous. Même correctif appliqué à la barre sticky
+       équivalente de Transactions (transactions.css). */
+    top: 5vh;
     z-index: 20;
     display: flex;
     flex-direction: column;
