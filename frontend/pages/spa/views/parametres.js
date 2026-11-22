@@ -1329,6 +1329,13 @@ function stripeEtatPanelHtml() {
       <h6 class="params-subsection-title mb-0">Vérification</h6>
       <button type="button" id="p-stripe-action-btn" class="create-client-btn">Configurer Stripe</button>
     </div>
+    <!-- Onboarding Stripe Connect intégré (ConnectAccountOnboarding,
+         @stripe/connect-js) : rempli par mountStripeOnboarding() au clic
+         sur le bouton ci-dessus, jamais rendu ici directement - le
+         marchand reste dans l'UI Xepay au lieu d'être redirigé vers une
+         page Stripe externe (ancien flux : POST /onboarding, conservé
+         pour les 2 autres états du bouton ci-dessous). -->
+    <div id="p-stripe-onboarding-container" class="mt-3" style="display:none;"></div>
     <div class="params-status-blocks">
       <div class="params-status-box">
         <h6>Statut du compte</h6>
@@ -1603,38 +1610,57 @@ async function goToStripeLoginLink() {
   window.location.href = d.url;
 }
 
+// Monte le composant Stripe Connect intégré ConnectAccountOnboarding
+// (@stripe/connect-js) dans #p-stripe-onboarding-container, à la place de
+// la redirection externe (ancien flux : POST /onboarding + AccountLink,
+// toujours utilisé par goToStripeLoginLink() pour les 2 autres états du
+// bouton, inchangé). fetchClientSecret rappelle le backend à chaque
+// besoin (jamais un client_secret mis en cache ici) : une Account
+// Session Stripe doit être fraîche, et c'est /stripe/onboarding-session
+// qui décide seul, côté serveur, pour QUEL compte Connect (celui du
+// workspace courant, authentifié) - jamais un ID fourni par le client.
+async function mountStripeOnboarding() {
+  const container = document.getElementById("p-stripe-onboarding-container");
+  if (!container) return;
+  if (!window.StripeConnect) {
+    showToast("Impossible de charger le module Stripe Connect", "error");
+    return;
+  }
+  container.innerHTML = "";
+  container.style.display = "";
+  const stripeConnect = window.StripeConnect.init({
+    publishableKey: window.STRIPE_PUBLISHABLE_KEY,
+    fetchClientSecret: async () => {
+      const res = await apiFetch("/stripe/onboarding-session", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Impossible de créer la session Stripe");
+      return data.client_secret;
+    },
+  });
+  const component = stripeConnect.create("account-onboarding");
+  // Ne suppose jamais que l'onboarding est "terminé" juste parce que le
+  // composant s'est fermé (le marchand peut avoir quitté en cours de
+  // route) - recharge toujours l'état réel depuis Stripe (/stripe/status
+  // via loadStripeDetails) pour remettre à jour le bouton/le panneau.
+  component.setOnExit(() => {
+    loadStripeDetails();
+  });
+  container.appendChild(component);
+}
+
 function wireStripeActionButton() {
   const btn = document.getElementById("p-stripe-action-btn");
   if (!btn) return;
   const data = stripeStatusData;
   btn.disabled = false;
   if (!data.stripe || !data.stripe.details_submitted) {
-    // Compte Stripe pas encore (ou pas du tout) onboardé : passe par
-    // /onboarding (AccountLink type=account_onboarding), le vrai flux de
-    // première inscription. stripe.Account.create_login_link (branche
-    // "Compléter la vérification" ci-dessous) échoue pour un compte
-    // n'ayant encore rien soumis - Stripe exige un onboarding au moins
-    // entamé avant d'émettre un Login Link vers l'Express Dashboard.
+    // Compte Stripe pas encore (ou pas du tout) onboardé : onboarding
+    // intégré dans l'UI Xepay (ConnectAccountOnboarding), plus de
+    // redirection externe.
     btn.innerText = "Configurer Stripe";
-    btn.onclick = async () => {
-      btn.innerText = "Chargement...";
-      btn.disabled = true;
-      try {
-        const res2 = await apiFetch("/onboarding", { method: "POST" });
-        const d = await res2.json();
-        if (!res2.ok) {
-          let message = d.detail || "Erreur Stripe onboarding";
-          if (d.detail === "Permission insuffisante") message = "Seul le propriétaire du compte peut configurer Stripe";
-          showToast(message, "error");
-          btn.innerText = "Configurer Stripe";
-          btn.disabled = false;
-          return;
-        }
-        window.location.href = d.url;
-      } catch (e) {
-        btn.innerText = "Erreur, réessayer";
-        btn.disabled = false;
-      }
+    btn.onclick = () => {
+      btn.style.display = "none";
+      mountStripeOnboarding();
     };
   } else if (data.needs_kyc) {
     btn.innerText = "Compléter la vérification";

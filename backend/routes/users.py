@@ -29,6 +29,7 @@ from backend.services.rate_limit import allow_attempt, reset as reset_rate_limit
 from backend.services.security_log_service import log_security_event, resolve_log_workspace_id
 from backend.services import commission_service
 from backend.services import permission_service
+from backend.services.stripe_service import ensure_merchant_stripe_account
 from backend.security import hash_password, verify_password, decrypt_secret
 from math import ceil
 import requests
@@ -635,27 +636,10 @@ def create_onboarding_link(
         db.commit()
         db.refresh(profile)
 
-    if not profile.stripe_account_id:
-        workspace_user = db.query(UserDB).filter(
-            UserDB.id == owner_id
-        ).first()
-        account = stripe.Account.create(
-            type="express",
-            email=workspace_user.email,
-        )
-        try:
-            stripe.Account.modify(
-                account.id,
-                capabilities={
-                    "tax_reporting_us_1099_k": {"requested": True}
-                }
-            )
-        except stripe.error.StripeError as e:
-            print("❌ ERREUR tax_reporting_us_1099_k (onboarding) :", repr(e))
-        profile.stripe_account_id = account.id
-        db.commit()
-    else:
-        account = stripe.Account.retrieve(profile.stripe_account_id)
+    workspace_user = db.query(UserDB).filter(
+        UserDB.id == owner_id
+    ).first()
+    account = ensure_merchant_stripe_account(db, profile, workspace_user)
 
     account_link = stripe.AccountLink.create(
         account=account.id,

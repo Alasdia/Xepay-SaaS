@@ -9,7 +9,7 @@ import stripe
 from backend.database import get_db
 from backend.models import Profile, Wallet, WalletTransaction, Withdrawal, UserDB, WorkspaceUser, ConnectInvoiceCreateRequest, ConnectSubscriptionCreateRequest, ConnectSubscriptionQuantityUpdateRequest, ConnectProductCreateRequest, ConnectCustomerCreateRequest, ConnectInvoiceUpdateRequest, Payment
 from backend.middleware.authorization import require_capability
-from backend.services.stripe_service import (create_connect_invoice, create_connect_product, create_connect_customer, update_connect_customer)
+from backend.services.stripe_service import (create_connect_invoice, create_connect_product, create_connect_customer, update_connect_customer, ensure_merchant_stripe_account)
 from backend.services import commission_service, stripe_branding_service
 from backend.services import rate_limit as rate_limit_service
 from backend.services.email_service import send_account_updated_email, send_payout_success_email, send_payout_failed_email, is_notification_enabled
@@ -705,6 +705,46 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
             status_code=500,
             detail="Erreur de traitement du webhook"
         )
+
+
+@router.post("/stripe/onboarding-session")
+def create_onboarding_session(
+    db: Session = Depends(get_db),
+    # Même capability que POST /onboarding (AccountLink, redirection
+    # externe) - lancer l'onboarding (intégré ou non) reste une action
+    # réservée au owner du workspace, voir permission_service.
+    # CAPABILITY_DEFAULTS. Crée le compte Stripe Connect Express s'il
+    # n'existe pas encore (ensure_merchant_stripe_account, partagée
+    # avec /onboarding pour ne jamais dupliquer cette logique), puis
+    # une Account Session pour le composant intégré
+    # ConnectAccountOnboarding (@stripe/connect-js) - le marchand reste
+    # dans l'UI Xepay au lieu d'être redirigé vers une page Stripe
+    # externe. /onboarding est conservé tel quel (comportement
+    # inchangé), seul le bouton de Paramètres bascule sur ce nouvel
+    # endpoint.
+    membership: WorkspaceUser = Depends(require_capability("manage_stripe_account_config"))
+):
+    owner_id = membership.workspace_id
+    profile = db.query(Profile).filter(Profile.user_id == owner_id).first()
+    if not profile:
+        profile = Profile(user_id=owner_id)
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+    workspace_user = db.query(UserDB).filter(UserDB.id == owner_id).first()
+    account = ensure_merchant_stripe_account(db, profile, workspace_user)
+    try:
+        session = stripe.AccountSession.create(
+            account=account.id,
+            components={
+                "account_onboarding": {
+                    "enabled": True,
+                },
+            },
+        )
+        return {"client_secret": session.client_secret}
+    except stripe.error.StripeError as e:
+        raise HTTPException(status_code=400, detail=e.user_message or str(e))
 
 
 @router.post("/stripe/account-session")
