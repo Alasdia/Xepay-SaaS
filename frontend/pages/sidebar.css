@@ -148,16 +148,15 @@
    de la liste scrollable, donc jamais Déconnexion, en dehors), jamais
    une vue précise par son nom. Tronc continu GRIS sur toute la hauteur
    de la liste. :not(.nav-sublink) exclut explicitement les sous-liens,
-   qui restent sur leur propre système de NIVEAU 2 (en ambre) plus bas -
-   la couleur distingue les deux profondeurs d'un coup d'œil.
+   qui restent sur leur propre système de NIVEAU 2 plus bas (même gris,
+   la profondeur se lit à l'indentation, pas à la couleur).
 ========================================================= */
 
 /* Décale l'icône/le libellé de chaque vue de 5% de la largeur de la
    sidebar + 20px fixes : les 20px ne sont pas cosmétiques, ils sont
-   nécessaires pour laisser la place à un coude visible ET à l'espace
-   de 14px avant l'icône (voir ::before ci-dessous) - 5% seul ne
-   suffit pas, ça ne fait que ~7-10px de large selon la taille d'écran,
-   moins que le gap demandé à lui seul. */
+   nécessaires pour laisser la place au coude, qui occupe maintenant
+   TOUT cet espace (voir ::before ci-dessous) - 5% seul ne suffit pas,
+   ça ne fait que ~7-10px de large selon la taille d'écran. */
 #sidebar-nav-scroll .nav-link:not(.nav-sublink){
     position: relative;
     padding-left: calc(5% + 20px);
@@ -178,16 +177,15 @@
     border-radius: 2px;
 }
 
-/* Coude de niveau 1 : visible depuis le tronc (2%) jusqu'à 14px avant
-   l'icône (qui démarre à calc(5% + 20px) ci-dessus) - largeur
-   calc(3% + 6px) = (5% + 20px - 14px) - 2%, donc un trait net ET un
-   vrai espace de 14px avant l'icône, ni l'un ni l'autre sacrifié. */
+/* Coude de niveau 1 : occupe TOUT l'espace entre le tronc (2%) et le
+   début de l'icône (calc(5% + 20px) ci-dessus), sans laisser de vide -
+   largeur calc(3% + 20px) = (5% + 20px) - 2%. */
 #sidebar-nav-scroll .nav-link:not(.nav-sublink)::before{
     content: "";
     position: absolute;
     top: 50%;
     left: 2%;
-    width: calc(3% + 6px);
+    width: calc(3% + 20px);
     height: 2px;
     background: #d1d5db;
     border-radius: 2px;
@@ -195,16 +193,14 @@
 
 /* =========================================================
    ARBRE GÉNÉALOGIQUE — NIVEAU 2 : sous-vues de Transactions/Liens de
-   paiement/Commerce (les 3 seules avec sous-menu). Ambre, pour se
-   distinguer du tronc gris de niveau 1 ci-dessus. Tronc à
-   calc(5% + 29px) = centre horizontal de l'icône de la vue parente
-   (padding-left:calc(5% + 20px) ci-dessus + moitié des 18px de
-   largeur de .nav-link i), pour que ce niveau naisse visuellement de
-   cette icône une fois décalée. Icône du sous-lien décalée à
-   calc(5% + 53px) = tronc (29px) + coude visible (10px) + le MÊME gap
-   de 14px qu'entre le tronc de niveau 1 et l'icône des vues - même
-   raisonnement que la PR #69, jamais rogner un espace déjà trop
-   petit. */
+   paiement/Commerce (les 3 seules avec sous-menu). Même gris que le
+   niveau 1 (plus de distinction par couleur - la profondeur se lit à
+   l'indentation). Tronc à calc(5% + 29px) = centre horizontal de
+   l'icône de la vue parente (padding-left:calc(5% + 20px) ci-dessus +
+   moitié des 18px de largeur de .nav-link i), pour que ce niveau
+   naisse visuellement de cette icône une fois décalée. Icône du
+   sous-lien à calc(5% + 53px) = tronc (29px) + 24px d'espace, occupé
+   en entier par le coude (voir ::before plus bas), sans vide. */
 
 /* Tronc vertical : porté par le sous-menu lui-même (disparaît avec lui
    au repli, via le max-height:0/overflow:hidden déjà existant - rien à
@@ -217,26 +213,29 @@
     bottom: 0;
     left: calc(5% + 29px);
     width: 2px;
-    background: rgba(180, 83, 9, 0.28);
+    background: #d1d5db;
     border-radius: 2px;
 }
 
-/* Icône/texte du sous-lien décalés pour laisser la place au coude +
-   au gap de 14px (voir commentaire plus haut). */
+/* Icône/texte du sous-lien décalés pour laisser la place au coude
+   (voir commentaire plus haut). */
 #sidebar .nav-link.nav-sublink{ padding-left: calc(5% + 53px); }
 
-/* Coude horizontal : chaque sous-lien tire son propre connecteur depuis
-   le tronc, en s'arrêtant 14px avant l'icône/le texte (ou le début de
-   son texte pour Paiements/Retraits, qui n'ont pas d'icône). */
+/* Coude horizontal : occupe TOUT l'espace entre le tronc
+   (calc(5% + 29px)) et le début de l'icône/texte du sous-lien
+   (calc(5% + 53px) ci-dessus, ou le début de son texte pour Paiements/
+   Retraits, qui n'ont pas d'icône) - largeur 24px fixe, les deux
+   ancres partageant le même "5% +", il ne reste que la différence des
+   parties fixes (53 - 29). */
 #sidebar .nav-link.nav-sublink{ position: relative; }
 #sidebar .nav-link.nav-sublink::before{
     content: "";
     position: absolute;
     top: 50%;
     left: calc(5% + 29px);
-    width: 10px;
+    width: 24px;
     height: 2px;
-    background: rgba(180, 83, 9, 0.28);
+    background: #d1d5db;
     border-radius: 2px;
 }
 
@@ -254,7 +253,7 @@
     bottom: -8px;
     width: 2px;
     height: 8px;
-    background: rgba(180, 83, 9, 0.28);
+    background: #d1d5db;
 }
 /* Libellés de groupe ("Gestion", "Compte") : même langage visuel que les
    kpi-label utilisés ailleurs dans l'app (petit, majuscules, discret). */
