@@ -71,7 +71,10 @@ body { font-family: var(--font-d); background: #ffffff !important; color: var(--
    combinaison de classes Bootstrap, unique dans ce template. */
 #transactions-normal-view > .d-flex.justify-content-between.align-items-center.mb-4.flex-wrap.gap-3 {
   position: sticky;
-  top: 0;
+  /* top:5vh (pas 0), même correctif que .subview-sticky-intro (commerce.css) :
+     #top-banner est fixed/5vh/z-index au-dessus, top:0 faisait coller cette
+     barre sous le bandeau orange au lieu de juste en dessous. */
+  top: 5vh;
   z-index: 20;
   background: #ffffff;
   padding: 10px 0;
