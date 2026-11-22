@@ -134,8 +134,12 @@
    que le sous-menu Commerce comptait 8 liens). Si un futur lien est
    ajouté ici, vérifier ce budget AVANT de merger, pas après coup. */
 #sidebar .nav-submenu.open{ max-height:320px; }
-/* Sous-liens : même style que .nav-link, juste indenté et sans icône dédiée. */
-#sidebar .nav-link.nav-sublink{ padding-left:34px; font-size:14px; }
+/* Sous-liens : même style que .nav-link, juste indenté et sans icône dédiée.
+   padding-left recalculé plus bas (voir ARBRE GÉNÉALOGIQUE - NIVEAU 2) pour
+   laisser la place au tronc ambre + à son coude + au même gap de 14px
+   qu'au niveau 1 - ne touche que font-size ici, le reste serait écrasé
+   de toute façon par la règle plus spécifique qui suit. */
+#sidebar .nav-link.nav-sublink{ font-size:14px; }
 
 /* =========================================================
    ARBRE GÉNÉALOGIQUE — NIVEAU 1 : TOUTES les vues de la sidebar, avec
@@ -192,13 +196,15 @@
 /* =========================================================
    ARBRE GÉNÉALOGIQUE — NIVEAU 2 : sous-vues de Transactions/Liens de
    paiement/Commerce (les 3 seules avec sous-menu). Ambre, pour se
-   distinguer du tronc gris de niveau 1 ci-dessus. Tout ancré sur
+   distinguer du tronc gris de niveau 1 ci-dessus. Tronc à
    calc(5% + 29px) = centre horizontal de l'icône de la vue parente
    (padding-left:calc(5% + 20px) ci-dessus + moitié des 18px de
    largeur de .nav-link i), pour que ce niveau naisse visuellement de
-   cette icône une fois décalée, plutôt que d'une colonne qui ne lui
-   correspond plus.
-========================================================= */
+   cette icône une fois décalée. Icône du sous-lien décalée à
+   calc(5% + 53px) = tronc (29px) + coude visible (10px) + le MÊME gap
+   de 14px qu'entre le tronc de niveau 1 et l'icône des vues - même
+   raisonnement que la PR #69, jamais rogner un espace déjà trop
+   petit. */
 
 /* Tronc vertical : porté par le sous-menu lui-même (disparaît avec lui
    au repli, via le max-height:0/overflow:hidden déjà existant - rien à
@@ -215,16 +221,20 @@
     border-radius: 2px;
 }
 
+/* Icône/texte du sous-lien décalés pour laisser la place au coude +
+   au gap de 14px (voir commentaire plus haut). */
+#sidebar .nav-link.nav-sublink{ padding-left: calc(5% + 53px); }
+
 /* Coude horizontal : chaque sous-lien tire son propre connecteur depuis
-   le tronc jusqu'à sa propre icône (ou le début de son texte pour
-   Paiements/Retraits, qui n'en ont pas). */
+   le tronc, en s'arrêtant 14px avant l'icône/le texte (ou le début de
+   son texte pour Paiements/Retraits, qui n'ont pas d'icône). */
 #sidebar .nav-link.nav-sublink{ position: relative; }
 #sidebar .nav-link.nav-sublink::before{
     content: "";
     position: absolute;
     top: 50%;
     left: calc(5% + 29px);
-    width: 11px;
+    width: 10px;
     height: 2px;
     background: rgba(180, 83, 9, 0.28);
     border-radius: 2px;
