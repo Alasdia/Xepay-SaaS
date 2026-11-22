@@ -10,6 +10,7 @@
 import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
+import { showWorkspaceSwitchOverlay, hideWorkspaceSwitchOverlay } from "../shared/workspaceSwitchOverlay.js";
 import { clearSession, getWorkspaceId, setWorkspaceId } from "../core/state.js";
 import { navigate } from "../core/router.js";
 import { getCurrency, getRate, formatMoney } from "../core/currency.js";
@@ -2158,20 +2159,32 @@ async function loadTeamWorkspaces() {
 }
 
 async function switchTeamWorkspace(workspaceId) {
-  setWorkspaceId(workspaceId);
-  // Journalise l'accès à CE workspace (Journal d'activité) - la connexion
-  // elle-même ne porte jamais ce workspace précis (voir
-  // resolve_log_workspace_id côté backend), donc sans cet appel explicite
-  // le propriétaire ne pourrait jamais répondre à "qui a accédé à mon
-  // workspace, et quand ?". Best-effort : n'empêche jamais la bascule.
-  apiFetch("/security/log-workspace-access", { method: "POST" }).catch(() => {});
-  // navigate() (plutôt que loadTeam() seul) remet aussi l'URL en cohérence
-  // avec le workspace actif : le routeur resynchronise workspace_id depuis
-  // le segment d'URL à chaque navigation (voir app.js, onRouteChange) - si
-  // seul le localStorage change, un simple rafraîchissement ou un clic
-  // sidebar annule silencieusement le changement en revenant à l'ancien
-  // workspace_id toujours présent dans l'URL.
-  navigate(`/dash/workspace/${encodeURIComponent(workspaceId)}/parametres/equipe`, { replace: true });
+  // Overlay plein écran bloquant affiché IMMÉDIATEMENT au clic (même
+  // principe que le "Changement de compte" de Stripe), masqué seulement
+  // une fois la nouvelle vue Dashboard réellement montée (await
+  // navigate(), voir core/router.js) - jamais sur un simple timer, pour
+  // ne jamais le cacher avant que le nouveau contexte soit prêt.
+  showWorkspaceSwitchOverlay();
+  try {
+    setWorkspaceId(workspaceId);
+    // Journalise l'accès à CE workspace (Journal d'activité) - la connexion
+    // elle-même ne porte jamais ce workspace précis (voir
+    // resolve_log_workspace_id côté backend), donc sans cet appel explicite
+    // le propriétaire ne pourrait jamais répondre à "qui a accédé à mon
+    // workspace, et quand ?". Best-effort : n'empêche jamais la bascule.
+    apiFetch("/security/log-workspace-access", { method: "POST" }).catch(() => {});
+    // Redirige vers le Dashboard du nouveau workspace (demande du
+    // 2026-11-22, plutôt que de rester sur Équipe) : navigate() remet
+    // aussi l'URL en cohérence avec le workspace actif - le routeur
+    // resynchronise workspace_id depuis le segment d'URL à chaque
+    // navigation (voir app.js, onRouteChange) - si seul le localStorage
+    // change, un simple rafraîchissement ou un clic sidebar annule
+    // silencieusement le changement en revenant à l'ancien workspace_id
+    // toujours présent dans l'URL.
+    await navigate(`/dash/workspace/${encodeURIComponent(workspaceId)}/`, { replace: true });
+  } finally {
+    hideWorkspaceSwitchOverlay();
+  }
 }
 
 async function loadTeam() {

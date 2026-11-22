@@ -156,7 +156,12 @@ export function navigate(path, { replace = false } = {}) {
   } else if (!samePath) {
     history.pushState({}, "", path);
   }
-  render(location.pathname);
+  // Renvoie la promesse de render() (résolue une fois la nouvelle vue
+  // montée) - les 20 appelants existants l'ignorent (fire-and-forget,
+  // comportement inchangé), mais un appelant qui a besoin de savoir quand
+  // la nouvelle vue est réellement prête (ex: masquer un overlay de
+  // transition) peut désormais faire await navigate(...).
+  return render(location.pathname);
 }
 
 export function start() {
