@@ -1062,7 +1062,14 @@ def delete_account(
 
 @router.get("/profile")
 def get_profile(
-    membership: WorkspaceUser = Depends(require_capability("manage_workspace_profile")),
+    # require_member (pas require_capability("manage_workspace_profile"),
+    # réservée à PATCH ci-dessous) : cette lecture mélange des données
+    # partagées avec le workspace (Coordonnées) et des données strictement
+    # personnelles à current_user (2FA, sessions, clés d'accès, own_email -
+    # voir plus bas) - n'importe quel membre doit pouvoir voir SES PROPRES
+    # informations, même si manage_workspace_profile est restreinte au
+    # owner (décision du 2026-11-22, voir permission_service.py).
+    membership: WorkspaceUser = Depends(require_member),
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

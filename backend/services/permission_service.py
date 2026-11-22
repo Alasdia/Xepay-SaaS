@@ -51,7 +51,16 @@ CAPABILITY_DEFAULTS = {
     "manage_stripe_billing": "manager",       # /stripe/connect/{invoices,subscriptions,products,customers}* (routes/webhook/stripe.py)
     "view_stripe_account_info": "manager",    # GET /stripe/status, /stripe/business-details
     "manage_stripe_account_config": "owner",  # /onboarding, /stripe/login-link, /stripe/account-session
-    "manage_workspace_profile": "manager",    # GET/PATCH /profile
+    # PATCH /profile uniquement (GET /profile est passée à require_member
+    # le 2026-11-22 - voir routes/users.py - car elle mélange des données
+    # partagées avec le workspace et des données personnelles à
+    # current_user, qu'un membre doit toujours pouvoir consulter). Rôle
+    # minimal remonté de "manager" à "owner" le 2026-11-22 (décision
+    # explicite) : Nom/Téléphone de contact ne doivent plus être
+    # modifiables par un admin/manager non-propriétaire par défaut - le
+    # owner peut toujours rouvrir cette capacité pour son propre workspace
+    # via Permissions.
+    "manage_workspace_profile": "owner",      # PATCH /profile
     "view_commission_rate": "manager",        # GET /me/commission
     "manage_team": "admin",                   # /invites, /users (POST/PUT/DELETE/toggle)
     "withdraw_funds": "owner",                # /withdraw, /withdraw/{id}/process, /withdrawals
@@ -64,7 +73,7 @@ CAPABILITY_LABELS = {
     "manage_stripe_billing": ("Gérer les factures et abonnements Stripe", "Créer/modifier des factures, abonnements, produits et clients côté Stripe Connect."),
     "view_stripe_account_info": ("Consulter le compte Stripe Connect", "Voir le statut de vérification et les informations du compte Stripe Connect."),
     "manage_stripe_account_config": ("Configurer le compte Stripe Connect", "Lancer l'onboarding Stripe, accéder au Dashboard Stripe, modifier les informations Stripe du compte."),
-    "manage_workspace_profile": ("Modifier les informations du compte", "Voir et modifier le nom/téléphone de contact affichés pour ce workspace."),
+    "manage_workspace_profile": ("Modifier les informations du compte", "Modifier le nom/téléphone de contact affichés pour ce workspace (la lecture reste ouverte à tout membre)."),
     "view_commission_rate": ("Consulter la commission Xepay", "Voir le taux de commission dégressif actuel et le volume encaissé ce mois."),
     "manage_team": ("Gérer l'équipe", "Inviter, changer le rôle, suspendre ou supprimer un membre."),
     "withdraw_funds": ("Retirer des fonds", "Initier et traiter un retrait depuis le solde disponible."),
