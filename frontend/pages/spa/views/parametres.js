@@ -2843,6 +2843,15 @@ function mountEntreprise(on) {
   document.body.insertAdjacentHTML("beforeend", BUILDNESS_INFO_MODAL_HTML);
   document.body.insertAdjacentHTML("beforeend", BUILDNESS_WIZARD_MODAL_HTML);
 
+  // BUG PRÉ-EXISTANT (jamais présent dans aucune version antérieure de ce
+  // fichier, confirmé par `git log -S` - trouvé le 2026-11-24 suite à un
+  // signalement utilisateur) : submitBuildnessOnboard n'était jamais
+  // câblée à l'événement "submit" du formulaire. Le bouton "Lancer la
+  // création de ma LLC" déclenchait donc une soumission HTML native
+  // (rechargement de page) au lieu d'un appel à /buildness/onboard -
+  // aucune requête réseau, aucune erreur visible, "aucun résultat".
+  on(document.getElementById("p-buildness-wizard-form"), "submit", submitBuildnessOnboard);
+
   loadBuildnessStatus();
 
   return () => {
