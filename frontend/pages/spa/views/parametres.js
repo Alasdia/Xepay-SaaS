@@ -2613,7 +2613,34 @@ function buildnessStatusLabel(status) {
   return status;
 }
 
+// Code US ("DE") -> nom complet ("Delaware") - réutilise la même liste
+// que le menu déroulant du formulaire (BUILDNESS_US_STATES), pour ne
+// jamais afficher un code brut au marchand une fois son dossier soumis.
+const BUILDNESS_US_STATE_NAMES = new Map(BUILDNESS_US_STATES);
+
 // --- Carte promo (toujours visible, jamais de champ de formulaire) ---
+
+// Tout ce qui peut intéresser le marchand une fois son dossier envoyé -
+// affiché à CHAQUE étape (pas seulement "completed"), demandé le
+// 2026-11-23 : nom de la société et État dès que connus (le marchand les
+// a saisis, pas la peine d'attendre la fin pour les lui réafficher),
+// dernière mise à jour (pour juger si le suivi automatique tourne
+// encore), et la dernière étape réussie - surtout utile si le statut
+// final est "failed", pour savoir où le dossier s'est arrêté.
+function buildnessDetailRowsHtml(data) {
+  const rows = [];
+  if (data.company_name) rows.push(["Nom de la société", data.company_name]);
+  if (data.state) rows.push(["État de formation", BUILDNESS_US_STATE_NAMES.get(data.state) || data.state]);
+  if (data.ein_number) rows.push(["EIN (identifiant fiscal)", data.ein_number]);
+  if (data.last_successful_step) rows.push(["Dernière étape réussie", buildnessStatusLabel(data.last_successful_step)]);
+  if (data.updated_at) rows.push(["Dernière mise à jour", formatSessionTime(data.updated_at)]);
+  if (!rows.length) return "";
+  return `
+    <div class="params-row-list params-promo-details">
+      ${rows.map(([label, value]) => `<div class="params-info-row"><span>${label}</span><strong>${value}</strong></div>`).join("")}
+    </div>
+  `;
+}
 
 function buildnessPromoActionsHtml(data) {
   const status = data && data.status;
@@ -2633,6 +2660,7 @@ function buildnessPromoActionsHtml(data) {
   if (status === "failed") {
     return `
       <div class="params-promo-status params-promo-status-failed">⚠️ La création a échoué.</div>
+      ${buildnessDetailRowsHtml(data)}
       <div class="params-promo-actions">
         <button type="button" id="p-buildness-cta-btn" class="create-client-btn">Réessayer</button>
         <button type="button" id="p-buildness-info-btn" class="create-client-btn">En savoir plus</button>
@@ -2642,13 +2670,16 @@ function buildnessPromoActionsHtml(data) {
 
   if (status === "completed") {
     return `
-      <div class="params-promo-status params-promo-status-done">✅ LLC formée${data.company_name ? ` — ${data.company_name}` : ""}</div>
-      ${data.ein_number ? `<div class="params-promo-ein">EIN : ${data.ein_number}</div>` : ""}
+      <div class="params-promo-status params-promo-status-done">✅ LLC formée</div>
+      ${buildnessDetailRowsHtml(data)}
     `;
   }
 
   // draft/submitted/processing
-  return `<div class="params-promo-status">⏳ ${buildnessStatusLabel(status)}...</div>`;
+  return `
+    <div class="params-promo-status">⏳ ${buildnessStatusLabel(status)}...</div>
+    ${buildnessDetailRowsHtml(data)}
+  `;
 }
 
 function buildnessCardHtml(data) {
