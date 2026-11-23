@@ -3,14 +3,27 @@ un marchand non-résident, voir routes/buildness.py, routes/webhook/doola.py,
 BuildnessCustomer/BuildnessCompany dans models.py) - prérequis à l'activation
 du compte Stripe Connect du marchand.
 
-NON VÉRIFIÉ auprès de la vraie doc/sandbox doola à ce stade : les chemins
-d'endpoint (/v1/partner/customers, /v1/partner/companies), le header
-d'auth, et les noms de champs de réponse (doolaCustomerId, doolaCompanyId)
-reprennent tels quels le cahier des charges fonctionnel fourni le
-2026-11-21 - à confronter à un vrai appel sandbox (clé dk_test_...) avant
-toute mise en prod, exactement comme VERTO_WEBHOOK_PRIVATE_KEY_PEM/
-_sub_account_login dans verto_service.py ont été flaggés NON CONFIRMÉ
-jusqu'à vérification réelle.
+VÉRIFIÉ le 2026-11-23 contre la vraie documentation officielle
+(docs.doola.com/api) suite à la réception des clés sandbox :
+- Base URL sandbox (https://api.test.doola.com) : CONFIRMÉE.
+- Chemins /v1/partner/customers, /v1/partner/companies,
+  /v1/partner/companies/{id} (GET) : CONFIRMÉS.
+- Header Idempotency-Key sur les POST : CONFIRMÉ.
+- doolaCustomerId/doolaCompanyId comme clés d'ID en réponse : CONFIRMÉS.
+- Header d'authentification : FAUX avant ce correctif - la doc dit
+  explicitement "Authenticate with the raw API key in the Authorization
+  header. Never add a Bearer prefix." (voir _headers ci-dessous, corrigé).
+
+RESTE NON RÉSOLU (nécessite une décision produit, pas juste un correctif
+technique - voir le rapport livré à l'utilisateur le 2026-11-23) :
+create_customer n'envoie pas countryOfResidence (requis par la vraie API)
+et create_company n'envoie ni nameOptions/industry/description/
+responsibleParty/addresses/members (tous requis pour une LLC réelle) -
+BuildnessOnboardRequest (models.py) ne collecte aujourd'hui qu'un
+sous-ensemble (email/nom/prénom/company_name/state). Un vrai appel
+sandbox à create_company échouera donc en validation (400) tant que le
+formulaire d'onboarding n'aura pas été étendu - hors périmètre de cette
+vérification (changement de formulaire/UI, pas un bug de câblage).
 
 Client HTTP asynchrone (httpx.AsyncClient) - les deux endpoints
 d'onboarding (routes/buildness.py) sont eux-mêmes async, contrairement aux
@@ -56,8 +69,15 @@ class DoolaAPIError(RuntimeError):
 
 
 def _headers(idempotency_key: str | None) -> dict:
+    # Clé brute, SANS préfixe "Bearer " - la doc officielle doola l'exige
+    # explicitement ("Never add a Bearer prefix"), contrairement au
+    # schéma Bearer standard utilisé par Stripe/Verto dans ce même
+    # backend. Corrigé le 2026-11-23 après vérification contre
+    # docs.doola.com/api - l'ancien header "Bearer {clé}" aurait fait
+    # échouer TOUT appel réel en 401, jamais détecté avant faute de
+    # vraies clés sandbox.
     headers = {
-        "Authorization": f"Bearer {DOOLA_API_KEY}",
+        "Authorization": DOOLA_API_KEY,
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
@@ -117,7 +137,19 @@ async def _request(
             continue
 
         if 200 <= response.status_code < 300:
-            return response.json() if response.content else {}
+            if not response.content:
+                return {}
+            data = response.json()
+            # Enveloppe universelle doola : {"error": null, "payload": ...}
+            # - jamais documentée explicitement dans la doc officielle,
+            # découverte le 2026-11-23 en inspectant de vraies réponses
+            # sandbox (/v1/partner/companies, /v1/partner/references/*).
+            # Sans ce déballage, create_customer/create_company/
+            # get_company_status lisaient data["doolaCustomerId"] etc. à
+            # la racine - toujours absent, KeyError à chaque appel réel.
+            if isinstance(data, dict) and "payload" in data and "error" in data:
+                return data["payload"]
+            return data
 
         body_snippet = response.text[:_LOGGED_BODY_MAX_CHARS]
 
@@ -159,10 +191,13 @@ async def create_company(customer_id: str, payload: dict) -> dict:
     l'appelant) : Buildness ne forme QUE des LLC, aucune autre forme
     juridique n'est un cas d'usage actuel - un payload qui tenterait de le
     surcharger serait silencieusement ignoré, donc autant ne pas exposer
-    le paramètre du tout. Retourne la réponse brute doola (contient au
-    minimum doolaCompanyId et le statut initial, voir routes/buildness.py
-    pour ce qui en est extrait)."""
-    body = {**payload, "customerId": customer_id, "entityType": "LLC"}
+    le paramètre du tout. doolaCustomerId (pas "customerId", corrigé le
+    2026-11-23 après vérification contre la vraie doc) - le payload
+    complet (nameOptions/industry/description/responsibleParty/
+    addresses/members/services) est construit par l'appelant, voir
+    routes/buildness.py. Retourne la réponse brute doola (contient au
+    minimum doolaCompanyId et le statut initial)."""
+    body = {**payload, "doolaCustomerId": customer_id, "entityType": "LLC"}
     return await _request("POST", "/v1/partner/companies", json_body=body, idempotent=True)
 
 
@@ -173,3 +208,24 @@ async def get_company_status(company_id: str) -> dict:
     de polling automatique ici - à l'appelant de décider quand (voir
     GET /buildness/status)."""
     return await _request("GET", f"/v1/partner/companies/{company_id}")
+
+
+async def list_naics_codes() -> list[dict]:
+    """GET /v1/partner/references/naics-codes - secteurs d'activité
+    acceptés par create_company. Le champ "industry" de chaque entrée doit
+    être renvoyé VERBATIM dans create_company (jamais du texte libre,
+    rejeté par doola) - voir GET /buildness/naics-codes (routes/
+    buildness.py), qui expose cette liste pour peupler un menu déroulant
+    côté UI plutôt que de laisser le marchand taper n'importe quoi.
+    _request() déballe déjà l'enveloppe {"error","payload"} - renvoie
+    directement la liste."""
+    return await _request("GET", "/v1/partner/references/naics-codes")
+
+
+async def list_countries() -> list[dict]:
+    """GET /v1/partner/references/countries - pays acceptés pour
+    countryOfResidence (create_customer) et le pays des adresses
+    (PartnerAddressDto.country, create_company) - mêmes codes ISO
+    3166-1 alpha-3 pour les deux usages chez doola. Même déballage
+    d'enveloppe automatique que list_naics_codes."""
+    return await _request("GET", "/v1/partner/references/countries")

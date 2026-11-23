@@ -229,14 +229,43 @@ class BuildnessOnboardRequest(BaseModel):
     # routes/buildness.py, qui scinde l'appel en create_customer (une seule
     # fois par marchand) puis create_company (voir services/
     # doola_service.py/doola_mock_service.py). state : code d'État US à 2
-    # lettres (ex. "DE") - pas de validation de forme ici, doola rejette
-    # lui-même un code invalide (comportement NON CONFIRMÉ, voir
-    # doola_service.py).
+    # lettres (ex. "DE", État de FORMATION de la LLC) - pas de validation
+    # de forme ici, doola rejette lui-même un code invalide.
+    #
+    # Champs ajoutés le 2026-11-23 (vérification contre la vraie API doola,
+    # create_customer/create_company exigent bien plus que les 5 champs
+    # d'origine) :
+    # - country : pays de RÉSIDENCE du fondateur (countryOfResidence côté
+    #   doola), ISO 3166-1 alpha-3 (ex. "FRA") - jamais le même "state" que
+    #   ci-dessus (celui-là est l'État US de formation de la LLC).
+    # - phone : E.164, utilisé à la fois comme phoneNumber du customer et
+    #   comme téléphone de l'adresse ci-dessous (requis par doola pour une
+    #   adresse de personne physique).
+    # - address_* : UNE seule adresse collectée, réutilisée à 3 endroits
+    #   côté doola (responsibleParty.address, members[0].address, et
+    #   l'adresse "mailing" du couple addresses[]) - doola exige ces 3
+    #   adresses séparément dans son schéma, mais rien n'empêche qu'elles
+    #   soient identiques, et demander 3 fois la même adresse au marchand
+    #   n'aurait aucune valeur ajoutée.
+    # - industry : valeur "industry" d'un code NAICS doola (voir
+    #   GET /buildness/naics-codes), à transmettre verbatim - jamais du
+    #   texte libre, doola la rejette sinon.
+    # - description : description courte de l'activité, 50 caractères max
+    #   (limite imposée par doola).
     email: EmailStr
     first_name: str
     last_name: str
     company_name: str
     state: str
+    country: str
+    phone: str
+    address_line1: str
+    address_line2: str | None = None
+    address_city: str
+    address_region: str
+    address_postal_code: str
+    industry: str
+    description: str
 
 class ConnectCustomerCreateRequest(BaseModel):
     # Aucun champ n'est obligatoire chez Stripe pour créer un Customer -

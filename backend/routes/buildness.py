@@ -18,6 +18,42 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+@router.get("/buildness/naics-codes")
+async def get_buildness_naics_codes(
+    membership: WorkspaceUser = Depends(require_capability("manage_company_formation")),
+):
+    """Secteurs d'activité acceptés par create_company (voir
+    doola_service.list_naics_codes) - exposé pour peupler un menu
+    déroulant côté formulaire Buildness plutôt que de laisser le
+    marchand taper un texte libre que doola rejetterait."""
+    try:
+        doola = get_doola_service()
+    except DoolaNotConfiguredError:
+        raise HTTPException(503, "Buildness n'est pas encore disponible. Réessayez plus tard.")
+    try:
+        return await doola.list_naics_codes()
+    except DoolaAPIError:
+        logger.exception("Echec recuperation des codes NAICS doola")
+        raise HTTPException(502, "Impossible de recuperer la liste des secteurs d'activite.")
+
+
+@router.get("/buildness/countries")
+async def get_buildness_countries(
+    membership: WorkspaceUser = Depends(require_capability("manage_company_formation")),
+):
+    """Pays acceptés comme countryOfResidence/adresse (voir
+    doola_service.list_countries)."""
+    try:
+        doola = get_doola_service()
+    except DoolaNotConfiguredError:
+        raise HTTPException(503, "Buildness n'est pas encore disponible. Réessayez plus tard.")
+    try:
+        return await doola.list_countries()
+    except DoolaAPIError:
+        logger.exception("Echec recuperation des pays doola")
+        raise HTTPException(502, "Impossible de recuperer la liste des pays.")
+
+
 @router.post("/buildness/onboard", status_code=202)
 async def onboard_buildness(
     body: BuildnessOnboardRequest,
@@ -50,10 +86,15 @@ async def onboard_buildness(
     )
     if not customer:
         try:
+            # countryOfResidence/phoneNumber requis par la vraie API doola
+            # (confirmé le 2026-11-23) - manquaient avant cette correction,
+            # ce qui aurait fait échouer tout appel réel en validation.
             doola_customer_id = await doola.create_customer({
                 "email": body.email,
                 "firstName": body.first_name,
                 "lastName": body.last_name,
+                "countryOfResidence": body.country,
+                "phoneNumber": body.phone,
             })
         except DoolaAPIError:
             logger.exception("Echec creation customer doola pour merchant_id=%s", merchant_id)
@@ -86,10 +127,63 @@ async def onboard_buildness(
     db.commit()
     db.refresh(company)
 
+    # Adresse unique réutilisée à 3 endroits distincts du schéma doola
+    # (responsibleParty, members[0], addresses[mailing]) - voir le
+    # commentaire de BuildnessOnboardRequest (models.py) : doola exige ces
+    # 3 adresses séparément, mais le marchand n'en a saisi qu'une seule
+    # (lui-même étant le seul fondateur/responsable dans ce flux Buildness).
+    address_dto = {
+        "line1": body.address_line1,
+        "city": body.address_city,
+        "state": body.address_region,
+        "postalCode": body.address_postal_code,
+        "country": body.country,
+        "phone": body.phone,
+    }
+    if body.address_line2:
+        address_dto["line2"] = body.address_line2
+
     try:
         response = await doola.create_company(customer.doola_customer_id, {
-            "companyName": body.company_name,
+            # nameOptions : liste de noms candidats par ordre de préférence
+            # chez doola - un seul candidat ici (le formulaire Xepay ne
+            # propose qu'un nom, pas plusieurs alternatives).
+            "nameOptions": [{"name": body.company_name, "entityTypeEnding": "LLC"}],
             "state": body.state,
+            "industry": body.industry,
+            "description": body.description,
+            "responsibleParty": {
+                "legalFirstName": body.first_name,
+                "legalLastName": body.last_name,
+                "email": body.email,
+                "address": address_dto,
+            },
+            # Adresse "business" fournie par doola lui-même (provider=
+            # registeredAgent, pas d'adresse à donner) - le marchand cible
+            # de Buildness est un fondateur non-résident, sans adresse
+            # professionnelle US existante ; "mailing" reste la sienne.
+            "addresses": [
+                {"provider": "registeredAgent", "type": "business"},
+                {"provider": "customer", "type": "mailing", "address": address_dto},
+            ],
+            "members": [
+                {
+                    "legalFirstName": body.first_name,
+                    "legalLastName": body.last_name,
+                    "isNaturalPerson": True,
+                    "address": address_dto,
+                    "ownershipPercent": 100,
+                }
+            ],
+            # Formation (créer la LLC) + RegisteredAgent (adresse business
+            # ci-dessus) + EinCreation (obtenir l'EIN - toute la raison
+            # d'être de Buildness pour Xepay) - les 3 services nécessaires
+            # au parcours complet annoncé au marchand.
+            "services": [
+                {"service": "Formation"},
+                {"service": "RegisteredAgent"},
+                {"service": "EinCreation"},
+            ],
         })
     except DoolaAPIError as e:
         # 4xx doola (status_code < 500) : rejet métier probable (ex. nom
