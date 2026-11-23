@@ -2558,6 +2558,41 @@ const BUILDNESS_WIZARD_MODAL_HTML = `
             <p class="p-verto-field-help">Utilisé par doola pour le suivi de votre dossier.</p>
             <input type="email" name="email" class="form-control" required>
           </div>
+          <div class="p-verto-field">
+            <label>Téléphone du fondateur</label>
+            <p class="p-verto-field-help">Format international (ex: +33612345678).</p>
+            <input type="tel" name="phone" class="form-control" placeholder="+33612345678" required>
+          </div>
+          <div class="p-verto-field">
+            <label>Pays de résidence du fondateur</label>
+            <p class="p-verto-field-help">Votre pays de résidence actuel, pas l'État de formation de la LLC ci-dessus.</p>
+            <select name="country" id="p-buildness-country-select" class="form-select" required>
+              <option value="" disabled selected>Chargement...</option>
+            </select>
+          </div>
+          <div class="p-verto-field">
+            <label>Adresse du fondateur</label>
+            <p class="p-verto-field-help">Votre adresse personnelle - utilisée par doola pour vous identifier comme responsable de la société.</p>
+            <input type="text" name="address_line1" class="form-control mb-2" placeholder="Numéro et rue" required>
+            <input type="text" name="address_line2" class="form-control mb-2" placeholder="Complément d'adresse (optionnel)">
+            <div class="row g-2">
+              <div class="col-6"><input type="text" name="address_city" class="form-control" placeholder="Ville" required></div>
+              <div class="col-6"><input type="text" name="address_region" class="form-control" placeholder="Région / Province" required></div>
+            </div>
+            <input type="text" name="address_postal_code" class="form-control mt-2" placeholder="Code postal" required>
+          </div>
+          <div class="p-verto-field">
+            <label>Secteur d'activité</label>
+            <p class="p-verto-field-help">Celui qui décrit le mieux l'activité de votre société.</p>
+            <select name="industry" id="p-buildness-industry-select" class="form-select" required>
+              <option value="" disabled selected>Chargement...</option>
+            </select>
+          </div>
+          <div class="p-verto-field">
+            <label>Description de l'activité</label>
+            <p class="p-verto-field-help">En quelques mots, 50 caractères maximum.</p>
+            <input type="text" name="description" class="form-control" maxlength="50" required>
+          </div>
         </form>
         </div>
         <div class="d-flex justify-content-end gap-2 mt-4">
@@ -2653,6 +2688,47 @@ function renderBuildnessSection(data) {
 // étape". submitBuildnessOnboard (plus bas) lit les mêmes champs nommés,
 // logique métier inchangée. ---
 
+// Pays/secteurs d'activité acceptés par doola (voir GET /buildness/
+// countries, /buildness/naics-codes) - référentiels, jamais de texte
+// libre côté UI (doola rejette toute valeur hors liste). Chargés une
+// seule fois par session (pas à chaque ouverture du wizard) : ces listes
+// ne changent pas en cours de session, inutile de les re-fetcher.
+let buildnessCountriesCache = null;
+let buildnessNaicsCache = null;
+
+async function loadBuildnessReferenceOptions() {
+  const countrySelect = document.getElementById("p-buildness-country-select");
+  const industrySelect = document.getElementById("p-buildness-industry-select");
+
+  if (!buildnessCountriesCache) {
+    try {
+      const res = await apiFetch("/buildness/countries");
+      buildnessCountriesCache = res.ok ? await res.json() : [];
+    } catch (err) {
+      buildnessCountriesCache = [];
+    }
+  }
+  if (countrySelect) {
+    countrySelect.innerHTML = buildnessCountriesCache.length
+      ? `<option value="" disabled selected>Choisir un pays</option>${buildnessCountriesCache.map((c) => `<option value="${c.code}">${c.name}</option>`).join("")}`
+      : `<option value="" disabled selected>Indisponible, réessayez plus tard</option>`;
+  }
+
+  if (!buildnessNaicsCache) {
+    try {
+      const res = await apiFetch("/buildness/naics-codes");
+      buildnessNaicsCache = res.ok ? await res.json() : [];
+    } catch (err) {
+      buildnessNaicsCache = [];
+    }
+  }
+  if (industrySelect) {
+    industrySelect.innerHTML = buildnessNaicsCache.length
+      ? `<option value="" disabled selected>Choisir un secteur</option>${buildnessNaicsCache.map((n) => `<option value="${n.industry}">${n.industry}</option>`).join("")}`
+      : `<option value="" disabled selected>Indisponible, réessayez plus tard</option>`;
+  }
+}
+
 function openBuildnessWizard() {
   const form = document.getElementById("p-buildness-wizard-form");
   if (form) form.reset();
@@ -2661,6 +2737,7 @@ function openBuildnessWizard() {
     submitBtn.disabled = false;
     submitBtn.textContent = "Lancer la création de ma LLC";
   }
+  loadBuildnessReferenceOptions();
   bootstrap.Modal.getOrCreateInstance(document.getElementById("paramsBuildnessWizardModal")).show();
 }
 
@@ -2711,6 +2788,15 @@ async function submitBuildnessOnboard(e) {
     first_name: form.first_name.value.trim(),
     last_name: form.last_name.value.trim(),
     email: form.email.value.trim(),
+    phone: form.phone.value.trim(),
+    country: form.country.value,
+    address_line1: form.address_line1.value.trim(),
+    address_line2: form.address_line2.value.trim() || null,
+    address_city: form.address_city.value.trim(),
+    address_region: form.address_region.value.trim(),
+    address_postal_code: form.address_postal_code.value.trim(),
+    industry: form.industry.value,
+    description: form.description.value.trim(),
   };
 
   try {

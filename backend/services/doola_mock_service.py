@@ -37,3 +37,14 @@ class MockDoolaService:
         # company_ein_issued) - le mock doit refléter la vraie forme de
         # réponse pour que le flux EIN soit testable sans clé réelle.
         return {"doolaCompanyId": company_id, "status": "processing", "ein": "99-9999999"}
+
+    async def list_naics_codes(self) -> list[dict]:
+        await asyncio.sleep(0)
+        # Mêmes clés que la vraie réponse doola (confirmée en direct le
+        # 2026-11-23) - une seule entrée suffit pour tester le flux
+        # localement sans dépendre du réseau.
+        return [{"industry": "Data processing", "naicsCode": "518210", "naicsCodeId": "mock_naics_1"}]
+
+    async def list_countries(self) -> list[dict]:
+        await asyncio.sleep(0)
+        return [{"code": "FRA", "name": "France"}, {"code": "USA", "name": "United States"}]

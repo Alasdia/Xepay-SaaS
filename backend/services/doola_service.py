@@ -137,7 +137,19 @@ async def _request(
             continue
 
         if 200 <= response.status_code < 300:
-            return response.json() if response.content else {}
+            if not response.content:
+                return {}
+            data = response.json()
+            # Enveloppe universelle doola : {"error": null, "payload": ...}
+            # - jamais documentée explicitement dans la doc officielle,
+            # découverte le 2026-11-23 en inspectant de vraies réponses
+            # sandbox (/v1/partner/companies, /v1/partner/references/*).
+            # Sans ce déballage, create_customer/create_company/
+            # get_company_status lisaient data["doolaCustomerId"] etc. à
+            # la racine - toujours absent, KeyError à chaque appel réel.
+            if isinstance(data, dict) and "payload" in data and "error" in data:
+                return data["payload"]
+            return data
 
         body_snippet = response.text[:_LOGGED_BODY_MAX_CHARS]
 
@@ -179,10 +191,13 @@ async def create_company(customer_id: str, payload: dict) -> dict:
     l'appelant) : Buildness ne forme QUE des LLC, aucune autre forme
     juridique n'est un cas d'usage actuel - un payload qui tenterait de le
     surcharger serait silencieusement ignoré, donc autant ne pas exposer
-    le paramètre du tout. Retourne la réponse brute doola (contient au
-    minimum doolaCompanyId et le statut initial, voir routes/buildness.py
-    pour ce qui en est extrait)."""
-    body = {**payload, "customerId": customer_id, "entityType": "LLC"}
+    le paramètre du tout. doolaCustomerId (pas "customerId", corrigé le
+    2026-11-23 après vérification contre la vraie doc) - le payload
+    complet (nameOptions/industry/description/responsibleParty/
+    addresses/members/services) est construit par l'appelant, voir
+    routes/buildness.py. Retourne la réponse brute doola (contient au
+    minimum doolaCompanyId et le statut initial)."""
+    body = {**payload, "doolaCustomerId": customer_id, "entityType": "LLC"}
     return await _request("POST", "/v1/partner/companies", json_body=body, idempotent=True)
 
 
@@ -193,3 +208,24 @@ async def get_company_status(company_id: str) -> dict:
     de polling automatique ici - à l'appelant de décider quand (voir
     GET /buildness/status)."""
     return await _request("GET", f"/v1/partner/companies/{company_id}")
+
+
+async def list_naics_codes() -> list[dict]:
+    """GET /v1/partner/references/naics-codes - secteurs d'activité
+    acceptés par create_company. Le champ "industry" de chaque entrée doit
+    être renvoyé VERBATIM dans create_company (jamais du texte libre,
+    rejeté par doola) - voir GET /buildness/naics-codes (routes/
+    buildness.py), qui expose cette liste pour peupler un menu déroulant
+    côté UI plutôt que de laisser le marchand taper n'importe quoi.
+    _request() déballe déjà l'enveloppe {"error","payload"} - renvoie
+    directement la liste."""
+    return await _request("GET", "/v1/partner/references/naics-codes")
+
+
+async def list_countries() -> list[dict]:
+    """GET /v1/partner/references/countries - pays acceptés pour
+    countryOfResidence (create_customer) et le pays des adresses
+    (PartnerAddressDto.country, create_company) - mêmes codes ISO
+    3166-1 alpha-3 pour les deux usages chez doola. Même déballage
+    d'enveloppe automatique que list_naics_codes."""
+    return await _request("GET", "/v1/partner/references/countries")
