@@ -17,6 +17,7 @@ import {
   buildnessStatusLabel,
   buildnessDetailRowsHtml,
   fetchBuildnessStatus,
+  fetchBuildnessRawStatus,
 } from "../shared/buildnessStatus.js";
 
 const TEMPLATE = `
@@ -79,20 +80,23 @@ export async function mount(container) {
   async function load() {
     try {
       const data = await fetchBuildnessStatus();
-      // Debug demandé le 2026-11-24 : réponse de GET /buildness/status
-      // (déjà mise en forme par le backend Xepay à partir de ce que
-      // doola a renvoyé - la vraie réponse brute de l'API doola ne
-      // quitte jamais le serveur, rien de plus précis n'est consultable
-      // depuis le navigateur).
-      console.log("[Mon entreprise] GET /buildness/status ->", data);
       render(data);
+      // Debug demandé le 2026-11-24 : réponse BRUTE de doola (GET /v1/
+      // partner/companies/{id}, voir GET /buildness/status/{id}/raw côté
+      // backend) - jamais utilisée pour l'affichage, uniquement pour
+      // inspecter en console ce que doola renvoie réellement.
+      fetchBuildnessRawStatus()
+        .then((raw) => console.log("[Mon entreprise] Réponse BRUTE doola ->", raw))
+        .catch((err) => console.warn("[Mon entreprise] Echec recuperation reponse brute doola :", err));
       if (data.status && !BUILDNESS_TERMINAL_STATUSES.has(data.status)) {
         stopPolling();
         pollTimer = setInterval(async () => {
           try {
             const next = await fetchBuildnessStatus();
-            console.log("[Mon entreprise] GET /buildness/status (polling) ->", next);
             render(next);
+            fetchBuildnessRawStatus()
+              .then((raw) => console.log("[Mon entreprise] Réponse BRUTE doola (polling) ->", raw))
+              .catch(() => {});
             if (BUILDNESS_TERMINAL_STATUSES.has(next.status)) stopPolling();
           } catch (err) {
             if (err.isForbidden) stopPolling();

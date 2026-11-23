@@ -82,3 +82,15 @@ export async function fetchBuildnessStatus() {
   if (!res.ok) throw new Error("Impossible de récupérer le statut Buildness");
   return res.json();
 }
+
+// Réponse BRUTE de doola (GET /v1/partner/companies/{id}), sans aucune
+// mise en forme côté Xepay - demandé le 2026-11-24 pour inspection/
+// conception UI (voir spa/views/monEntreprise.js, console.log). Jamais
+// utilisée pour l'affichage réel - fetchBuildnessStatus (ci-dessus)
+// reste la seule source pour le rendu du marchand.
+export async function fetchBuildnessRawStatus() {
+  const merchantId = getWorkspaceId();
+  const res = await apiFetch(`/buildness/status/${encodeURIComponent(merchantId)}/raw`);
+  if (!res.ok) throw new Error("Impossible de récupérer le statut brut doola");
+  return res.json();
+}
