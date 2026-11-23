@@ -13,6 +13,7 @@ import { mount as mountLiens, LIEN_SECTIONS, DEFAULT_LIEN_SECTION } from "./view
 import { mount as mountCommerce } from "./views/commerce.js";
 import { mount as mountApi } from "./views/api.js";
 import { mount as mountParametres } from "./views/parametres.js";
+import { mount as mountMonEntreprise } from "./views/monEntreprise.js";
 import { mountPayment as mountPaymentDetail, mountWithdrawal as mountWithdrawalDetail } from "./views/transactionDetail.js";
 
 const WORKSPACE_PLACEHOLDER = "me";
@@ -131,6 +132,7 @@ async function init() {
   registerRoute("/dash/workspace/:workspaceId/commerce/factures", (c, p) => mountCommerce(c, { ...p, section: "factures" }), { name: "factures" });
   registerRoute("/dash/workspace/:workspaceId/commerce/moyens-paiement", (c, p) => mountCommerce(c, { ...p, section: "moyens-paiement" }), { name: "moyens-paiement" });
   registerRoute("/dash/workspace/:workspaceId/commerce/risque", (c, p) => mountCommerce(c, { ...p, section: "risque" }),{ name: "risque" });
+  registerRoute("/dash/workspace/:workspaceId/mon-entreprise", mountMonEntreprise, { name: "mon-entreprise" });
   registerRoute("/dash/workspace/:workspaceId/api", mountApi, { name: "api" });
   registerRoute("/dash/workspace/:workspaceId/parametres", mountParametres, { name: "parametres" });
   registerRoute("/dash/workspace/:workspaceId/parametres/:section", mountParametres, { name: "parametres-detail" });
