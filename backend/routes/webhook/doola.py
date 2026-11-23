@@ -1,12 +1,30 @@
 """Webhook doola (voir services/doola_service.py, routes/buildness.py,
 BuildnessWebhookLog/BuildnessCompany dans models.py).
 
-AVERTISSEMENT (même mise en garde que webhook/verto.py) : le nom du
-header de signature ("X-Doola-Signature"), le schéma HMAC-SHA256 sur le
-corps brut, et les noms de champs (eventId/eventType/doolaCompanyId/
-einNumber) reprennent tels quels le cahier des charges fourni le
-2026-11-21 - NON CONFIRMÉS par une vraie doc/sandbox doola. À valider
-contre un vrai événement sandbox avant mise en prod.
+VÉRIFIÉ le 2026-11-23 contre la vraie documentation officielle
+(docs.doola.com/api/webhooks) :
+- Header de signature "X-Doola-Signature" : CONFIRMÉ.
+- HMAC-SHA256 hex digest sur le corps brut SEUL (pas de timestamp signé,
+  pas de préfixe "sha256=") : CONFIRMÉ, _verify_signature ci-dessous
+  était déjà correct.
+- eventId au niveau racine : CONFIRMÉ.
+
+CORRIGÉ suite à cette vérification (le cahier des charges du 2026-11-21
+avait deviné des noms de champs/événements qui n'existent pas chez
+doola) :
+- Le type d'événement est "eventName", jamais "eventType" - gardé en
+  repli pour tolérer un futur changement doola, mais eventName est
+  désormais lu en premier.
+- doolaCompanyId vit dans un sous-objet "eventPayload", jamais à la
+  racine ni sous "data".
+- Les noms d'événements réels sont "company_formation_submitted"/
+  "company_formation_submitted_to_state"/"company_formation_completed"/
+  "company_formation_failed"/"company_ein_issued" (underscore, pas
+  "company.created"/"ein.issued" qui n'existent pas chez doola).
+- Le payload webhook ne contient JAMAIS l'EIN (confirmé explicitement
+  par la doc) - company_ein_issued déclenche désormais un GET /v1/
+  partner/companies/{id} pour récupérer le champ "ein" réel, au lieu de
+  lire un champ "einNumber" inexistant dans le payload.
 
 DOOLA_WEBHOOK_SECRET n'a PAS de valeur par défaut en dur ici (contrairement
 à ce que suggérait le cahier des charges, "test_secret") : un défaut en
@@ -25,6 +43,8 @@ from sqlalchemy.exc import IntegrityError
 
 from backend.database import SessionLocal
 from backend.models import BuildnessCompany, BuildnessWebhookLog
+from backend.services.doola_client import get_doola_service, DoolaNotConfiguredError
+from backend.services.doola_service import DoolaAPIError
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -42,16 +62,37 @@ def _verify_signature(raw_body: bytes, signature_header: str | None) -> bool:
     return hmac.compare_digest(expected, signature_header)
 
 
-def _apply_doola_event(event_type: str, payload: dict) -> None:
+# Événements réels doola (confirmés docs.doola.com/api/webhooks le
+# 2026-11-23) qui font avancer le statut local vers "processing" - la
+# formation est soumise/en cours de traitement par l'État, mais ni LLC
+# formée ni EIN émis (voir le docstring de BuildnessCompany, models.py :
+# "completed" exige les deux).
+_PROCESSING_EVENTS = {
+    "company_formation_submitted",
+    "company_formation_submitted_to_state",
+    "company_formation_completed",
+}
+
+
+async def _apply_doola_event(event_type: str, payload: dict) -> None:
     """Tâche de fond (voir BackgroundTasks dans doola_webhook ci-dessous) -
     ouvre sa PROPRE session, jamais celle de la requête : même convention
     que process_checkout_session_payment/stripe_payment_webhook
     (webhook/paiement.py), qui n'utilisent jamais Depends(get_db) pour
     cette raison - une session liée à la requête HTTP ne doit pas être
-    réutilisée dans du code qui continue de s'exécuter après la réponse."""
+    réutilisée dans du code qui continue de s'exécuter après la réponse.
+    async (pas juste sync) : company_ein_issued a besoin d'un appel
+    réseau sortant vers doola pour récupérer l'EIN (voir ci-dessous) -
+    BackgroundTasks de Starlette exécute un callable async nativement,
+    sans event loop dédié à gérer ici."""
     db = SessionLocal()
     try:
-        doola_company_id = payload.get("doolaCompanyId") or (payload.get("data") or {}).get("doolaCompanyId")
+        event_payload = payload.get("eventPayload") or {}
+        doola_company_id = (
+            event_payload.get("doolaCompanyId")
+            or payload.get("doolaCompanyId")
+            or (payload.get("data") or {}).get("doolaCompanyId")
+        )
         if not doola_company_id:
             logger.warning("Webhook doola %s sans doolaCompanyId, ignoré", event_type)
             return
@@ -68,15 +109,29 @@ def _apply_doola_event(event_type: str, payload: dict) -> None:
             )
             return
 
-        if event_type == "company.created":
+        if event_type in _PROCESSING_EVENTS:
             company.status = "processing"
             company.last_successful_step = "processing"
-        elif event_type == "ein.issued":
+        elif event_type == "company_formation_failed":
+            company.status = "failed"
+        elif event_type == "company_ein_issued":
+            # Le payload webhook ne contient JAMAIS l'EIN (confirmé par la
+            # doc officielle) - seul un GET /v1/partner/companies/{id}
+            # après cet événement renvoie le champ "ein" réel.
+            try:
+                doola = get_doola_service()
+                status_data = await doola.get_company_status(str(doola_company_id))
+            except (DoolaNotConfiguredError, DoolaAPIError):
+                logger.exception(
+                    "Echec récupération EIN doola pour doolaCompanyId=%s après company_ein_issued",
+                    doola_company_id,
+                )
+                return
+            ein = status_data.get("ein")
             company.status = "completed"
             company.last_successful_step = "completed"
-            ein_number = payload.get("einNumber") or (payload.get("data") or {}).get("einNumber")
-            if ein_number:
-                company.ein_number = str(ein_number)
+            if ein:
+                company.ein_number = str(ein)
         else:
             logger.info("Webhook doola %s sans transition de statut connue, ignoré", event_type)
             return
@@ -102,9 +157,11 @@ async def doola_webhook(request: Request, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=400, detail="JSON invalide")
 
     event_id = payload.get("eventId") or payload.get("id")
-    event_type = payload.get("eventType") or payload.get("type")
+    # eventName : nom réel du champ chez doola (voir docstring en tête de
+    # fichier) - eventType/type gardés en repli uniquement par robustesse.
+    event_type = payload.get("eventName") or payload.get("eventType") or payload.get("type")
     if not event_id or not event_type:
-        raise HTTPException(status_code=400, detail="eventId/eventType manquant")
+        raise HTTPException(status_code=400, detail="eventId/eventName manquant")
 
     # event_id UNIQUE (voir models.py) est le vrai filet de sécurité, pas
     # un SELECT préalable : deux livraisons quasi simultanées du même

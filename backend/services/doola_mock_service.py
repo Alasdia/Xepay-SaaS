@@ -1,9 +1,10 @@
 """Mock local de doola_service.py (voir doola_client.get_doola_service) -
-aucun appel réseau, retourne des IDs factices mais plausibles. Nécessaire
-tant que les clés sandbox doola (dk_test_...) n'ont pas été reçues
-(demandées le 2026-11-21, voir conversation du même jour) : permet de
-développer/tester tout le flux Buildness (onboard + webhook) en local dès
-aujourd'hui.
+aucun appel réseau, retourne des IDs factices mais plausibles. Les clés
+sandbox doola (dk_test_...) sont désormais configurées sur le serveur AWS
+(2026-11-23), mais ce mock reste utile pour développer/tester tout le flux
+Buildness (onboard + webhook) en LOCAL sans dépendre du réseau ni risquer
+le moindre appel réel, via BUILDNESS_ALLOW_MOCK=true (jamais en
+production, voir doola_client.py).
 
 Mêmes signatures d'appel que doola_service.py (create_customer,
 create_company, get_company_status) - PAS d'héritage formel depuis une
@@ -31,4 +32,8 @@ class MockDoolaService:
 
     async def get_company_status(self, company_id: str) -> dict:
         await asyncio.sleep(0)
-        return {"doolaCompanyId": company_id, "status": "processing"}
+        # "ein" (pas "einNumber") : nom de champ réel confirmé dans la doc
+        # officielle doola le 2026-11-23 (voir webhook/doola.py,
+        # company_ein_issued) - le mock doit refléter la vraie forme de
+        # réponse pour que le flux EIN soit testable sans clé réelle.
+        return {"doolaCompanyId": company_id, "status": "processing", "ein": "99-9999999"}

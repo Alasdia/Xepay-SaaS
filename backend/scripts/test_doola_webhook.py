@@ -4,8 +4,17 @@ doola.py, routes/buildness.py) - vérifie que la base passe bien de
 HMAC valides, et que rejouer le même event_id ne retraite rien une
 seconde fois (idempotence, BuildnessWebhookLog.event_id UNIQUE).
 
+Payload/noms d'événements mis à jour le 2026-11-23 après vérification
+contre la vraie doc officielle doola (docs.doola.com/api/webhooks) :
+eventName (pas eventType), doolaCompanyId sous eventPayload (pas à la
+racine), company_formation_submitted/company_ein_issued (pas
+company.created/ein.issued, qui n'existent pas chez doola) - voir le
+docstring de webhook/doola.py pour le détail des corrections.
+
 Usage (le serveur Xepay doit déjà tourner en local, même
-DOOLA_WEBHOOK_SECRET des deux côtés) :
+DOOLA_WEBHOOK_SECRET des deux côtés, ET BUILDNESS_ALLOW_MOCK=true côté
+serveur pour que company_ein_issued puisse récupérer un EIN du
+MockDoolaService sans clé réelle - voir doola_client.py) :
 
     DOOLA_WEBHOOK_SECRET=test_secret python3 -m backend.scripts.test_doola_webhook
 
@@ -41,12 +50,15 @@ def _sign(raw_body: bytes) -> str:
     return hmac.new(DOOLA_WEBHOOK_SECRET.encode(), raw_body, hashlib.sha256).hexdigest()
 
 
-def _send_webhook(event_id: str, event_type: str, doola_company_id: str, extra: dict | None = None) -> httpx.Response:
+def _send_webhook(event_id: str, event_name: str, doola_company_id: str, extra_event_payload: dict | None = None) -> httpx.Response:
+    # Forme réelle doola (confirmée docs.doola.com/api/webhooks le
+    # 2026-11-23) : eventName + doolaCompanyId sous eventPayload, jamais
+    # à la racine.
     payload = {
         "eventId": event_id,
-        "eventType": event_type,
-        "doolaCompanyId": doola_company_id,
-        **(extra or {}),
+        "eventName": event_name,
+        "eventPayload": {"doolaCompanyId": doola_company_id, **(extra_event_payload or {})},
+        "timestamp": int(time.time() * 1000),
     }
     raw_body = json.dumps(payload).encode("utf-8")
     return httpx.post(
@@ -111,22 +123,26 @@ def main():
         db.refresh(company)
         print(f"Seed OK - company_id={company.id} doola_company_id={doola_company_id} status={company.status}")
 
-        # 1) company.created -> processing
-        resp = _send_webhook(str(uuid.uuid4()), "company.created", doola_company_id)
-        print(f"POST /webhook/doola (company.created) -> {resp.status_code} {resp.json()}")
+        # 1) company_formation_submitted -> processing
+        resp = _send_webhook(str(uuid.uuid4()), "company_formation_submitted", doola_company_id)
+        print(f"POST /webhook/doola (company_formation_submitted) -> {resp.status_code} {resp.json()}")
         assert _wait_for(lambda: (db.refresh(company), company.status)[1] == "processing"), (
             f"status toujours {company.status!r} après 5s, attendu 'processing'"
         )
         print(f"OK - status = {company.status}")
 
-        # 2) ein.issued -> completed, ein_number renseigné
+        # 2) company_ein_issued -> completed, ein_number renseigné. Le
+        # payload webhook ne contient JAMAIS l'EIN chez le vrai doola :
+        # le handler va le chercher via get_doola_service().get_company_status()
+        # (MockDoolaService ici, voir doola_mock_service.py - nécessite
+        # BUILDNESS_ALLOW_MOCK=true côté serveur, sinon ce test échoue).
         ein_event_id = str(uuid.uuid4())
-        resp = _send_webhook(ein_event_id, "ein.issued", doola_company_id, {"einNumber": "12-3456789"})
-        print(f"POST /webhook/doola (ein.issued) -> {resp.status_code} {resp.json()}")
+        resp = _send_webhook(ein_event_id, "company_ein_issued", doola_company_id)
+        print(f"POST /webhook/doola (company_ein_issued) -> {resp.status_code} {resp.json()}")
         assert _wait_for(lambda: (db.refresh(company), company.status)[1] == "completed"), (
             f"status toujours {company.status!r} après 5s, attendu 'completed'"
         )
-        assert company.ein_number == "12-3456789", f"ein_number={company.ein_number!r}"
+        assert company.ein_number == "99-9999999", f"ein_number={company.ein_number!r}"
         print(f"OK - status = {company.status}, ein_number = {company.ein_number}")
 
         # 3) Idempotence : rejouer EXACTEMENT le même event_id (même
@@ -139,8 +155,8 @@ def main():
             .filter(BuildnessWebhookLog.event_id == ein_event_id)
             .count()
         )
-        resp = _send_webhook(ein_event_id, "ein.issued", doola_company_id, {"einNumber": "12-3456789"})
-        print(f"POST /webhook/doola (ein.issued, REJOUÉ) -> {resp.status_code} {resp.json()}")
+        resp = _send_webhook(ein_event_id, "company_ein_issued", doola_company_id)
+        print(f"POST /webhook/doola (company_ein_issued, REJOUÉ) -> {resp.status_code} {resp.json()}")
         time.sleep(1)  # laisse le temps à une éventuelle (mauvaise) 2e BackgroundTask de s'exécuter
         db.refresh(company)
         log_count_after = (

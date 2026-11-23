@@ -3,14 +3,27 @@ un marchand non-résident, voir routes/buildness.py, routes/webhook/doola.py,
 BuildnessCustomer/BuildnessCompany dans models.py) - prérequis à l'activation
 du compte Stripe Connect du marchand.
 
-NON VÉRIFIÉ auprès de la vraie doc/sandbox doola à ce stade : les chemins
-d'endpoint (/v1/partner/customers, /v1/partner/companies), le header
-d'auth, et les noms de champs de réponse (doolaCustomerId, doolaCompanyId)
-reprennent tels quels le cahier des charges fonctionnel fourni le
-2026-11-21 - à confronter à un vrai appel sandbox (clé dk_test_...) avant
-toute mise en prod, exactement comme VERTO_WEBHOOK_PRIVATE_KEY_PEM/
-_sub_account_login dans verto_service.py ont été flaggés NON CONFIRMÉ
-jusqu'à vérification réelle.
+VÉRIFIÉ le 2026-11-23 contre la vraie documentation officielle
+(docs.doola.com/api) suite à la réception des clés sandbox :
+- Base URL sandbox (https://api.test.doola.com) : CONFIRMÉE.
+- Chemins /v1/partner/customers, /v1/partner/companies,
+  /v1/partner/companies/{id} (GET) : CONFIRMÉS.
+- Header Idempotency-Key sur les POST : CONFIRMÉ.
+- doolaCustomerId/doolaCompanyId comme clés d'ID en réponse : CONFIRMÉS.
+- Header d'authentification : FAUX avant ce correctif - la doc dit
+  explicitement "Authenticate with the raw API key in the Authorization
+  header. Never add a Bearer prefix." (voir _headers ci-dessous, corrigé).
+
+RESTE NON RÉSOLU (nécessite une décision produit, pas juste un correctif
+technique - voir le rapport livré à l'utilisateur le 2026-11-23) :
+create_customer n'envoie pas countryOfResidence (requis par la vraie API)
+et create_company n'envoie ni nameOptions/industry/description/
+responsibleParty/addresses/members (tous requis pour une LLC réelle) -
+BuildnessOnboardRequest (models.py) ne collecte aujourd'hui qu'un
+sous-ensemble (email/nom/prénom/company_name/state). Un vrai appel
+sandbox à create_company échouera donc en validation (400) tant que le
+formulaire d'onboarding n'aura pas été étendu - hors périmètre de cette
+vérification (changement de formulaire/UI, pas un bug de câblage).
 
 Client HTTP asynchrone (httpx.AsyncClient) - les deux endpoints
 d'onboarding (routes/buildness.py) sont eux-mêmes async, contrairement aux
@@ -56,8 +69,15 @@ class DoolaAPIError(RuntimeError):
 
 
 def _headers(idempotency_key: str | None) -> dict:
+    # Clé brute, SANS préfixe "Bearer " - la doc officielle doola l'exige
+    # explicitement ("Never add a Bearer prefix"), contrairement au
+    # schéma Bearer standard utilisé par Stripe/Verto dans ce même
+    # backend. Corrigé le 2026-11-23 après vérification contre
+    # docs.doola.com/api - l'ancien header "Bearer {clé}" aurait fait
+    # échouer TOUT appel réel en 401, jamais détecté avant faute de
+    # vraies clés sandbox.
     headers = {
-        "Authorization": f"Bearer {DOOLA_API_KEY}",
+        "Authorization": DOOLA_API_KEY,
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
