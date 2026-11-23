@@ -249,3 +249,48 @@ def get_buildness_status(
         "ein_number": company.ein_number,
         "updated_at": company.updated_at,
     }
+
+
+@router.get("/buildness/status/{merchant_id}/raw")
+async def get_buildness_status_raw(
+    merchant_id: str,
+    membership: WorkspaceUser = Depends(require_capability("manage_company_formation")),
+    db: Session = Depends(get_db),
+):
+    """Demandé le 2026-11-24 : réponse BRUTE de doola (GET /v1/partner/
+    companies/{id}), sans aucune mise en forme côté Xepay - contrairement
+    à GET /buildness/status ci-dessus, qui n'expose qu'un sous-ensemble
+    de champs déjà renommés. Usage debug/conception UI uniquement -
+    jamais appelé par la vraie UI marchand (voir spa/views/
+    monEntreprise.js, console.log)."""
+    if merchant_id != membership.workspace_id:
+        raise HTTPException(403, "Acces refuse.")
+
+    customer = (
+        db.query(BuildnessCustomer)
+        .filter(BuildnessCustomer.xepay_merchant_id == merchant_id)
+        .first()
+    )
+    if not customer:
+        return {"status": "not_started"}
+
+    company = (
+        db.query(BuildnessCompany)
+        .filter(BuildnessCompany.customer_id == customer.id)
+        .order_by(BuildnessCompany.created_at.desc())
+        .first()
+    )
+    if not company or not company.doola_company_id:
+        # draft (create_company jamais réussi) : rien à aller chercher
+        # chez doola, aucun doolaCompanyId n'existe encore.
+        return {"status": (company.status if company else "not_started")}
+
+    try:
+        doola = get_doola_service()
+    except DoolaNotConfiguredError:
+        raise HTTPException(503, "Buildness n'est pas encore disponible. Réessayez plus tard.")
+    try:
+        return await doola.get_company_status(company.doola_company_id)
+    except DoolaAPIError:
+        logger.exception("Echec recuperation statut brut doola pour company_id=%s", company.id)
+        raise HTTPException(502, "Impossible de recuperer le statut depuis doola.")
