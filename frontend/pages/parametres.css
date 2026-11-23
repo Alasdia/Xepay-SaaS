@@ -1122,12 +1122,12 @@
 }
 .params-promo-status-failed { color: #b91c1c; }
 .params-promo-status-done { color: #15803d; }
-.params-promo-ein {
-  font-family: monospace;
-  font-size: 16px;
-  font-weight: 700;
-  color: #111827;
-  margin-top: 6px;
+/* Nom/État/EIN/dernière étape/dernière mise à jour (buildnessDetailRowsHtml,
+   parametres.js) - mêmes .params-info-row que Coordonnées ailleurs dans
+   cette vue, juste un peu d'air au-dessus pour les détacher du statut. */
+.params-promo-details {
+  margin-top: 12px;
+  max-width: 420px;
 }
 .params-promo-steps {
   padding-left: 20px;
