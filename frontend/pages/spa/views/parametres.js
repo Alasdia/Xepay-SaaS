@@ -11,14 +11,7 @@ import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
 import { showWorkspaceSwitchOverlay, hideWorkspaceSwitchOverlay } from "../shared/workspaceSwitchOverlay.js";
-import {
-  BUILDNESS_TERMINAL_STATUSES,
-  BUILDNESS_POLL_INTERVAL_MS,
-  BUILDNESS_US_STATES,
-  buildnessStatusLabel,
-  buildnessDetailRowsHtml,
-  fetchBuildnessStatus,
-} from "../shared/buildnessStatus.js";
+import { BUILDNESS_US_STATES } from "../shared/buildnessStatus.js";
 import { clearSession, getWorkspaceId, setWorkspaceId } from "../core/state.js";
 import { navigate } from "../core/router.js";
 import { getCurrency, getRate, formatMoney } from "../core/currency.js";
@@ -2455,12 +2448,11 @@ function entrepriseTemplate() {
 // mais pas pour la forme : refonte du 2026-11-22, modèle "carte promo
 // Stripe Atlas" - aucun champ de formulaire visible sur la page elle-
 // même (voir buildnessCardHtml), le formulaire vit entièrement dans
-// #paramsBuildnessWizardModal (3 étapes), ouvert uniquement au clic sur
-// "Créer ma société"/"Réessayer". Toujours pas de KPI (voir l'en-tête de
-// ce fichier, "pas de KPI en lecture") : le statut est du texte + des
-// .params-info-row dans la carte, jamais une tuile chiffrée. ---
-
-let buildnessPollTimer = null;
+// #paramsBuildnessWizardModal, ouvert uniquement au clic sur "Créer ma
+// société". Carte STATIQUE depuis le 2026-11-24 (demande explicite) :
+// cette vue ne sert QU'À lancer/relancer un dossier, jamais à en
+// afficher l'avancement - voir spa/views/monEntreprise.js pour le
+// suivi (statut, nom, État, EIN...), accessible depuis la sidebar. ---
 
 const BUILDNESS_INFO_MODAL_HTML = `
 <div class="modal fade" id="paramsBuildnessInfoModal" tabindex="-1" aria-hidden="true">
@@ -2595,65 +2587,29 @@ const BUILDNESS_WIZARD_MODAL_HTML = `
 `;
 
 // --- Carte promo (toujours visible, jamais de champ de formulaire) ---
-// buildnessStatusLabel/buildnessDetailRowsHtml/fetchBuildnessStatus
-// viennent désormais de shared/buildnessStatus.js - partagés avec la
-// vue "Mon entreprise" (spa/views/monEntreprise.js), qui affiche les
-// mêmes informations après lancement du dossier.
-
-function buildnessPromoActionsHtml(data) {
-  const status = data && data.status;
-
-  // Boutons de la carte = même style que "Se connecter" plus bas sur
-  // cette page (.create-client-btn) - demandé explicitement le
-  // 2026-11-23, jamais .btn-primary/.btn-outline-secondary Bootstrap.
-  if (!status || status === "not_started") {
-    return `
-      <div class="params-promo-actions">
-        <button type="button" id="p-buildness-cta-btn" class="create-client-btn">Créer ma société</button>
-        <button type="button" id="p-buildness-info-btn" class="create-client-btn">En savoir plus</button>
-      </div>
-    `;
-  }
-
-  if (status === "failed") {
-    return `
-      <div class="params-promo-status params-promo-status-failed">⚠️ La création a échoué.</div>
-      ${buildnessDetailRowsHtml(data)}
-      <div class="params-promo-actions">
-        <button type="button" id="p-buildness-cta-btn" class="create-client-btn">Réessayer</button>
-        <button type="button" id="p-buildness-info-btn" class="create-client-btn">En savoir plus</button>
-      </div>
-    `;
-  }
-
-  if (status === "completed") {
-    return `
-      <div class="params-promo-status params-promo-status-done">✅ LLC formée</div>
-      ${buildnessDetailRowsHtml(data)}
-    `;
-  }
-
-  // draft/submitted/processing
-  return `
-    <div class="params-promo-status">⏳ ${buildnessStatusLabel(status)}...</div>
-    ${buildnessDetailRowsHtml(data)}
-  `;
-}
-
-function buildnessCardHtml(data) {
+// Carte STATIQUE, jamais de statut/suivi ici (retiré le 2026-11-24,
+// demande explicite) : Paramètres > Entreprise est uniquement le point
+// d'entrée pour LANCER/RELANCER un dossier, peu importe l'état d'un
+// dossier précédent - le suivi vit exclusivement dans la vue "Mon
+// entreprise" (spa/views/monEntreprise.js, accessible depuis la
+// sidebar).
+function buildnessCardHtml() {
   return `
     <div class="params-promo-card">
       <h3 class="params-promo-title">Créer votre entreprise aux États-Unis avec Xepay Buildness</h3>
       <p class="params-promo-sub">Pour encaisser vos paiements via Stripe Connect en toute légalité aux États-Unis, il vous faut une société américaine (LLC) et son EIN (identifiant fiscal fédéral délivré par l'IRS) - sans ça, Stripe limite ou bloque l'activation complète de votre compte. Xepay s'occupe de toute la constitution avec notre partenaire doola : choix de l'État, dépôt des statuts, obtention de l'EIN - sans démarche administrative ni déplacement de votre côté.</p>
-      ${buildnessPromoActionsHtml(data)}
+      <div class="params-promo-actions">
+        <button type="button" id="p-buildness-cta-btn" class="create-client-btn">Créer ma société</button>
+        <button type="button" id="p-buildness-info-btn" class="create-client-btn">En savoir plus</button>
+      </div>
     </div>
   `;
 }
 
-function renderBuildnessSection(data) {
+function renderBuildnessSection() {
   const container = document.getElementById("p-buildness-container");
   if (!container) return;
-  container.innerHTML = buildnessCardHtml(data || { status: "not_started" });
+  container.innerHTML = buildnessCardHtml();
 
   const ctaBtn = container.querySelector("#p-buildness-cta-btn");
   if (ctaBtn) ctaBtn.addEventListener("click", () => openBuildnessWizard());
@@ -2730,27 +2686,6 @@ function openBuildnessWizard() {
   bootstrap.Modal.getOrCreateInstance(document.getElementById("paramsBuildnessWizardModal")).show();
 }
 
-function stopBuildnessPolling() {
-  if (buildnessPollTimer) {
-    clearInterval(buildnessPollTimer);
-    buildnessPollTimer = null;
-  }
-}
-
-function startBuildnessPolling() {
-  stopBuildnessPolling();
-  buildnessPollTimer = setInterval(async () => {
-    try {
-      const data = await fetchBuildnessStatus();
-      renderBuildnessSection(data);
-      if (BUILDNESS_TERMINAL_STATUSES.has(data.status)) stopBuildnessPolling();
-    } catch (err) {
-      if (err.isForbidden) stopBuildnessPolling();
-      // Erreur réseau transitoire : retentée au prochain tick.
-    }
-  }, BUILDNESS_POLL_INTERVAL_MS);
-}
-
 async function submitBuildnessOnboard(e) {
   e.preventDefault();
   const form = e.target;
@@ -2780,32 +2715,17 @@ async function submitBuildnessOnboard(e) {
     const res = await apiFetch("/buildness/onboard", { method: "POST", body });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Échec de la demande");
-    showToast("Demande envoyée - suivi en cours", "success");
+    // Pas de statut/suivi affiché ici (retiré le 2026-11-24) - le suivi
+    // vit exclusivement dans "Mon entreprise".
+    showToast("Demande envoyée - suivi disponible dans \"Mon entreprise\"", "success");
     const modalEl = document.getElementById("paramsBuildnessWizardModal");
     const instance = modalEl && bootstrap.Modal.getInstance(modalEl);
     if (instance) instance.hide();
-    renderBuildnessSection({ status: data.status || "draft", company_name: body.company_name, state: body.state });
-    startBuildnessPolling();
   } catch (err) {
     showToast(err.message || "Erreur lors de l'envoi", "error");
+  } finally {
     btn.disabled = false;
     btn.textContent = originalLabel;
-  }
-}
-
-async function loadBuildnessStatus() {
-  const container = document.getElementById("p-buildness-container");
-  if (container) container.innerHTML = `<p class="params-subsection-sub text-muted">Chargement...</p>`;
-  try {
-    const data = await fetchBuildnessStatus();
-    renderBuildnessSection(data);
-    if (data.status && !BUILDNESS_TERMINAL_STATUSES.has(data.status)) startBuildnessPolling();
-  } catch (err) {
-    if (err.isForbidden) {
-      if (container) container.innerHTML = `<p class="params-subsection-sub">Vous n'avez pas les droits pour gérer la création d'entreprise.</p>`;
-      return;
-    }
-    renderBuildnessSection({ status: "not_started" });
   }
 }
 
@@ -2852,10 +2772,9 @@ function mountEntreprise(on) {
   // aucune requête réseau, aucune erreur visible, "aucun résultat".
   on(document.getElementById("p-buildness-wizard-form"), "submit", submitBuildnessOnboard);
 
-  loadBuildnessStatus();
+  renderBuildnessSection();
 
   return () => {
-    stopBuildnessPolling();
     for (const id of ["paramsBuildnessInfoModal", "paramsBuildnessWizardModal"]) {
       const modalEl = document.getElementById(id);
       const instance = modalEl && bootstrap.Modal.getInstance(modalEl);

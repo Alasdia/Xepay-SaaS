@@ -79,12 +79,19 @@ export async function mount(container) {
   async function load() {
     try {
       const data = await fetchBuildnessStatus();
+      // Debug demandé le 2026-11-24 : réponse de GET /buildness/status
+      // (déjà mise en forme par le backend Xepay à partir de ce que
+      // doola a renvoyé - la vraie réponse brute de l'API doola ne
+      // quitte jamais le serveur, rien de plus précis n'est consultable
+      // depuis le navigateur).
+      console.log("[Mon entreprise] GET /buildness/status ->", data);
       render(data);
       if (data.status && !BUILDNESS_TERMINAL_STATUSES.has(data.status)) {
         stopPolling();
         pollTimer = setInterval(async () => {
           try {
             const next = await fetchBuildnessStatus();
+            console.log("[Mon entreprise] GET /buildness/status (polling) ->", next);
             render(next);
             if (BUILDNESS_TERMINAL_STATUSES.has(next.status)) stopPolling();
           } catch (err) {
