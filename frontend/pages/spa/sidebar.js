@@ -32,6 +32,7 @@ const ROUTE_BY_PAGE = {
   "moyens-paiement": "commerce/moyens-paiement",
   risque: "commerce/risque",
 
+  "mon-entreprise": "mon-entreprise",
   api: "api",
   profile: "profil",
   securité: "securite",

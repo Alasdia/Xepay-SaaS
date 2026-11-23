@@ -11,6 +11,14 @@ import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
 import { showWorkspaceSwitchOverlay, hideWorkspaceSwitchOverlay } from "../shared/workspaceSwitchOverlay.js";
+import {
+  BUILDNESS_TERMINAL_STATUSES,
+  BUILDNESS_POLL_INTERVAL_MS,
+  BUILDNESS_US_STATES,
+  buildnessStatusLabel,
+  buildnessDetailRowsHtml,
+  fetchBuildnessStatus,
+} from "../shared/buildnessStatus.js";
 import { clearSession, getWorkspaceId, setWorkspaceId } from "../core/state.js";
 import { navigate } from "../core/router.js";
 import { getCurrency, getRate, formatMoney } from "../core/currency.js";
@@ -2452,25 +2460,7 @@ function entrepriseTemplate() {
 // ce fichier, "pas de KPI en lecture") : le statut est du texte + des
 // .params-info-row dans la carte, jamais une tuile chiffrée. ---
 
-const BUILDNESS_TERMINAL_STATUSES = new Set(["completed", "failed"]);
-const BUILDNESS_POLL_INTERVAL_MS = 5000;
 let buildnessPollTimer = null;
-
-const BUILDNESS_US_STATES = [
-  ["AL", "Alabama"], ["AK", "Alaska"], ["AZ", "Arizona"], ["AR", "Arkansas"],
-  ["CA", "Californie"], ["CO", "Colorado"], ["CT", "Connecticut"], ["DE", "Delaware"],
-  ["FL", "Floride"], ["GA", "Géorgie"], ["HI", "Hawaï"], ["ID", "Idaho"],
-  ["IL", "Illinois"], ["IN", "Indiana"], ["IA", "Iowa"], ["KS", "Kansas"],
-  ["KY", "Kentucky"], ["LA", "Louisiane"], ["ME", "Maine"], ["MD", "Maryland"],
-  ["MA", "Massachusetts"], ["MI", "Michigan"], ["MN", "Minnesota"], ["MS", "Mississippi"],
-  ["MO", "Missouri"], ["MT", "Montana"], ["NE", "Nebraska"], ["NV", "Nevada"],
-  ["NH", "New Hampshire"], ["NJ", "New Jersey"], ["NM", "Nouveau-Mexique"], ["NY", "New York"],
-  ["NC", "Caroline du Nord"], ["ND", "Dakota du Nord"], ["OH", "Ohio"], ["OK", "Oklahoma"],
-  ["OR", "Oregon"], ["PA", "Pennsylvanie"], ["RI", "Rhode Island"], ["SC", "Caroline du Sud"],
-  ["SD", "Dakota du Sud"], ["TN", "Tennessee"], ["TX", "Texas"], ["UT", "Utah"],
-  ["VT", "Vermont"], ["VA", "Virginie"], ["WA", "Washington"], ["WV", "Virginie-Occidentale"],
-  ["WI", "Wisconsin"], ["WY", "Wyoming"], ["DC", "District de Columbia"],
-];
 
 const BUILDNESS_INFO_MODAL_HTML = `
 <div class="modal fade" id="paramsBuildnessInfoModal" tabindex="-1" aria-hidden="true">
@@ -2604,43 +2594,11 @@ const BUILDNESS_WIZARD_MODAL_HTML = `
 </div>
 `;
 
-function buildnessStatusLabel(status) {
-  if (status === "draft") return "Dossier enregistré";
-  if (status === "submitted") return "Envoyé à doola";
-  if (status === "processing") return "LLC en cours de formation";
-  if (status === "completed") return "LLC formée";
-  if (status === "failed") return "Échec";
-  return status;
-}
-
-// Code US ("DE") -> nom complet ("Delaware") - réutilise la même liste
-// que le menu déroulant du formulaire (BUILDNESS_US_STATES), pour ne
-// jamais afficher un code brut au marchand une fois son dossier soumis.
-const BUILDNESS_US_STATE_NAMES = new Map(BUILDNESS_US_STATES);
-
 // --- Carte promo (toujours visible, jamais de champ de formulaire) ---
-
-// Tout ce qui peut intéresser le marchand une fois son dossier envoyé -
-// affiché à CHAQUE étape (pas seulement "completed"), demandé le
-// 2026-11-23 : nom de la société et État dès que connus (le marchand les
-// a saisis, pas la peine d'attendre la fin pour les lui réafficher),
-// dernière mise à jour (pour juger si le suivi automatique tourne
-// encore), et la dernière étape réussie - surtout utile si le statut
-// final est "failed", pour savoir où le dossier s'est arrêté.
-function buildnessDetailRowsHtml(data) {
-  const rows = [];
-  if (data.company_name) rows.push(["Nom de la société", data.company_name]);
-  if (data.state) rows.push(["État de formation", BUILDNESS_US_STATE_NAMES.get(data.state) || data.state]);
-  if (data.ein_number) rows.push(["EIN (identifiant fiscal)", data.ein_number]);
-  if (data.last_successful_step) rows.push(["Dernière étape réussie", buildnessStatusLabel(data.last_successful_step)]);
-  if (data.updated_at) rows.push(["Dernière mise à jour", formatSessionTime(data.updated_at)]);
-  if (!rows.length) return "";
-  return `
-    <div class="params-row-list params-promo-details">
-      ${rows.map(([label, value]) => `<div class="params-info-row"><span>${label}</span><strong>${value}</strong></div>`).join("")}
-    </div>
-  `;
-}
+// buildnessStatusLabel/buildnessDetailRowsHtml/fetchBuildnessStatus
+// viennent désormais de shared/buildnessStatus.js - partagés avec la
+// vue "Mon entreprise" (spa/views/monEntreprise.js), qui affiche les
+// mêmes informations après lancement du dossier.
 
 function buildnessPromoActionsHtml(data) {
   const status = data && data.status;
@@ -2777,18 +2735,6 @@ function stopBuildnessPolling() {
     clearInterval(buildnessPollTimer);
     buildnessPollTimer = null;
   }
-}
-
-async function fetchBuildnessStatus() {
-  const merchantId = getWorkspaceId();
-  const res = await apiFetch(`/buildness/status/${encodeURIComponent(merchantId)}`);
-  if (res.status === 403) {
-    const err = new Error("forbidden");
-    err.isForbidden = true;
-    throw err;
-  }
-  if (!res.ok) throw new Error("Impossible de récupérer le statut Buildness");
-  return res.json();
 }
 
 function startBuildnessPolling() {
