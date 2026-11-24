@@ -2827,12 +2827,38 @@ function shopifyTemplate() {
   `;
 }
 
+// Scopes attendus par le code actuel (voir SHOPIFY_SCOPES, backend/
+// services/shopify_service.py) - dupliqués ici UNIQUEMENT pour l'affichage
+// (self-diagnostic côté marchand, voir shopifyCardHtml) : jamais utilisés
+// pour une décision côté serveur, qui reste l'unique source de vérité
+// (has_customers_scope/has_write_customers_scope).
+const SHOPIFY_EXPECTED_SCOPES = [
+  "read_orders", "write_orders", "read_products", "write_products",
+  "read_customers", "write_customers",
+];
+
+// Installer/rouvrir "Xepay Sync" depuis l'admin Shopify NE redemande
+// JAMAIS les scopes à jour (voir handle_shopify_app_entry, backend/
+// routes/shopify.py : une boutique déjà connectée saute directement sur
+// la page "connecté", sans jamais repasser par /admin/oauth/authorize) -
+// découvert le 2026-11-24 après plusieurs tentatives infructueuses. Le
+// SEUL moyen de forcer une nouvelle demande de consentement (donc une
+// nouvelle liste de scopes) est de rappeler GET /shopify/install
+// explicitement - ce bouton, absent jusqu'ici dès qu'une boutique était
+// déjà connectée, est le mécanisme qui manquait.
 function shopifyCardHtml(status) {
   if (status && status.connected) {
+    const grantedScopes = (status.scope || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const missingScopes = SHOPIFY_EXPECTED_SCOPES.filter((s) => !grantedScopes.includes(s));
     return `
       <div class="params-promo-card">
         <h3 class="params-promo-title">Boutique Shopify connectée</h3>
         <p class="params-promo-sub">Xepay Sync encaisse les commandes de <strong>${status.shop_domain}</strong> payées avec la méthode de paiement manuelle "Xepay" et met à jour leur statut sur Shopify une fois réglées.</p>
+        <p class="params-promo-sub" style="margin-top:8px;"><strong>Autorisations accordées :</strong> ${grantedScopes.length ? grantedScopes.join(", ") : "aucune"}</p>
+        ${missingScopes.length ? `<p class="params-promo-sub" style="color:#b45309;"><strong>Manquantes :</strong> ${missingScopes.join(", ")} - cliquez "Mettre à jour les autorisations" ci-dessous après les avoir ajoutées au Partner Dashboard.</p>` : ""}
+        <div class="params-promo-actions" style="gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+          <button type="button" id="p-shopify-reconnect-btn" class="create-client-btn" data-shop-domain="${status.shop_domain}">Mettre à jour les autorisations</button>
+        </div>
       </div>
     `;
   }
@@ -2877,6 +2903,19 @@ async function renderShopifySection() {
       // chargée dans une iframe (contrairement à handle_shopify_app_entry,
       // déclenchée par Shopify lui-même), donc aucun contournement
       // window.top n'est nécessaire ici.
+      window.location.href = `${XEPAY_API_BASE_URL}/shopify/install?shop=${encodeURIComponent(shop)}`;
+    });
+  }
+  const reconnectBtn = container.querySelector("#p-shopify-reconnect-btn");
+  if (reconnectBtn) {
+    reconnectBtn.addEventListener("click", () => {
+      // Même route que "Connecter" (GET /shopify/install) - seul moyen de
+      // redéclencher l'écran de consentement OAuth et donc d'obtenir un
+      // nouveau token couvrant les scopes récemment ajoutés au Partner
+      // Dashboard (voir le commentaire au-dessus de shopifyCardHtml :
+      // rouvrir "Xepay Sync" depuis Shopify ne le fait JAMAIS). Domaine
+      // déjà connu (status.shop_domain) - pas besoin de le ressaisir.
+      const shop = reconnectBtn.dataset.shopDomain;
       window.location.href = `${XEPAY_API_BASE_URL}/shopify/install?shop=${encodeURIComponent(shop)}`;
     });
   }
