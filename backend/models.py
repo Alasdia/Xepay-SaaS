@@ -944,24 +944,20 @@ class ShopifyShop(Base):
     "state" du callback (jeton shopify_install signé, voir
     security.create_shopify_state_token/decode_shopify_state_token et
     GET /shopify/install, routes/shopify.py) - reste NULL pour une
-    boutique jamais explicitement rattachée à un marchand Xepay, OU
-    redevient NULL après un POST /shopify/disconnect (voir
-    shopify_disconnect, routes/shopify.py - demande du 2026-11-24, "un
-    vrai mécanisme de déconnexion").
+    boutique jamais explicitement rattachée à un marchand Xepay.
 
-    access_token NULLABLE depuis la migration 0004 (migrations/
-    0004_shopify_shops_access_token_nullable.sql - À APPLIQUER avant ce
-    déploiement, sinon shopify_disconnect lève une IntegrityError) :
-    vidé par shopify_disconnect en même temps que merchant_id, jamais
-    supprimé en DUR (la ligne shop_domain=UNIQUE survit, pour qu'une
-    ré-connexion ultérieure de la même boutique la retrouve et la mette
-    à jour plutôt que d'en créer une seconde)."""
+    access_token NOT NULL (revenu en arrière le 2026-11-24, demande
+    explicite - "la colonne access_token ne doit jamais être vide") :
+    pas de mécanisme de déconnexion qui viderait cette colonne - une
+    ligne ShopifyShop n'existe QUE si un vrai token est en main (voir
+    shopify_callback, routes/shopify.py, qui ne crée/met à jour la ligne
+    qu'après un échange OAuth réussi)."""
     __tablename__ = "shopify_shops"
 
     id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("shp"))
     shop_domain = Column(String, unique=True, nullable=False)
     merchant_id = Column(String, ForeignKey("users.id"), nullable=True)
-    access_token = Column(String, nullable=True)
+    access_token = Column(String, nullable=False)
     scope = Column(String, nullable=True)
     installed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
