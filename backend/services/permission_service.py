@@ -66,6 +66,7 @@ CAPABILITY_DEFAULTS = {
     "withdraw_funds": "owner",                # /withdraw, /withdraw/{id}/process, /withdrawals
     "export_reports": "manager",              # /reports/financial, /reports/connect-session
     "manage_company_formation": "owner",      # /buildness/onboard, /buildness/status/{merchant_id} (routes/buildness.py)
+    "manage_shopify_integration": "owner",    # GET /shopify/install, /shopify/status (routes/shopify.py)
 }
 
 CAPABILITY_LABELS = {
@@ -79,6 +80,7 @@ CAPABILITY_LABELS = {
     "withdraw_funds": ("Retirer des fonds", "Initier et traiter un retrait depuis le solde disponible."),
     "export_reports": ("Exporter des rapports", "Télécharger un rapport financier ou ouvrir le rapport Stripe intégré."),
     "manage_company_formation": ("Créer une LLC (Buildness)", "Démarrer la formation d'une LLC américaine et consulter son avancement (EIN, documents)."),
+    "manage_shopify_integration": ("Connecter une boutique Shopify", "Lier une boutique Shopify au workspace pour encaisser ses commandes via Xepay."),
 }
 
 

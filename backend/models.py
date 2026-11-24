@@ -921,3 +921,42 @@ class ShopifyShop(Base):
     scope = Column(String, nullable=True)
     installed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
+class ShopifyOrderPayment(Base):
+    """Une commande Shopify payée via un lien de paiement Xepay plutôt que
+    Shopify Payments (voir routes/webhook/shopify.py, services/
+    shopify_order_sync_service.py) - le marchand crée côté Shopify une
+    méthode de paiement MANUELLE (gratuite, configurée à la main dans
+    Settings > Payments, aucune API ne permet de la créer - voir le
+    docstring de routes/webhook/shopify.py) ; quand un client la choisit
+    au checkout, Shopify crée la commande avec financial_status="pending"
+    et envoie le webhook orders/create, qui crée la ligne ci-dessous +
+    un Link Xepay (voir Link.link_metadata, xepay_type=
+    "shopify_order_payment").
+
+    UniqueConstraint(shop_domain, shopify_order_id) : SEUL filet de
+    sécurité contre une livraison dupliquée du même webhook (même
+    principe que BuildnessWebhookLog.event_id) - un doublon lève une
+    IntegrityError, rattrapée par l'appelant, jamais un second Link créé
+    pour la même commande.
+
+    marked_paid_at/xepay_reference : renseignés APRÈS coup, quand le Link
+    associé est payé (voir sync_order_paid_with_shopify, appelée depuis
+    process_checkout_session_payment dans routes/webhook/paiement.py) -
+    NULL tant que la commande reste impayée côté Xepay."""
+    __tablename__ = "shopify_order_payments"
+
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("sop"))
+    shop_domain = Column(String, nullable=False, index=True)
+    shopify_order_id = Column(String, nullable=False)
+    shopify_order_gid = Column(String, nullable=False)
+    link_id = Column(String, ForeignKey("links.id"), nullable=False)
+    merchant_id = Column(String, ForeignKey("users.id"), nullable=False)
+    marked_paid_at = Column(DateTime(timezone=True), nullable=True)
+    xepay_reference = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint("shop_domain", "shopify_order_id", name="uq_shopify_order_payment_shop_order"),
+    )

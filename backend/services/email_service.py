@@ -398,3 +398,30 @@ def send_payment_failed_subscription_email(to_email):
         }
     )
     print("SUBSCRIPTION PAYMENT FAILED EMAIL", response.status_code, response.text)
+
+
+def send_shopify_payment_link_email(to_email, order_name, amount, currency, pay_url):
+    """Envoyé par routes/webhook/shopify.py (orders/create) quand un
+    client choisit la méthode manuelle "Payer via Xepay" - les
+    instructions de checkout Shopify étant STATIQUES (pas de lien
+    dynamique par commande possible nativement, voir le docstring de ce
+    fichier côté webhook), c'est le SEUL canal qui transmette au client
+    un lien de paiement propre à SA commande."""
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": "Xepay <noreply@alasdia.com>",
+            "to": [to_email],
+            "subject": f"Finalisez le paiement de votre commande {order_name}",
+            "html": f"""
+                <h2>Votre commande {order_name} est prête à être payée</h2>
+                <p>Montant : <b>{amount} {currency}</b></p>
+                <p><a href="{pay_url}">Payer maintenant</a></p>
+            """
+        }
+    )
+    print("SHOPIFY PAYMENT LINK EMAIL", response.status_code, response.text)

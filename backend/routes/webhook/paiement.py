@@ -16,6 +16,7 @@ from backend.services.email_service import (
 )
 from backend.services.webhook_service import send_webhook_event
 from backend.services import commission_service
+from backend.services.shopify_order_sync_service import sync_order_paid_with_shopify
 import traceback
 import hmac
 import hashlib
@@ -423,6 +424,23 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
         )
         db.add(tx)
         db.commit()
+
+        # Lien créé pour une commande Shopify (voir routes/webhook/
+        # shopify.py, Link.link_metadata.xepay_type) : fait suivre le
+        # statut payé vers Shopify (orderMarkAsPaid) - best-effort,
+        # DOIT rester après le commit ci-dessus : le paiement Xepay est
+        # déjà acquis (wallet crédité) avant même de tenter ce bloc,
+        # jamais l'inverse (voir sync_order_paid_with_shopify, qui ne
+        # lève jamais, mais un try/except ici aussi par défense en
+        # profondeur plutôt que de lui faire confiance aveuglément).
+        try:
+            link = db.query(Link).filter(Link.id == link_id).first()
+            if link and (link.link_metadata or {}).get("xepay_type") == "shopify_order_payment":
+                sync_order_paid_with_shopify(db, link, reference_key)
+        except Exception:
+            traceback.print_exc()
+            print(f"⚠️ Échec synchronisation Shopify (link_id={link_id}, reference={reference_key})")
+
         send_webhook_event(user_id, "payment.success", {
             "reference": reference_key,
             "amount": amount_local,
