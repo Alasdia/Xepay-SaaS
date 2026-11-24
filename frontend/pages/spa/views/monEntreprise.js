@@ -5,20 +5,25 @@
 // que pour CONSULTER l'avancement - accessible directement depuis la
 // sidebar (juste sous Commerce), sans repasser par Paramètres.
 //
-// Affichage et logique de polling partagés avec la carte Paramètres >
-// Entreprise via shared/buildnessStatus.js, pour ne jamais dupliquer ce
-// formatage entre les deux vues.
+// Affichage refait le 2026-11-24 (demande explicite - "plus
+// professionnel", fini la carte teintée .params-promo-card utilisée
+// pour la CTA de lancement) : carte blanche dédiée (.mon-entreprise-*,
+// parametres.css), repère de progression à 4 segments, grille de
+// statistiques plutôt qu'une simple liste de lignes.
 import { setViewStyles } from "../core/styleLoader.js";
 import { navigate } from "../core/router.js";
 import { getWorkspaceId } from "../core/state.js";
 import {
   BUILDNESS_TERMINAL_STATUSES,
   BUILDNESS_POLL_INTERVAL_MS,
+  BUILDNESS_US_STATES,
   buildnessStatusLabel,
-  buildnessDetailRowsHtml,
   fetchBuildnessStatus,
   fetchBuildnessRawStatus,
 } from "../shared/buildnessStatus.js";
+
+const BUILDNESS_US_STATE_NAMES = new Map(BUILDNESS_US_STATES);
+const BUILDNESS_STEPS = ["draft", "submitted", "processing", "completed"];
 
 const TEMPLATE = `
   <h1 class="page-title"><i class="fa-solid fa-building"></i> Mon entreprise</h1>
@@ -28,9 +33,14 @@ const TEMPLATE = `
 
 function notStartedHtml() {
   return `
-    <div class="params-promo-card">
-      <h3 class="params-promo-title">Aucun dossier en cours</h3>
-      <p class="params-promo-sub">Vous n'avez pas encore lancé la création de votre société américaine.</p>
+    <div class="mon-entreprise-card">
+      <div class="mon-entreprise-header">
+        <div class="mon-entreprise-icon"><i class="fa-solid fa-building-circle-xmark"></i></div>
+        <div>
+          <h3 class="mon-entreprise-title">Aucun dossier en cours</h3>
+          <p class="mon-entreprise-status">Vous n'avez pas encore lancé la création de votre société américaine.</p>
+        </div>
+      </div>
       <div class="params-promo-actions">
         <button type="button" id="p-mon-entreprise-goto-params" class="create-client-btn">Créer ma société</button>
       </div>
@@ -38,15 +48,52 @@ function notStartedHtml() {
   `;
 }
 
+// 4 segments (draft/submitted/processing/completed) - colorés jusqu'à
+// la dernière étape réussie (voire tous en rouge si failed), jamais un
+// stepper interactif, juste un repère visuel de progression.
+function stepsHtml(data) {
+  const upTo = BUILDNESS_STEPS.indexOf(data.last_successful_step || data.status);
+  return `
+    <div class="mon-entreprise-steps">
+      ${BUILDNESS_STEPS.map((_, i) => {
+        const cls = data.status === "failed" && i > upTo ? "" : (i <= upTo ? (data.status === "failed" ? "failed" : "done") : "");
+        return `<div class="mon-entreprise-step ${cls}"></div>`;
+      }).join("")}
+    </div>
+  `;
+}
+
+function statHtml(label, value) {
+  return `
+    <div class="mon-entreprise-stat">
+      <div class="mon-entreprise-stat-label">${label}</div>
+      <div class="mon-entreprise-stat-value">${value}</div>
+    </div>
+  `;
+}
+
 function statusCardHtml(data) {
   const status = data.status;
-  const statusClass = status === "completed" ? "params-promo-status-done" : status === "failed" ? "params-promo-status-failed" : "";
-  const icon = status === "completed" ? "✅" : status === "failed" ? "⚠️" : "⏳";
+  const statusClass = status === "completed" ? "status-done" : status === "failed" ? "status-failed" : "status-processing";
+  const icon = status === "completed" ? "fa-circle-check" : status === "failed" ? "fa-circle-exclamation" : "fa-clock";
+  const stats = [];
+  if (data.state) stats.push(statHtml("État de formation", BUILDNESS_US_STATE_NAMES.get(data.state) || data.state));
+  stats.push(statHtml("EIN (identifiant fiscal)", data.ein_number || "Pas encore émis"));
+  if (data.last_successful_step) stats.push(statHtml("Dernière étape réussie", buildnessStatusLabel(data.last_successful_step)));
+  if (data.updated_at) stats.push(statHtml("Dernière mise à jour", new Date(data.updated_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })));
+
   return `
-    <div class="params-promo-card">
-      <div class="params-promo-status ${statusClass}">${icon} ${buildnessStatusLabel(status)}${status !== "completed" && status !== "failed" ? "..." : ""}</div>
-      ${buildnessDetailRowsHtml(data)}
-      <div class="params-promo-actions mt-3">
+    <div class="mon-entreprise-card">
+      <div class="mon-entreprise-header">
+        <div class="mon-entreprise-icon"><i class="fa-solid fa-building"></i></div>
+        <div>
+          <h3 class="mon-entreprise-title">${data.company_name || "Votre société"}</h3>
+          <p class="mon-entreprise-status ${statusClass}"><i class="fa-solid ${icon}"></i> ${buildnessStatusLabel(status)}${status !== "completed" && status !== "failed" ? "..." : ""}</p>
+        </div>
+      </div>
+      ${stepsHtml(data)}
+      <div class="mon-entreprise-grid">${stats.join("")}</div>
+      <div class="params-promo-actions">
         <button type="button" id="p-mon-entreprise-goto-params" class="create-client-btn">${status === "failed" ? "Réessayer" : "Créer une autre société"}</button>
       </div>
     </div>
