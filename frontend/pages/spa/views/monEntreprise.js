@@ -17,6 +17,7 @@
 import { setViewStyles } from "../core/styleLoader.js";
 import { navigate } from "../core/router.js";
 import { getWorkspaceId } from "../core/state.js";
+import { showToast } from "../shared/toast.js";
 import {
   BUILDNESS_TERMINAL_STATUSES,
   BUILDNESS_POLL_INTERVAL_MS,
@@ -25,9 +26,37 @@ import {
   fetchBuildnessRawStatus,
   fetchBuildnessDocuments,
   fetchBuildnessDocument,
+  createBuildnessSignatureSession,
 } from "../shared/buildnessStatus.js";
 
 const BUILDNESS_STEPS = ["draft", "submitted", "processing", "completed"];
+
+// Libellés des documents à signer (signatureRequirements côté doola) -
+// "SS4"/"FORM8821" sont les seules valeurs possibles.
+const BUILDNESS_SIGNATURE_LABELS = {
+  SS4: "Formulaire SS-4 (demande d'EIN auprès de l'IRS)",
+  FORM8821: "Formulaire 8821 (autorisation fiscale)",
+};
+
+// Modal de signature : l'URL renvoyée par doola s'affiche en iframe
+// (explicitement supporté de leur côté), jamais dans un nouvel onglet -
+// le marchand reste dans Xepay, même principe que l'onboarding Stripe
+// Connect intégré.
+const BUILDNESS_SIGNATURE_MODAL_HTML = `
+<div class="modal fade" id="buildnessSignatureModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold">Signature requise</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body px-4 pb-4">
+        <div id="buildness-signature-frame-container"></div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
 
 const TEMPLATE = `
   <h1 class="page-title"><i class="fa-solid fa-building"></i> Mon entreprise</h1>
@@ -111,6 +140,34 @@ function findAddress(raw, type) {
 }
 
 const BUILDNESS_ENTITY_TYPE_LABELS = { LLC: "LLC", CCorp: "C-Corp" };
+
+// Bannière d'ACTION REQUISE - signatureRequirements côté doola (ex:
+// [{"documentType":"SS4","status":"PENDING"}]). Ajoutée le 2026-11-24 :
+// ce blocage existait sur les 3 LLC sandbox (formation figée en attente
+// de la signature SS-4) sans qu'aucun écran Xepay ne le signale, le
+// marchand n'avait aucun moyen de savoir qu'il devait agir.
+function signatureBannerHtml(raw) {
+  const pending = (raw.signatureRequirements || []).filter(
+    (s) => String(s.status || "").toUpperCase() === "PENDING"
+  );
+  if (!pending.length) return "";
+  return `
+    <div class="mon-entreprise-card mon-entreprise-action-required">
+      <h4 class="mon-entreprise-section-title"><i class="fa-solid fa-triangle-exclamation"></i> Action requise de votre part</h4>
+      <p class="mon-entreprise-action-sub">La création de votre société est en attente de votre signature. Sans elle, doola ne peut pas demander votre EIN auprès de l'IRS.</p>
+      ${pending.map((s) => `
+        <div class="mon-entreprise-doc-row">
+          <div class="mon-entreprise-doc-icon"><i class="fa-solid fa-file-signature"></i></div>
+          <div class="mon-entreprise-doc-info">
+            <div class="mon-entreprise-doc-name">${BUILDNESS_SIGNATURE_LABELS[s.documentType] || s.documentType}</div>
+            <div class="mon-entreprise-doc-date">En attente de signature</div>
+          </div>
+          <button type="button" class="create-client-btn mon-entreprise-sign-btn" data-document-type="${s.documentType}">Signer maintenant</button>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
 
 // Récap "officiel" - ce qu'on trouverait dans les documents (EIN,
 // numéro de dossier, adresses virtuelles, agent enregistré...), jamais
@@ -198,6 +255,7 @@ function documentsCardHtml(documents) {
 export async function mount(container) {
   await setViewStyles(["parametres.css"]);
   container.innerHTML = TEMPLATE;
+  document.body.insertAdjacentHTML("beforeend", BUILDNESS_SIGNATURE_MODAL_HTML);
 
   let pollTimer = null;
   function stopPolling() {
@@ -232,6 +290,34 @@ export async function mount(container) {
     });
   }
 
+  // Une NOUVELLE session de signature est créée à chaque clic (l'URL
+  // doola expire 2h après émission - jamais réutilisée/mise en cache),
+  // puis affichée en iframe dans le modal : le marchand signe sans
+  // quitter Xepay.
+  function wireSignatureButtons(root) {
+    root.querySelectorAll(".mon-entreprise-sign-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const documentType = btn.dataset.documentType || "SS4";
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Préparation...`;
+        try {
+          const session = await createBuildnessSignatureSession(documentType);
+          const frameContainer = document.getElementById("buildness-signature-frame-container");
+          if (frameContainer && session.url) {
+            frameContainer.innerHTML = `<iframe src="${session.url}" class="buildness-signature-frame" title="Signature ${documentType}"></iframe>`;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById("buildnessSignatureModal")).show();
+          }
+        } catch (err) {
+          showToast(err.message || "Impossible de démarrer la signature", "error");
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = originalHtml;
+        }
+      });
+    });
+  }
+
   // Rendu en 2 temps : le bandeau de statut (rapide, DB Xepay) s'affiche
   // immédiatement ; le récap officiel/fondateur/documents (3 appels
   // doola en parallèle, plus lents) se remplissent ensuite chacun dans
@@ -247,6 +333,7 @@ export async function mount(container) {
     }
     el.innerHTML = `
       ${statusHeaderHtml(data)}
+      <div id="mon-entreprise-signature-container"></div>
       <div class="mon-entreprise-layout">
         <div class="mon-entreprise-main">
           <div id="mon-entreprise-official-container"><div class="mon-entreprise-card"><p class="text-muted">Chargement...</p></div></div>
@@ -261,6 +348,11 @@ export async function mount(container) {
     fetchBuildnessRawStatus()
       .then((raw) => {
         console.log("[Mon entreprise] Réponse BRUTE doola ->", raw);
+        const signatureEl = document.getElementById("mon-entreprise-signature-container");
+        if (signatureEl) {
+          signatureEl.innerHTML = signatureBannerHtml(raw);
+          wireSignatureButtons(signatureEl);
+        }
         const officialEl = document.getElementById("mon-entreprise-official-container");
         if (officialEl) officialEl.innerHTML = officialRecapHtml(raw);
         const founderEl = document.getElementById("mon-entreprise-founder-container");
@@ -309,6 +401,20 @@ export async function mount(container) {
   return {
     unmount() {
       stopPolling();
+      // Même nettoyage que les autres vues à modal (voir mountEntreprise
+      // dans parametres.js) : sans ça, le backdrop et les classes posées
+      // sur <body> survivent à la navigation.
+      const modalEl = document.getElementById("buildnessSignatureModal");
+      const instance = modalEl && bootstrap.Modal.getInstance(modalEl);
+      if (instance) {
+        instance.hide();
+        instance.dispose();
+      }
+      modalEl?.remove();
+      document.body.classList.remove("modal-open");
+      document.body.style.removeProperty("overflow");
+      document.body.style.removeProperty("padding-right");
+      document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
     },
   };
 }

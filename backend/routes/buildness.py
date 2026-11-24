@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models import BuildnessCustomer, BuildnessCompany, BuildnessOnboardRequest, WorkspaceUser
+from backend.models import BuildnessCustomer, BuildnessCompany, BuildnessOnboardRequest, BuildnessSignatureSessionRequest, WorkspaceUser
 from backend.middleware.authorization import require_capability
 from backend.services.doola_client import get_doola_service, DoolaNotConfiguredError
 from backend.services.doola_service import DoolaAPIError
@@ -292,6 +292,47 @@ async def get_buildness_status_raw(
     except DoolaAPIError:
         logger.exception("Echec recuperation statut brut doola pour company_id=%s", company.id)
         raise HTTPException(502, "Impossible de recuperer le statut depuis doola.")
+
+
+@router.post("/buildness/signature-session/{merchant_id}")
+async def create_buildness_signature_session(
+    merchant_id: str,
+    body: BuildnessSignatureSessionRequest,
+    membership: WorkspaceUser = Depends(require_capability("manage_company_formation")),
+    db: Session = Depends(get_db),
+):
+    """Crée une session de signature doola (SS4/FORM8821) et renvoie son
+    URL intégrable en iframe - voir doola_service.create_signature_session.
+
+    C'est ce qui DÉBLOQUE une formation arrêtée sur
+    signatureRequirements=[{"documentType":"SS4","status":"PENDING"}] :
+    un fondateur non-résident sans SSN doit signer son SS-4 avant que
+    doola puisse demander l'EIN, et doola n'envoie rien de lui-même -
+    c'est au partenaire de créer la session (découvert le 2026-11-24, ce
+    blocage existait sur les 3 LLC sandbox sans qu'aucune UI Xepay ne le
+    signale).
+
+    POST (pas GET) et jamais mis en cache côté Xepay : chaque appel crée
+    une NOUVELLE session, dont l'URL expire 2h après émission."""
+    if merchant_id != membership.workspace_id:
+        raise HTTPException(403, "Acces refuse.")
+
+    company = _get_latest_company(db, merchant_id)
+    if not company or not company.doola_company_id:
+        raise HTTPException(404, "Aucun dossier Buildness a signer.")
+
+    try:
+        doola = get_doola_service()
+    except DoolaNotConfiguredError:
+        raise HTTPException(503, "Buildness n'est pas encore disponible. Réessayez plus tard.")
+    try:
+        return await doola.create_signature_session(company.doola_company_id, body.document_type)
+    except DoolaAPIError:
+        logger.exception(
+            "Echec creation session de signature doola (%s) pour company_id=%s",
+            body.document_type, company.id,
+        )
+        raise HTTPException(502, "Impossible de demarrer la signature. Reessayez plus tard.")
 
 
 @router.get("/buildness/documents/{merchant_id}")

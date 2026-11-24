@@ -1300,6 +1300,33 @@
 .mon-entreprise-doc-download:hover { background: #f9fafb; border-color: #9ca3af; color: #111827; }
 .mon-entreprise-doc-download:disabled { opacity: .6; cursor: default; }
 
+/* Bannière d'action requise (signature SS-4/8821 en attente) - la seule
+   carte de cette vue qui porte une teinte de fond : c'est un blocage à
+   traiter, il doit sauter aux yeux au milieu des cartes blanches. */
+.mon-entreprise-action-required {
+  border-color: rgba(180, 83, 9, 0.35);
+  background: rgba(180, 83, 9, 0.04);
+  margin-bottom: 20px;
+}
+.mon-entreprise-action-required .mon-entreprise-section-title { margin-bottom: 8px; }
+.mon-entreprise-action-sub {
+  font-size: 13.5px;
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 0 0 8px;
+}
+.mon-entreprise-action-required .mon-entreprise-doc-row:last-child { border-bottom: none; }
+
+/* Iframe de signature doola (URL de session, valable 2h) - hauteur
+   fixe suffisante pour leur flux de signature complet. */
+.buildness-signature-frame {
+  width: 100%;
+  height: 70vh;
+  min-height: 420px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
 @media (max-width: 900px) {
   .mon-entreprise-layout { grid-template-columns: 1fr; }
 }
