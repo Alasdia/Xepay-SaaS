@@ -328,11 +328,23 @@ def _get_connected_shop(db: Session, workspace_id: str) -> ShopifyShop | None:
     shopify_callback, qui eux répondent à Shopify lui-même) : les
     endpoints de lecture ci-dessous (products/orders/customers) ne
     doivent jamais pouvoir lire les données d'une AUTRE boutique que
-    celle réellement rattachée à ce workspace."""
+    celle réellement rattachée à ce workspace.
+
+    Trié par updated_at (PAS installed_at, corrigé le 2026-11-24) :
+    installed_at n'est posé qu'une seule fois, à la création de la
+    ligne, jamais retouché ensuite (contrairement à updated_at,
+    onupdate=... - voir models.ShopifyShop) - si ce workspace a plus
+    d'une ligne ShopifyShop (ex. deux boutiques de test connectées à
+    des moments différents), trier par installed_at aurait toujours
+    renvoyé la boutique créée EN PREMIER/DERNIER selon l'ordre, jamais
+    celle réellement rafraîchie le plus récemment (scope/token mis à
+    jour via un reconsentement OAuth, qui ne change QUE updated_at) -
+    symptôme observé : un scope qui semblait ne jamais se mettre à
+    jour, alors qu'une AUTRE ligne, non affichée, l'était bien."""
     shop_row = (
         db.query(ShopifyShop)
         .filter(ShopifyShop.merchant_id == workspace_id)
-        .order_by(ShopifyShop.installed_at.desc())
+        .order_by(ShopifyShop.updated_at.desc())
         .first()
     )
     if not shop_row or not shop_row.access_token:
