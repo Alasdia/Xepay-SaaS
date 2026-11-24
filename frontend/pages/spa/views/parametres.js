@@ -2432,6 +2432,8 @@ function entrepriseTemplate() {
 
     <div id="p-buildness-container"></div>
 
+    <div id="p-shopify-container" style="margin-top: 24px;"></div>
+
     <div class="params-subsection-header" style="margin-top: 32px;">
       <h6 class="params-subsection-title mb-0">Informations sur votre entreprise</h6>
       <button type="button" id="p-company-widget-btn" class="create-client-btn">Se connecter</button>
@@ -2770,9 +2772,74 @@ async function loadCompanyWidget() {
   }
 }
 
+// --- Shopify ("Xepay Sync", voir backend/routes/shopify.py) - encaisser
+// les commandes Shopify via un lien de paiement Xepay plutôt que Shopify
+// Payments (demande du 2026-11-24). Même emplacement/patron visuel que
+// Buildness ci-dessus (.params-promo-card) : une carte qui affiche soit
+// le formulaire de connexion (domaine *.myshopify.com), soit la boutique
+// déjà connectée (GET /shopify/status) - jamais les deux à la fois.
+const XEPAY_API_BASE_URL = "https://api.xepay.finance";
+const SHOPIFY_DOMAIN_RE = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
+
+function shopifyCardHtml(status) {
+  if (status && status.connected) {
+    return `
+      <div class="params-promo-card">
+        <h3 class="params-promo-title">Boutique Shopify connectée</h3>
+        <p class="params-promo-sub">Xepay Sync encaisse les commandes de <strong>${status.shop_domain}</strong> payées avec la méthode de paiement manuelle "Xepay" et met à jour leur statut sur Shopify une fois réglées.</p>
+      </div>
+    `;
+  }
+  return `
+    <div class="params-promo-card">
+      <h3 class="params-promo-title">Connecter une boutique Shopify</h3>
+      <p class="params-promo-sub">Encaissez vos commandes Shopify avec un lien de paiement Xepay au lieu de Shopify Payments. Créez d'abord, dans votre admin Shopify (Paramètres &gt; Paiements &gt; Méthodes de paiement manuelles), une méthode nommée exactement "Xepay" - c'est gratuit et ne demande aucune app de paiement. Connectez ensuite votre boutique ci-dessous.</p>
+      <div class="params-promo-actions" style="gap:8px; align-items:center; flex-wrap:wrap;">
+        <input type="text" id="p-shopify-domain-input" class="form-control" style="max-width:280px;" placeholder="maboutique.myshopify.com">
+        <button type="button" id="p-shopify-connect-btn" class="create-client-btn">Connecter</button>
+      </div>
+    </div>
+  `;
+}
+
+async function renderShopifySection() {
+  const container = document.getElementById("p-shopify-container");
+  if (!container) return;
+  container.innerHTML = `<div class="params-promo-card"><p class="text-muted mb-0">Chargement...</p></div>`;
+
+  let status = { connected: false };
+  try {
+    const res = await apiFetch("/shopify/status");
+    if (res.ok) status = await res.json();
+  } catch (err) {
+    // Silencieux : affiche le formulaire de connexion par défaut.
+  }
+
+  container.innerHTML = shopifyCardHtml(status);
+  const connectBtn = container.querySelector("#p-shopify-connect-btn");
+  if (connectBtn) {
+    connectBtn.addEventListener("click", () => {
+      const input = container.querySelector("#p-shopify-domain-input");
+      const shop = (input?.value || "").trim().toLowerCase();
+      if (!SHOPIFY_DOMAIN_RE.test(shop)) {
+        showToast("Domaine invalide (attendu : maboutique.myshopify.com)", "error");
+        return;
+      }
+      // Navigation top-level classique (PAS un appel apiFetch) : /shopify/
+      // install (routes/shopify.py) répond par une redirection HTTP vers
+      // l'écran de consentement OAuth Shopify - cette page n'est jamais
+      // chargée dans une iframe (contrairement à handle_shopify_app_entry,
+      // déclenchée par Shopify lui-même), donc aucun contournement
+      // window.top n'est nécessaire ici.
+      window.location.href = `${XEPAY_API_BASE_URL}/shopify/install?shop=${encodeURIComponent(shop)}`;
+    });
+  }
+}
+
 function mountEntreprise(on) {
   companyWidgetLoaded = false;
   on(document.getElementById("p-company-widget-btn"), "click", loadCompanyWidget);
+  renderShopifySection();
 
   document.body.insertAdjacentHTML("beforeend", BUILDNESS_INFO_MODAL_HTML);
   document.body.insertAdjacentHTML("beforeend", BUILDNESS_WIZARD_MODAL_HTML);

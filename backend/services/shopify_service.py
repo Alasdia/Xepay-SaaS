@@ -21,6 +21,7 @@ et renverrait une erreur non représentative - une seule tentative, à
 l'appelant (routes/shopify.py) de renvoyer une erreur claire (502) sans
 retenter automatiquement."""
 
+import base64
 import hashlib
 import hmac
 import logging
@@ -43,6 +44,27 @@ SHOPIFY_SCOPES = os.getenv(
     "SHOPIFY_SCOPES", "read_orders,write_orders,read_products,write_products"
 )
 SHOPIFY_TIMEOUT_SECONDS = 10
+# Version d'API Admin GraphQL - voir shopify.dev, une release stable par
+# trimestre (format AAAA-MM). Doit être mise à jour périodiquement (Shopify
+# retire les anciennes versions ~1 an après leur sortie), jamais "latest"
+# en dur (casserait silencieusement si Shopify change le schéma).
+SHOPIFY_API_VERSION = os.getenv("SHOPIFY_API_VERSION", "2025-01")
+# URL de callback du webhook orders/create (routes/webhook/shopify.py) -
+# enregistrée automatiquement (register_order_webhook) juste après chaque
+# échange OAuth réussi, jamais à configurer à la main dans le Partner
+# Dashboard (contrairement à SHOPIFY_REDIRECT_URI, qui EST dans le Partner
+# Dashboard - ce sont deux URLs différentes, pas à confondre).
+SHOPIFY_ORDERS_WEBHOOK_URL = os.getenv(
+    "SHOPIFY_ORDERS_WEBHOOK_URL", "https://api.xepay.finance/webhook/shopify/orders-create"
+)
+# Nom EXACT de la méthode de paiement manuelle que le marchand doit créer
+# lui-même dans Settings > Payments > Manual payment methods de son admin
+# Shopify (aucune API ne permet de la créer, voir le docstring de routes/
+# webhook/shopify.py) - seules les commandes payées avec une méthode
+# portant CE nom (payment_gateway_names, insensible à la casse) déclenchent
+# la création d'un lien Xepay ; toute autre méthode manuelle (COD, virement
+# bancaire...) existante par ailleurs chez le marchand est ignorée.
+SHOPIFY_MANUAL_GATEWAY_NAME = os.getenv("SHOPIFY_MANUAL_GATEWAY_NAME", "Xepay")
 
 # Domaine Shopify valide : sous-domaine alphanumérique (+ tirets) de
 # myshopify.com UNIQUEMENT - vérifié avant toute requête sortante vers
@@ -143,3 +165,132 @@ async def exchange_code_for_token(shop: str, code: str) -> dict:
         shop, response.status_code, response.text[:500],
     )
     raise ShopifyAPIError(response.status_code, response.text)
+
+
+def verify_webhook_signature(raw_body: bytes, signature_header: str | None) -> bool:
+    """Vérifie l'en-tête "X-Shopify-Hmac-Sha256" d'un webhook Admin
+    (orders/create, voir routes/webhook/shopify.py) - ALGORITHME DIFFÉRENT
+    de verify_hmac() ci-dessus (qui ne s'applique qu'au callback OAuth,
+    sur des paramètres de query string, en hex) : ici c'est un
+    HMAC-SHA256 du corps BRUT de la requête, encodé en BASE64 (jamais hex),
+    toujours avec SHOPIFY_CLIENT_SECRET (le "shared secret" de l'app, le
+    même pour toutes les boutiques - confirmé par la doc Shopify, pas une
+    clé par boutique)."""
+    if not SHOPIFY_CLIENT_SECRET or not signature_header:
+        return False
+    expected = base64.b64encode(
+        hmac.new(SHOPIFY_CLIENT_SECRET.encode(), raw_body, hashlib.sha256).digest()
+    ).decode()
+    return hmac.compare_digest(expected, signature_header)
+
+
+def order_gid(order_id) -> str:
+    return f"gid://shopify/Order/{order_id}"
+
+
+async def _admin_graphql(shop: str, access_token: str, query: str, variables: dict | None = None) -> dict:
+    """POST https://{shop}/admin/api/{SHOPIFY_API_VERSION}/graphql.json -
+    coeur commun à register_order_webhook/mark_order_as_paid. "shop" doit
+    déjà avoir été validé par is_valid_shop_domain() par l'appelant (même
+    règle anti-SSRF que exchange_code_for_token) - jamais revalidé ici."""
+    url = f"https://{shop}/admin/api/{SHOPIFY_API_VERSION}/graphql.json"
+    headers = {
+        "X-Shopify-Access-Token": access_token,
+        "Content-Type": "application/json",
+    }
+    body = {"query": query, "variables": variables or {}}
+
+    try:
+        async with httpx.AsyncClient(timeout=SHOPIFY_TIMEOUT_SECONDS) as client:
+            response = await client.post(url, json=body, headers=headers)
+    except (httpx.TimeoutException, httpx.TransportError) as e:
+        logger.warning("Shopify GraphQL (%s) : erreur réseau (%s)", shop, e)
+        raise ShopifyAPIError(None, str(e)) from e
+
+    if response.status_code != 200:
+        logger.warning("Shopify GraphQL (%s) : %d - %s", shop, response.status_code, response.text[:500])
+        raise ShopifyAPIError(response.status_code, response.text)
+
+    data = response.json()
+    if data.get("errors"):
+        # Erreurs GraphQL de premier niveau (requête malformée, token
+        # invalide/révoqué, scope manquant) - distinctes des userErrors
+        # métier renvoyées DANS payload.data (voir mark_order_as_paid), qui
+        # elles restent un 200 GraphQL classique.
+        logger.warning("Shopify GraphQL (%s) : erreurs %s", shop, data["errors"])
+        raise ShopifyAPIError(200, str(data["errors"]))
+    return data.get("data") or {}
+
+
+async def register_order_webhook(shop: str, access_token: str) -> None:
+    """Enregistre (une seule fois par boutique) le webhook orders/create
+    vers SHOPIFY_ORDERS_WEBHOOK_URL - appelée depuis routes/shopify.py
+    juste après un échange OAuth réussi. Idempotent : liste d'abord les
+    abonnements existants pour ce topic et ne crée rien si CETTE URL y
+    figure déjà (une ré-installation ne doit jamais créer un second
+    abonnement - Shopify livrerait alors CHAQUE commande deux fois,
+    créant deux Link Xepay pour la même commande malgré la
+    UniqueConstraint de ShopifyOrderPayment, qui ne protège que contre un
+    DOUBLE-TRAITEMENT d'un même événement, pas contre deux abonnements
+    distincts générant chacun leur propre événement)."""
+    existing = await _admin_graphql(
+        shop, access_token,
+        """
+        query {
+          webhookSubscriptions(first: 50, topics: [ORDERS_CREATE]) {
+            edges { node { id endpoint { __typename ... on WebhookHttpEndpoint { callbackUrl } } } }
+          }
+        }
+        """,
+    )
+    edges = (existing.get("webhookSubscriptions") or {}).get("edges") or []
+    for edge in edges:
+        endpoint = (edge.get("node") or {}).get("endpoint") or {}
+        if endpoint.get("callbackUrl") == SHOPIFY_ORDERS_WEBHOOK_URL:
+            return
+
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        mutation webhookSubscriptionCreate($topic: WebhookSubscriptionTopic!, $webhookSubscription: WebhookSubscriptionInput!) {
+          webhookSubscriptionCreate(topic: $topic, webhookSubscription: $webhookSubscription) {
+            webhookSubscription { id }
+            userErrors { field message }
+          }
+        }
+        """,
+        {
+            "topic": "ORDERS_CREATE",
+            "webhookSubscription": {"callbackUrl": SHOPIFY_ORDERS_WEBHOOK_URL, "format": "JSON"},
+        },
+    )
+    user_errors = (result.get("webhookSubscriptionCreate") or {}).get("userErrors") or []
+    if user_errors:
+        raise ShopifyAPIError(200, str(user_errors))
+
+
+async def mark_order_as_paid(shop: str, access_token: str, order_id) -> dict:
+    """Mutation orderMarkAsPaid - requiert UNIQUEMENT le scope write_orders
+    (déjà accordé par le Partner Dashboard pour "Xepay Sync", confirmé
+    par la doc officielle shopify.dev le 2026-11-24) - aucun coût, aucune
+    app de paiement certifiée nécessaire. Ne fonctionne que sur une
+    commande au solde impayé positif et pas déjà financial_status=PAID
+    (Shopify renvoie sinon une userError, voir sync_order_paid_with_shopify
+    pour comment l'appelant la traite)."""
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        mutation orderMarkAsPaid($input: OrderMarkAsPaidInput!) {
+          orderMarkAsPaid(input: $input) {
+            order { id displayFinancialStatus }
+            userErrors { field message }
+          }
+        }
+        """,
+        {"input": {"id": order_gid(order_id)}},
+    )
+    payload = result.get("orderMarkAsPaid") or {}
+    user_errors = payload.get("userErrors") or []
+    if user_errors:
+        raise ShopifyAPIError(200, str(user_errors))
+    return payload.get("order") or {}

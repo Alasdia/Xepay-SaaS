@@ -53,7 +53,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models import ShopifyShop
+from backend.middleware.authorization import require_capability
+from backend.models import ShopifyShop, WorkspaceUser
 from backend.security import create_shopify_state_token, decode_shopify_state_token, encrypt_secret
 from backend.services.shopify_service import (
     SHOPIFY_CLIENT_ID,
@@ -61,6 +62,7 @@ from backend.services.shopify_service import (
     build_authorize_url,
     exchange_code_for_token,
     is_valid_shop_domain,
+    register_order_webhook,
     verify_hmac,
 )
 
@@ -229,6 +231,18 @@ async def shopify_callback(request: Request, db: Session = Depends(get_db)):
         ))
     db.commit()
 
+    # Enregistrement du webhook orders/create - UNIQUEMENT best-effort :
+    # un échec ici (réseau, token déjà invalidé juste après coup...) ne
+    # doit jamais faire échouer le callback OAuth lui-même, qui a déjà
+    # réussi et déjà committé le token. Sans ce webhook, "Payer via
+    # Xepay" (voir routes/webhook/shopify.py) ne recevra simplement
+    # jamais de commande - un échec silencieux de SYNCHRONISATION, pas de
+    # l'installation.
+    try:
+        await register_order_webhook(shop, access_token)
+    except ShopifyAPIError:
+        logger.exception("Échec de l'enregistrement du webhook orders/create pour %s", shop)
+
     # Redirige vers l'admin Shopify de la boutique (jamais vers
     # app.xepay.finance) : une app embarquée doit rester embarquée après
     # le consentement OAuth - Shopify recharge alors l'iframe sur l'URL
@@ -237,3 +251,49 @@ async def shopify_callback(request: Request, db: Session = Depends(get_db)):
     # page connectée au lieu de relancer l'OAuth (pas de boucle). Jamais
     # le token (ni son préfixe) dans cette URL ni dans un log.
     return RedirectResponse(url=f"https://{shop}/admin/apps/{SHOPIFY_CLIENT_ID}")
+
+
+@router.get("/shopify/install")
+def shopify_install(
+    shop: str,
+    membership: WorkspaceUser = Depends(require_capability("manage_shopify_integration")),
+):
+    """Point d'entrée authentifié (Paramètres > Intégrations côté SPA,
+    voir frontend/pages/spa/views/parametres.js) - RATTACHE réellement
+    la boutique au marchand : contrairement à handle_shopify_app_entry
+    (déclenchée par Shopify lui-même, qui ne connaît aucun merchant_id
+    Xepay), cette route tourne dans une session Xepay authentifiée et
+    peut donc signer le "state" avec le VRAI workspace_id
+    (membership.workspace_id), que shopify_callback lira pour poser
+    ShopifyShop.merchant_id.
+
+    PAS un breakout iframe ici (contrairement à handle_shopify_app_entry)
+    : cette page n'est JAMAIS chargée dans l'iframe Shopify - le marchand
+    clique un lien depuis app.xepay.finance (fenêtre top-level normale),
+    donc un Location HTTP classique vers /admin/oauth/authorize fonctionne
+    sans aucun problème X-Frame-Options (voir le docstring en tête de
+    fichier pour l'incident Connect1 - il ne concernait QUE le cas
+    embarqué)."""
+    if not is_valid_shop_domain(shop):
+        raise HTTPException(status_code=400, detail="Domaine shop invalide (attendu : boutique.myshopify.com)")
+
+    state = create_shopify_state_token(membership.workspace_id)
+    return RedirectResponse(url=build_authorize_url(shop, state))
+
+
+@router.get("/shopify/status")
+def shopify_status(
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("manage_shopify_integration")),
+):
+    """Statut de connexion pour CE workspace (Paramètres > Intégrations) -
+    ne renvoie jamais le token, même chiffré."""
+    shop_row = (
+        db.query(ShopifyShop)
+        .filter(ShopifyShop.merchant_id == membership.workspace_id)
+        .order_by(ShopifyShop.installed_at.desc())
+        .first()
+    )
+    if not shop_row or not shop_row.access_token:
+        return {"connected": False}
+    return {"connected": True, "shop_domain": shop_row.shop_domain, "scope": shop_row.scope}
