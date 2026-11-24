@@ -37,10 +37,9 @@ SHOPIFY_CLIENT_ID = os.getenv("SHOPIFY_CLIENT_ID")
 SHOPIFY_CLIENT_SECRET = os.getenv("SHOPIFY_CLIENT_SECRET")
 SHOPIFY_REDIRECT_URI = os.getenv("SHOPIFY_REDIRECT_URI", "https://api.xepay.finance/auth/shopify/callback")
 # Doit rester IDENTIQUE aux scopes déclarés dans le Partner Dashboard pour
-# "Xepay Sync" - read_customers/write_customers ajoutés le 2026-11-24
-# (voir has_customers_scope ci-dessous, qui jusque-là bloquait toujours
-# GET /shopify/customers en 409 faute de ce scope). IMPORTANT : ce
-# changement ne s'applique QU'AUX NOUVELLES autorisations - une boutique
+# "Xepay Sync" - read_customers/write_customers ajoutés le 2026-11-24.
+# IMPORTANT : ce changement ne s'applique QU'AUX NOUVELLES autorisations -
+# une boutique
 # déjà connectée (Connect0/Connect1) garde le token émis avec l'ANCIEN
 # jeu de scopes tel quel ; elle doit être reconnectée (GET /shopify/
 # install, Paramètres > Shopify) pour que Shopify émette un nouveau
@@ -107,6 +106,20 @@ class ShopifyRateLimitError(ShopifyAPIError):
     endpoints de lecture (products/orders/customers), qui peuvent être
     appelés bien plus souvent qu'un orderMarkAsPaid/register_order_webhook
     (un par paiement) et donc plus susceptibles de heurter la limite."""
+
+
+class ShopifyScopeError(ShopifyAPIError):
+    """Sous-classe de ShopifyAPIError - levée sur un VRAI refus Shopify
+    par scope manquant (extensions.code == "ACCESS_DENIED" dans les
+    errors GraphQL, confirmé contre shopify.dev/docs/apps/build/
+    shopifyql/graphql-admin-api/errors-limits-and-performance le
+    2026-11-24). Remplace l'ancienne vérification has_customers_scope/
+    has_write_customers_scope basée sur ShopifyShop.scope (la chaîne
+    renvoyée par l'échange OAuth) : prouvé PEU FIABLE le même jour -
+    une boutique réelle avait read_orders/read_products fonctionnels en
+    pratique alors que cette même chaîne ne les listait pas non plus.
+    Seul un VRAI refus Shopify (ce type d'exception) doit désormais
+    faire foi, jamais une déduction à partir du scope stocké."""
 
 
 def is_valid_shop_domain(shop: str) -> bool:
@@ -242,6 +255,9 @@ async def _admin_graphql(shop: str, access_token: str, query: str, variables: di
         if any((e.get("extensions") or {}).get("code") == "THROTTLED" for e in errors):
             logger.warning("Shopify GraphQL (%s) : throttled", shop)
             raise ShopifyRateLimitError(200, str(errors))
+        if any((e.get("extensions") or {}).get("code") == "ACCESS_DENIED" for e in errors):
+            logger.warning("Shopify GraphQL (%s) : accès refusé (scope manquant) - %s", shop, errors)
+            raise ShopifyScopeError(200, str(errors))
         logger.warning("Shopify GraphQL (%s) : erreurs %s", shop, errors)
         raise ShopifyAPIError(200, str(errors))
     return data.get("data") or {}
@@ -336,32 +352,6 @@ async def mark_order_as_paid(shop: str, access_token: str, order_id) -> dict:
 # Commerce, qui chargent au plus 100 lignes en un seul appel).
 COMMERCE_PAGE_SIZE = 50
 
-# Scopes clients - AJOUTÉS à SHOPIFY_SCOPES le 2026-11-24 (voir en tête
-# de fichier) mais une boutique déjà connectée AVANT ce changement garde
-# son token sous l'ANCIEN jeu de scopes tant qu'elle n'est pas
-# reconnectée (OAuth : le scope d'un token déjà émis ne s'étend jamais
-# rétroactivement) - has_customers_scope()/has_write_customers_scope()
-# permettent de le détecter à partir de ShopifyShop.scope (chaîne
-# renvoyée par Shopify à l'échange OAuth, voir routes/shopify.py::
-# shopify_callback) SANS appeler Shopify : un appel GraphQL avec le
-# scope manquant échouerait de toute façon côté Shopify, mais autant le
-# savoir avant et renvoyer une erreur claire (voir routes/shopify.py).
-SHOPIFY_CUSTOMERS_READ_SCOPE = "read_customers"
-SHOPIFY_CUSTOMERS_WRITE_SCOPE = "write_customers"
-
-
-def _has_scope(granted_scope: str | None, scope_name: str) -> bool:
-    return scope_name in {s.strip() for s in (granted_scope or "").split(",")}
-
-
-def has_customers_scope(granted_scope: str | None) -> bool:
-    return _has_scope(granted_scope, SHOPIFY_CUSTOMERS_READ_SCOPE)
-
-
-def has_write_customers_scope(granted_scope: str | None) -> bool:
-    return _has_scope(granted_scope, SHOPIFY_CUSTOMERS_WRITE_SCOPE)
-
-
 async def list_products(shop: str, access_token: str) -> list[dict]:
     """GET produits - titre, statut, stock total, image, fourchette de
     prix (priceRangeV2 : min/max des variantes, jamais un prix unique -
@@ -429,11 +419,14 @@ async def list_orders(shop: str, access_token: str) -> list[dict]:
 
 async def list_customers(shop: str, access_token: str) -> list[dict]:
     """GET clients - nom, email, nombre de commandes, total dépensé,
-    date de création. À n'appeler QU'APRÈS avoir vérifié
-    has_customers_scope() côté appelant (routes/shopify.py) - un appel
-    sans ce scope échoue côté Shopify avec une erreur ACCESS_DENIED,
-    jamais testé ici en conditions réelles (scope absent du Partner
-    Dashboard aujourd'hui, voir SHOPIFY_SCOPES)."""
+    date de création. AUCUNE vérification préalable du scope ici (voir
+    ShopifyScopeError plus haut, et le docstring de routes/shopify.py::
+    shopify_customers) : un appel sans ce scope échoue côté Shopify avec
+    une vraie erreur ACCESS_DENIED, détectée par _admin_graphql - ne
+    JAMAIS présupposer l'accès à partir de ShopifyShop.scope, prouvé peu
+    fiable le 2026-11-24 (une boutique réelle avait read_orders/
+    read_products fonctionnels alors que cette même chaîne ne les
+    listait pas non plus)."""
     result = await _admin_graphql(
         shop, access_token,
         """

@@ -66,13 +66,12 @@ from backend.services.shopify_service import (
     SHOPIFY_CLIENT_ID,
     ShopifyAPIError,
     ShopifyRateLimitError,
+    ShopifyScopeError,
     build_authorize_url,
     cancel_order,
     create_customer,
     create_product,
     exchange_code_for_token,
-    has_customers_scope,
-    has_write_customers_scope,
     is_valid_shop_domain,
     list_customers,
     list_orders,
@@ -374,6 +373,8 @@ async def shopify_products(
         raise HTTPException(status_code=404, detail="Aucune boutique Shopify connectée")
     try:
         products = await list_products(shop_row.shop_domain, decrypt_secret(shop_row.access_token))
+    except ShopifyScopeError:
+        raise HTTPException(status_code=409, detail="Le scope read_products n'est pas accordé - reconnectez la boutique")
     except ShopifyRateLimitError:
         raise HTTPException(status_code=429, detail="Limite Shopify atteinte, réessayez dans quelques secondes")
     except ShopifyAPIError:
@@ -392,6 +393,8 @@ async def shopify_orders(
         raise HTTPException(status_code=404, detail="Aucune boutique Shopify connectée")
     try:
         orders = await list_orders(shop_row.shop_domain, decrypt_secret(shop_row.access_token))
+    except ShopifyScopeError:
+        raise HTTPException(status_code=409, detail="Le scope read_orders n'est pas accordé - reconnectez la boutique")
     except ShopifyRateLimitError:
         raise HTTPException(status_code=429, detail="Limite Shopify atteinte, réessayez dans quelques secondes")
     except ShopifyAPIError:
@@ -408,20 +411,24 @@ async def shopify_customers(
     shop_row = _get_connected_shop(db, membership.workspace_id)
     if not shop_row:
         raise HTTPException(status_code=404, detail="Aucune boutique Shopify connectée")
-    if not has_customers_scope(shop_row.scope):
+    # PLUS de pré-vérification sur ShopifyShop.scope (has_customers_scope,
+    # retirée le 2026-11-24 - prouvée peu fiable : une boutique réelle
+    # avait read_orders/read_products fonctionnels alors que cette même
+    # chaîne ne les listait pas non plus). On tente l'appel réel et on
+    # ne renvoie 409 QUE si Shopify le refuse vraiment (ShopifyScopeError,
+    # extensions.code=="ACCESS_DENIED") - jamais une déduction a priori.
+    try:
+        customers = await list_customers(shop_row.shop_domain, decrypt_secret(shop_row.access_token))
+    except ShopifyScopeError:
         # 409 (pas 404/403) : la boutique EST bien connectée, c'est
-        # spécifiquement le scope client qui manque - jamais un échec
-        # silencieux ni une tentative d'appel Shopify qui échouerait de
-        # toute façon (voir has_customers_scope, services/
-        # shopify_service.py) - le frontend affiche un message dédié
-        # (voir renderShopify, commerce.js), sans jamais bloquer
-        # products/orders qui restent indépendants de ce scope.
+        # spécifiquement le scope client que Shopify refuse - le
+        # frontend affiche un message dédié (voir renderShopify,
+        # commerce.js), sans jamais bloquer products/orders qui restent
+        # indépendants de ce scope.
         raise HTTPException(
             status_code=409,
             detail="Le scope read_customers n'est pas accordé - reconnectez la boutique après l'avoir ajouté au Partner Dashboard",
         )
-    try:
-        customers = await list_customers(shop_row.shop_domain, decrypt_secret(shop_row.access_token))
     except ShopifyRateLimitError:
         raise HTTPException(status_code=429, detail="Limite Shopify atteinte, réessayez dans quelques secondes")
     except ShopifyAPIError:
@@ -450,17 +457,24 @@ async def shopify_create_customer(
     shop_row = _get_connected_shop(db, membership.workspace_id)
     if not shop_row:
         raise HTTPException(status_code=404, detail="Aucune boutique Shopify connectée")
-    if not has_write_customers_scope(shop_row.scope):
-        raise HTTPException(
-            status_code=409,
-            detail="Le scope write_customers n'est pas accordé - reconnectez la boutique après l'avoir ajouté au Partner Dashboard",
-        )
     if not any([data.first_name, data.last_name, data.email, data.phone]):
         raise HTTPException(status_code=400, detail="Au moins un nom, email ou téléphone est requis")
+    # PLUS de pré-vérification sur ShopifyShop.scope - voir shopify_customers
+    # ci-dessus pour la raison (has_write_customers_scope retirée, prouvée
+    # peu fiable). On tente l'appel réel, 409 UNIQUEMENT si Shopify refuse
+    # vraiment (ShopifyScopeError - except SPÉCIFIQUE, placé AVANT le
+    # except ShopifyAPIError générique ci-dessous, sinon ce dernier
+    # l'intercepterait en premier puisque ShopifyScopeError en est une
+    # sous-classe).
     try:
         customer = await create_customer(
             shop_row.shop_domain, decrypt_secret(shop_row.access_token),
             data.first_name, data.last_name, data.email, data.phone,
+        )
+    except ShopifyScopeError:
+        raise HTTPException(
+            status_code=409,
+            detail="Le scope write_customers n'est pas accordé - reconnectez la boutique après l'avoir ajouté au Partner Dashboard",
         )
     except ShopifyRateLimitError:
         raise HTTPException(status_code=429, detail="Limite Shopify atteinte, réessayez dans quelques secondes")
@@ -480,15 +494,15 @@ async def shopify_update_customer(
     shop_row = _get_connected_shop(db, membership.workspace_id)
     if not shop_row:
         raise HTTPException(status_code=404, detail="Aucune boutique Shopify connectée")
-    if not has_write_customers_scope(shop_row.scope):
-        raise HTTPException(
-            status_code=409,
-            detail="Le scope write_customers n'est pas accordé - reconnectez la boutique après l'avoir ajouté au Partner Dashboard",
-        )
     try:
         customer = await update_customer(
             shop_row.shop_domain, decrypt_secret(shop_row.access_token), customer_id,
             data.first_name, data.last_name, data.email, data.phone,
+        )
+    except ShopifyScopeError:
+        raise HTTPException(
+            status_code=409,
+            detail="Le scope write_customers n'est pas accordé - reconnectez la boutique après l'avoir ajouté au Partner Dashboard",
         )
     except ShopifyRateLimitError:
         raise HTTPException(status_code=429, detail="Limite Shopify atteinte, réessayez dans quelques secondes")
@@ -512,6 +526,8 @@ async def shopify_create_product(
             shop_row.shop_domain, decrypt_secret(shop_row.access_token),
             data.title, data.description, data.price, data.status,
         )
+    except ShopifyScopeError:
+        raise HTTPException(status_code=409, detail="Le scope write_products n'est pas accordé - reconnectez la boutique")
     except ShopifyRateLimitError:
         raise HTTPException(status_code=429, detail="Limite Shopify atteinte, réessayez dans quelques secondes")
     except ShopifyAPIError as e:
@@ -535,6 +551,8 @@ async def shopify_update_product(
             shop_row.shop_domain, decrypt_secret(shop_row.access_token), product_id,
             data.title, data.description, data.status,
         )
+    except ShopifyScopeError:
+        raise HTTPException(status_code=409, detail="Le scope write_products n'est pas accordé - reconnectez la boutique")
     except ShopifyRateLimitError:
         raise HTTPException(status_code=429, detail="Limite Shopify atteinte, réessayez dans quelques secondes")
     except ShopifyAPIError as e:
@@ -558,6 +576,8 @@ async def shopify_cancel_order(
             shop_row.shop_domain, decrypt_secret(shop_row.access_token), order_id,
             data.reason, data.restock, data.notify_customer, data.staff_note,
         )
+    except ShopifyScopeError:
+        raise HTTPException(status_code=409, detail="Le scope write_orders n'est pas accordé - reconnectez la boutique")
     except ShopifyRateLimitError:
         raise HTTPException(status_code=429, detail="Limite Shopify atteinte, réessayez dans quelques secondes")
     except ShopifyAPIError as e:
