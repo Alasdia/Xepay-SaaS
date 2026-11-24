@@ -62,6 +62,21 @@ export async function fetchBuildnessRawStatus() {
   return res.json();
 }
 
+// Session de signature doola (SS4/FORM8821) - renvoie {id, url,
+// documentType, expiresAt}, l'URL étant intégrable en iframe et valable
+// 2h. Jamais mise en cache : une nouvelle session est demandée à chaque
+// clic sur "Signer" (voir monEntreprise.js).
+export async function createBuildnessSignatureSession(documentType) {
+  const merchantId = getWorkspaceId();
+  const res = await apiFetch(`/buildness/signature-session/${encodeURIComponent(merchantId)}`, {
+    method: "POST",
+    body: { document_type: documentType },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || "Impossible de démarrer la signature");
+  return data;
+}
+
 // Catalogue des documents de formation (métadonnées) - voir
 // doola_service.list_documents côté backend pour la réserve NON VÉRIFIÉ
 // sur la forme exacte de chaque entrée (jamais eu de vrai document en

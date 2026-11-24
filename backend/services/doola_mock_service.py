@@ -55,6 +55,19 @@ class MockDoolaService:
             "registeredAgent": {"name": "Mock Registered Agents, Inc.", "address": {"line1": "30 N Gould St", "line2": "STE R", "city": "Sheridan", "state": "WY", "postalCode": "82801", "country": "USA"}},
         }
 
+    async def create_signature_session(self, company_id: str, document_type: str) -> dict:
+        await asyncio.sleep(0)
+        # Mêmes clés que la vraie réponse doola (id/url/documentType/
+        # expiresAt, confirmées dans la doc le 2026-11-24). URL
+        # volontairement non navigable (.invalid) : ce mock ne doit jamais
+        # ouvrir quoi que ce soit de réel.
+        return {
+            "id": f"mock_sig_{uuid.uuid4().hex[:12]}",
+            "url": "https://example.invalid/mock-signature-session",
+            "documentType": document_type,
+            "expiresAt": "2026-11-24T23:59:59Z",
+        }
+
     async def list_documents(self, company_id: str) -> list[dict]:
         await asyncio.sleep(0)
         # NON VÉRIFIÉ sur un vrai document (voir doola_service.py) - forme

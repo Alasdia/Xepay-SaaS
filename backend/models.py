@@ -2,7 +2,7 @@ from pydantic import BaseModel, EmailStr, Field
 from backend.database import Base
 from sqlalchemy import Column, String, Boolean
 from sqlalchemy import Column, Integer, String, Float, DateTime, JSON
-from typing import Optional
+from typing import Literal, Optional
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship  
 from datetime import datetime, timezone
@@ -266,6 +266,15 @@ class BuildnessOnboardRequest(BaseModel):
     address_postal_code: str
     industry: str
     description: str
+
+class BuildnessSignatureSessionRequest(BaseModel):
+    # SS4/FORM8821 : les deux seules valeurs acceptées par doola (confirmé
+    # dans sa doc le 2026-11-24) - Literal plutôt que str libre, pour que
+    # FastAPI rejette lui-même toute autre valeur en 422 plutôt que de
+    # laisser doola répondre 400 plus loin. SS4 est le cas réel courant
+    # (fondateur non-résident sans SSN) ; FORM8821 n'apparaît que sur un
+    # EIN en traitement accéléré.
+    document_type: Literal["SS4", "FORM8821"] = "SS4"
 
 class ConnectCustomerCreateRequest(BaseModel):
     # Aucun champ n'est obligatoire chez Stripe pour créer un Customer -

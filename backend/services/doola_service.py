@@ -210,6 +210,29 @@ async def get_company_status(company_id: str) -> dict:
     return await _request("GET", f"/v1/partner/companies/{company_id}")
 
 
+async def create_signature_session(company_id: str, document_type: str) -> dict:
+    """POST /v1/partner/companies/{company_id}/signatures - génère une URL
+    de signature INTÉGRABLE EN IFRAME pour un document bloquant (SS4 ou
+    FORM8821, les deux seules valeurs acceptées par doola).
+
+    C'est LE mécanisme qui débloque une formation arrêtée sur
+    signatureRequirements=[{"documentType":"SS4","status":"PENDING"}] -
+    découvert le 2026-11-24 : un fondateur non-résident sans SSN doit
+    signer son SS-4 pour que l'EIN puisse être demandé, et doola
+    n'envoie RIEN tout seul - c'est au partenaire (Xepay) de créer cette
+    session et de présenter l'URL au marchand.
+
+    Réponse : {id, url, documentType, expiresAt} - l'URL expire 2h après
+    émission, donc jamais mise en cache côté Xepay (voir
+    routes/buildness.py : une nouvelle session est créée à chaque clic)."""
+    return await _request(
+        "POST",
+        f"/v1/partner/companies/{company_id}/signatures",
+        json_body={"documentType": document_type},
+        idempotent=True,
+    )
+
+
 async def list_documents(company_id: str) -> list[dict]:
     """GET /v1/partner/companies/{company_id}/documents - métadonnées des
     documents disponibles (Articles of Organization, lettre EIN...),
