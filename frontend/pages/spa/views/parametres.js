@@ -2612,7 +2612,7 @@ function renderBuildnessSection() {
   container.innerHTML = buildnessCardHtml();
 
   const ctaBtn = container.querySelector("#p-buildness-cta-btn");
-  if (ctaBtn) ctaBtn.addEventListener("click", () => openBuildnessWizard());
+  if (ctaBtn) ctaBtn.addEventListener("click", () => openBuildnessWizard(ctaBtn));
   const infoBtn = container.querySelector("#p-buildness-info-btn");
   if (infoBtn) {
     infoBtn.addEventListener("click", () => {
@@ -2674,7 +2674,11 @@ async function loadBuildnessReferenceOptions() {
   }
 }
 
-function openBuildnessWizard() {
+// triggerBtn (demandé le 2026-11-24) : petit cercle de chargement sur le
+// bouton cliqué pendant que les référentiels (pays/secteurs) se
+// chargent - la modale ne s'ouvre qu'une fois prête, plutôt que de
+// l'afficher immédiatement avec des menus encore vides.
+function openBuildnessWizard(triggerBtn) {
   const form = document.getElementById("p-buildness-wizard-form");
   if (form) form.reset();
   const submitBtn = document.getElementById("p-buildness-submit-btn");
@@ -2682,8 +2686,18 @@ function openBuildnessWizard() {
     submitBtn.disabled = false;
     submitBtn.textContent = "Lancer la création de ma LLC";
   }
-  loadBuildnessReferenceOptions();
-  bootstrap.Modal.getOrCreateInstance(document.getElementById("paramsBuildnessWizardModal")).show();
+  const originalLabel = triggerBtn ? triggerBtn.innerHTML : null;
+  if (triggerBtn) {
+    triggerBtn.disabled = true;
+    triggerBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Chargement...`;
+  }
+  loadBuildnessReferenceOptions().finally(() => {
+    if (triggerBtn) {
+      triggerBtn.disabled = false;
+      triggerBtn.innerHTML = originalLabel;
+    }
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("paramsBuildnessWizardModal")).show();
+  });
 }
 
 async function submitBuildnessOnboard(e) {

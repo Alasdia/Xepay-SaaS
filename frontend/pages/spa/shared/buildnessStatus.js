@@ -27,8 +27,6 @@ export const BUILDNESS_US_STATES = [
   ["WI", "Wisconsin"], ["WY", "Wyoming"], ["DC", "District de Columbia"],
 ];
 
-const BUILDNESS_US_STATE_NAMES = new Map(BUILDNESS_US_STATES);
-
 export function buildnessStatusLabel(status) {
   if (status === "draft") return "Dossier enregistré";
   if (status === "submitted") return "Envoyé à doola";
@@ -36,39 +34,6 @@ export function buildnessStatusLabel(status) {
   if (status === "completed") return "LLC formée";
   if (status === "failed") return "Échec";
   return status;
-}
-
-// Formateur dédié (pas formatSessionTime de parametres.js) : les deux
-// vues ne doivent dépendre que de shared/core, jamais l'une de l'autre.
-function formatBuildnessDate(value) {
-  if (!value || isNaN(new Date(value))) return "—";
-  return new Date(value).toLocaleDateString("fr-FR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-// Tout ce qui peut intéresser le marchand une fois son dossier envoyé -
-// affiché à CHAQUE étape (pas seulement "completed") : nom de la société
-// et État dès que connus, EIN une fois obtenu, dernière étape réussie
-// (utile si le statut final est "failed", pour savoir où ça s'est
-// arrêté), et la date de dernière mise à jour.
-export function buildnessDetailRowsHtml(data) {
-  const rows = [];
-  if (data.company_name) rows.push(["Nom de la société", data.company_name]);
-  if (data.state) rows.push(["État de formation", BUILDNESS_US_STATE_NAMES.get(data.state) || data.state]);
-  if (data.ein_number) rows.push(["EIN (identifiant fiscal)", data.ein_number]);
-  if (data.last_successful_step) rows.push(["Dernière étape réussie", buildnessStatusLabel(data.last_successful_step)]);
-  if (data.updated_at) rows.push(["Dernière mise à jour", formatBuildnessDate(data.updated_at)]);
-  if (!rows.length) return "";
-  return `
-    <div class="params-row-list params-promo-details">
-      ${rows.map(([label, value]) => `<div class="params-info-row"><span>${label}</span><strong>${value}</strong></div>`).join("")}
-    </div>
-  `;
 }
 
 export async function fetchBuildnessStatus() {

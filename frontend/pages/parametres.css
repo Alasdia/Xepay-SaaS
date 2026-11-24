@@ -1122,19 +1122,106 @@
 }
 .params-promo-status-failed { color: #b91c1c; }
 .params-promo-status-done { color: #15803d; }
-/* Nom/État/EIN/dernière étape/dernière mise à jour (buildnessDetailRowsHtml,
-   parametres.js) - mêmes .params-info-row que Coordonnées ailleurs dans
-   cette vue, juste un peu d'air au-dessus pour les détacher du statut. */
-.params-promo-details {
-  margin-top: 12px;
-  max-width: 420px;
-}
 .params-promo-steps {
   padding-left: 20px;
   font-size: 14px;
   color: #374151;
 }
 .params-promo-steps li { margin-bottom: 10px; }
+
+/* "Mon entreprise" (spa/views/monEntreprise.js) - affichage dédié,
+   volontairement distinct de .params-promo-card ci-dessus (réservée à
+   la carte CTA de Paramètres > Entreprise, fond teinté) : fond blanc
+   uni, jamais de teinte de couleur une fois les informations réelles
+   affichées (demande explicite du 2026-11-24). */
+.mon-entreprise-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 32px;
+}
+.mon-entreprise-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.mon-entreprise-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(180, 83, 9, 0.08);
+  color: #b45309;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.mon-entreprise-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #111827;
+  margin: 0 0 4px;
+}
+/* Même convention que .status-badge (commerce.css, voir son
+   commentaire) : texte coloré simple, jamais de pastille/fond - un
+   seul style de statut dans toute l'app. */
+.mon-entreprise-status {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0;
+}
+.mon-entreprise-status.status-processing { color: #b45309; }
+.mon-entreprise-status.status-done { color: #15803d; }
+.mon-entreprise-status.status-failed { color: #b91c1c; }
+
+/* Repère visuel de progression (draft -> submitted -> processing ->
+   completed) - 4 segments, pas un stepper interactif. */
+.mon-entreprise-steps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 24px 0 28px;
+}
+.mon-entreprise-step {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: #e5e7eb;
+}
+.mon-entreprise-step.done { background: #b45309; }
+.mon-entreprise-step.failed { background: #b91c1c; }
+
+.mon-entreprise-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.mon-entreprise-stat {
+  padding: 14px 16px;
+  border: 1px solid #f1f3f5;
+  border-radius: 10px;
+  background: #fafafa;
+}
+.mon-entreprise-stat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9ca3af;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.mon-entreprise-stat-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+@media (max-width: 560px) {
+  .mon-entreprise-grid { grid-template-columns: 1fr; }
+}
 
 @media (max-width: 480px) {
   .params-promo-card { padding: 20px; min-height: unset; }
