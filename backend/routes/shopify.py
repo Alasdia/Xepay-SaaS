@@ -78,7 +78,6 @@ from backend.services.shopify_service import (
     list_orders,
     list_products,
     register_order_webhook,
-    unregister_order_webhook,
     update_customer,
     update_product,
     verify_hmac,
@@ -310,44 +309,6 @@ def shopify_status(
     if not shop_row:
         return {"connected": False}
     return {"connected": True, "shop_domain": shop_row.shop_domain, "scope": shop_row.scope}
-
-
-@router.post("/shopify/disconnect")
-async def shopify_disconnect(
-    db: Session = Depends(get_db),
-    membership: WorkspaceUser = Depends(require_capability("manage_shopify_integration")),
-):
-    """Déconnecte la boutique de CE workspace (demande du 2026-11-24,
-    "un vrai mécanisme de déconnexion") - vide access_token ET
-    merchant_id sur la ligne ShopifyShop, mais NE LA SUPPRIME PAS (garde
-    shop_domain/scope/installed_at pour trace) : une ré-connexion
-    ultérieure de la MÊME boutique (voir shopify_callback,
-    existing = db.query(...).first()) retrouve donc cette ligne et la
-    met à jour plutôt que d'en créer une seconde (shop_domain est
-    UNIQUE). Avec merchant_id=NULL, le webhook orders/create
-    (routes/webhook/shopify.py) ignore déjà silencieusement toute
-    commande entrante pour cette boutique (vérifié par ses propres
-    tests) - aucun risque de traiter une commande pour un workspace qui
-    ne la revendique plus.
-
-    unregister_order_webhook AVANT d'effacer le token (sinon plus rien
-    pour authentifier cet appel) - best-effort : un échec ne bloque
-    jamais la déconnexion elle-même (le webhook orphelin continuerait
-    sinon d'exister côté Shopify, mais sera de toute façon ignoré côté
-    Xepay faute de merchant_id)."""
-    shop_row = _get_connected_shop(db, membership.workspace_id)
-    if not shop_row:
-        raise HTTPException(status_code=404, detail="Aucune boutique Shopify connectée")
-
-    try:
-        await unregister_order_webhook(shop_row.shop_domain, decrypt_secret(shop_row.access_token))
-    except ShopifyAPIError:
-        logger.exception("Échec désinscription webhook orders/create pour %s (déconnexion poursuivie)", shop_row.shop_domain)
-
-    shop_row.access_token = None
-    shop_row.merchant_id = None
-    db.commit()
-    return {"ok": True}
 
 
 def _get_connected_shop(db: Session, workspace_id: str) -> ShopifyShop | None:
