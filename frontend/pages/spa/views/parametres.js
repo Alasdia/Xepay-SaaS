@@ -172,6 +172,7 @@ function overviewTemplate() {
         ${sectionTitle("Paramètres produit")}
         <div class="params-tiles-grid">
           ${tile("retraits", "fa-solid fa-building-columns", "Retraits & comptes bancaires", "Virement local UEMOA (Verto) ou compte US/EU")}
+          ${tile("shopify", "fa-brands fa-shopify", "Shopify", "Connecter une boutique Shopify et encaisser ses commandes via un lien de paiement Xepay")}
         </div>
       </section>
     </div>
@@ -2432,8 +2433,6 @@ function entrepriseTemplate() {
 
     <div id="p-buildness-container"></div>
 
-    <div id="p-shopify-container" style="margin-top: 24px;"></div>
-
     <div class="params-subsection-header" style="margin-top: 32px;">
       <h6 class="params-subsection-title mb-0">Informations sur votre entreprise</h6>
       <button type="button" id="p-company-widget-btn" class="create-client-btn">Se connecter</button>
@@ -2772,14 +2771,61 @@ async function loadCompanyWidget() {
   }
 }
 
+function mountEntreprise(on) {
+  companyWidgetLoaded = false;
+  on(document.getElementById("p-company-widget-btn"), "click", loadCompanyWidget);
+
+  document.body.insertAdjacentHTML("beforeend", BUILDNESS_INFO_MODAL_HTML);
+  document.body.insertAdjacentHTML("beforeend", BUILDNESS_WIZARD_MODAL_HTML);
+
+  // BUG PRÉ-EXISTANT (jamais présent dans aucune version antérieure de ce
+  // fichier, confirmé par `git log -S` - trouvé le 2026-11-24 suite à un
+  // signalement utilisateur) : submitBuildnessOnboard n'était jamais
+  // câblée à l'événement "submit" du formulaire. Le bouton "Lancer la
+  // création de ma LLC" déclenchait donc une soumission HTML native
+  // (rechargement de page) au lieu d'un appel à /buildness/onboard -
+  // aucune requête réseau, aucune erreur visible, "aucun résultat".
+  on(document.getElementById("p-buildness-wizard-form"), "submit", submitBuildnessOnboard);
+
+  renderBuildnessSection();
+
+  return () => {
+    for (const id of ["paramsBuildnessInfoModal", "paramsBuildnessWizardModal"]) {
+      const modalEl = document.getElementById(id);
+      const instance = modalEl && bootstrap.Modal.getInstance(modalEl);
+      if (instance) {
+        instance.hide();
+        instance.dispose();
+      }
+      modalEl?.remove();
+    }
+    document.body.classList.remove("modal-open");
+    document.body.style.removeProperty("overflow");
+    document.body.style.removeProperty("padding-right");
+    document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
+  };
+}
+
 // --- Shopify ("Xepay Sync", voir backend/routes/shopify.py) - encaisser
 // les commandes Shopify via un lien de paiement Xepay plutôt que Shopify
-// Payments (demande du 2026-11-24). Même emplacement/patron visuel que
-// Buildness ci-dessus (.params-promo-card) : une carte qui affiche soit
+// Payments (demande du 2026-11-24). Vue DÉDIÉE dans "Paramètres produit"
+// (déplacée le 2026-11-24 : ce n'est pas une affaire de société/légal
+// comme Buildness/Stripe Business, c'est un produit/une intégration -
+// même bloc que "Retraits & comptes bancaires" ci-dessous) - vivait par
+// erreur dans la vue "Entreprise" juste avant ce correctif. Même patron
+// visuel que Buildness (.params-promo-card) : une carte qui affiche soit
 // le formulaire de connexion (domaine *.myshopify.com), soit la boutique
 // déjà connectée (GET /shopify/status) - jamais les deux à la fois.
 const XEPAY_API_BASE_URL = "https://api.xepay.finance";
 const SHOPIFY_DOMAIN_RE = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
+
+function shopifyTemplate() {
+  return `
+    ${detailHeader("Shopify")}
+    <p class="params-subsection-sub" style="max-width:100%;">Encaissez vos commandes Shopify avec un lien de paiement Xepay au lieu de Shopify Payments, avec mise à jour automatique du statut payé sur Shopify.</p>
+    <div id="p-shopify-container"></div>
+  `;
+}
 
 function shopifyCardHtml(status) {
   if (status && status.connected) {
@@ -2793,7 +2839,7 @@ function shopifyCardHtml(status) {
   return `
     <div class="params-promo-card">
       <h3 class="params-promo-title">Connecter une boutique Shopify</h3>
-      <p class="params-promo-sub">Encaissez vos commandes Shopify avec un lien de paiement Xepay au lieu de Shopify Payments. Créez d'abord, dans votre admin Shopify (Paramètres &gt; Paiements &gt; Méthodes de paiement manuelles), une méthode nommée exactement "Xepay" - c'est gratuit et ne demande aucune app de paiement. Connectez ensuite votre boutique ci-dessous.</p>
+      <p class="params-promo-sub">Créez d'abord, dans votre admin Shopify (Paramètres &gt; Paiements &gt; Méthodes de paiement manuelles), une méthode nommée exactement "Xepay" - c'est gratuit et ne demande aucune app de paiement. Connectez ensuite votre boutique ci-dessous.</p>
       <div class="params-promo-actions" style="gap:8px; align-items:center; flex-wrap:wrap;">
         <input type="text" id="p-shopify-domain-input" class="form-control" style="max-width:280px;" placeholder="maboutique.myshopify.com">
         <button type="button" id="p-shopify-connect-btn" class="create-client-btn">Connecter</button>
@@ -2836,40 +2882,8 @@ async function renderShopifySection() {
   }
 }
 
-function mountEntreprise(on) {
-  companyWidgetLoaded = false;
-  on(document.getElementById("p-company-widget-btn"), "click", loadCompanyWidget);
+function mountShopify() {
   renderShopifySection();
-
-  document.body.insertAdjacentHTML("beforeend", BUILDNESS_INFO_MODAL_HTML);
-  document.body.insertAdjacentHTML("beforeend", BUILDNESS_WIZARD_MODAL_HTML);
-
-  // BUG PRÉ-EXISTANT (jamais présent dans aucune version antérieure de ce
-  // fichier, confirmé par `git log -S` - trouvé le 2026-11-24 suite à un
-  // signalement utilisateur) : submitBuildnessOnboard n'était jamais
-  // câblée à l'événement "submit" du formulaire. Le bouton "Lancer la
-  // création de ma LLC" déclenchait donc une soumission HTML native
-  // (rechargement de page) au lieu d'un appel à /buildness/onboard -
-  // aucune requête réseau, aucune erreur visible, "aucun résultat".
-  on(document.getElementById("p-buildness-wizard-form"), "submit", submitBuildnessOnboard);
-
-  renderBuildnessSection();
-
-  return () => {
-    for (const id of ["paramsBuildnessInfoModal", "paramsBuildnessWizardModal"]) {
-      const modalEl = document.getElementById(id);
-      const instance = modalEl && bootstrap.Modal.getInstance(modalEl);
-      if (instance) {
-        instance.hide();
-        instance.dispose();
-      }
-      modalEl?.remove();
-    }
-    document.body.classList.remove("modal-open");
-    document.body.style.removeProperty("overflow");
-    document.body.style.removeProperty("padding-right");
-    document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
-  };
 }
 
 // --- Detail : Permissions (rôle minimal par action, configurable par le
@@ -3872,6 +3886,7 @@ const SECTIONS = {
   "entreprise": { title: "Entreprise", template: entrepriseTemplate, mount: (on) => mountEntreprise(on) },
   "permissions": { title: "Permissions", template: permissionsTemplate, mount: (on) => mountPermissions(on) },
   "retraits": { title: "Retraits & comptes bancaires", template: retraitsTemplate, mount: (on) => mountRetraits(on) },
+  "shopify": { title: "Shopify", template: shopifyTemplate, mount: () => mountShopify() },
 };
 
 export async function mount(container, params = {}) {
