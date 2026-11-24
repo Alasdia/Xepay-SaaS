@@ -19,15 +19,33 @@ jamais /auth/shopify/... pour ce premier contact. Trouvé le 2026-11-24 :
 avant même d'atteindre cette logique - corrigé côté middleware, cette
 fonction gère la logique métier (déjà installé ? sinon, lance l'OAuth).
 
-NON VÉRIFIÉ contre un vrai aller-retour Shopify (installation réelle
-depuis l'admin, consentement, redirection) - une vraie app Shopify
-Partner existe désormais ("Xepay Sync", clés en prod), mais ce
-sandbox de développement n'a pas d'accès réseau à l'admin Shopify ni de
-navigateur pour suivre le consentement OAuth réel : vérifié ici
-uniquement par simulation (DB jetable + hmac recalculé + échange de
-code mocké, voir le script de test), jamais par un vrai appel. À
-confirmer par le marchand sur la boutique Connect1."""
+CORRIGÉ le 2026-11-24 (après déploiement réel + rechargement de "Xepay
+Sync" sur la boutique de test Connect1) : handle_shopify_app_entry
+renvoyait un 302 HTTP classique vers /admin/oauth/authorize en réponse
+à une requête chargée DANS l'iframe de l'admin Shopify. Shopify interdit
+d'afficher ses propres pages admin.shopify.com à l'intérieur d'une
+iframe (X-Frame-Options: deny, anti-clickjacking côté Shopify) - la
+navigation échouait donc avec "admin.shopify.com n'autorise pas la
+connexion" (+ une erreur postMessage secondaire, App Bridge ne
+complétant jamais son handshake avec le parent). Toute redirection vers
+une page Shopify (admin.oauth.authorize) depuis une requête qui PEUT
+être embarquée doit donc être faite en JS sur window.top (voir
+_oauth_redirect_html), jamais via un Location HTTP - voir
+handle_shopify_app_entry. Le callback (/auth/shopify/callback), lui,
+s'exécute TOUJOURS en top-level (Shopify ne rend jamais son écran de
+consentement OAuth dans une iframe, quoi que fasse l'app), donc son
+302 final vers /admin/apps/{client_id} reste un Location HTTP normal -
+jamais besoin du même contournement là.
 
+NON VÉRIFIÉ contre un vrai aller-retour Shopify complet (consentement
+réel, redirection) - une vraie app Shopify Partner existe ("Xepay
+Sync", clés en prod), mais ce sandbox de développement n'a pas de
+navigateur pour suivre le consentement OAuth réel : vérifié ici par
+simulation (DB jetable + hmac recalculé + échange de code mocké, voir
+le script de test), jamais par un vrai appel. À confirmer par le
+marchand sur Connect1."""
+
+import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -48,6 +66,18 @@ from backend.services.shopify_service import (
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _frame_ancestors_header(shop: str) -> dict:
+    """Content-Security-Policy frame-ancestors : autorise EXPLICITEMENT
+    Shopify à afficher nos pages dans son iframe (admin.shopify.com ET le
+    domaine {shop} historique) - recommandé par Shopify pour toute page
+    d'app embarquée. N'a aucun rapport avec le blocage observé sur
+    Connect1 (qui venait de NOUS en train de tenter d'afficher LEUR
+    domaine dans l'iframe, pas l'inverse) mais c'est la même famille de
+    règle anti-clickjacking, posée ici par rigueur plutôt que de laisser
+    le navigateur appliquer un défaut implicite."""
+    return {"Content-Security-Policy": f"frame-ancestors https://{shop} https://admin.shopify.com;"}
 
 
 def _embedded_connected_html(shop: str) -> str:
@@ -74,6 +104,36 @@ def _embedded_connected_html(shop: str) -> str:
 </html>"""
 
 
+def _oauth_redirect_html(authorize_url: str) -> str:
+    """Page de "breakout" hors iframe - voir le docstring en tête de
+    fichier pour l'incident Connect1 du 2026-11-24 qui a motivé ce
+    correctif. JAMAIS un 302 HTTP classique ici : cette page est 200 OK
+    et son SEUL contenu utile est ce script, qui fait naviguer la fenêtre
+    de PLUS HAUT NIVEAU (window.top, jamais self si on est dans l'iframe)
+    vers l'écran de consentement OAuth Shopify - admin.shopify.com refuse
+    d'être affiché À L'INTÉRIEUR d'une iframe (X-Frame-Options: deny),
+    donc seule la fenêtre de plus haut niveau peut s'y rendre.
+    json.dumps() : échappe correctement authorize_url pour une injection
+    sûre dans le <script>, même si l'URL (construite par urlencode, voir
+    build_authorize_url) ne contient déjà aucun caractère dangereux."""
+    return f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Xepay Sync</title></head>
+<body>
+<script>
+(function() {{
+  var url = {json.dumps(authorize_url)};
+  if (window.top === window.self) {{
+    window.location.assign(url);
+  }} else {{
+    window.top.location.assign(url);
+  }}
+}})();
+</script>
+</body>
+</html>"""
+
+
 def handle_shopify_app_entry(params: dict, db: Session) -> Response:
     shop = params.get("shop")
     if not shop or not is_valid_shop_domain(shop):
@@ -82,18 +142,23 @@ def handle_shopify_app_entry(params: dict, db: Session) -> Response:
     if not verify_hmac(params):
         raise HTTPException(status_code=401, detail="Signature hmac invalide")
 
+    headers = _frame_ancestors_header(shop)
+
     existing = db.query(ShopifyShop).filter(ShopifyShop.shop_domain == shop).first()
     if existing and existing.access_token:
-        return HTMLResponse(_embedded_connected_html(shop))
+        return HTMLResponse(_embedded_connected_html(shop), headers=headers)
 
     # Pas encore de token pour cette boutique (première installation ou
     # scopes révoqués/ré-installation) : on lance/reprend le consentement
     # OAuth. state signé (create_shopify_state_token) - revérifié par
     # shopify_callback ci-dessous, seule protection CSRF du flux (aucune
     # session serveur n'existe à ce stade pour stocker un nonce
-    # autrement, voir security.py).
+    # autrement, voir security.py). La redirection elle-même passe par
+    # _oauth_redirect_html (breakout JS), PAS un RedirectResponse - voir
+    # le docstring en tête de fichier.
     state = create_shopify_state_token("")
-    return RedirectResponse(url=build_authorize_url(shop, state))
+    authorize_url = build_authorize_url(shop, state)
+    return HTMLResponse(_oauth_redirect_html(authorize_url), headers=headers)
 
 
 @router.get("/auth/shopify/callback")
