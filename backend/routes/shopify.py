@@ -198,23 +198,34 @@ async def shopify_callback(request: Request, db: Session = Depends(get_db)):
     if not verify_hmac(params):
         raise HTTPException(status_code=401, detail="Signature hmac invalide")
 
-    # "state" désormais OBLIGATOIRE et revérifié : c'est l'unique
-    # protection CSRF du flux d'installation (voir handle_shopify_app_entry
-    # ci-dessus, seul émetteur) - toute installation légitime passe par
-    # cette fonction avant d'arriver ici, donc un callback SANS state
-    # signé valide n'est jamais un vrai aller-retour Shopify initié par
-    # Xepay. merchant_id (si le jeton porte un "sub" non vide) résout le
-    # workspace Xepay à lier - vide pour l'instant (aucune route
-    # authentifiée n'émet encore ce jeton avec un vrai merchant_id, voir
-    # le docstring de security.create_shopify_state_token), donc
-    # ShopifyShop.merchant_id reste NULL sans bloquer l'enregistrement.
+    # "state" OPTIONNEL (revenu en arrière le 2026-11-24 - rendu
+    # obligatoire par erreur précédemment) : CORRIGÉ après avoir constaté
+    # que access_token ne se mettait JAMAIS à jour en base lors d'une
+    # ré-autorisation déclenchée nativement par Shopify (le bandeau
+    # "nouvelle version disponible, mettre à jour les autorisations" qui
+    # apparaît automatiquement dans l'admin Shopify après la publication
+    # d'une nouvelle version de l'app) - ce flux natif ne passe JAMAIS
+    # par GET /shopify/install (seul émetteur du state signé), donc
+    # aucun state valide n'accompagne son callback. Avec state
+    # obligatoire, cette route rejetait alors SYSTÉMATIQUEMENT ce
+    # callback (400 "state manquant") avant même d'écrire quoi que ce
+    # soit en base - exactement le symptôme observé ("le token ne se met
+    # jamais à jour"), quelle que soit la méthode utilisée côté Shopify.
+    #
+    # La vraie protection anti-forgerie de ce callback reste verify_hmac
+    # ci-dessus (déjà obligatoire) : elle prouve que la requête vient
+    # réellement de Shopify (signée avec SHOPIFY_CLIENT_SECRET), que le
+    # state soit présent ou non. state ne sert plus qu'à résoudre
+    # OPPORTUNÉMENT le merchant_id quand le flux est bien passé par
+    # /shopify/install (voir handle_shopify_app_entry/shopify_install) -
+    # absent ou invalide, merchant_id reste simplement NULL/inchangé,
+    # jamais une erreur bloquante.
     state = params.get("state")
-    if not state:
-        raise HTTPException(status_code=400, detail="Paramètre state manquant")
-    decoded_state = decode_shopify_state_token(state)
-    if not decoded_state:
-        raise HTTPException(status_code=401, detail="state invalide ou expiré")
-    merchant_id = decoded_state.get("sub") or None
+    merchant_id = None
+    if state:
+        decoded_state = decode_shopify_state_token(state)
+        if decoded_state:
+            merchant_id = decoded_state.get("sub") or None
 
     try:
         token_data = await exchange_code_for_token(shop, code)
