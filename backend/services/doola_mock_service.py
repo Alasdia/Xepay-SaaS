@@ -32,11 +32,38 @@ class MockDoolaService:
 
     async def get_company_status(self, company_id: str) -> dict:
         await asyncio.sleep(0)
-        # "ein" (pas "einNumber") : nom de champ réel confirmé dans la doc
-        # officielle doola le 2026-11-23 (voir webhook/doola.py,
-        # company_ein_issued) - le mock doit refléter la vraie forme de
-        # réponse pour que le flux EIN soit testable sans clé réelle.
-        return {"doolaCompanyId": company_id, "status": "processing", "ein": "99-9999999"}
+        # Forme alignée sur une vraie réponse sandbox inspectée en direct
+        # le 2026-11-24 (voir doola_service.py) - "ein"/"registeredAgent"/
+        # "addresses"/"responsibleParty" sont les vrais noms de champs,
+        # pour que le recap "Mon entreprise" soit testable sans clé réelle.
+        return {
+            "doolaCompanyId": company_id,
+            "status": "processing",
+            "ein": "99-9999999",
+            "formationFilingNumber": "MOCK-FILING-0001",
+            "legalName": "Mock Test LLC",
+            "responsibleParty": {
+                "legalFirstName": "Jean",
+                "legalLastName": "Dupont",
+                "email": "jean.dupont@example.com",
+                "address": {"line1": "12 rue de la Paix", "city": "Paris", "state": "Ile-de-France", "postalCode": "75002", "country": "FRA", "phone": "+33612345678"},
+            },
+            "addresses": [
+                {"provider": "customer", "type": "mailing", "address": {"line1": "12 rue de la Paix", "city": "Paris", "state": "Ile-de-France", "postalCode": "75002", "country": "FRA"}},
+                {"provider": "registeredAgent", "type": "business", "address": {"line1": "30 N Gould St", "line2": "STE R", "city": "Sheridan", "state": "WYOMING", "postalCode": "82801", "country": "USA"}},
+            ],
+            "registeredAgent": {"name": "Mock Registered Agents, Inc.", "address": {"line1": "30 N Gould St", "line2": "STE R", "city": "Sheridan", "state": "WY", "postalCode": "82801", "country": "USA"}},
+        }
+
+    async def list_documents(self, company_id: str) -> list[dict]:
+        await asyncio.sleep(0)
+        # NON VÉRIFIÉ sur un vrai document (voir doola_service.py) - forme
+        # plausible pour tester le rendu de la liste sans clé réelle.
+        return [{"documentId": "mock_doc_1", "name": "Articles of Organization", "type": "AOO", "createdAt": "2026-11-24T10:00:00Z"}]
+
+    async def get_document(self, company_id: str, document_id: str) -> dict:
+        await asyncio.sleep(0)
+        return {"documentId": document_id, "name": "Articles of Organization", "downloadUrl": "https://example.invalid/mock-document.pdf"}
 
     async def list_naics_codes(self) -> list[dict]:
         await asyncio.sleep(0)

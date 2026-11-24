@@ -49,13 +49,36 @@ export async function fetchBuildnessStatus() {
 }
 
 // Réponse BRUTE de doola (GET /v1/partner/companies/{id}), sans aucune
-// mise en forme côté Xepay - demandé le 2026-11-24 pour inspection/
-// conception UI (voir spa/views/monEntreprise.js, console.log). Jamais
-// utilisée pour l'affichage réel - fetchBuildnessStatus (ci-dessus)
-// reste la seule source pour le rendu du marchand.
+// mise en forme côté Xepay - ajoutée le 2026-11-24 pour inspection/
+// conception UI (voir spa/views/monEntreprise.js, console.log), et
+// réutilisée depuis le 2026-11-24 comme source des panneaux "récap
+// officiel"/"fondateur" de Mon entreprise (responsibleParty/addresses/
+// registeredAgent/ein/formationFilingNumber - jamais stockés dans le
+// schéma Xepay, voir models.py).
 export async function fetchBuildnessRawStatus() {
   const merchantId = getWorkspaceId();
   const res = await apiFetch(`/buildness/status/${encodeURIComponent(merchantId)}/raw`);
   if (!res.ok) throw new Error("Impossible de récupérer le statut brut doola");
+  return res.json();
+}
+
+// Catalogue des documents de formation (métadonnées) - voir
+// doola_service.list_documents côté backend pour la réserve NON VÉRIFIÉ
+// sur la forme exacte de chaque entrée (jamais eu de vrai document en
+// sandbox pour vérifier).
+export async function fetchBuildnessDocuments() {
+  const merchantId = getWorkspaceId();
+  const res = await apiFetch(`/buildness/documents/${encodeURIComponent(merchantId)}`);
+  if (!res.ok) throw new Error("Impossible de récupérer les documents");
+  return res.json();
+}
+
+// Détail d'UN document + downloadUrl pré-signée à durée de vie courte -
+// appelée au clic sur "Télécharger", jamais mise en cache (une URL
+// expirée ne doit jamais être réutilisée).
+export async function fetchBuildnessDocument(documentId) {
+  const merchantId = getWorkspaceId();
+  const res = await apiFetch(`/buildness/documents/${encodeURIComponent(merchantId)}/${encodeURIComponent(documentId)}`);
+  if (!res.ok) throw new Error("Impossible de récupérer ce document");
   return res.json();
 }
