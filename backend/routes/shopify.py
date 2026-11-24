@@ -55,13 +55,18 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.middleware.authorization import require_capability
 from backend.models import ShopifyShop, WorkspaceUser
-from backend.security import create_shopify_state_token, decode_shopify_state_token, encrypt_secret
+from backend.security import create_shopify_state_token, decode_shopify_state_token, decrypt_secret, encrypt_secret
 from backend.services.shopify_service import (
     SHOPIFY_CLIENT_ID,
     ShopifyAPIError,
+    ShopifyRateLimitError,
     build_authorize_url,
     exchange_code_for_token,
+    has_customers_scope,
     is_valid_shop_domain,
+    list_customers,
+    list_orders,
+    list_products,
     register_order_webhook,
     verify_hmac,
 )
@@ -288,12 +293,103 @@ def shopify_status(
 ):
     """Statut de connexion pour CE workspace (Paramètres > Intégrations) -
     ne renvoie jamais le token, même chiffré."""
+    shop_row = _get_connected_shop(db, membership.workspace_id)
+    if not shop_row:
+        return {"connected": False}
+    return {"connected": True, "shop_domain": shop_row.shop_domain, "scope": shop_row.scope}
+
+
+def _get_connected_shop(db: Session, workspace_id: str) -> ShopifyShop | None:
+    """Résout la boutique connectée pour CE workspace - jamais par un
+    "shop" fourni par le client (contrairement à handle_shopify_app_entry/
+    shopify_callback, qui eux répondent à Shopify lui-même) : les
+    endpoints de lecture ci-dessous (products/orders/customers) ne
+    doivent jamais pouvoir lire les données d'une AUTRE boutique que
+    celle réellement rattachée à ce workspace."""
     shop_row = (
         db.query(ShopifyShop)
-        .filter(ShopifyShop.merchant_id == membership.workspace_id)
+        .filter(ShopifyShop.merchant_id == workspace_id)
         .order_by(ShopifyShop.installed_at.desc())
         .first()
     )
     if not shop_row or not shop_row.access_token:
-        return {"connected": False}
-    return {"connected": True, "shop_domain": shop_row.shop_domain, "scope": shop_row.scope}
+        return None
+    return shop_row
+
+
+# =========================================================
+# Onglet "Shopify" de Commerce (voir frontend/pages/spa/views/
+# commerce.js, renderShopify) - lecture DIRECTE depuis l'API Admin
+# Shopify, demandée explicitement le 2026-11-24 : AUCUNE table miroir
+# côté Xepay, AUCUN objet Stripe créé à partir de ces données - voir
+# services/shopify_service.py (list_products/list_orders/list_customers,
+# section dédiée). require_capability("view_shopify_data") (manager,
+# même niveau que les onglets Stripe de Commerce) - distinct de
+# "manage_shopify_integration" (owner), réservée à la connexion/
+# déconnexion elle-même.
+# =========================================================
+
+@router.get("/shopify/products")
+async def shopify_products(
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("view_shopify_data")),
+):
+    shop_row = _get_connected_shop(db, membership.workspace_id)
+    if not shop_row:
+        raise HTTPException(status_code=404, detail="Aucune boutique Shopify connectée")
+    try:
+        products = await list_products(shop_row.shop_domain, decrypt_secret(shop_row.access_token))
+    except ShopifyRateLimitError:
+        raise HTTPException(status_code=429, detail="Limite Shopify atteinte, réessayez dans quelques secondes")
+    except ShopifyAPIError:
+        logger.exception("Échec list_products pour %s", shop_row.shop_domain)
+        raise HTTPException(status_code=502, detail="Impossible de récupérer les produits Shopify")
+    return {"shop_domain": shop_row.shop_domain, "data": products}
+
+
+@router.get("/shopify/orders")
+async def shopify_orders(
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("view_shopify_data")),
+):
+    shop_row = _get_connected_shop(db, membership.workspace_id)
+    if not shop_row:
+        raise HTTPException(status_code=404, detail="Aucune boutique Shopify connectée")
+    try:
+        orders = await list_orders(shop_row.shop_domain, decrypt_secret(shop_row.access_token))
+    except ShopifyRateLimitError:
+        raise HTTPException(status_code=429, detail="Limite Shopify atteinte, réessayez dans quelques secondes")
+    except ShopifyAPIError:
+        logger.exception("Échec list_orders pour %s", shop_row.shop_domain)
+        raise HTTPException(status_code=502, detail="Impossible de récupérer les commandes Shopify")
+    return {"shop_domain": shop_row.shop_domain, "data": orders}
+
+
+@router.get("/shopify/customers")
+async def shopify_customers(
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("view_shopify_data")),
+):
+    shop_row = _get_connected_shop(db, membership.workspace_id)
+    if not shop_row:
+        raise HTTPException(status_code=404, detail="Aucune boutique Shopify connectée")
+    if not has_customers_scope(shop_row.scope):
+        # 409 (pas 404/403) : la boutique EST bien connectée, c'est
+        # spécifiquement le scope client qui manque - jamais un échec
+        # silencieux ni une tentative d'appel Shopify qui échouerait de
+        # toute façon (voir has_customers_scope, services/
+        # shopify_service.py) - le frontend affiche un message dédié
+        # (voir renderShopify, commerce.js), sans jamais bloquer
+        # products/orders qui restent indépendants de ce scope.
+        raise HTTPException(
+            status_code=409,
+            detail="Le scope read_customers n'est pas accordé - reconnectez la boutique après l'avoir ajouté au Partner Dashboard",
+        )
+    try:
+        customers = await list_customers(shop_row.shop_domain, decrypt_secret(shop_row.access_token))
+    except ShopifyRateLimitError:
+        raise HTTPException(status_code=429, detail="Limite Shopify atteinte, réessayez dans quelques secondes")
+    except ShopifyAPIError:
+        logger.exception("Échec list_customers pour %s", shop_row.shop_domain)
+        raise HTTPException(status_code=502, detail="Impossible de récupérer les clients Shopify")
+    return {"shop_domain": shop_row.shop_domain, "data": customers}

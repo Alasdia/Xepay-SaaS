@@ -67,6 +67,7 @@ CAPABILITY_DEFAULTS = {
     "export_reports": "manager",              # /reports/financial, /reports/connect-session
     "manage_company_formation": "owner",      # /buildness/onboard, /buildness/status/{merchant_id} (routes/buildness.py)
     "manage_shopify_integration": "owner",    # GET /shopify/install, /shopify/status (routes/shopify.py)
+    "view_shopify_data": "manager",           # GET /shopify/products, /orders, /customers (routes/shopify.py)
 }
 
 CAPABILITY_LABELS = {
@@ -81,6 +82,7 @@ CAPABILITY_LABELS = {
     "export_reports": ("Exporter des rapports", "Télécharger un rapport financier ou ouvrir le rapport Stripe intégré."),
     "manage_company_formation": ("Créer une LLC (Buildness)", "Démarrer la formation d'une LLC américaine et consulter son avancement (EIN, documents)."),
     "manage_shopify_integration": ("Connecter une boutique Shopify", "Lier une boutique Shopify au workspace pour encaisser ses commandes via Xepay."),
+    "view_shopify_data": ("Consulter les données Shopify", "Voir les produits, commandes et clients de la boutique Shopify connectée (onglet Commerce)."),
 }
 
 
