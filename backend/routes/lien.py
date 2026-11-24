@@ -174,7 +174,16 @@ def get_links(
     query = (
         db.query(Link)
         .filter(Link.user_id == owner_id)
-        .filter(Link.source == "links")
+        # "links" : créé à la main depuis cette même vue (voir liens.js,
+        # POST /links avec source="links"). "shopify" : généré
+        # automatiquement par le webhook orders/create (routes/webhook/
+        # shopify.py) pour une commande payée via "Xepay" - reste un VRAI
+        # lien de paiement pour le marchand (à voir/annuler/suivre ici),
+        # jamais exclu de cette vue juste parce qu'il n'a pas été créé à
+        # la main (trouvé le 2026-11-24 : un lien "shopify" ne matchait
+        # ni ce filtre ni celui de /links/dashboard, "dashboard" - invisible
+        # partout dans l'UI alors que parfaitement payable en base).
+        .filter(Link.source.in_(["links", "shopify"]))
         .filter(Link.deleted == False)
         .filter(Link.archived == False)
     )
