@@ -37,11 +37,20 @@ SHOPIFY_CLIENT_ID = os.getenv("SHOPIFY_CLIENT_ID")
 SHOPIFY_CLIENT_SECRET = os.getenv("SHOPIFY_CLIENT_SECRET")
 SHOPIFY_REDIRECT_URI = os.getenv("SHOPIFY_REDIRECT_URI", "https://api.xepay.finance/auth/shopify/callback")
 # Doit rester IDENTIQUE aux scopes déclarés dans le Partner Dashboard pour
-# "Xepay Sync" (read_orders,write_orders,read_products,write_products,
-# confirmés le 2026-11-24) - un scope demandé ici mais absent du Partner
-# Dashboard ferait échouer /admin/oauth/authorize côté Shopify.
+# "Xepay Sync" - read_customers/write_customers ajoutés le 2026-11-24
+# (voir has_customers_scope ci-dessous, qui jusque-là bloquait toujours
+# GET /shopify/customers en 409 faute de ce scope). IMPORTANT : ce
+# changement ne s'applique QU'AUX NOUVELLES autorisations - une boutique
+# déjà connectée (Connect0/Connect1) garde le token émis avec l'ANCIEN
+# jeu de scopes tel quel ; elle doit être reconnectée (GET /shopify/
+# install, Paramètres > Shopify) pour que Shopify émette un nouveau
+# token couvrant read_customers (OAuth Shopify : le scope d'un token
+# déjà émis ne s'étend jamais rétroactivement, re-consentement
+# obligatoire). Un scope demandé ici mais absent du Partner Dashboard
+# ferait échouer /admin/oauth/authorize côté Shopify.
 SHOPIFY_SCOPES = os.getenv(
-    "SHOPIFY_SCOPES", "read_orders,write_orders,read_products,write_products"
+    "SHOPIFY_SCOPES",
+    "read_orders,write_orders,read_products,write_products,read_customers,write_customers",
 )
 SHOPIFY_TIMEOUT_SECONDS = 10
 # Version d'API Admin GraphQL - voir shopify.dev, une release stable par
