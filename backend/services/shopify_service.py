@@ -336,18 +336,30 @@ async def mark_order_as_paid(shop: str, access_token: str, order_id) -> dict:
 # Commerce, qui chargent au plus 100 lignes en un seul appel).
 COMMERCE_PAGE_SIZE = 50
 
-# Scope requis pour list_customers - PAS dans SHOPIFY_SCOPES aujourd'hui
-# (voir en tête de fichier) : has_customers_scope() permet de le détecter
-# à partir de ShopifyShop.scope (chaîne renvoyée par Shopify à l'échange
-# OAuth, voir routes/shopify.py::shopify_callback) SANS appeler Shopify -
-# un appel GraphQL avec ce scope manquant échouerait de toute façon côté
-# Shopify, mais autant le savoir avant et renvoyer une erreur claire
-# (voir routes/shopify.py, GET /shopify/customers).
-SHOPIFY_CUSTOMERS_SCOPE = "read_customers"
+# Scopes clients - AJOUTÉS à SHOPIFY_SCOPES le 2026-11-24 (voir en tête
+# de fichier) mais une boutique déjà connectée AVANT ce changement garde
+# son token sous l'ANCIEN jeu de scopes tant qu'elle n'est pas
+# reconnectée (OAuth : le scope d'un token déjà émis ne s'étend jamais
+# rétroactivement) - has_customers_scope()/has_write_customers_scope()
+# permettent de le détecter à partir de ShopifyShop.scope (chaîne
+# renvoyée par Shopify à l'échange OAuth, voir routes/shopify.py::
+# shopify_callback) SANS appeler Shopify : un appel GraphQL avec le
+# scope manquant échouerait de toute façon côté Shopify, mais autant le
+# savoir avant et renvoyer une erreur claire (voir routes/shopify.py).
+SHOPIFY_CUSTOMERS_READ_SCOPE = "read_customers"
+SHOPIFY_CUSTOMERS_WRITE_SCOPE = "write_customers"
+
+
+def _has_scope(granted_scope: str | None, scope_name: str) -> bool:
+    return scope_name in {s.strip() for s in (granted_scope or "").split(",")}
 
 
 def has_customers_scope(granted_scope: str | None) -> bool:
-    return SHOPIFY_CUSTOMERS_SCOPE in {s.strip() for s in (granted_scope or "").split(",")}
+    return _has_scope(granted_scope, SHOPIFY_CUSTOMERS_READ_SCOPE)
+
+
+def has_write_customers_scope(granted_scope: str | None) -> bool:
+    return _has_scope(granted_scope, SHOPIFY_CUSTOMERS_WRITE_SCOPE)
 
 
 async def list_products(shop: str, access_token: str) -> list[dict]:
@@ -385,7 +397,10 @@ async def list_products(shop: str, access_token: str) -> list[dict]:
 async def list_orders(shop: str, access_token: str) -> list[dict]:
     """GET commandes - statut financier/livraison, montant total (devise
     de la boutique), client, date - triées de la plus récente à la plus
-    ancienne."""
+    ancienne. cancelledAt (null si pas annulée) : seul champ fiable pour
+    savoir si "Annuler" doit être proposée côté UI (routes/shopify.py,
+    POST /shopify/orders/{id}/cancel) - displayFinancialStatus/
+    displayFulfillmentStatus ne reflètent pas forcément l'annulation."""
     result = await _admin_graphql(
         shop, access_token,
         """
@@ -397,6 +412,7 @@ async def list_orders(shop: str, access_token: str) -> list[dict]:
                 name
                 displayFinancialStatus
                 displayFulfillmentStatus
+                cancelledAt
                 createdAt
                 totalPriceSet { shopMoney { amount currencyCode } }
                 customer { displayName email }
@@ -427,7 +443,10 @@ async def list_customers(shop: str, access_token: str) -> list[dict]:
               node {
                 id
                 displayName
+                firstName
+                lastName
                 email
+                phone
                 numberOfOrders
                 amountSpent { amount currencyCode }
                 createdAt
@@ -440,3 +459,193 @@ async def list_customers(shop: str, access_token: str) -> list[dict]:
     )
     edges = (result.get("customers") or {}).get("edges") or []
     return [e["node"] for e in edges]
+
+
+# =========================================================
+# Écriture (demande du 2026-11-24, après l'ajout de read_customers/
+# write_customers au Partner Dashboard) - signatures vérifiées contre la
+# doc officielle shopify.dev le même jour, PAS testées contre un vrai
+# appel (aucune app Shopify Partner ne peut être pilotée depuis ce
+# sandbox - voir le docstring en tête de fichier). customerCreate/
+# productCreate/orderCancel ont chacun leurs propres limites
+# documentées, reprises dans les docstrings ci-dessous plutôt que
+# redécouvertes en prod.
+# =========================================================
+
+def customer_gid(customer_id) -> str:
+    return f"gid://shopify/Customer/{customer_id}"
+
+
+def product_gid(product_id) -> str:
+    return f"gid://shopify/Product/{product_id}"
+
+
+def _customer_input(first_name=None, last_name=None, email=None, phone=None) -> dict:
+    """CustomerInput (customerCreate/customerUpdate) - seuls les champs
+    non None sont inclus, pour qu'un PATCH partiel (update_customer)
+    n'écrase jamais un champ non fourni avec null côté Shopify."""
+    data = {}
+    if first_name is not None:
+        data["firstName"] = first_name
+    if last_name is not None:
+        data["lastName"] = last_name
+    if email is not None:
+        data["email"] = email
+    if phone is not None:
+        data["phone"] = phone
+    return data
+
+
+async def create_customer(shop: str, access_token: str, first_name=None, last_name=None, email=None, phone=None) -> dict:
+    """customerCreate - Shopify exige au moins un moyen de contact
+    (email/phone/nom), vérifié côté appelant (routes/shopify.py), pas
+    ici."""
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        mutation customerCreate($input: CustomerInput!) {
+          customerCreate(input: $input) {
+            customer { id firstName lastName email phone createdAt }
+            userErrors { field message }
+          }
+        }
+        """,
+        {"input": _customer_input(first_name, last_name, email, phone)},
+    )
+    payload = result.get("customerCreate") or {}
+    user_errors = payload.get("userErrors") or []
+    if user_errors:
+        raise ShopifyAPIError(200, str(user_errors))
+    return payload.get("customer") or {}
+
+
+async def update_customer(shop: str, access_token: str, customer_id, first_name=None, last_name=None, email=None, phone=None) -> dict:
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        mutation customerUpdate($input: CustomerInput!) {
+          customerUpdate(input: $input) {
+            customer { id firstName lastName email phone createdAt }
+            userErrors { field message }
+          }
+        }
+        """,
+        {"input": {"id": customer_gid(customer_id), **_customer_input(first_name, last_name, email, phone)}},
+    )
+    payload = result.get("customerUpdate") or {}
+    user_errors = payload.get("userErrors") or []
+    if user_errors:
+        raise ShopifyAPIError(200, str(user_errors))
+    return payload.get("customer") or {}
+
+
+async def create_product(shop: str, access_token: str, title: str, description: str | None, price: float | None, status: str) -> dict:
+    """productCreate - NE CRÉE QU'UNE SEULE VARIANTE et n'accepte pas son
+    prix directement (confirmé le 2026-11-24) : si "price" est fourni,
+    un second appel (productVariantsBulkUpdate) fixe le prix de cette
+    variante par défaut juste après. Le STOCK (inventaire) reste hors
+    périmètre - nécessiterait un emplacement (location) + un appel
+    distinct (inventoryAdjustQuantities), jamais implémenté ici."""
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        mutation productCreate($input: ProductCreateInput!) {
+          productCreate(input: $input) {
+            product {
+              id
+              title
+              status
+              variants(first: 1) { edges { node { id } } }
+            }
+            userErrors { field message }
+          }
+        }
+        """,
+        {"input": {"title": title, "descriptionHtml": description or "", "status": status}},
+    )
+    payload = result.get("productCreate") or {}
+    user_errors = payload.get("userErrors") or []
+    if user_errors:
+        raise ShopifyAPIError(200, str(user_errors))
+    product = payload.get("product") or {}
+
+    if price is not None:
+        variant_edges = ((product.get("variants") or {}).get("edges")) or []
+        if variant_edges:
+            variant_id = variant_edges[0]["node"]["id"]
+            await _admin_graphql(
+                shop, access_token,
+                """
+                mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+                  productVariantsBulkUpdate(productId: $productId, variants: $variants) {
+                    userErrors { field message }
+                  }
+                }
+                """,
+                {"productId": product["id"], "variants": [{"id": variant_id, "price": str(price)}]},
+            )
+    return product
+
+
+async def update_product(shop: str, access_token: str, product_id, title=None, description=None, status=None) -> dict:
+    """productUpdate - prix/stock non modifiables ici, même limite que
+    create_product (voir son docstring)."""
+    input_data = {"id": product_gid(product_id)}
+    if title is not None:
+        input_data["title"] = title
+    if description is not None:
+        input_data["descriptionHtml"] = description
+    if status is not None:
+        input_data["status"] = status
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        mutation productUpdate($input: ProductInput!) {
+          productUpdate(input: $input) {
+            product { id title status }
+            userErrors { field message }
+          }
+        }
+        """,
+        {"input": input_data},
+    )
+    payload = result.get("productUpdate") or {}
+    user_errors = payload.get("userErrors") or []
+    if user_errors:
+        raise ShopifyAPIError(200, str(user_errors))
+    return payload.get("product") or {}
+
+
+async def cancel_order(shop: str, access_token: str, order_id, reason: str, restock: bool, notify_customer: bool = False, staff_note: str | None = None) -> dict:
+    """orderCancel - ASYNCHRONE côté Shopify (confirmé le 2026-11-24) :
+    la réponse porte un "job" (id/done), jamais la commande annulée
+    directement - aucun polling implémenté ici (hors périmètre), le
+    retour expose donc job.id/job.done tels que Shopify les renvoie à
+    cet instant (done vaut presque toujours false juste après l'appel),
+    à l'appelant (routes/shopify.py) de le présenter comme "annulation
+    lancée", jamais "commande annulée" avec certitude."""
+    variables = {
+        "orderId": order_gid(order_id),
+        "reason": reason,
+        "restock": restock,
+        "notifyCustomer": notify_customer,
+    }
+    if staff_note is not None:
+        variables["staffNote"] = staff_note
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        mutation orderCancel($orderId: ID!, $reason: OrderCancelReason!, $restock: Boolean!, $notifyCustomer: Boolean, $staffNote: String) {
+          orderCancel(orderId: $orderId, reason: $reason, restock: $restock, notifyCustomer: $notifyCustomer, staffNote: $staffNote) {
+            job { id done }
+            orderCancelUserErrors { field message }
+          }
+        }
+        """,
+        variables,
+    )
+    payload = result.get("orderCancel") or {}
+    user_errors = payload.get("orderCancelUserErrors") or []
+    if user_errors:
+        raise ShopifyAPIError(200, str(user_errors))
+    return payload.get("job") or {}

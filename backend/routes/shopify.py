@@ -54,20 +54,32 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.middleware.authorization import require_capability
-from backend.models import ShopifyShop, WorkspaceUser
+from backend.models import (
+    ShopifyCustomerUpsertRequest,
+    ShopifyOrderCancelRequest,
+    ShopifyProductUpsertRequest,
+    ShopifyShop,
+    WorkspaceUser,
+)
 from backend.security import create_shopify_state_token, decode_shopify_state_token, decrypt_secret, encrypt_secret
 from backend.services.shopify_service import (
     SHOPIFY_CLIENT_ID,
     ShopifyAPIError,
     ShopifyRateLimitError,
     build_authorize_url,
+    cancel_order,
+    create_customer,
+    create_product,
     exchange_code_for_token,
     has_customers_scope,
+    has_write_customers_scope,
     is_valid_shop_domain,
     list_customers,
     list_orders,
     list_products,
     register_order_webhook,
+    update_customer,
+    update_product,
     verify_hmac,
 )
 
@@ -393,3 +405,143 @@ async def shopify_customers(
         logger.exception("Échec list_customers pour %s", shop_row.shop_domain)
         raise HTTPException(status_code=502, detail="Impossible de récupérer les clients Shopify")
     return {"shop_domain": shop_row.shop_domain, "data": customers}
+
+
+# =========================================================
+# Écriture (demande du 2026-11-24) - require_capability("manage_shopify_data")
+# (manager, même niveau que manage_stripe_billing côté Commerce Stripe) -
+# distincte de "view_shopify_data" (lecture) et "manage_shopify_integration"
+# (owner, connexion elle-même). Mêmes codes d'erreur que les endpoints de
+# lecture (404/409/429/502) + 400 sur une userError Shopify (validation -
+# jamais une vraie panne, voir chaque except ShopifyAPIError plus bas qui
+# NE distingue PAS 400 vs 502 pour l'instant : _admin_graphql ne porte pas
+# cette distinction côté exception, voir son docstring).
+# =========================================================
+
+@router.post("/shopify/customers")
+async def shopify_create_customer(
+    data: ShopifyCustomerUpsertRequest,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("manage_shopify_data")),
+):
+    shop_row = _get_connected_shop(db, membership.workspace_id)
+    if not shop_row:
+        raise HTTPException(status_code=404, detail="Aucune boutique Shopify connectée")
+    if not has_write_customers_scope(shop_row.scope):
+        raise HTTPException(
+            status_code=409,
+            detail="Le scope write_customers n'est pas accordé - reconnectez la boutique après l'avoir ajouté au Partner Dashboard",
+        )
+    if not any([data.first_name, data.last_name, data.email, data.phone]):
+        raise HTTPException(status_code=400, detail="Au moins un nom, email ou téléphone est requis")
+    try:
+        customer = await create_customer(
+            shop_row.shop_domain, decrypt_secret(shop_row.access_token),
+            data.first_name, data.last_name, data.email, data.phone,
+        )
+    except ShopifyRateLimitError:
+        raise HTTPException(status_code=429, detail="Limite Shopify atteinte, réessayez dans quelques secondes")
+    except ShopifyAPIError as e:
+        logger.warning("Échec customerCreate pour %s : %s", shop_row.shop_domain, e.body)
+        raise HTTPException(status_code=400, detail="Shopify a refusé la création de ce client")
+    return {"shop_domain": shop_row.shop_domain, "data": customer}
+
+
+@router.patch("/shopify/customers/{customer_id}")
+async def shopify_update_customer(
+    customer_id: str,
+    data: ShopifyCustomerUpsertRequest,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("manage_shopify_data")),
+):
+    shop_row = _get_connected_shop(db, membership.workspace_id)
+    if not shop_row:
+        raise HTTPException(status_code=404, detail="Aucune boutique Shopify connectée")
+    if not has_write_customers_scope(shop_row.scope):
+        raise HTTPException(
+            status_code=409,
+            detail="Le scope write_customers n'est pas accordé - reconnectez la boutique après l'avoir ajouté au Partner Dashboard",
+        )
+    try:
+        customer = await update_customer(
+            shop_row.shop_domain, decrypt_secret(shop_row.access_token), customer_id,
+            data.first_name, data.last_name, data.email, data.phone,
+        )
+    except ShopifyRateLimitError:
+        raise HTTPException(status_code=429, detail="Limite Shopify atteinte, réessayez dans quelques secondes")
+    except ShopifyAPIError as e:
+        logger.warning("Échec customerUpdate pour %s : %s", shop_row.shop_domain, e.body)
+        raise HTTPException(status_code=400, detail="Shopify a refusé la modification de ce client")
+    return {"shop_domain": shop_row.shop_domain, "data": customer}
+
+
+@router.post("/shopify/products")
+async def shopify_create_product(
+    data: ShopifyProductUpsertRequest,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("manage_shopify_data")),
+):
+    shop_row = _get_connected_shop(db, membership.workspace_id)
+    if not shop_row:
+        raise HTTPException(status_code=404, detail="Aucune boutique Shopify connectée")
+    try:
+        product = await create_product(
+            shop_row.shop_domain, decrypt_secret(shop_row.access_token),
+            data.title, data.description, data.price, data.status,
+        )
+    except ShopifyRateLimitError:
+        raise HTTPException(status_code=429, detail="Limite Shopify atteinte, réessayez dans quelques secondes")
+    except ShopifyAPIError as e:
+        logger.warning("Échec productCreate pour %s : %s", shop_row.shop_domain, e.body)
+        raise HTTPException(status_code=400, detail="Shopify a refusé la création de ce produit")
+    return {"shop_domain": shop_row.shop_domain, "data": product}
+
+
+@router.patch("/shopify/products/{product_id}")
+async def shopify_update_product(
+    product_id: str,
+    data: ShopifyProductUpsertRequest,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("manage_shopify_data")),
+):
+    shop_row = _get_connected_shop(db, membership.workspace_id)
+    if not shop_row:
+        raise HTTPException(status_code=404, detail="Aucune boutique Shopify connectée")
+    try:
+        product = await update_product(
+            shop_row.shop_domain, decrypt_secret(shop_row.access_token), product_id,
+            data.title, data.description, data.status,
+        )
+    except ShopifyRateLimitError:
+        raise HTTPException(status_code=429, detail="Limite Shopify atteinte, réessayez dans quelques secondes")
+    except ShopifyAPIError as e:
+        logger.warning("Échec productUpdate pour %s : %s", shop_row.shop_domain, e.body)
+        raise HTTPException(status_code=400, detail="Shopify a refusé la modification de ce produit")
+    return {"shop_domain": shop_row.shop_domain, "data": product}
+
+
+@router.post("/shopify/orders/{order_id}/cancel")
+async def shopify_cancel_order(
+    order_id: str,
+    data: ShopifyOrderCancelRequest,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("manage_shopify_data")),
+):
+    shop_row = _get_connected_shop(db, membership.workspace_id)
+    if not shop_row:
+        raise HTTPException(status_code=404, detail="Aucune boutique Shopify connectée")
+    try:
+        job = await cancel_order(
+            shop_row.shop_domain, decrypt_secret(shop_row.access_token), order_id,
+            data.reason, data.restock, data.notify_customer, data.staff_note,
+        )
+    except ShopifyRateLimitError:
+        raise HTTPException(status_code=429, detail="Limite Shopify atteinte, réessayez dans quelques secondes")
+    except ShopifyAPIError as e:
+        logger.warning("Échec orderCancel pour %s : %s", shop_row.shop_domain, e.body)
+        raise HTTPException(status_code=400, detail="Shopify a refusé l'annulation de cette commande")
+    # orderCancel est ASYNCHRONE côté Shopify (voir cancel_order,
+    # services/shopify_service.py) - "job" porte id/done, done vaut
+    # presque toujours false ici : c'est une annulation LANCÉE, pas
+    # confirmée. Le frontend doit l'afficher comme telle.
+    return {"shop_domain": shop_row.shop_domain, "job": job}
