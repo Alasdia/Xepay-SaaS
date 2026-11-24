@@ -2858,6 +2858,7 @@ function shopifyCardHtml(status) {
         ${missingScopes.length ? `<p class="params-promo-sub" style="color:#b45309;"><strong>Manquantes :</strong> ${missingScopes.join(", ")} - cliquez "Mettre à jour les autorisations" ci-dessous après les avoir ajoutées au Partner Dashboard.</p>` : ""}
         <div class="params-promo-actions" style="gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;">
           <button type="button" id="p-shopify-reconnect-btn" class="create-client-btn" data-shop-domain="${status.shop_domain}">Mettre à jour les autorisations</button>
+          <button type="button" id="p-shopify-disconnect-btn" style="background:none;border:1px solid #dc2626;color:#dc2626;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;">Déconnecter la boutique</button>
         </div>
       </div>
     `;
@@ -2917,6 +2918,31 @@ async function renderShopifySection() {
       // déjà connu (status.shop_domain) - pas besoin de le ressaisir.
       const shop = reconnectBtn.dataset.shopDomain;
       window.location.href = `${XEPAY_API_BASE_URL}/shopify/install?shop=${encodeURIComponent(shop)}`;
+    });
+  }
+  const disconnectBtn = container.querySelector("#p-shopify-disconnect-btn");
+  if (disconnectBtn) {
+    disconnectBtn.addEventListener("click", async () => {
+      // Action destructive (vide access_token/merchant_id côté Xepay,
+      // voir POST /shopify/disconnect) - confirmation obligatoire,
+      // contrairement à "Mettre à jour les autorisations" qui ne fait
+      // que relancer un consentement OAuth sans rien effacer.
+      if (!window.confirm("Déconnecter cette boutique Shopify ? Les commandes payées via \"Xepay\" ne seront plus synchronisées tant qu'elle n'est pas reconnectée.")) {
+        return;
+      }
+      disconnectBtn.disabled = true;
+      disconnectBtn.textContent = "Déconnexion...";
+      try {
+        const res = await apiFetch("/shopify/disconnect", { method: "POST" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Impossible de déconnecter la boutique");
+        showToast("Boutique Shopify déconnectée", "success");
+        await renderShopifySection();
+      } catch (err) {
+        showToast(err.message || "Erreur lors de la déconnexion", "error");
+        disconnectBtn.disabled = false;
+        disconnectBtn.textContent = "Déconnecter la boutique";
+      }
     });
   }
 }

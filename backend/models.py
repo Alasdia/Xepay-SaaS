@@ -940,19 +940,28 @@ class ShopifyShop(Base):
     UserDB.two_factor_secret, voir security.py) - jamais en clair en base,
     jamais loggé ni renvoyé dans une réponse HTTP (voir routes/shopify.py).
 
-    merchant_id (workspace Xepay) nullable : résolu uniquement si le
-    paramètre "state" du callback contient un jeton shopify_install valide
-    (voir security.create_shopify_state_token/decode_shopify_state_token) -
-    aucune route n'émet encore ce jeton pour l'instant (lancement de
-    l'installation hors périmètre de ce qui a été demandé), donc
-    merchant_id reste NULL tant que ce flux n'existe pas - une boutique
-    reste malgré tout enregistrée (shop_domain + token) dès le callback."""
+    merchant_id (workspace Xepay) nullable : résolu via le paramètre
+    "state" du callback (jeton shopify_install signé, voir
+    security.create_shopify_state_token/decode_shopify_state_token et
+    GET /shopify/install, routes/shopify.py) - reste NULL pour une
+    boutique jamais explicitement rattachée à un marchand Xepay, OU
+    redevient NULL après un POST /shopify/disconnect (voir
+    shopify_disconnect, routes/shopify.py - demande du 2026-11-24, "un
+    vrai mécanisme de déconnexion").
+
+    access_token NULLABLE depuis la migration 0004 (migrations/
+    0004_shopify_shops_access_token_nullable.sql - À APPLIQUER avant ce
+    déploiement, sinon shopify_disconnect lève une IntegrityError) :
+    vidé par shopify_disconnect en même temps que merchant_id, jamais
+    supprimé en DUR (la ligne shop_domain=UNIQUE survit, pour qu'une
+    ré-connexion ultérieure de la même boutique la retrouve et la mette
+    à jour plutôt que d'en créer une seconde)."""
     __tablename__ = "shopify_shops"
 
     id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("shp"))
     shop_domain = Column(String, unique=True, nullable=False)
     merchant_id = Column(String, ForeignKey("users.id"), nullable=True)
-    access_token = Column(String, nullable=False)
+    access_token = Column(String, nullable=True)
     scope = Column(String, nullable=True)
     installed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
