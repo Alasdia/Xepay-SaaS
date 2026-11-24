@@ -1365,3 +1365,60 @@
         grid-template-columns: repeat(2, 1fr);
     }
 }
+
+/* =========================================================
+   ONGLETS SHOPIFY (voir renderShopify, spa/views/commerce.js) - même
+   style visuel que .notif-tab (parametres.css) mais dupliqué ici sous
+   un nom dédié : setViewStyles ne charge qu'un seul CSS par vue
+   (commerce.css ici), jamais parametres.css en même temps (collision
+   entre les 14 fichiers CSS existants, voir styleLoader.js) - chaque
+   vue reste donc isolée de ses propres classes, par design.
+========================================================= */
+
+.shopify-tabs {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 24px;
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.shopify-tab {
+    background: none;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #6b7280;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.shopify-tab:hover {
+    color: #111827;
+}
+
+.shopify-tab--active {
+    background: rgba(17, 24, 39, 0.06);
+    color: rgba(17, 24, 39, 0.7);
+}
+
+/* Boutons d'action de ligne (Modifier/Annuler) des tableaux Shopify -
+   même style que .params-edit-btn (parametres.css), dupliqué ici pour
+   la même raison d'isolation CSS que .shopify-tab ci-dessus. */
+.shopify-row-action-btn {
+    background: none;
+    border: none;
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 6px;
+}
+
+.shopify-row-action-btn:hover {
+    color: #111827;
+}

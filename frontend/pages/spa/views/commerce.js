@@ -6756,6 +6756,21 @@ function shopifyDate(iso) {
     return new Date(iso).toLocaleDateString("fr-FR", { year: "numeric", month: "short", day: "numeric" });
 }
 
+// Les 3 fonctions list_* (backend) renvoient l'id Shopify au format GID
+// ("gid://shopify/Product/123") - les routes d'écriture (PATCH/POST .../
+// {id}) attendent l'id NUMÉRIQUE brut (voir customer_gid/product_gid/
+// order_gid, services/shopify_service.py, qui reconstruisent le GID côté
+// serveur) : on extrait donc le dernier segment ici, une seule fois,
+// plutôt que de dupliquer cette extraction à chaque bouton d'action.
+function shopifyNumericId(gid) {
+    if (!gid) return "";
+    return String(gid).split("/").pop();
+}
+
+function escapeHtmlAttr(value) {
+    return String(value ?? "").replace(/"/g, "&quot;");
+}
+
 async function renderShopifyProductsSection(container) {
     container.innerHTML = `<div class="commerce-card"><p>Chargement des produits...</p></div>`;
     try {
@@ -6767,10 +6782,6 @@ async function renderShopifyProductsSection(container) {
         }
         if (!response.ok) throw new Error(data.detail || "Impossible de récupérer les produits Shopify");
         const products = data.data || [];
-        if (!products.length) {
-            container.innerHTML = `<div class="commerce-card"><p>Aucun produit dans cette boutique.</p></div>`;
-            return true;
-        }
         container.innerHTML = `
             <div class="table-wrap">
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -6778,10 +6789,12 @@ async function renderShopifyProductsSection(container) {
                         <div class="table-title">Produits Shopify</div>
                         <div class="page-subtitle">${products.length} produit(s) - ${data.shop_domain}</div>
                     </div>
+                    <button type="button" class="create-client-btn" id="shopify-open-create-product">+ Créer un produit</button>
                 </div>
+                ${!products.length ? `<p class="text-muted">Aucun produit dans cette boutique.</p>` : `
                 <table class="table">
                     <thead>
-                        <tr><th>Produit</th><th>Statut</th><th>Stock</th><th>Prix</th></tr>
+                        <tr><th>Produit</th><th>Statut</th><th>Stock</th><th>Prix</th><th></th></tr>
                     </thead>
                     <tbody>
                         ${products.map((p) => `
@@ -6790,10 +6803,18 @@ async function renderShopifyProductsSection(container) {
                                 <td>${p.status || "—"}</td>
                                 <td>${p.totalInventory ?? "—"}</td>
                                 <td>${shopifyMoneyRange(p.priceRangeV2)}</td>
+                                <td class="text-end">
+                                    <button type="button" class="shopify-row-action-btn"
+                                        data-shopify-edit-product="${shopifyNumericId(p.id)}"
+                                        data-title="${escapeHtmlAttr(p.title)}"
+                                        data-status="${escapeHtmlAttr(p.status)}"
+                                    >Modifier</button>
+                                </td>
                             </tr>
                         `).join("")}
                     </tbody>
                 </table>
+                `}
             </div>
         `;
         return true;
@@ -6815,10 +6836,6 @@ async function renderShopifyOrdersSection(container) {
         }
         if (!response.ok) throw new Error(data.detail || "Impossible de récupérer les commandes Shopify");
         const orders = data.data || [];
-        if (!orders.length) {
-            container.innerHTML = `<div class="commerce-card"><p>Aucune commande dans cette boutique.</p></div>`;
-            return;
-        }
         container.innerHTML = `
             <div class="table-wrap">
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -6827,9 +6844,10 @@ async function renderShopifyOrdersSection(container) {
                         <div class="page-subtitle">${orders.length} commande(s) - ${data.shop_domain}</div>
                     </div>
                 </div>
+                ${!orders.length ? `<p class="text-muted">Aucune commande dans cette boutique.</p>` : `
                 <table class="table">
                     <thead>
-                        <tr><th>Commande</th><th>Client</th><th>Statut financier</th><th>Statut livraison</th><th>Montant</th><th>Date</th></tr>
+                        <tr><th>Commande</th><th>Client</th><th>Statut financier</th><th>Statut livraison</th><th>Montant</th><th>Date</th><th></th></tr>
                     </thead>
                     <tbody>
                         ${orders.map((o) => `
@@ -6837,13 +6855,20 @@ async function renderShopifyOrdersSection(container) {
                                 <td>${o.name || "—"}</td>
                                 <td>${o.customer?.displayName || o.customer?.email || "—"}</td>
                                 <td>${o.displayFinancialStatus || "—"}</td>
-                                <td>${o.displayFulfillmentStatus || "—"}</td>
+                                <td>${o.cancelledAt ? "Annulée" : (o.displayFulfillmentStatus || "—")}</td>
                                 <td>${shopifyMoney(o.totalPriceSet?.shopMoney)}</td>
                                 <td>${shopifyDate(o.createdAt)}</td>
+                                <td class="text-end">
+                                    ${o.cancelledAt ? "" : `<button type="button" class="shopify-row-action-btn"
+                                        data-shopify-cancel-order="${shopifyNumericId(o.id)}"
+                                        data-order-name="${escapeHtmlAttr(o.name)}"
+                                    >Annuler</button>`}
+                                </td>
                             </tr>
                         `).join("")}
                     </tbody>
                 </table>
+                `}
             </div>
         `;
     } catch (error) {
@@ -6862,9 +6887,12 @@ async function renderShopifyCustomersSection(container) {
             return;
         }
         if (response.status === 409) {
-            // Scope read_customers manquant (voir routes/shopify.py) -
-            // jamais un échec générique : produits/commandes restent
-            // affichés indépendamment, seul ce bloc explique la limite.
+            // Scope client manquant (read_customers, voir routes/
+            // shopify.py) - jamais un échec générique : produits/
+            // commandes restent affichés indépendamment, seul ce bloc
+            // explique la limite. Pas de bouton "+ Créer" tant que ce
+            // scope n'est pas accordé (write_customers irait de toute
+            // façon échouer côté Shopify).
             container.innerHTML = `
                 <div class="commerce-card">
                     <p>Les clients Shopify ne sont pas encore accessibles.</p>
@@ -6875,10 +6903,6 @@ async function renderShopifyCustomersSection(container) {
         }
         if (!response.ok) throw new Error(data.detail || "Impossible de récupérer les clients Shopify");
         const customers = data.data || [];
-        if (!customers.length) {
-            container.innerHTML = `<div class="commerce-card"><p>Aucun client dans cette boutique.</p></div>`;
-            return;
-        }
         container.innerHTML = `
             <div class="table-wrap">
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -6886,10 +6910,12 @@ async function renderShopifyCustomersSection(container) {
                         <div class="table-title">Clients Shopify</div>
                         <div class="page-subtitle">${customers.length} client(s) - ${data.shop_domain}</div>
                     </div>
+                    <button type="button" class="create-client-btn" id="shopify-open-create-customer">+ Créer un client</button>
                 </div>
+                ${!customers.length ? `<p class="text-muted">Aucun client dans cette boutique.</p>` : `
                 <table class="table">
                     <thead>
-                        <tr><th>Client</th><th>Email</th><th>Commandes</th><th>Total dépensé</th><th>Créé le</th></tr>
+                        <tr><th>Client</th><th>Email</th><th>Commandes</th><th>Total dépensé</th><th>Créé le</th><th></th></tr>
                     </thead>
                     <tbody>
                         ${customers.map((c) => `
@@ -6899,16 +6925,147 @@ async function renderShopifyCustomersSection(container) {
                                 <td>${c.numberOfOrders ?? "—"}</td>
                                 <td>${shopifyMoney(c.amountSpent)}</td>
                                 <td>${shopifyDate(c.createdAt)}</td>
+                                <td class="text-end">
+                                    <button type="button" class="shopify-row-action-btn"
+                                        data-shopify-edit-customer="${shopifyNumericId(c.id)}"
+                                        data-first-name="${escapeHtmlAttr(c.firstName)}"
+                                        data-last-name="${escapeHtmlAttr(c.lastName)}"
+                                        data-email="${escapeHtmlAttr(c.email)}"
+                                        data-phone="${escapeHtmlAttr(c.phone)}"
+                                    >Modifier</button>
+                                </td>
                             </tr>
                         `).join("")}
                     </tbody>
                 </table>
+                `}
             </div>
         `;
     } catch (error) {
         console.error(error);
         container.innerHTML = `<div class="commerce-card"><p>${error.message || "Erreur lors du chargement des clients Shopify"}</p></div>`;
     }
+}
+
+// 3 onglets (demande du 2026-11-24, remplace l'ancien affichage des
+// trois sections empilées sur une seule page) - un seul chargé à la
+// fois, dans #shopify-tab-content, re-fetché à chaque clic d'onglet
+// (pas de cache : cohérent avec le reste de la lecture directe). Chaque
+// entrée retourne un booléen "connecté" (voir renderShopifyProductsSection)
+// seulement pour l'onglet "produits", qui est aussi celui chargé en
+// premier - c'est lui qui détecte si la boutique est connectée avant
+// même d'afficher la barre d'onglets.
+const SHOPIFY_TABS = [
+    { key: "produits", label: "Produits", render: renderShopifyProductsSection },
+    { key: "commandes", label: "Commandes", render: renderShopifyOrdersSection },
+    { key: "clients", label: "Clients", render: renderShopifyCustomersSection },
+];
+
+// Modales d'écriture (demande du 2026-11-24) - partagées entre tous les
+// onglets, posées UNE SEULE FOIS dans le gabarit statique de
+// renderShopify (donc jamais détruites par un changement d'onglet, qui
+// ne remplace que #shopify-tab-content) - même classes CSS que les
+// modales Stripe existantes (.customer-modal-overlay/.customer-modal),
+// voir renderProducts/renderClients plus haut dans ce fichier.
+function shopifyCustomerModalHtml() {
+    return `
+        <div class="customer-modal-overlay" id="shopify-customer-modal">
+            <div class="customer-modal">
+                <div class="customer-modal-header">
+                    <div>
+                        <h3 id="shopify-customer-modal-title">Créer un client</h3>
+                        <p>Client Shopify de votre boutique connectée.</p>
+                    </div>
+                    <button type="button" class="customer-modal-close" id="shopify-customer-modal-close">×</button>
+                </div>
+                <form id="shopify-customer-form">
+                    <input type="hidden" id="shopify-customer-id">
+                    <div class="form-row">
+                        <div class="form-group"><label>Prénom</label><input type="text" id="shopify-customer-first-name"></div>
+                        <div class="form-group"><label>Nom</label><input type="text" id="shopify-customer-last-name"></div>
+                    </div>
+                    <div class="form-group"><label>Email</label><input type="email" id="shopify-customer-email"></div>
+                    <div class="form-group"><label>Téléphone</label><input type="text" id="shopify-customer-phone"></div>
+                    <button type="submit" class="create-client-btn" id="shopify-customer-submit">Créer</button>
+                </form>
+            </div>
+        </div>
+    `;
+}
+
+function shopifyProductModalHtml() {
+    return `
+        <div class="customer-modal-overlay" id="shopify-product-modal">
+            <div class="customer-modal">
+                <div class="customer-modal-header">
+                    <div>
+                        <h3 id="shopify-product-modal-title">Créer un produit</h3>
+                        <p>Produit Shopify de votre boutique connectée.</p>
+                    </div>
+                    <button type="button" class="customer-modal-close" id="shopify-product-modal-close">×</button>
+                </div>
+                <form id="shopify-product-form">
+                    <input type="hidden" id="shopify-product-id">
+                    <div class="form-group"><label>Titre</label><input type="text" id="shopify-product-title" required></div>
+                    <div class="form-group"><label>Description</label><textarea id="shopify-product-description"></textarea></div>
+                    <div class="form-row">
+                        <div class="form-group" id="shopify-product-price-group">
+                            <label>Prix</label>
+                            <input type="number" step="0.01" min="0.01" id="shopify-product-price">
+                        </div>
+                        <div class="form-group">
+                            <label>Statut</label>
+                            <select id="shopify-product-status">
+                                <option value="ACTIVE">Actif</option>
+                                <option value="DRAFT">Brouillon</option>
+                                <option value="ARCHIVED">Archivé</option>
+                            </select>
+                        </div>
+                    </div>
+                    <p class="text-muted" style="font-size:12px;" id="shopify-product-price-note">Le prix ne peut être défini qu'à la création (pas encore modifiable ici).</p>
+                    <button type="submit" class="create-client-btn" id="shopify-product-submit">Créer</button>
+                </form>
+            </div>
+        </div>
+    `;
+}
+
+function shopifyCancelOrderModalHtml() {
+    return `
+        <div class="customer-modal-overlay" id="shopify-cancel-order-modal">
+            <div class="customer-modal">
+                <div class="customer-modal-header">
+                    <div>
+                        <h3>Annuler la commande <span id="shopify-cancel-order-name"></span></h3>
+                        <p>L'annulation est traitée de façon asynchrone par Shopify - elle n'est pas instantanée.</p>
+                    </div>
+                    <button type="button" class="customer-modal-close" id="shopify-cancel-order-modal-close">×</button>
+                </div>
+                <form id="shopify-cancel-order-form">
+                    <input type="hidden" id="shopify-cancel-order-id">
+                    <div class="form-group">
+                        <label>Motif</label>
+                        <select id="shopify-cancel-order-reason" required>
+                            <option value="CUSTOMER">Demande du client</option>
+                            <option value="FRAUD">Fraude</option>
+                            <option value="INVENTORY">Stock indisponible</option>
+                            <option value="PAYMENT_DECLINED">Paiement refusé</option>
+                            <option value="STAFF_ERROR">Erreur interne</option>
+                            <option value="OTHER">Autre</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="shopify-cancel-order-restock" checked> Remettre les articles en stock</label>
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="shopify-cancel-order-notify"> Prévenir le client par email</label>
+                    </div>
+                    <div class="form-group"><label>Note interne (optionnel)</label><input type="text" maxlength="255" id="shopify-cancel-order-staff-note"></div>
+                    <button type="submit" class="create-client-btn" id="shopify-cancel-order-submit">Confirmer l'annulation</button>
+                </form>
+            </div>
+        </div>
+    `;
 }
 
 async function renderShopify(container) {
@@ -6926,23 +7083,237 @@ async function renderShopify(container) {
         </div>
 
         <div id="shopify-not-connected"></div>
-        <div id="shopify-products-section"></div>
-        <div id="shopify-orders-section"></div>
-        <div id="shopify-customers-section"></div>
+        <div class="shopify-tabs" id="shopify-tabs" style="display:none;">
+            ${SHOPIFY_TABS.map((t, i) => `<button type="button" class="shopify-tab${i === 0 ? " shopify-tab--active" : ""}" data-shopify-tab="${t.key}">${t.label}</button>`).join("")}
+        </div>
+        <div id="shopify-tab-content"></div>
+
+        ${shopifyCustomerModalHtml()}
+        ${shopifyProductModalHtml()}
+        ${shopifyCancelOrderModalHtml()}
     `;
 
-    const productsSection = container.querySelector("#shopify-products-section");
-    const connected = await renderShopifyProductsSection(productsSection);
+    const tabsEl = container.querySelector("#shopify-tabs");
+    const contentEl = container.querySelector("#shopify-tab-content");
+    let activeTabKey = "produits";
 
-    if (!connected) {
+    async function reloadActiveTab() {
+        const tab = SHOPIFY_TABS.find((t) => t.key === activeTabKey);
+        await tab.render(contentEl);
+    }
+
+    // Premier onglet ("Produits") chargé d'office : sert aussi à
+    // détecter si la boutique est connectée (404) avant même de
+    // proposer "Commandes"/"Clients".
+    const connected = await renderShopifyProductsSection(contentEl);
+    if (connected === false) {
         container.querySelector("#shopify-not-connected").innerHTML = shopifyNotConnectedCardHtml();
         return;
     }
+    tabsEl.style.display = "";
 
-    // Commandes/clients chargées en parallèle, indépendamment l'une de
-    // l'autre - voir l'en-tête de cette section.
-    await Promise.all([
-        renderShopifyOrdersSection(container.querySelector("#shopify-orders-section")),
-        renderShopifyCustomersSection(container.querySelector("#shopify-customers-section")),
-    ]);
+    tabsEl.querySelectorAll("[data-shopify-tab]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+            if (btn.classList.contains("shopify-tab--active")) return;
+            tabsEl.querySelectorAll(".shopify-tab").forEach((b) => b.classList.remove("shopify-tab--active"));
+            btn.classList.add("shopify-tab--active");
+            activeTabKey = btn.dataset.shopifyTab;
+            await reloadActiveTab();
+        });
+    });
+
+    /* =====================================================
+       MODALE CLIENT (créer / modifier) - delegation depuis `container`
+       (jamais re-liée à chaque re-rendu d'onglet, contrairement aux
+       lignes du tableau qui elles sont recréées à chaque fetch).
+    ===================================================== */
+    const customerModal = container.querySelector("#shopify-customer-modal");
+    const customerForm = container.querySelector("#shopify-customer-form");
+
+    function openCustomerModal({ id = "", firstName = "", lastName = "", email = "", phone = "" } = {}) {
+        container.querySelector("#shopify-customer-modal-title").textContent = id ? "Modifier le client" : "Créer un client";
+        container.querySelector("#shopify-customer-submit").textContent = id ? "Enregistrer" : "Créer";
+        container.querySelector("#shopify-customer-id").value = id;
+        container.querySelector("#shopify-customer-first-name").value = firstName;
+        container.querySelector("#shopify-customer-last-name").value = lastName;
+        container.querySelector("#shopify-customer-email").value = email;
+        container.querySelector("#shopify-customer-phone").value = phone;
+        customerModal.classList.add("open");
+    }
+
+    container.querySelector("#shopify-customer-modal-close").addEventListener("click", () => customerModal.classList.remove("open"));
+
+    customerForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const customerId = container.querySelector("#shopify-customer-id").value;
+        const isEditing = Boolean(customerId);
+        const body = {
+            first_name: container.querySelector("#shopify-customer-first-name").value.trim() || null,
+            last_name: container.querySelector("#shopify-customer-last-name").value.trim() || null,
+            email: container.querySelector("#shopify-customer-email").value.trim() || null,
+            phone: container.querySelector("#shopify-customer-phone").value.trim() || null,
+        };
+        try {
+            const response = await apiFetch(
+                isEditing ? `/shopify/customers/${customerId}` : "/shopify/customers",
+                { method: isEditing ? "PATCH" : "POST", body }
+            );
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || (isEditing ? "Impossible de modifier le client" : "Impossible de créer le client"));
+            showToast(isEditing ? "Client Shopify modifié" : "Client Shopify créé", "success");
+            customerModal.classList.remove("open");
+            if (activeTabKey === "clients") await reloadActiveTab();
+        } catch (error) {
+            showToast(error.message || "Erreur lors de l'enregistrement du client", "error");
+        }
+    });
+
+    /* =====================================================
+       MODALE PRODUIT (créer / modifier)
+    ===================================================== */
+    const productModal = container.querySelector("#shopify-product-modal");
+    const productForm = container.querySelector("#shopify-product-form");
+    const productPriceGroup = container.querySelector("#shopify-product-price-group");
+    const productPriceNote = container.querySelector("#shopify-product-price-note");
+
+    function openProductModal({ id = "", title = "", status = "ACTIVE" } = {}) {
+        const isEditing = Boolean(id);
+        container.querySelector("#shopify-product-modal-title").textContent = isEditing ? "Modifier le produit" : "Créer un produit";
+        container.querySelector("#shopify-product-submit").textContent = isEditing ? "Enregistrer" : "Créer";
+        container.querySelector("#shopify-product-id").value = id;
+        container.querySelector("#shopify-product-title").value = title;
+        container.querySelector("#shopify-product-description").value = "";
+        container.querySelector("#shopify-product-price").value = "";
+        container.querySelector("#shopify-product-status").value = status || "ACTIVE";
+        // Le prix n'est réglable qu'à la création (productCreate ne crée
+        // qu'une variante sans prix, voir create_product - productUpdate
+        // ne le modifie pas) - masqué en édition plutôt que trompeur.
+        productPriceGroup.style.display = isEditing ? "none" : "";
+        productPriceNote.style.display = isEditing ? "none" : "";
+        productModal.classList.add("open");
+    }
+
+    container.querySelector("#shopify-product-modal-close").addEventListener("click", () => productModal.classList.remove("open"));
+
+    productForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const productId = container.querySelector("#shopify-product-id").value;
+        const isEditing = Boolean(productId);
+        const title = container.querySelector("#shopify-product-title").value.trim();
+        if (!title) {
+            showToast("Le titre est obligatoire", "error");
+            return;
+        }
+        const body = isEditing
+            ? {
+                title,
+                description: container.querySelector("#shopify-product-description").value.trim() || null,
+                status: container.querySelector("#shopify-product-status").value,
+            }
+            : {
+                title,
+                description: container.querySelector("#shopify-product-description").value.trim() || null,
+                price: Number(container.querySelector("#shopify-product-price").value) || null,
+                status: container.querySelector("#shopify-product-status").value,
+            };
+        try {
+            const response = await apiFetch(
+                isEditing ? `/shopify/products/${productId}` : "/shopify/products",
+                { method: isEditing ? "PATCH" : "POST", body }
+            );
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || (isEditing ? "Impossible de modifier le produit" : "Impossible de créer le produit"));
+            showToast(isEditing ? "Produit Shopify modifié" : "Produit Shopify créé", "success");
+            productModal.classList.remove("open");
+            if (activeTabKey === "produits") await reloadActiveTab();
+        } catch (error) {
+            showToast(error.message || "Erreur lors de l'enregistrement du produit", "error");
+        }
+    });
+
+    /* =====================================================
+       MODALE ANNULATION COMMANDE
+    ===================================================== */
+    const cancelOrderModal = container.querySelector("#shopify-cancel-order-modal");
+    const cancelOrderForm = container.querySelector("#shopify-cancel-order-form");
+
+    function openCancelOrderModal(orderId, orderName) {
+        container.querySelector("#shopify-cancel-order-id").value = orderId;
+        container.querySelector("#shopify-cancel-order-name").textContent = orderName;
+        container.querySelector("#shopify-cancel-order-reason").value = "CUSTOMER";
+        container.querySelector("#shopify-cancel-order-restock").checked = true;
+        container.querySelector("#shopify-cancel-order-notify").checked = false;
+        container.querySelector("#shopify-cancel-order-staff-note").value = "";
+        cancelOrderModal.classList.add("open");
+    }
+
+    container.querySelector("#shopify-cancel-order-modal-close").addEventListener("click", () => cancelOrderModal.classList.remove("open"));
+
+    cancelOrderForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const orderId = container.querySelector("#shopify-cancel-order-id").value;
+        const body = {
+            reason: container.querySelector("#shopify-cancel-order-reason").value,
+            restock: container.querySelector("#shopify-cancel-order-restock").checked,
+            notify_customer: container.querySelector("#shopify-cancel-order-notify").checked,
+            staff_note: container.querySelector("#shopify-cancel-order-staff-note").value.trim() || null,
+        };
+        try {
+            const response = await apiFetch(`/shopify/orders/${orderId}/cancel`, { method: "POST", body });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || "Impossible d'annuler cette commande");
+            // orderCancel est ASYNCHRONE côté Shopify (voir cancel_order,
+            // services/shopify_service.py) - jamais "commande annulée"
+            // avec certitude ici, seulement "annulation lancée".
+            showToast("Annulation lancée - le statut se mettra à jour sur Shopify dans un instant", "success");
+            cancelOrderModal.classList.remove("open");
+            if (activeTabKey === "commandes") await reloadActiveTab();
+        } catch (error) {
+            showToast(error.message || "Erreur lors de l'annulation de la commande", "error");
+        }
+    });
+
+    /* =====================================================
+       DÉLÉGATION : boutons "+ Créer"/"Modifier"/"Annuler" injectés
+       dynamiquement dans #shopify-tab-content à chaque fetch - jamais
+       de addEventListener direct sur ces boutons (ils sont détruits/
+       recréés à chaque rendu d'onglet), toujours via `container`, qui
+       lui survit pour toute la durée de vie de la vue.
+    ===================================================== */
+    container.addEventListener("click", (event) => {
+        const createCustomerBtn = event.target.closest("#shopify-open-create-customer");
+        if (createCustomerBtn) {
+            openCustomerModal();
+            return;
+        }
+        const editCustomerBtn = event.target.closest("[data-shopify-edit-customer]");
+        if (editCustomerBtn) {
+            openCustomerModal({
+                id: editCustomerBtn.dataset.shopifyEditCustomer,
+                firstName: editCustomerBtn.dataset.firstName || "",
+                lastName: editCustomerBtn.dataset.lastName || "",
+                email: editCustomerBtn.dataset.email || "",
+                phone: editCustomerBtn.dataset.phone || "",
+            });
+            return;
+        }
+        const createProductBtn = event.target.closest("#shopify-open-create-product");
+        if (createProductBtn) {
+            openProductModal();
+            return;
+        }
+        const editProductBtn = event.target.closest("[data-shopify-edit-product]");
+        if (editProductBtn) {
+            openProductModal({
+                id: editProductBtn.dataset.shopifyEditProduct,
+                title: editProductBtn.dataset.title || "",
+                status: editProductBtn.dataset.status || "ACTIVE",
+            });
+            return;
+        }
+        const cancelOrderBtn = event.target.closest("[data-shopify-cancel-order]");
+        if (cancelOrderBtn) {
+            openCancelOrderModal(cancelOrderBtn.dataset.shopifyCancelOrder, cancelOrderBtn.dataset.orderName || "");
+        }
+    });
 }

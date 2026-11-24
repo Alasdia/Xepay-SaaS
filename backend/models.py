@@ -276,6 +276,41 @@ class BuildnessSignatureSessionRequest(BaseModel):
     # EIN en traitement accéléré.
     document_type: Literal["SS4", "FORM8821"] = "SS4"
 
+class ShopifyCustomerUpsertRequest(BaseModel):
+    # Mêmes champs pour créer (POST /shopify/customers) et modifier
+    # (PATCH /shopify/customers/{id}) - voir services/shopify_service.py
+    # (create_customer/update_customer). Shopify exige au moins un
+    # moyen de contact (email/phone/nom) pour CRÉER un client - vérifié
+    # côté route, pas ici (PATCH peut légitimement ne changer qu'un
+    # sous-ensemble des champs).
+    first_name: str | None = None
+    last_name: str | None = None
+    email: EmailStr | None = None
+    phone: str | None = None
+
+class ShopifyProductUpsertRequest(BaseModel):
+    # "price" optionnel : productCreate (Admin API, confirmé le
+    # 2026-11-24) ne crée qu'UNE variante et n'accepte pas son prix
+    # directement - voir create_product, qui enchaîne un second appel
+    # (productVariantsBulkUpdate) uniquement si price est fourni. Le
+    # STOCK (inventaire) reste hors périmètre de cette itération -
+    # nécessiterait un emplacement (location) + un appel distinct
+    # (inventoryAdjustQuantities), jamais implémenté ici.
+    title: str
+    description: str | None = None
+    price: float | None = Field(default=None, gt=0)
+    status: Literal["ACTIVE", "DRAFT", "ARCHIVED"] = "ACTIVE"
+
+class ShopifyOrderCancelRequest(BaseModel):
+    # Enum EXACT confirmé contre la doc officielle Shopify le 2026-11-24
+    # (OrderCancelReason) - Literal pour un 422 FastAPI plutôt qu'un
+    # rejet Shopify plus loin. restock/reason sont OBLIGATOIRES côté
+    # Shopify (orderCancel), jamais de valeur par défaut implicite ici.
+    reason: Literal["CUSTOMER", "PAYMENT_DECLINED", "FRAUD", "INVENTORY", "STAFF_ERROR", "OTHER"]
+    restock: bool
+    notify_customer: bool = False
+    staff_note: str | None = Field(default=None, max_length=255)
+
 class ConnectCustomerCreateRequest(BaseModel):
     # Aucun champ n'est obligatoire chez Stripe pour créer un Customer -
     # on garde cette même souplesse ici plutôt que d'imposer une
