@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, Request
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -9,7 +9,7 @@ import redis as redis_lib
 from backend.routes.lien import router as lien_router
 from backend.routes.users import router as users_router
 from backend.routes.payments import router as payments_router
-from backend.database import init_db
+from backend.database import init_db, get_db
 from backend.models import Link
 from backend.database import Base, engine, SessionLocal
 from backend.routes import payout
@@ -30,6 +30,7 @@ from backend.routes.verto import router as verto_api_router
 from backend.routes.buildness import router as buildness_router
 from backend.routes.webhook.doola import router as doola_webhook_router
 from backend.routes.shopify import router as shopify_router
+from backend.routes.shopify import handle_shopify_app_entry
 from backend.routes.app import router as ai_router
 from backend.auth import router as auth_router
 from backend.routes.account_id import router as account_router
@@ -93,7 +94,16 @@ init_db()
 Base.metadata.create_all(bind=engine)
 
 @app.get("/")
-def home():
+def home(request: Request, db=Depends(get_db)):
+    # "shop" présent => c'est l'URL d'application Shopify ("Xepay Sync",
+    # Partner Dashboard : https://api.xepay.finance, sans sous-chemin) qui
+    # vient d'être chargée depuis l'iframe embarqué de l'admin - voir
+    # routes/shopify.handle_shopify_app_entry pour toute la logique
+    # (vérif hmac, boutique déjà connectée ou lancement de l'OAuth).
+    # Comportement par défaut (sans "shop") inchangé : simple message de
+    # liveness, identique à /about/.health.
+    if request.query_params.get("shop"):
+        return handle_shopify_app_entry(dict(request.query_params), db)
     return {"message": "SaaS backend ready"}
     
 @app.get("/about")

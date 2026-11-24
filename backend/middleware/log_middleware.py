@@ -72,6 +72,21 @@ class LogMiddleware(BaseHTTPMiddleware):
         if request.method == "OPTIONS":
             return await call_next(request)
 
+        # Racine EXACTE ("/" seulement, jamais un préfixe - toute autre
+        # route reste protégée) : c'est l'URL d'application enregistrée
+        # dans le Partner Dashboard Shopify pour "Xepay Sync"
+        # (routes/shopify.py côté app.main). Shopify y fait un GET direct
+        # depuis l'iframe embarqué de l'admin (shop/hmac/host en query
+        # string) - une requête cross-site qui ne porte jamais le cookie
+        # de session Xepay, donc jamais authentifiable par ce middleware.
+        # Avant ce correctif, "/" n'était pas exemptée : l'app Shopify
+        # recevait {"error":"Unauthorized"} (ce bloc) avant même d'avoir pu
+        # atteindre home()/l'entrée Shopify - trouvé en inspectant le
+        # chargement de "Xepay Sync" sur la boutique de test Connect1.
+        # Même catégorie de donnée publique que /health, déjà exemptée.
+        if path == "/":
+            return await call_next(request)
+
         access_exempt = any(path.startswith(p) for p in ACCESS_TOKEN_EXEMPT_PREFIXES)
 
         if not access_exempt:

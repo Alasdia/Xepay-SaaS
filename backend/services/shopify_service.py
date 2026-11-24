@@ -26,6 +26,7 @@ import hmac
 import logging
 import os
 import re
+from urllib.parse import urlencode
 
 import httpx
 
@@ -34,6 +35,13 @@ logger = logging.getLogger(__name__)
 SHOPIFY_CLIENT_ID = os.getenv("SHOPIFY_CLIENT_ID")
 SHOPIFY_CLIENT_SECRET = os.getenv("SHOPIFY_CLIENT_SECRET")
 SHOPIFY_REDIRECT_URI = os.getenv("SHOPIFY_REDIRECT_URI", "https://api.xepay.finance/auth/shopify/callback")
+# Doit rester IDENTIQUE aux scopes déclarés dans le Partner Dashboard pour
+# "Xepay Sync" (read_orders,write_orders,read_products,write_products,
+# confirmés le 2026-11-24) - un scope demandé ici mais absent du Partner
+# Dashboard ferait échouer /admin/oauth/authorize côté Shopify.
+SHOPIFY_SCOPES = os.getenv(
+    "SHOPIFY_SCOPES", "read_orders,write_orders,read_products,write_products"
+)
 SHOPIFY_TIMEOUT_SECONDS = 10
 
 # Domaine Shopify valide : sous-domaine alphanumérique (+ tirets) de
@@ -60,6 +68,23 @@ class ShopifyAPIError(RuntimeError):
 
 def is_valid_shop_domain(shop: str) -> bool:
     return bool(_SHOP_DOMAIN_RE.match(shop or ""))
+
+
+def build_authorize_url(shop: str, state: str) -> str:
+    """URL vers laquelle rediriger le NAVIGATEUR (jamais un appel serveur
+    sortant - pas de risque SSRF ici) pour démarrer/reprendre le
+    consentement OAuth Shopify - construite UNIQUEMENT depuis routes/
+    shopify.py après is_valid_shop_domain(shop). "state" doit être un
+    jeton signé (voir security.create_shopify_state_token) : Shopify le
+    renvoie tel quel au callback, qui le revérifie pour se protéger d'un
+    CSRF sur le flux d'installation (voir routes/shopify.py)."""
+    params = {
+        "client_id": SHOPIFY_CLIENT_ID,
+        "scope": SHOPIFY_SCOPES,
+        "redirect_uri": SHOPIFY_REDIRECT_URI,
+        "state": state,
+    }
+    return f"https://{shop}/admin/oauth/authorize?{urlencode(params)}"
 
 
 def verify_hmac(params: dict) -> bool:
