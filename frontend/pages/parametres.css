@@ -1223,6 +1223,87 @@
   .mon-entreprise-grid { grid-template-columns: 1fr; }
 }
 
+/* Mise en page 75%/25% demandée le 2026-11-24 : colonne principale
+   (récap officiel + documents, empilés) à gauche, panneau fondateur à
+   droite - même hauteur totale que la colonne principale (align-items:
+   stretch, défaut de grid), jamais recentré verticalement. */
+.mon-entreprise-layout {
+  display: grid;
+  grid-template-columns: 75% 25%;
+  gap: 20px;
+}
+.mon-entreprise-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+.mon-entreprise-side-card {
+  height: 100%;
+}
+.mon-entreprise-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mon-entreprise-section-title i { color: #b45309; font-size: 13px; }
+
+/* Panneau fondateur (25%) : liste verticale simple, pas une grille
+   2 colonnes (trop étroit à 25% de la largeur pour 2 colonnes). */
+.mon-entreprise-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.mon-entreprise-stack .mon-entreprise-stat { background: transparent; border: none; padding: 0; border-bottom: 1px solid #f1f3f5; padding-bottom: 14px; }
+.mon-entreprise-stack .mon-entreprise-stat:last-child { border-bottom: none; padding-bottom: 0; }
+
+.mon-entreprise-doc-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid #f1f3f5;
+}
+.mon-entreprise-doc-row:last-child { border-bottom: none; padding-bottom: 0; }
+.mon-entreprise-doc-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #fafafa;
+  color: #b45309;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.mon-entreprise-doc-info { flex: 1; min-width: 0; }
+.mon-entreprise-doc-name { font-size: 14px; font-weight: 600; color: #111827; }
+.mon-entreprise-doc-date { font-size: 12.5px; color: #9ca3af; margin-top: 2px; }
+.mon-entreprise-doc-download {
+  background: transparent;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: .2s;
+  flex-shrink: 0;
+}
+.mon-entreprise-doc-download:hover { background: #f9fafb; border-color: #9ca3af; color: #111827; }
+.mon-entreprise-doc-download:disabled { opacity: .6; cursor: default; }
+
+@media (max-width: 900px) {
+  .mon-entreprise-layout { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 480px) {
   .params-promo-card { padding: 20px; min-height: unset; }
   .params-promo-title { font-size: 20px; }

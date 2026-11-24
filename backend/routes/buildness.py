@@ -18,6 +18,26 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+def _get_latest_company(db: Session, merchant_id: str) -> BuildnessCompany | None:
+    """Résolution merchant_id -> dernier BuildnessCompany, factorisée le
+    2026-11-24 (dupliquée dans GET /buildness/status, /status/{id}/raw,
+    /documents, /documents/{id} sinon) - renvoie None si le marchand n'a
+    jamais rien soumis (voir les appelants pour le "not_started")."""
+    customer = (
+        db.query(BuildnessCustomer)
+        .filter(BuildnessCustomer.xepay_merchant_id == merchant_id)
+        .first()
+    )
+    if not customer:
+        return None
+    return (
+        db.query(BuildnessCompany)
+        .filter(BuildnessCompany.customer_id == customer.id)
+        .order_by(BuildnessCompany.created_at.desc())
+        .first()
+    )
+
+
 @router.get("/buildness/naics-codes")
 async def get_buildness_naics_codes(
     membership: WorkspaceUser = Depends(require_capability("manage_company_formation")),
@@ -223,20 +243,7 @@ def get_buildness_status(
     if merchant_id != membership.workspace_id:
         raise HTTPException(403, "Acces refuse.")
 
-    customer = (
-        db.query(BuildnessCustomer)
-        .filter(BuildnessCustomer.xepay_merchant_id == merchant_id)
-        .first()
-    )
-    if not customer:
-        return {"status": "not_started"}
-
-    company = (
-        db.query(BuildnessCompany)
-        .filter(BuildnessCompany.customer_id == customer.id)
-        .order_by(BuildnessCompany.created_at.desc())
-        .first()
-    )
+    company = _get_latest_company(db, merchant_id)
     if not company:
         return {"status": "not_started"}
 
@@ -257,29 +264,20 @@ async def get_buildness_status_raw(
     membership: WorkspaceUser = Depends(require_capability("manage_company_formation")),
     db: Session = Depends(get_db),
 ):
-    """Demandé le 2026-11-24 : réponse BRUTE de doola (GET /v1/partner/
-    companies/{id}), sans aucune mise en forme côté Xepay - contrairement
-    à GET /buildness/status ci-dessus, qui n'expose qu'un sous-ensemble
-    de champs déjà renommés. Usage debug/conception UI uniquement -
-    jamais appelé par la vraie UI marchand (voir spa/views/
-    monEntreprise.js, console.log)."""
+    """Réponse BRUTE de doola (GET /v1/partner/companies/{id}), sans
+    aucune mise en forme côté Xepay - contrairement à GET
+    /buildness/status ci-dessus, qui n'expose qu'un sous-ensemble de
+    champs déjà renommés. Ajoutée le 2026-11-24 pour du debug (voir
+    spa/views/monEntreprise.js, console.log), réutilisée depuis le
+    2026-11-24 comme source des panneaux "récap officiel"/"informations
+    du fondateur" de Mon entreprise - plutôt que de dupliquer ces champs
+    (responsibleParty/addresses/registeredAgent/ein/
+    formationFilingNumber...) dans le schéma Xepay, qui ne les stocke
+    jamais (voir BuildnessCompany/BuildnessCustomer, models.py)."""
     if merchant_id != membership.workspace_id:
         raise HTTPException(403, "Acces refuse.")
 
-    customer = (
-        db.query(BuildnessCustomer)
-        .filter(BuildnessCustomer.xepay_merchant_id == merchant_id)
-        .first()
-    )
-    if not customer:
-        return {"status": "not_started"}
-
-    company = (
-        db.query(BuildnessCompany)
-        .filter(BuildnessCompany.customer_id == customer.id)
-        .order_by(BuildnessCompany.created_at.desc())
-        .first()
-    )
+    company = _get_latest_company(db, merchant_id)
     if not company or not company.doola_company_id:
         # draft (create_company jamais réussi) : rien à aller chercher
         # chez doola, aucun doolaCompanyId n'existe encore.
@@ -294,3 +292,60 @@ async def get_buildness_status_raw(
     except DoolaAPIError:
         logger.exception("Echec recuperation statut brut doola pour company_id=%s", company.id)
         raise HTTPException(502, "Impossible de recuperer le statut depuis doola.")
+
+
+@router.get("/buildness/documents/{merchant_id}")
+async def get_buildness_documents(
+    merchant_id: str,
+    membership: WorkspaceUser = Depends(require_capability("manage_company_formation")),
+    db: Session = Depends(get_db),
+):
+    """Métadonnées des documents de formation (Articles of Organization,
+    lettre EIN...) - voir doola_service.list_documents pour la réserve
+    NON VÉRIFIÉ sur la forme exacte de chaque entrée (jamais eu de vrai
+    document en sandbox pour vérifier). Transmis tel quel, jamais
+    reformaté ici."""
+    if merchant_id != membership.workspace_id:
+        raise HTTPException(403, "Acces refuse.")
+
+    company = _get_latest_company(db, merchant_id)
+    if not company or not company.doola_company_id:
+        return []
+
+    try:
+        doola = get_doola_service()
+    except DoolaNotConfiguredError:
+        raise HTTPException(503, "Buildness n'est pas encore disponible. Réessayez plus tard.")
+    try:
+        return await doola.list_documents(company.doola_company_id)
+    except DoolaAPIError:
+        logger.exception("Echec recuperation documents doola pour company_id=%s", company.id)
+        raise HTTPException(502, "Impossible de recuperer les documents depuis doola.")
+
+
+@router.get("/buildness/documents/{merchant_id}/{document_id}")
+async def get_buildness_document(
+    merchant_id: str,
+    document_id: str,
+    membership: WorkspaceUser = Depends(require_capability("manage_company_formation")),
+    db: Session = Depends(get_db),
+):
+    """Détail d'UN document + downloadUrl pré-signée à durée de vie
+    courte (voir doola_service.get_document) - appelée au clic sur
+    "Télécharger" plutôt que de garder/réutiliser une URL déjà expirée."""
+    if merchant_id != membership.workspace_id:
+        raise HTTPException(403, "Acces refuse.")
+
+    company = _get_latest_company(db, merchant_id)
+    if not company or not company.doola_company_id:
+        raise HTTPException(404, "Document introuvable.")
+
+    try:
+        doola = get_doola_service()
+    except DoolaNotConfiguredError:
+        raise HTTPException(503, "Buildness n'est pas encore disponible. Réessayez plus tard.")
+    try:
+        return await doola.get_document(company.doola_company_id, document_id)
+    except DoolaAPIError:
+        logger.exception("Echec recuperation document doola id=%s pour company_id=%s", document_id, company.id)
+        raise HTTPException(502, "Impossible de recuperer ce document depuis doola.")

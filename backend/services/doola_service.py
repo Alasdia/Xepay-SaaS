@@ -210,6 +210,28 @@ async def get_company_status(company_id: str) -> dict:
     return await _request("GET", f"/v1/partner/companies/{company_id}")
 
 
+async def list_documents(company_id: str) -> list[dict]:
+    """GET /v1/partner/companies/{company_id}/documents - métadonnées des
+    documents disponibles (Articles of Organization, lettre EIN...),
+    triés du plus récent au plus ancien. NON VÉRIFIÉ pour la forme EXACTE
+    de chaque entrée (champs id/type/date) : vérifié en direct le
+    2026-11-24 que l'endpoint répond bien 200 avec une liste vide sur 3
+    vrais comptes sandbox (aucun n'a encore de document généré - la
+    formation n'avance jamais vraiment en sandbox), donc jamais confirmé
+    sur un VRAI document. Transmis tel quel à l'appelant (routes/
+    buildness.py), jamais reformaté ici, pour ne jamais deviner des noms
+    de champs à l'aveugle - à ajuster dès qu'un vrai document apparaît."""
+    return await _request("GET", f"/v1/partner/companies/{company_id}/documents")
+
+
+async def get_document(company_id: str, document_id: str) -> dict:
+    """GET /v1/partner/companies/{company_id}/documents/{document_id} -
+    métadonnées + downloadUrl pré-signée et à durée de vie courte (voir
+    list_documents ci-dessus pour la même réserve NON VÉRIFIÉ sur la
+    forme exacte)."""
+    return await _request("GET", f"/v1/partner/companies/{company_id}/documents/{document_id}")
+
+
 async def list_naics_codes() -> list[dict]:
     """GET /v1/partner/references/naics-codes - secteurs d'activité
     acceptés par create_company. Le champ "industry" de chaque entrée doit
