@@ -174,6 +174,42 @@ def decode_2fa_pending_token(token: str):
         return None
 
 # =========================
+# 🛍️ SHOPIFY OAUTH STATE (GET /auth/shopify/callback, routes/shopify.py)
+# =========================
+# Même pattern que le jeton 2FA pending ci-dessus : un JWT signé et à
+# courte durée de vie, pour transporter le workspace_id Xepay à travers
+# l'aller-retour vers Shopify (paramètre "state") sans jamais faire
+# confiance à une valeur non signée fournie par le navigateur/Shopify.
+# Aucune route n'émet encore create_shopify_state_token pour l'instant
+# (la route de lancement de l'installation OAuth est hors périmètre de
+# ce qui a été demandé) - decode_shopify_state_token reste donc
+# défensif : state absent ou invalide => merchant_id non résolu, jamais
+# une erreur bloquante côté callback (voir routes/shopify.py).
+SHOPIFY_STATE_TOKEN_EXPIRE_MINUTES = 10
+
+
+def create_shopify_state_token(merchant_id: str) -> str:
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": merchant_id,
+        "iat": now,
+        "exp": now + timedelta(minutes=SHOPIFY_STATE_TOKEN_EXPIRE_MINUTES),
+        "jti": str(uuid4()),
+        "type": "shopify_install",
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def decode_shopify_state_token(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != "shopify_install":
+            return None
+        return payload
+    except JWTError:
+        return None
+
+# =========================
 # 🌐 WEBHOOK URL SAFETY (anti-SSRF)
 # =========================
 

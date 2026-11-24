@@ -893,3 +893,31 @@ class BuildnessWebhookLog(Base):
     event_type = Column(String, nullable=False)
     payload = Column(JSON, nullable=True)
     processed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class ShopifyShop(Base):
+    """Une boutique Shopify connectée à "Xepay Sync" (voir routes/shopify.py,
+    services/shopify_service.py) via GET /auth/shopify/callback -
+    shop_domain UNIQUE : une ré-installation (même boutique, nouveau code)
+    met à jour la ligne existante plutôt que d'en créer une seconde.
+
+    access_token stocké CHIFFRÉ (encrypt_secret, même mécanisme que
+    UserDB.two_factor_secret, voir security.py) - jamais en clair en base,
+    jamais loggé ni renvoyé dans une réponse HTTP (voir routes/shopify.py).
+
+    merchant_id (workspace Xepay) nullable : résolu uniquement si le
+    paramètre "state" du callback contient un jeton shopify_install valide
+    (voir security.create_shopify_state_token/decode_shopify_state_token) -
+    aucune route n'émet encore ce jeton pour l'instant (lancement de
+    l'installation hors périmètre de ce qui a été demandé), donc
+    merchant_id reste NULL tant que ce flux n'existe pas - une boutique
+    reste malgré tout enregistrée (shop_domain + token) dès le callback."""
+    __tablename__ = "shopify_shops"
+
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("shp"))
+    shop_domain = Column(String, unique=True, nullable=False)
+    merchant_id = Column(String, ForeignKey("users.id"), nullable=True)
+    access_token = Column(String, nullable=False)
+    scope = Column(String, nullable=True)
+    installed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
