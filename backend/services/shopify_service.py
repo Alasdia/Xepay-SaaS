@@ -88,6 +88,18 @@ class ShopifyAPIError(RuntimeError):
         super().__init__(f"Shopify a répondu {status_code}: {body[:500]}")
 
 
+class ShopifyRateLimitError(ShopifyAPIError):
+    """Sous-classe de ShopifyAPIError - levée spécifiquement sur un
+    throttling GraphQL (coût de requête dépassé, voir shopify.dev/docs/
+    api/usage/limits), jamais sur une vraie panne. Permet à l'appelant
+    (routes/shopify.py) de renvoyer un 429 explicite ("réessayez dans
+    quelques secondes") plutôt que le 502 générique d'une erreur Shopify
+    non récupérable - distinction utile uniquement pour les nouveaux
+    endpoints de lecture (products/orders/customers), qui peuvent être
+    appelés bien plus souvent qu'un orderMarkAsPaid/register_order_webhook
+    (un par paiement) et donc plus susceptibles de heurter la limite."""
+
+
 def is_valid_shop_domain(shop: str) -> bool:
     return bool(_SHOP_DOMAIN_RE.match(shop or ""))
 
@@ -217,8 +229,12 @@ async def _admin_graphql(shop: str, access_token: str, query: str, variables: di
         # invalide/révoqué, scope manquant) - distinctes des userErrors
         # métier renvoyées DANS payload.data (voir mark_order_as_paid), qui
         # elles restent un 200 GraphQL classique.
-        logger.warning("Shopify GraphQL (%s) : erreurs %s", shop, data["errors"])
-        raise ShopifyAPIError(200, str(data["errors"]))
+        errors = data["errors"]
+        if any((e.get("extensions") or {}).get("code") == "THROTTLED" for e in errors):
+            logger.warning("Shopify GraphQL (%s) : throttled", shop)
+            raise ShopifyRateLimitError(200, str(errors))
+        logger.warning("Shopify GraphQL (%s) : erreurs %s", shop, errors)
+        raise ShopifyAPIError(200, str(errors))
     return data.get("data") or {}
 
 
@@ -294,3 +310,124 @@ async def mark_order_as_paid(shop: str, access_token: str, order_id) -> dict:
     if user_errors:
         raise ShopifyAPIError(200, str(user_errors))
     return payload.get("order") or {}
+
+
+# =========================================================
+# Lecture directe (onglet "Shopify" de Commerce, voir routes/shopify.py)
+# =========================================================
+# Pur passthrough vers l'API Admin Shopify - AUCUNE table miroir côté
+# Xepay, AUCUN objet Stripe créé à partir de ces données (demande
+# explicite du 2026-11-24). Une seule page par appel (COMMERCE_PAGE_SIZE
+# items, triés du plus récent au plus ancien quand l'objet le permet) -
+# pas d'auto-pagination profonde comme register_order_webhook/
+# mark_order_as_paid n'en ont pas besoin : ces trois endpoints peuvent
+# être appelés bien plus souvent (à chaque ouverture de l'onglet
+# Commerce), inutile de multiplier les appels Shopify au-delà de ce que
+# l'UI affiche réellement (même principe que les onglets Stripe de
+# Commerce, qui chargent au plus 100 lignes en un seul appel).
+COMMERCE_PAGE_SIZE = 50
+
+# Scope requis pour list_customers - PAS dans SHOPIFY_SCOPES aujourd'hui
+# (voir en tête de fichier) : has_customers_scope() permet de le détecter
+# à partir de ShopifyShop.scope (chaîne renvoyée par Shopify à l'échange
+# OAuth, voir routes/shopify.py::shopify_callback) SANS appeler Shopify -
+# un appel GraphQL avec ce scope manquant échouerait de toute façon côté
+# Shopify, mais autant le savoir avant et renvoyer une erreur claire
+# (voir routes/shopify.py, GET /shopify/customers).
+SHOPIFY_CUSTOMERS_SCOPE = "read_customers"
+
+
+def has_customers_scope(granted_scope: str | None) -> bool:
+    return SHOPIFY_CUSTOMERS_SCOPE in {s.strip() for s in (granted_scope or "").split(",")}
+
+
+async def list_products(shop: str, access_token: str) -> list[dict]:
+    """GET produits - titre, statut, stock total, image, fourchette de
+    prix (priceRangeV2 : min/max des variantes, jamais un prix unique -
+    un produit a au moins une variante, parfois plusieurs à prix
+    différents)."""
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        query($first: Int!) {
+          products(first: $first, sortKey: UPDATED_AT, reverse: true) {
+            edges {
+              node {
+                id
+                title
+                status
+                totalInventory
+                featuredImage { url }
+                priceRangeV2 {
+                  minVariantPrice { amount currencyCode }
+                  maxVariantPrice { amount currencyCode }
+                }
+              }
+            }
+          }
+        }
+        """,
+        {"first": COMMERCE_PAGE_SIZE},
+    )
+    edges = (result.get("products") or {}).get("edges") or []
+    return [e["node"] for e in edges]
+
+
+async def list_orders(shop: str, access_token: str) -> list[dict]:
+    """GET commandes - statut financier/livraison, montant total (devise
+    de la boutique), client, date - triées de la plus récente à la plus
+    ancienne."""
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        query($first: Int!) {
+          orders(first: $first, sortKey: CREATED_AT, reverse: true) {
+            edges {
+              node {
+                id
+                name
+                displayFinancialStatus
+                displayFulfillmentStatus
+                createdAt
+                totalPriceSet { shopMoney { amount currencyCode } }
+                customer { displayName email }
+              }
+            }
+          }
+        }
+        """,
+        {"first": COMMERCE_PAGE_SIZE},
+    )
+    edges = (result.get("orders") or {}).get("edges") or []
+    return [e["node"] for e in edges]
+
+
+async def list_customers(shop: str, access_token: str) -> list[dict]:
+    """GET clients - nom, email, nombre de commandes, total dépensé,
+    date de création. À n'appeler QU'APRÈS avoir vérifié
+    has_customers_scope() côté appelant (routes/shopify.py) - un appel
+    sans ce scope échoue côté Shopify avec une erreur ACCESS_DENIED,
+    jamais testé ici en conditions réelles (scope absent du Partner
+    Dashboard aujourd'hui, voir SHOPIFY_SCOPES)."""
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        query($first: Int!) {
+          customers(first: $first, sortKey: UPDATED_AT, reverse: true) {
+            edges {
+              node {
+                id
+                displayName
+                email
+                numberOfOrders
+                amountSpent { amount currencyCode }
+                createdAt
+              }
+            }
+          }
+        }
+        """,
+        {"first": COMMERCE_PAGE_SIZE},
+    )
+    edges = (result.get("customers") or {}).get("edges") or []
+    return [e["node"] for e in edges]

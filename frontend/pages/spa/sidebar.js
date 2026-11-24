@@ -31,6 +31,7 @@ const ROUTE_BY_PAGE = {
   factures: "commerce/factures",
   "moyens-paiement": "commerce/moyens-paiement",
   risque: "commerce/risque",
+  shopify: "commerce/shopify",
 
   "mon-entreprise": "mon-entreprise",
   api: "api",
@@ -141,7 +142,7 @@ export function setActiveRoute(routeName) {
   if (["paiements", "retraits"].includes(effectiveRouteName)) {
     setSubmenuOpen("submenu-transactions", true);
   }
-  if (["clients", "produits", "abonnements", "factures", "moyens-paiement", "risque"].includes(effectiveRouteName)) {
+  if (["clients", "produits", "abonnements", "factures", "moyens-paiement", "risque", "shopify"].includes(effectiveRouteName)) {
     setSubmenuOpen("submenu-commerce", true);
   }
   if (["unique-fixe", "unique-libre", "quota-fixe", "quota-libre", "illimite-fixe", "illimite-libre"].includes(effectiveRouteName)) {

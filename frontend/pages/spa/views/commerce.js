@@ -356,6 +356,10 @@ export async function mount(container, params = {}) {
             await renderRisk(content);
             break;
 
+        case "shopify":
+            await renderShopify(content);
+            break;
+
         default:
             await renderClients(content);
     }
@@ -6710,4 +6714,235 @@ async function renderRisk(container) {
     }
 
     await loadRisk();
+}
+
+/* =========================================================
+   SHOPIFY (demande du 2026-11-24) — lecture DIRECTE depuis l'API Admin
+   Shopify (backend/routes/shopify.py, GET /shopify/products|orders|
+   customers) : AUCUNE table miroir côté Xepay, AUCUN objet Stripe créé
+   à partir de ces données - séparé à dessein de Clients/Produits
+   ci-dessus (Stripe Connect), jamais mélangé dans les mêmes tableaux.
+   Trois sections chargées indépendamment (Promise distincte chacune) :
+   un échec/scope manquant sur Clients ne doit jamais empêcher
+   Produits/Commandes de s'afficher, et inversement.
+========================================================= */
+
+function shopifyNotConnectedCardHtml() {
+    return `
+        <div class="commerce-card">
+            <p>Aucune boutique Shopify connectée.</p>
+            <p class="text-muted" style="font-size:12.5px;">Connectez votre boutique depuis <strong>Paramètres &gt; Shopify</strong> pour voir ses produits, commandes et clients ici.</p>
+        </div>
+    `;
+}
+
+function shopifyMoneyRange(priceRangeV2) {
+    if (!priceRangeV2) return "—";
+    const min = priceRangeV2.minVariantPrice;
+    const max = priceRangeV2.maxVariantPrice;
+    if (!min) return "—";
+    const fmt = (m) => `${Number(m.amount).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${m.currencyCode}`;
+    if (!max || max.amount === min.amount) return fmt(min);
+    return `${fmt(min)} – ${fmt(max)}`;
+}
+
+function shopifyMoney(moneyV2) {
+    if (!moneyV2) return "—";
+    return `${Number(moneyV2.amount).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${moneyV2.currencyCode}`;
+}
+
+function shopifyDate(iso) {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleDateString("fr-FR", { year: "numeric", month: "short", day: "numeric" });
+}
+
+async function renderShopifyProductsSection(container) {
+    container.innerHTML = `<div class="commerce-card"><p>Chargement des produits...</p></div>`;
+    try {
+        const response = await apiFetch("/shopify/products");
+        const data = await response.json();
+        if (response.status === 404) {
+            container.innerHTML = "";
+            return false;
+        }
+        if (!response.ok) throw new Error(data.detail || "Impossible de récupérer les produits Shopify");
+        const products = data.data || [];
+        if (!products.length) {
+            container.innerHTML = `<div class="commerce-card"><p>Aucun produit dans cette boutique.</p></div>`;
+            return true;
+        }
+        container.innerHTML = `
+            <div class="table-wrap">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <div class="table-title">Produits Shopify</div>
+                        <div class="page-subtitle">${products.length} produit(s) - ${data.shop_domain}</div>
+                    </div>
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr><th>Produit</th><th>Statut</th><th>Stock</th><th>Prix</th></tr>
+                    </thead>
+                    <tbody>
+                        ${products.map((p) => `
+                            <tr>
+                                <td>${p.title || "—"}</td>
+                                <td>${p.status || "—"}</td>
+                                <td>${p.totalInventory ?? "—"}</td>
+                                <td>${shopifyMoneyRange(p.priceRangeV2)}</td>
+                            </tr>
+                        `).join("")}
+                    </tbody>
+                </table>
+            </div>
+        `;
+        return true;
+    } catch (error) {
+        console.error(error);
+        container.innerHTML = `<div class="commerce-card"><p>${error.message || "Erreur lors du chargement des produits Shopify"}</p></div>`;
+        return true;
+    }
+}
+
+async function renderShopifyOrdersSection(container) {
+    container.innerHTML = `<div class="commerce-card"><p>Chargement des commandes...</p></div>`;
+    try {
+        const response = await apiFetch("/shopify/orders");
+        const data = await response.json();
+        if (response.status === 404) {
+            container.innerHTML = "";
+            return;
+        }
+        if (!response.ok) throw new Error(data.detail || "Impossible de récupérer les commandes Shopify");
+        const orders = data.data || [];
+        if (!orders.length) {
+            container.innerHTML = `<div class="commerce-card"><p>Aucune commande dans cette boutique.</p></div>`;
+            return;
+        }
+        container.innerHTML = `
+            <div class="table-wrap">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <div class="table-title">Commandes Shopify</div>
+                        <div class="page-subtitle">${orders.length} commande(s) - ${data.shop_domain}</div>
+                    </div>
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr><th>Commande</th><th>Client</th><th>Statut financier</th><th>Statut livraison</th><th>Montant</th><th>Date</th></tr>
+                    </thead>
+                    <tbody>
+                        ${orders.map((o) => `
+                            <tr>
+                                <td>${o.name || "—"}</td>
+                                <td>${o.customer?.displayName || o.customer?.email || "—"}</td>
+                                <td>${o.displayFinancialStatus || "—"}</td>
+                                <td>${o.displayFulfillmentStatus || "—"}</td>
+                                <td>${shopifyMoney(o.totalPriceSet?.shopMoney)}</td>
+                                <td>${shopifyDate(o.createdAt)}</td>
+                            </tr>
+                        `).join("")}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } catch (error) {
+        console.error(error);
+        container.innerHTML = `<div class="commerce-card"><p>${error.message || "Erreur lors du chargement des commandes Shopify"}</p></div>`;
+    }
+}
+
+async function renderShopifyCustomersSection(container) {
+    container.innerHTML = `<div class="commerce-card"><p>Chargement des clients...</p></div>`;
+    try {
+        const response = await apiFetch("/shopify/customers");
+        const data = await response.json();
+        if (response.status === 404) {
+            container.innerHTML = "";
+            return;
+        }
+        if (response.status === 409) {
+            // Scope read_customers manquant (voir routes/shopify.py) -
+            // jamais un échec générique : produits/commandes restent
+            // affichés indépendamment, seul ce bloc explique la limite.
+            container.innerHTML = `
+                <div class="commerce-card">
+                    <p>Les clients Shopify ne sont pas encore accessibles.</p>
+                    <p class="text-muted" style="font-size:12.5px;">Le scope <code>read_customers</code> n'est pas accordé à "Xepay Sync". Ajoutez-le dans le Partner Dashboard, puis reconnectez la boutique depuis Paramètres &gt; Shopify.</p>
+                </div>
+            `;
+            return;
+        }
+        if (!response.ok) throw new Error(data.detail || "Impossible de récupérer les clients Shopify");
+        const customers = data.data || [];
+        if (!customers.length) {
+            container.innerHTML = `<div class="commerce-card"><p>Aucun client dans cette boutique.</p></div>`;
+            return;
+        }
+        container.innerHTML = `
+            <div class="table-wrap">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <div class="table-title">Clients Shopify</div>
+                        <div class="page-subtitle">${customers.length} client(s) - ${data.shop_domain}</div>
+                    </div>
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr><th>Client</th><th>Email</th><th>Commandes</th><th>Total dépensé</th><th>Créé le</th></tr>
+                    </thead>
+                    <tbody>
+                        ${customers.map((c) => `
+                            <tr>
+                                <td>${c.displayName || "—"}</td>
+                                <td>${c.email || "—"}</td>
+                                <td>${c.numberOfOrders ?? "—"}</td>
+                                <td>${shopifyMoney(c.amountSpent)}</td>
+                                <td>${shopifyDate(c.createdAt)}</td>
+                            </tr>
+                        `).join("")}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } catch (error) {
+        console.error(error);
+        container.innerHTML = `<div class="commerce-card"><p>${error.message || "Erreur lors du chargement des clients Shopify"}</p></div>`;
+    }
+}
+
+async function renderShopify(container) {
+    container.innerHTML = `
+        <div class="subview-sticky-intro">
+            <div class="subview-sticky-intro-top">
+                <div class="subview-sticky-intro-main">
+                    <div class="subview-sticky-intro-icon"><i class="fa-brands fa-shopify"></i></div>
+                    <div class="subview-sticky-intro-body">
+                        <h1>Shopify</h1>
+                        <p>Produits, commandes et clients de votre boutique Shopify connectée - lecture directe depuis Shopify, jamais stockée côté Xepay ni mélangée à vos objets Stripe.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="shopify-not-connected"></div>
+        <div id="shopify-products-section"></div>
+        <div id="shopify-orders-section"></div>
+        <div id="shopify-customers-section"></div>
+    `;
+
+    const productsSection = container.querySelector("#shopify-products-section");
+    const connected = await renderShopifyProductsSection(productsSection);
+
+    if (!connected) {
+        container.querySelector("#shopify-not-connected").innerHTML = shopifyNotConnectedCardHtml();
+        return;
+    }
+
+    // Commandes/clients chargées en parallèle, indépendamment l'une de
+    // l'autre - voir l'en-tête de cette section.
+    await Promise.all([
+        renderShopifyOrdersSection(container.querySelector("#shopify-orders-section")),
+        renderShopifyCustomersSection(container.querySelector("#shopify-customers-section")),
+    ]);
 }
