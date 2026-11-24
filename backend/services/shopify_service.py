@@ -294,6 +294,53 @@ async def register_order_webhook(shop: str, access_token: str) -> None:
         raise ShopifyAPIError(200, str(user_errors))
 
 
+async def unregister_order_webhook(shop: str, access_token: str) -> None:
+    """Symétrique de register_order_webhook - appelée depuis
+    routes/shopify.py::shopify_disconnect (demande du 2026-11-24, "un
+    vrai mécanisme de déconnexion"). Jamais appelée tant que le token
+    n'a pas encore été effacé côté Xepay (shopify_disconnect appelle
+    cette fonction AVANT de vider ShopifyShop.access_token, sinon il n'y
+    aurait plus de token pour authentifier cet appel). Best-effort côté
+    appelant : un échec ici ne doit jamais empêcher la déconnexion
+    elle-même de se terminer (voir routes/shopify.py)."""
+    existing = await _admin_graphql(
+        shop, access_token,
+        """
+        query {
+          webhookSubscriptions(first: 50, topics: [ORDERS_CREATE]) {
+            edges { node { id endpoint { __typename ... on WebhookHttpEndpoint { callbackUrl } } } }
+          }
+        }
+        """,
+    )
+    edges = (existing.get("webhookSubscriptions") or {}).get("edges") or []
+    subscription_id = None
+    for edge in edges:
+        node = edge.get("node") or {}
+        endpoint = node.get("endpoint") or {}
+        if endpoint.get("callbackUrl") == SHOPIFY_ORDERS_WEBHOOK_URL:
+            subscription_id = node.get("id")
+            break
+    if not subscription_id:
+        return
+
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        mutation webhookSubscriptionDelete($id: ID!) {
+          webhookSubscriptionDelete(id: $id) {
+            deletedWebhookSubscriptionId
+            userErrors { field message }
+          }
+        }
+        """,
+        {"id": subscription_id},
+    )
+    user_errors = (result.get("webhookSubscriptionDelete") or {}).get("userErrors") or []
+    if user_errors:
+        raise ShopifyAPIError(200, str(user_errors))
+
+
 async def mark_order_as_paid(shop: str, access_token: str, order_id) -> dict:
     """Mutation orderMarkAsPaid - requiert UNIQUEMENT le scope write_orders
     (déjà accordé par le Partner Dashboard pour "Xepay Sync", confirmé
