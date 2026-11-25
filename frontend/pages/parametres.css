@@ -1176,9 +1176,13 @@
    la carte CTA de Paramètres > Entreprise, fond teinté) : fond blanc
    uni, jamais de teinte de couleur une fois les informations réelles
    affichées (demande explicite du 2026-11-24). */
+/* Taille de police uniforme à 13px pour tout le texte de cette vue
+   (demande du 2026-11-25, remplace les tailles 11-20px précédentes qui
+   paraissaient énormes à côté du reste de l'app) - les icônes (glyphes
+   Font Awesome, pas du texte lisible) restent à leur taille propre. */
 .mon-entreprise-card {
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: none;
   border-radius: 16px;
   padding: 32px;
 }
@@ -1201,7 +1205,7 @@
   flex-shrink: 0;
 }
 .mon-entreprise-title {
-  font-size: 20px;
+  font-size: 13px;
   font-weight: 800;
   color: #111827;
   margin: 0 0 4px;
@@ -1210,7 +1214,7 @@
    commentaire) : texte coloré simple, jamais de pastille/fond - un
    seul style de statut dans toute l'app. */
 .mon-entreprise-status {
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   color: #374151;
   margin: 0;
@@ -1220,7 +1224,11 @@
 .mon-entreprise-status.status-failed { color: #b91c1c; }
 
 /* Repère visuel de progression (draft -> submitted -> processing ->
-   completed) - 4 segments, pas un stepper interactif. */
+   completed) - 4 segments, pas un stepper interactif. Synchronisé avec
+   BuildnessCompany.last_successful_step (backend/models.py), avancé
+   UNIQUEMENT par les webhooks doola (backend/routes/webhook/doola.py) -
+   jamais en direct depuis doola, le frontend ne fait qu'interroger
+   périodiquement GET /buildness/status (voir load() plus bas). */
 .mon-entreprise-steps {
   display: flex;
   align-items: center;
@@ -1236,42 +1244,55 @@
 .mon-entreprise-step.done { background: #b45309; }
 .mon-entreprise-step.failed { background: #b91c1c; }
 
+/* "Informations officielles" - refonte du 2026-11-25 (demande
+   explicite) : chaque statHtml() n'est plus une mini-carte KPI
+   alignée en grille, mais un titre (le label, 1ère lettre en
+   majuscule - jamais de text-transform:uppercase forcé) + un
+   sous-titre (la valeur, tout en minuscule, gris défini ici - jamais
+   .text-muted). Disposition volontairement en vrac : flex-wrap avec
+   un décalage vertical différent par position (nth-child), ni grille
+   ni alignement propre, tout en restant dans ce même bloc. */
 .mon-entreprise-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 22px 36px;
   margin-bottom: 28px;
 }
 .mon-entreprise-stat {
-  padding: 14px 16px;
-  border: 1px solid #f1f3f5;
-  border-radius: 10px;
-  background: #fafafa;
+  flex: 0 1 240px;
 }
+.mon-entreprise-stat:nth-child(2n) { margin-top: 16px; }
+.mon-entreprise-stat:nth-child(3n) { margin-top: 30px; align-self: flex-end; }
+.mon-entreprise-stat:nth-child(5n) { margin-top: 4px; }
 .mon-entreprise-stat-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #9ca3af;
-  font-weight: 700;
-  margin-bottom: 6px;
-}
-.mon-entreprise-stat-value {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   color: #111827;
+  margin-bottom: 2px;
 }
-@media (max-width: 560px) {
-  .mon-entreprise-grid { grid-template-columns: 1fr; }
+.mon-entreprise-stat-value {
+  font-size: 13px;
+  font-weight: 400;
+  color: #9ca3af;
+  text-transform: lowercase;
 }
 
-/* Mise en page 75%/25% demandée le 2026-11-24 : colonne principale
-   (récap officiel + documents, empilés) à gauche, panneau fondateur à
-   droite - même hauteur totale que la colonne principale (align-items:
-   stretch, défaut de grid), jamais recentré verticalement. */
+/* Bandeau de statut (nom de la LLC) - réduit de 60% de sa largeur
+   (demande du 2026-11-25, remplace le bouton "Créer une autre
+   société" retiré). */
+#mon-entreprise-status-banner {
+  max-width: 40%;
+}
+
+/* Mise en page 60%/40% (ajustée le 2026-11-25, était 75%/25%) :
+   colonne principale (récap officiel + documents, empilés) à gauche,
+   panneau fondateur à droite - même hauteur totale que la colonne
+   principale (align-items: stretch, défaut de grid), jamais recentré
+   verticalement. */
 .mon-entreprise-layout {
   display: grid;
-  grid-template-columns: 75% 25%;
+  grid-template-columns: 60% 40%;
   gap: 20px;
 }
 .mon-entreprise-main {
@@ -1284,7 +1305,7 @@
   height: 100%;
 }
 .mon-entreprise-section-title {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   color: #111827;
   margin: 0 0 20px;
@@ -1325,14 +1346,14 @@
   flex-shrink: 0;
 }
 .mon-entreprise-doc-info { flex: 1; min-width: 0; }
-.mon-entreprise-doc-name { font-size: 14px; font-weight: 600; color: #111827; }
-.mon-entreprise-doc-date { font-size: 12.5px; color: #9ca3af; margin-top: 2px; }
+.mon-entreprise-doc-name { font-size: 13px; font-weight: 600; color: #111827; }
+.mon-entreprise-doc-date { font-size: 13px; color: #9ca3af; margin-top: 2px; }
 .mon-entreprise-doc-download {
   background: transparent;
   border: 1px solid #d1d5db;
   border-radius: 8px;
   padding: 6px 12px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   color: #374151;
   cursor: pointer;
@@ -1352,7 +1373,7 @@
 }
 .mon-entreprise-action-required .mon-entreprise-section-title { margin-bottom: 8px; }
 .mon-entreprise-action-sub {
-  font-size: 13.5px;
+  font-size: 13px;
   color: #4b5563;
   line-height: 1.6;
   margin: 0 0 8px;
