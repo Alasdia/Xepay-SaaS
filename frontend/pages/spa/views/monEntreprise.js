@@ -137,7 +137,45 @@ function findAddress(raw, type) {
   return entry ? entry.address : null;
 }
 
+function formatDateFr(value) {
+  if (!value || isNaN(new Date(value))) return null;
+  return new Date(value).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+}
+
 const BUILDNESS_ENTITY_TYPE_LABELS = { LLC: "LLC", CCorp: "C-Corp" };
+
+// Traduction best-effort des status/subStatus de raw.services (jamais
+// affichés avant le 2026-11-25) - repli sur la valeur brute si elle
+// n'est pas connue, plutôt que de la masquer.
+const BUILDNESS_SERVICE_STATUS_LABELS = {
+  NotStarted: "pas encore commencé",
+  InProgress: "en cours",
+  Active: "actif",
+  Completed: "terminé",
+  Done: "terminé",
+  Failed: "échoué",
+};
+const BUILDNESS_SERVICE_SUBSTATUS_LABELS = {
+  WaitingForFilingServiceToComplete: "en attente de la fin de la formation",
+  WaitingForRaToSucceed: "en attente de la confirmation de l'agent enregistré",
+  WaitingForDocumentsFromState: "en attente des documents de l'État",
+};
+function serviceStatusText(service) {
+  if (!service) return null;
+  const statusLabel = BUILDNESS_SERVICE_STATUS_LABELS[service.status] || service.status;
+  const subLabel = service.subStatus
+    ? (BUILDNESS_SERVICE_SUBSTATUS_LABELS[service.subStatus] || service.subStatus)
+    : null;
+  return subLabel ? `${statusLabel} - ${subLabel}` : statusLabel;
+}
+function findService(raw, name) {
+  return (raw.services || []).find((s) => s.name === name) || null;
+}
+// Services qu'on demande explicitement dans le payload (voir
+// backend/routes/buildness.py) - tout le reste (ex. "AiCofounder",
+// jamais demandé par nous, vu sur un vrai dossier le 2026-11-25) est
+// affiché génériquement plus bas, sans supposer ce qu'il fait.
+const BUILDNESS_KNOWN_SERVICE_NAMES = new Set(["Formation", "EinCreation", "RegisteredAgent"]);
 
 // Bannière d'ACTION REQUISE - signatureRequirements côté doola (ex:
 // [{"documentType":"SS4","status":"PENDING"}]). Ajoutée le 2026-11-24 :
@@ -175,31 +213,105 @@ function officialRecapHtml(raw) {
   // buildness.py, corrigé le 2026-11-25 pour matcher le schéma doola) -
   // business = l'adresse du fondateur (provider=customer), mailing =
   // l'adresse propre de doola pour la correspondance (provider=
-  // registeredAgent, doola la fournit) - PAS supposée identique à
-  // raw.registeredAgent.address (adresse légale de l'agent) : un vrai
-  // prestataire (ex. Firstbase, voir l'exemple de filing réel fourni le
-  // 2026-11-25) utilise souvent 2 adresses distinctes - une pour l'agent
-  // enregistré/l'organisateur, une autre (avec son propre numéro de
-  // suite) pour le courrier/siège - jamais vérifié sur une vraie réponse
-  // doola post-correctif, affichée séparément plutôt que supposée égale.
+  // registeredAgent, doola la fournit).
   const business = findAddress(raw, "business");
   const mailing = findAddress(raw, "mailing");
+  const agentAddress = raw.registeredAgent ? raw.registeredAgent.address : null;
+
+  // Dédoublonnage (demande du 2026-11-25) : sur un dossier formé avant
+  // le correctif du payload ci-dessus, "business" est encore
+  // littéralement identique à l'adresse de l'agent enregistré (même
+  // valeur dupliquée côté doola) - l'adresse de l'agent enregistré est
+  // réservée EN PREMIER (elle reste toujours affichée, rattachée à son
+  // nom) ; "Adresse commerciale"/"Boîte postale virtuelle" ne
+  // s'affichent que si elles apportent une adresse réellement
+  // différente.
+  //
+  // addressSignature (CORRIGÉ le 2026-11-25) : comparer formatAddress()
+  // tel quel ratait le cas réel que ce dédoublonnage doit justement
+  // couvrir - même adresse physique (30 N Gould St, STE R, Sheridan,
+  // 82801), mais state="WY" côté registeredAgent.address contre
+  // state="WYOMING" côté addresses[] - deux chaînes formatées
+  // différentes pour le même lieu. La signature exclut délibérément
+  // "state" (rue + ville + code postal + pays suffisent déjà à
+  // identifier une adresse physique) plutôt que de tenter une table de
+  // correspondance abrégé/toutes-lettres pour les 50 États.
+  function addressSignature(addr) {
+    if (!addr) return null;
+    return [addr.line1, addr.line2, addr.postalCode, addr.city, addr.country]
+      .filter(Boolean)
+      .map((p) => String(p).trim().toLowerCase())
+      .join("|");
+  }
+  const shownAddresses = new Set();
+  if (agentAddress) shownAddresses.add(addressSignature(agentAddress));
+  function addressStatOnce(label, addr) {
+    const formatted = formatAddress(addr);
+    const signature = addressSignature(addr);
+    if (formatted === "—" || (signature && shownAddresses.has(signature))) return null;
+    if (signature) shownAddresses.add(signature);
+    return statHtml(label, formatted);
+  }
+
+  // Détail des 3 services qu'on demande explicitement (Formation/
+  // EinCreation/RegisteredAgent, voir backend/routes/buildness.py) -
+  // jamais affiché avant le 2026-11-25, alors que subStatus explique
+  // précisément ce qui bloque (ex. "en attente des documents de
+  // l'État") plutôt que le simple "..." générique du bandeau de statut.
+  const formationService = findService(raw, "Formation");
+  const einService = findService(raw, "EinCreation");
+  const agentService = findService(raw, "RegisteredAgent");
+
   const stats = [
-    statHtml("EIN (identifiant fiscal)", raw.ein || "Pas encore émis"),
-    statHtml("Numéro de dossier de formation", raw.formationFilingNumber || "En attente"),
+    statHtml(
+      "EIN (identifiant fiscal)",
+      raw.ein || `Pas encore émis${einService ? ` (${serviceStatusText(einService)})` : ""}`
+    ),
+    statHtml(
+      "Numéro de dossier de formation",
+      raw.formationFilingNumber || `En attente${formationService ? ` (${serviceStatusText(formationService)})` : ""}`
+    ),
     statHtml("Raison sociale validée par l'État", raw.legalName || "En attente de validation"),
     statHtml("Type de société", BUILDNESS_ENTITY_TYPE_LABELS[raw.entityType] || raw.entityType || "—"),
-    // Plus de "(agent enregistré)" dans ce libellé - CORRIGÉ le
-    // 2026-11-25 : c'était vrai avant le correctif du payload (business
-    // venait de l'agent enregistré), plus maintenant (business = adresse
-    // du fondateur).
-    statHtml("Adresse commerciale", formatAddress(business)),
-    statHtml("Boîte postale virtuelle (correspondance)", formatAddress(mailing)),
+    // État confirmé par doola (raw.state) - jamais réaffiché avant le
+    // 2026-11-25, alors que c'est la valeur faisant foi, distincte de
+    // ce qui a simplement été saisi au départ côté Xepay.
+    statHtml("État de formation", raw.state || "—"),
   ];
+
+  const dateStats = [
+    raw.formationFilingDate ? statHtml("Formation déposée le", formatDateFr(raw.formationFilingDate)) : null,
+    raw.einApplicationSubmittedAt ? statHtml("EIN demandé le", formatDateFr(raw.einApplicationSubmittedAt)) : null,
+  ].filter(Boolean);
+  stats.push(...dateStats);
+
+  const addressStats = [
+    addressStatOnce("Adresse commerciale", business),
+    addressStatOnce("Boîte postale virtuelle (correspondance)", mailing),
+  ].filter(Boolean);
+  stats.push(...addressStats);
+
+  // Téléphone de contact - rattaché à l'adresse business/mailing
+  // fournie par le fondateur (provider=customer), jamais affiché avant
+  // le 2026-11-25.
+  const contactPhone = (business && business.phone) || (mailing && mailing.phone) || null;
+  if (contactPhone) stats.push(statHtml("Téléphone de contact", contactPhone));
+
   if (raw.registeredAgent) {
-    stats.push(statHtml("Agent enregistré", raw.registeredAgent.name || "—"));
-    stats.push(statHtml("Adresse de l'agent enregistré", formatAddress(raw.registeredAgent.address)));
+    stats.push(statHtml(
+      "Agent enregistré",
+      `${raw.registeredAgent.name || "—"}${agentService ? ` (${serviceStatusText(agentService)})` : ""}`
+    ));
+    stats.push(statHtml("Adresse de l'agent enregistré", formatAddress(agentAddress)));
   }
+
+  // Tout service qu'on n'a jamais explicitement demandé (ex.
+  // "AiCofounder", vu sur un vrai dossier le 2026-11-25) - affiché tel
+  // quel, sans supposer ce qu'il fait.
+  (raw.services || [])
+    .filter((s) => !BUILDNESS_KNOWN_SERVICE_NAMES.has(s.name))
+    .forEach((s) => stats.push(statHtml(s.name, serviceStatusText(s) || "—")));
+
   return `
     <div class="mon-entreprise-card">
       <h4 class="mon-entreprise-section-title"><i class="fa-solid fa-landmark"></i> Informations officielles</h4>
