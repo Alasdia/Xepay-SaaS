@@ -1176,6 +1176,22 @@
    la carte CTA de Paramètres > Entreprise, fond teinté) : fond blanc
    uni, jamais de teinte de couleur une fois les informations réelles
    affichées (demande explicite du 2026-11-24). */
+/* .page-title n'avait AUCUNE règle dans ce fichier (corrigé le
+   2026-11-25) - monEntreprise.js et api.js utilisent tous les deux
+   <h1 class="page-title">, mais seul api.js charge aussi
+   transactions.css (qui la définit à 22px) en plus de parametres.css ;
+   monEntreprise.js ne charge QUE parametres.css, donc son titre
+   retombait sur la taille par défaut du navigateur pour un <h1> (bien
+   plus grosse que partout ailleurs dans l'app). Même valeur que
+   transactions.css, pour que ce titre ait la même taille que dans les
+   autres vues. */
+.page-title {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+}
+
 /* Taille de police uniforme à 13px pour tout le texte de cette vue
    (demande du 2026-11-25, remplace les tailles 11-20px précédentes qui
    paraissaient énormes à côté du reste de l'app) - les icônes (glyphes
@@ -1248,10 +1264,19 @@
    explicite) : chaque statHtml() n'est plus une mini-carte KPI
    alignée en grille, mais un titre (le label, 1ère lettre en
    majuscule - jamais de text-transform:uppercase forcé) + un
-   sous-titre (la valeur, tout en minuscule, gris défini ici - jamais
-   .text-muted). Disposition volontairement en vrac : flex-wrap avec
-   un décalage vertical différent par position (nth-child), ni grille
-   ni alignement propre, tout en restant dans ce même bloc. */
+   sous-titre (la valeur, tout en minuscule, JAMAIS grisé/muted -
+   couleur de texte normale). Disposition volontairement en vrac :
+   flex-wrap avec un décalage vertical différent par position
+   (nth-child), ni grille ni alignement propre, tout en restant dans ce
+   même bloc.
+   ">" (enfant direct) OBLIGATOIRE ici - corrigé le 2026-11-25 : la
+   version précédente ciblait .mon-entreprise-stat sans restriction,
+   donc s'appliquait AUSSI aux entrées du panneau Fondateur
+   (.mon-entreprise-stack .mon-entreprise-stat, liste verticale) qui
+   héritaient alors de flex:0 1 240px (lu comme une HAUTEUR préférée
+   dans ce flex-column) + des margin-top/align-self aléatoires -
+   disposition complètement cassée là où rien de tout ça n'avait de
+   sens. */
 .mon-entreprise-grid {
   display: flex;
   flex-wrap: wrap;
@@ -1259,12 +1284,12 @@
   gap: 22px 36px;
   margin-bottom: 28px;
 }
-.mon-entreprise-stat {
-  flex: 0 1 240px;
+.mon-entreprise-grid > .mon-entreprise-stat {
+  flex: 0 0 auto;
 }
-.mon-entreprise-stat:nth-child(2n) { margin-top: 16px; }
-.mon-entreprise-stat:nth-child(3n) { margin-top: 30px; align-self: flex-end; }
-.mon-entreprise-stat:nth-child(5n) { margin-top: 4px; }
+.mon-entreprise-grid > .mon-entreprise-stat:nth-child(2n) { margin-top: 16px; }
+.mon-entreprise-grid > .mon-entreprise-stat:nth-child(3n) { margin-top: 30px; align-self: flex-end; }
+.mon-entreprise-grid > .mon-entreprise-stat:nth-child(5n) { margin-top: 4px; }
 .mon-entreprise-stat-label {
   font-size: 13px;
   font-weight: 700;
@@ -1274,8 +1299,16 @@
 .mon-entreprise-stat-value {
   font-size: 13px;
   font-weight: 400;
-  color: #9ca3af;
+  color: #374151;
   text-transform: lowercase;
+}
+/* Pas de retour à la ligne (demande du 2026-11-25) - limité au bloc
+   Informations officielles : le panneau Fondateur partage ces mêmes
+   classes mais affiche des adresses potentiellement longues, où
+   nowrap ferait déborder le texte hors de la colonne 40%. */
+.mon-entreprise-grid .mon-entreprise-stat-label,
+.mon-entreprise-grid .mon-entreprise-stat-value {
+  white-space: nowrap;
 }
 
 /* Bandeau de statut (nom de la LLC) - réduit de 60% de sa largeur
