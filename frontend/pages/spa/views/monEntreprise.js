@@ -172,14 +172,20 @@ function signatureBannerHtml(raw) {
 // stocké côté Xepay : lu directement depuis la réponse brute doola.
 function officialRecapHtml(raw) {
   const business = findAddress(raw, "business");
-  const mailing = findAddress(raw, "mailing");
   const stats = [
     statHtml("EIN (identifiant fiscal)", raw.ein || "Pas encore émis"),
     statHtml("Numéro de dossier de formation", raw.formationFilingNumber || "En attente"),
     statHtml("Raison sociale validée par l'État", raw.legalName || "En attente de validation"),
     statHtml("Type de société", BUILDNESS_ENTITY_TYPE_LABELS[raw.entityType] || raw.entityType || "—"),
     statHtml("Adresse commerciale (agent enregistré)", formatAddress(business)),
-    statHtml("Boîte postale virtuelle (correspondance)", formatAddress(mailing)),
+    // Boîte postale virtuelle (correspondance) - CORRIGÉ le 2026-11-25 :
+    // affichait l'adresse "mailing" (celle du fondateur, réutilisée telle
+    // quelle dans le payload doola - voir backend/routes/buildness.py),
+    // jamais une vraie boîte postale. L'agent enregistré (adresse
+    // "business" ci-dessus) est la seule adresse qui reçoit réellement le
+    // courrier officiel (État, IRS) - demande explicite de reprendre
+    // cette même adresse ici plutôt que celle du fondateur.
+    statHtml("Boîte postale virtuelle (correspondance)", formatAddress(business)),
   ];
   if (raw.registeredAgent) {
     stats.push(statHtml("Agent enregistré", raw.registeredAgent.name || "—"));
