@@ -657,51 +657,50 @@ async def shopify_readiness(
             "timezone", "Fuseau horaire de la boutique", "ok",
             f"{info.get('ianaTimezone') or '—'} - purement informatif, non modifiable via l'API.",
         ))
-        raw_legal_name = (info.get("shopAddress") or {}).get("company")
+        shop_address = info.get("shopAddress") or {}
+        raw_legal_name = shop_address.get("company")
         shop_legal_name = raw_legal_name.strip() if isinstance(raw_legal_name, str) and raw_legal_name.strip() else None
+        address_parts = [
+            shop_address.get("address1"), shop_address.get("address2"),
+            shop_address.get("city"), shop_address.get("province"),
+            shop_address.get("zip"), shop_address.get("country"),
+        ]
+        shop_address_line = ", ".join(p.strip() for p in address_parts if isinstance(p, str) and p.strip())
     except ShopifyAPIError:
         logger.exception("Échec récupération des infos boutique pour %s", shop)
         checks.append(_check("currency", "Devise de la boutique", "error", "Impossible de vérifier (erreur Shopify)."))
+        shop_address_line = ""
 
-    # L'objet de ce check est l'entité juridique RÉELLEMENT enregistrée
-    # sur la boutique Shopify (shopAddress.company, lu depuis l'API
-    # juste au-dessus) - elle doit toujours être affichée, que Xepay ait
-    # ou non une LLC Buildness en base. La LLC Buildness n'est qu'un
-    # second terme de comparaison, jamais la donnée principale -
-    # corrigé le 2026-11-25 (la première version gatait l'affichage de
-    # l'entité Shopify sur l'existence d'une LLC Xepay, inversant
-    # l'objectif du check).
+    # Ce check reflète UNIQUEMENT ce que Shopify retourne pour l'adresse
+    # de facturation de la boutique (lu en direct via l'API à chaque
+    # appel, jamais une déduction) - son statut ne doit jamais dépendre
+    # de la présence ou de l'absence d'une LLC Buildness en base Xepay.
+    # La comparaison avec Buildness, quand une LLC y existe, n'est
+    # qu'une information complémentaire - corrigé le 2026-11-25 après
+    # plusieurs retours : les premières versions faisaient encore
+    # dépendre le statut de la base Xepay, à l'inverse de l'objectif du
+    # check (afficher la config réelle de la boutique, pas l'état de
+    # notre propre DB).
     company = _get_latest_company(db, membership.workspace_id)
     company_formed = company and company.status == "completed"
 
-    if shop_legal_name and company_formed:
-        names_match = shop_legal_name.lower() == company.company_name.strip().lower()
-        checks.append(_check(
-            "llc_alignment", "Entité juridique de la boutique",
-            "ok" if names_match else "warning",
-            (f"Correspondance confirmée - \"{shop_legal_name}\" (entité Shopify) = \"{company.company_name}\" ({company.state}, EIN {company.ein_number or 'non renseigné'})."
-             if names_match else
-             f"Entité enregistrée sur Shopify : \"{shop_legal_name}\". LLC Buildness : \"{company.company_name}\" ({company.state}) - ne correspond pas, mettez à jour l'adresse de facturation dans l'admin Shopify (Paramètres > Détails de la boutique) avant la passation."),
-        ))
-    elif shop_legal_name and company:
-        checks.append(_check(
-            "llc_alignment", "Entité juridique de la boutique", "warning",
-            f"Entité enregistrée sur Shopify : \"{shop_legal_name}\". LLC Buildness \"{company.company_name}\" pas encore formée (statut : {company.status}) - comparaison impossible tant que le dossier n'est pas finalisé.",
-        ))
-    elif shop_legal_name:
-        checks.append(_check(
-            "llc_alignment", "Entité juridique de la boutique", "warning",
-            f"Entité enregistrée sur Shopify : \"{shop_legal_name}\". Aucune LLC Buildness trouvée côté Xepay pour ce workspace - aucune comparaison possible.",
-        ))
-    elif company_formed:
-        checks.append(_check(
-            "llc_alignment", "Entité juridique de la boutique", "warning",
-            f"LLC Buildness formée (\"{company.company_name}\", {company.state}) mais aucune entreprise renseignée dans l'adresse de facturation Shopify - complétez-la dans l'admin Shopify pour vérifier la correspondance.",
-        ))
+    if shop_legal_name:
+        detail = f"Entité enregistrée sur Shopify : \"{shop_legal_name}\"."
+        if shop_address_line:
+            detail += f" Adresse : {shop_address_line}."
+        status = "ok"
+        if company_formed:
+            names_match = shop_legal_name.lower() == company.company_name.strip().lower()
+            if names_match:
+                detail += f" Correspond à la LLC Buildness (\"{company.company_name}\", {company.state})."
+            else:
+                status = "warning"
+                detail += f" Ne correspond pas à la LLC Buildness (\"{company.company_name}\", {company.state}) - mettez à jour l'adresse de facturation dans l'admin Shopify (Paramètres > Détails de la boutique) si besoin."
+        checks.append(_check("llc_alignment", "Entité juridique de la boutique", status, detail))
     else:
         checks.append(_check(
             "llc_alignment", "Entité juridique de la boutique", "warning",
-            "Aucune entité renseignée dans l'adresse de facturation Shopify, et aucune LLC Buildness trouvée côté Xepay pour ce workspace.",
+            "Aucune entreprise renseignée dans l'adresse de facturation Shopify - complétez-la dans l'admin Shopify (Paramètres > Détails de la boutique).",
         ))
 
     # Accès réel confirmé (tentative directe, jamais une déduction depuis

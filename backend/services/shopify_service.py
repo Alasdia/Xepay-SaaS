@@ -393,7 +393,7 @@ async def get_shop_info(shop: str, access_token: str) -> dict:
             currencyCode
             ianaTimezone
             myshopifyDomain
-            shopAddress { company }
+            shopAddress { company address1 address2 city province zip country }
           }
         }
         """,
