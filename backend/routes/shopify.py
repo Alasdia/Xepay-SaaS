@@ -57,6 +57,7 @@ from backend.middleware.authorization import require_capability
 from backend.models import (
     ShopifyCustomerUpsertRequest,
     ShopifyOrderCancelRequest,
+    ShopifyOrderPayment,
     ShopifyProductUpsertRequest,
     ShopifyShop,
     WorkspaceUser,
@@ -65,7 +66,6 @@ from backend.routes.buildness import _get_latest_company
 from backend.security import create_shopify_state_token, decode_shopify_state_token, decrypt_secret, encrypt_secret
 from backend.services.shopify_service import (
     SHOPIFY_CLIENT_ID,
-    SHOPIFY_MANUAL_GATEWAY_NAME,
     ShopifyAPIError,
     ShopifyRateLimitError,
     ShopifyScopeError,
@@ -660,16 +660,23 @@ async def shopify_readiness(
         logger.exception("Échec récupération des infos boutique pour %s", shop)
         checks.append(_check("currency", "Devise de la boutique", "error", "Impossible de vérifier (erreur Shopify)."))
 
-    # État d'incorporation de la LLC (Buildness) - comparaison PUREMENT
-    # informative avec le fuseau horaire ci-dessus, aucune règle de
-    # correspondance automatique (un État US ne correspond pas à un
-    # fuseau horaire unique) - affiché pour que le marchand juge
-    # lui-même de la cohérence.
+    # État d'incorporation de la LLC (Buildness) - CORRIGÉ le 2026-11-25 :
+    # affichait "ok" dès qu'une société existait, PEU IMPORTE son statut
+    # (une LLC encore "draft"/"processing"/"failed" n'est pas une LLC
+    # réellement formée - trompeur dans un contexte de préparation à la
+    # passation). _get_latest_company (routes/buildness.py) elle-même
+    # est correcte (même workspace_id partout, vérifié) - c'était
+    # uniquement cette vérification qui ignorait le statut.
     company = _get_latest_company(db, membership.workspace_id)
-    if company:
+    if company and company.status == "completed":
         checks.append(_check(
             "llc_alignment", "LLC Buildness associée", "ok",
-            f"{company.company_name} ({company.state}) - à comparer au fuseau horaire/à la devise ci-dessus.",
+            f"{company.company_name} ({company.state}) - formée, EIN {company.ein_number or 'non renseigné'}. À comparer au fuseau horaire/à la devise ci-dessus.",
+        ))
+    elif company:
+        checks.append(_check(
+            "llc_alignment", "LLC Buildness associée", "warning",
+            f"{company.company_name} ({company.state}) - pas encore formée (statut : {company.status}). La passation ne devrait pas avoir lieu avant la fin du dossier Buildness.",
         ))
     else:
         checks.append(_check(
@@ -678,30 +685,27 @@ async def shopify_readiness(
         ))
 
     # Accès réel confirmé (tentative directe, jamais une déduction depuis
-    # le scope stocké - PR #107) + détection "Xepay" via l'historique des
-    # commandes (AUCUNE query API fiable et confirmée pour lister les
-    # méthodes de paiement configurées à ce jour, voir la conversation :
-    # manualPaymentMethods existe en théorie depuis l'API 2025-07 mais
-    # n'a pas pu être vérifiée - ce fallback reste donc la méthode
-    # retenue pour l'instant).
-    orders_data = None
+    # le scope stocké - PR #107).
+    try:
+        products_data = await list_products(shop, token)
+        if products_data:
+            checks.append(_check("products_access", "Catalogue produits", "ok", f"{len(products_data)} produit(s) configuré(s)."))
+        else:
+            checks.append(_check("products_access", "Catalogue produits", "warning", "Aucun produit configuré - ajoutez au moins un produit avant la passation."))
+    except ShopifyScopeError:
+        checks.append(_check("products_access", "Catalogue produits", "warning", "Scope read_products refusé par Shopify."))
+    except ShopifyAPIError:
+        logger.exception("Échec list_products (readiness) pour %s", shop)
+        checks.append(_check("products_access", "Catalogue produits", "error", "Impossible de vérifier (erreur Shopify)."))
+
     try:
         orders_data = await list_orders(shop, token)
-        checks.append(_check("orders_access", "Accès aux commandes", "ok", f"{len(orders_data)} commande(s) lue(s)."))
+        checks.append(_check("orders_access", "Accès aux commandes", "ok", f"{len(orders_data)} commande(s) lue(s) (0 est normal pour une boutique neuve)."))
     except ShopifyScopeError:
         checks.append(_check("orders_access", "Accès aux commandes", "warning", "Scope read_orders refusé par Shopify."))
     except ShopifyAPIError:
         logger.exception("Échec list_orders (readiness) pour %s", shop)
         checks.append(_check("orders_access", "Accès aux commandes", "error", "Impossible de vérifier (erreur Shopify)."))
-
-    try:
-        products_data = await list_products(shop, token)
-        checks.append(_check("products_access", "Accès aux produits", "ok", f"{len(products_data)} produit(s) lu(s)."))
-    except ShopifyScopeError:
-        checks.append(_check("products_access", "Accès aux produits", "warning", "Scope read_products refusé par Shopify."))
-    except ShopifyAPIError:
-        logger.exception("Échec list_products (readiness) pour %s", shop)
-        checks.append(_check("products_access", "Accès aux produits", "error", "Impossible de vérifier (erreur Shopify)."))
 
     try:
         await list_customers(shop, token)
@@ -712,22 +716,53 @@ async def shopify_readiness(
         logger.exception("Échec list_customers (readiness) pour %s", shop)
         checks.append(_check("customers_access", "Accès aux clients", "error", "Impossible de vérifier (erreur Shopify)."))
 
-    if orders_data is not None:
-        target = SHOPIFY_MANUAL_GATEWAY_NAME.strip().lower()
-        detected = any(
-            target in [str(n).strip().lower() for n in (o.get("paymentGatewayNames") or [])]
-            for o in orders_data
-        )
+    # Preuve RÉELLE d'encaissement de bout en bout - CORRIGÉ le
+    # 2026-11-25 : l'ancienne version devinait depuis
+    # Order.paymentGatewayNames (l'historique Shopify), un signal fragile
+    # qui ne distinguait pas "jamais essayé" de "essayé mais jamais payé".
+    # ShopifyOrderPayment (notre propre table, alimentée par le webhook
+    # orders/create - routes/webhook/shopify.py) donne la preuve exacte :
+    # marked_paid_at renseigné = webhook -> lien Xepay -> paiement ->
+    # orderMarkAsPaid ont TOUS réellement fonctionné pour cette boutique.
+    total_xepay_orders = db.query(ShopifyOrderPayment).filter(ShopifyOrderPayment.shop_domain == shop).count()
+    paid_xepay_orders = db.query(ShopifyOrderPayment).filter(
+        ShopifyOrderPayment.shop_domain == shop, ShopifyOrderPayment.marked_paid_at.isnot(None)
+    ).count()
+    if paid_xepay_orders > 0:
         checks.append(_check(
-            "xepay_payment_method", "Méthode de paiement \"Xepay\"",
-            "ok" if detected else "warning",
-            "Détectée via l'historique des commandes." if detected
-            else "Non détectée dans les commandes récentes - vérifiez qu'elle existe dans Shopify (Paiements > Méthodes manuelles) et qu'au moins une commande test l'a utilisée. Aucune API ne permet de la créer ni de la lister directement.",
+            "xepay_payment_flow", "Flux de paiement Xepay", "ok",
+            f"Validé de bout en bout - {paid_xepay_orders} commande(s) réellement payée(s) via \"Xepay\" et confirmée(s) sur Shopify (orderMarkAsPaid).",
+        ))
+    elif total_xepay_orders > 0:
+        checks.append(_check(
+            "xepay_payment_flow", "Flux de paiement Xepay", "warning",
+            f"{total_xepay_orders} commande(s) créée(s) avec la méthode \"Xepay\" mais aucune encore payée - complétez un paiement test avant la passation pour valider tout le flux.",
         ))
     else:
-        checks.append(_check("xepay_payment_method", "Méthode de paiement \"Xepay\"", "error", "Non vérifiable (accès aux commandes indisponible)."))
+        checks.append(_check(
+            "xepay_payment_flow", "Flux de paiement Xepay", "warning",
+            "Aucune commande \"Xepay\" détectée - passez une commande test avec cette méthode pour valider le flux (création du lien, paiement, confirmation Shopify) avant la passation.",
+        ))
 
-    return {"shop_domain": shop, "checks": checks}
+    # Zones de livraison / marchés / taxes de base - AUCUN contrôle API
+    # fiable retenu (schéma deliveryProfiles multi-niveaux, ET Shopify
+    # crée de toute façon un profil de livraison par défaut sur TOUTE
+    # nouvelle boutique - "au moins un profil existe" ne serait donc pas
+    # un signal informatif). Checklist déclarative : jamais "ok"
+    # automatiquement, toujours un rappel d'action manuelle.
+    checks.append(_check(
+        "shipping_markets_taxes", "Livraison / marchés / taxes", "warning",
+        "Non automatisable - vérifiez manuellement vos zones de livraison, marchés et taxes de base dans l'admin Shopify (Paramètres > Livraison, Paramètres > Taxes) avant la passation.",
+    ))
+
+    # Statut global de passation - pure agrégation des checks ci-dessus,
+    # aucun nouvel appel Shopify.
+    has_error = any(c["status"] == "error" for c in checks)
+    has_warning = any(c["status"] == "warning" for c in checks)
+    overall_status = "needs_attention" if (has_error or has_warning) else "ready"
+    outstanding = [c["label"] for c in checks if c["status"] in ("warning", "error")]
+
+    return {"shop_domain": shop, "status": overall_status, "outstanding": outstanding, "checks": checks}
 
 
 @router.post("/shopify/readiness/fix-webhook")
