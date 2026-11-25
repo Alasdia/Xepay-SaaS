@@ -122,6 +122,16 @@
     box-shadow: 0 4px 16px rgba(17, 24, 39, 0.03);
 }
 
+/* Variante compacte (demande du 2026-11-25) : les 35vh de base réservent
+   la place pour la ligne de KPI que certaines sous-vues affichent sous
+   le titre (Clients/Produits/Abonnements/Factures/Moyens de paiement -
+   voir #clients-summary etc.). Les sous-vues qui n'en ont pas
+   (Shopify, Risque, Liens) n'ont besoin que de l'icône+titre+
+   description - 35vh y laissait un grand vide en haut. */
+.subview-sticky-intro--compact {
+    min-height: 20vh;
+}
+
 .subview-sticky-intro-top {
     display: flex;
     align-items: center;

@@ -95,7 +95,7 @@ function buildTemplate(config) {
 
   return `
 <div id="main-content-inner" class="w-100">
-  <div class="subview-sticky-intro">
+  <div class="subview-sticky-intro subview-sticky-intro--compact">
     <div class="subview-sticky-intro-top">
       <div class="subview-sticky-intro-main">
         <div class="subview-sticky-intro-icon"><i class="fa-solid ${config.icon}"></i></div>
