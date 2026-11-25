@@ -6982,7 +6982,14 @@ async function renderShopifyReadinessSection(container) {
         }
         if (!response.ok) throw new Error(data.detail || "Impossible de vérifier la configuration");
         const checks = data.checks || [];
+        const ready = data.status === "ready";
         container.innerHTML = `
+            <div class="commerce-card" style="border-color:${ready ? "#16a34a" : "#f59e0b"}; margin-bottom:16px;">
+                <strong>${ready ? "✅ Prête pour la passation" : "⚠️ À compléter avant la passation"}</strong>
+                ${!ready && data.outstanding && data.outstanding.length ? `
+                    <p class="text-muted mb-0" style="font-size:12.5px; margin-top:4px;">Reste : ${data.outstanding.join(", ")}</p>
+                ` : ""}
+            </div>
             <div class="table-wrap">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
