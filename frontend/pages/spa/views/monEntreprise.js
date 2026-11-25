@@ -226,12 +226,30 @@ function officialRecapHtml(raw) {
   // nom) ; "Adresse commerciale"/"Boîte postale virtuelle" ne
   // s'affichent que si elles apportent une adresse réellement
   // différente.
+  //
+  // addressSignature (CORRIGÉ le 2026-11-25) : comparer formatAddress()
+  // tel quel ratait le cas réel que ce dédoublonnage doit justement
+  // couvrir - même adresse physique (30 N Gould St, STE R, Sheridan,
+  // 82801), mais state="WY" côté registeredAgent.address contre
+  // state="WYOMING" côté addresses[] - deux chaînes formatées
+  // différentes pour le même lieu. La signature exclut délibérément
+  // "state" (rue + ville + code postal + pays suffisent déjà à
+  // identifier une adresse physique) plutôt que de tenter une table de
+  // correspondance abrégé/toutes-lettres pour les 50 États.
+  function addressSignature(addr) {
+    if (!addr) return null;
+    return [addr.line1, addr.line2, addr.postalCode, addr.city, addr.country]
+      .filter(Boolean)
+      .map((p) => String(p).trim().toLowerCase())
+      .join("|");
+  }
   const shownAddresses = new Set();
-  if (agentAddress) shownAddresses.add(formatAddress(agentAddress));
+  if (agentAddress) shownAddresses.add(addressSignature(agentAddress));
   function addressStatOnce(label, addr) {
     const formatted = formatAddress(addr);
-    if (formatted === "—" || shownAddresses.has(formatted)) return null;
-    shownAddresses.add(formatted);
+    const signature = addressSignature(addr);
+    if (formatted === "—" || (signature && shownAddresses.has(signature))) return null;
+    if (signature) shownAddresses.add(signature);
     return statHtml(label, formatted);
   }
 
