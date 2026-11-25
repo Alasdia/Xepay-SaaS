@@ -188,6 +188,16 @@
         padding: 20px 0;
         gap: 14px;
     }
+    /* Réserve la place du futur KPI (demande du 2026-11-25) : la ligne
+       KPI (#clients-summary etc.) est injectée après un vrai appel
+       réseau, donc après le premier rendu du bandeau déjà collé
+       (sticky) au scroll - sans réservation, sa hauteur augmentait au
+       moment où les données arrivaient, alors que le bandeau ne doit
+       plus bouger une fois affiché. .subview-sticky-intro--compact
+       n'a pas de ligne KPI, donc rien à réserver. */
+    .subview-sticky-intro:not(.subview-sticky-intro--compact) {
+        min-height: 230px;
+    }
     .subview-sticky-intro-top {
         gap: 14px;
     }
