@@ -2,6 +2,7 @@ import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
 import { initDetailsDrawer } from "../shared/detailsDrawer.js";
+import { viewLoadingHtml } from "../shared/loadingSpinner.js";
 import { navigate } from "../core/router.js";
 import { getWorkspaceId } from "../core/state.js";
 
@@ -787,11 +788,7 @@ async function renderClients(container) {
         const list =
             container.querySelector("#clients-list");
 
-        list.innerHTML = `
-            <div class="commerce-card">
-                <p>Chargement des clients...</p>
-            </div>
-        `;
+        list.innerHTML = viewLoadingHtml();
 
         try {
 
@@ -1675,11 +1672,7 @@ async function renderProducts(container) {
             container.querySelector("#products-list");
 
 
-        list.innerHTML = `
-            <div class="commerce-card">
-                <p>Chargement des produits...</p>
-            </div>
-        `;
+        list.innerHTML = viewLoadingHtml();
 
 
         try {
@@ -3337,11 +3330,7 @@ async function renderSubscriptions(container) {
             );
 
 
-        list.innerHTML = `
-            <div class="commerce-card">
-                <p>Chargement des abonnements...</p>
-            </div>
-        `;
+        list.innerHTML = viewLoadingHtml();
 
 
         try {
@@ -4909,11 +4898,7 @@ async function renderInvoices(container) {
             );
 
 
-        list.innerHTML = `
-            <div class="commerce-card">
-                <p>Chargement des factures...</p>
-            </div>
-        `;
+        list.innerHTML = viewLoadingHtml();
 
 
         try {
@@ -5952,13 +5937,7 @@ async function renderPaymentMethods(container) {
 
     try {
 
-        tableContainer.innerHTML = `
-            <div class="payment-methods-card">
-                <div style="padding:20px;">
-                    Chargement des moyens de paiement...
-                </div>
-            </div>
-        `;
+        tableContainer.innerHTML = viewLoadingHtml();
 
         const response = await apiFetch(
             "/stripe/connect/payment-methods"
@@ -6495,11 +6474,7 @@ async function renderRisk(container) {
 
         const list = container.querySelector("#risk-list");
 
-        list.innerHTML = `
-            <div class="commerce-card">
-                <p>Chargement des données de risque...</p>
-            </div>
-        `;
+        list.innerHTML = viewLoadingHtml();
 
         try {
 
@@ -6771,19 +6746,6 @@ function escapeHtmlAttr(value) {
     return String(value ?? "").replace(/"/g, "&quot;");
 }
 
-// Élément de chargement partagé entre les 4 onglets Shopify (demande du
-// 2026-11-25) : un cercle tournant + "Chargement...", centré dans
-// #shopify-tab-content, au lieu d'un message "Chargement <nom de
-// l'onglet>..." différent par onglet.
-function shopifyTabLoadingHtml() {
-    return `
-        <div class="shopify-tab-loading">
-            <div class="shopify-tab-spinner"></div>
-            <p>Chargement...</p>
-        </div>
-    `;
-}
-
 async function renderShopifyProductsSection(container, { silent = false } = {}) {
     // silent (demande du 2026-11-25) : un rafraîchissement (clic sur un
     // onglet déjà actif, "Revérifier", ou après une action sur CE même
@@ -6792,7 +6754,7 @@ async function renderShopifyProductsSection(container, { silent = false } = {}) 
     // nouvelles données soient prêtes, remplacées en un seul coup.
     // silent=false UNIQUEMENT au premier chargement (rien à montrer
     // encore) ou en changeant RÉELLEMENT d'onglet (voir renderShopify).
-    if (!silent) container.innerHTML = shopifyTabLoadingHtml();
+    if (!silent) container.innerHTML = viewLoadingHtml();
     try {
         const response = await apiFetch("/shopify/products");
         const data = await response.json();
@@ -6846,7 +6808,7 @@ async function renderShopifyProductsSection(container, { silent = false } = {}) 
 }
 
 async function renderShopifyOrdersSection(container, { silent = false } = {}) {
-    if (!silent) container.innerHTML = shopifyTabLoadingHtml();
+    if (!silent) container.innerHTML = viewLoadingHtml();
     try {
         const response = await apiFetch("/shopify/orders");
         const data = await response.json();
@@ -6898,7 +6860,7 @@ async function renderShopifyOrdersSection(container, { silent = false } = {}) {
 }
 
 async function renderShopifyCustomersSection(container, { silent = false } = {}) {
-    if (!silent) container.innerHTML = shopifyTabLoadingHtml();
+    if (!silent) container.innerHTML = viewLoadingHtml();
     try {
         const response = await apiFetch("/shopify/customers");
         const data = await response.json();
@@ -6992,7 +6954,7 @@ const SHOPIFY_TABS = [
 const SHOPIFY_READINESS_STATUS_ICON = { ok: "✅", warning: "⚠️", error: "❌" };
 
 async function renderShopifyReadinessSection(container, { silent = false } = {}) {
-    if (!silent) container.innerHTML = shopifyTabLoadingHtml();
+    if (!silent) container.innerHTML = viewLoadingHtml();
     try {
         const response = await apiFetch("/shopify/readiness");
         const data = await response.json();

@@ -1380,7 +1380,7 @@
     flex-direction: row;
     flex-wrap: wrap;
     gap: 3px;
-    margin-top: 24px;
+    padding-top: 24px;
     padding-bottom: 1px;
     margin-bottom: 16px;
     border-bottom: 1px solid #e5e7eb;
@@ -1422,10 +1422,11 @@
     border-radius: 1px;
 }
 
-/* Spinner de chargement partagé des 4 onglets Shopify (demande du
-   2026-11-25) - centré dans #shopify-tab-content, remplace les anciens
-   messages "Chargement <nom de l'onglet>..." distincts par onglet. */
-.shopify-tab-loading {
+/* Spinner de chargement partagé (généralisé le 2026-11-25, voir
+   shared/loadingSpinner.js) - cercle tournant + "Chargement...", centré
+   dans le conteneur de contenu. Utilisé par les 4 onglets Shopify, et par
+   toute autre section de cette vue dont le chargement prend du temps. */
+.view-loading {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1436,16 +1437,16 @@
     font-size: 13.5px;
 }
 
-.shopify-tab-spinner {
+.view-loading-spinner {
     width: 28px;
     height: 28px;
     border: 2px solid #e5e7eb;
     border-top-color: #b45309;
     border-radius: 50%;
-    animation: shopify-tab-spin 0.7s linear infinite;
+    animation: view-loading-spin 0.7s linear infinite;
 }
 
-@keyframes shopify-tab-spin {
+@keyframes view-loading-spin {
     to { transform: rotate(360deg); }
 }
 

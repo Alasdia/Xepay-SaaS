@@ -10,6 +10,7 @@
 import { apiFetch } from "../core/apiClient.js";
 import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
+import { viewLoadingHtml } from "../shared/loadingSpinner.js";
 import { showWorkspaceSwitchOverlay, hideWorkspaceSwitchOverlay } from "../shared/workspaceSwitchOverlay.js";
 import { BUILDNESS_US_STATES } from "../shared/buildnessStatus.js";
 import { clearSession, getWorkspaceId, setWorkspaceId } from "../core/state.js";
@@ -1315,7 +1316,7 @@ function stripeTemplate() {
   return `
     ${detailHeader("Compte Stripe Connect")}
     <p class="params-subsection-sub">Données synchronisées depuis votre compte Stripe Connect.</p>
-    <div id="p-stripe-body"><p class="text-muted">Chargement...</p></div>
+    <div id="p-stripe-body">${viewLoadingHtml()}</div>
   `;
 }
 
@@ -1864,7 +1865,7 @@ function commissionTemplate() {
       <div class="params-info-row"><span>Votre taux actuel</span><strong id="p-commission-rate">—</strong></div>
     </div>
     <div class="commission-stairs" id="p-commission-stairs">
-      <p class="text-muted">Chargement...</p>
+      ${viewLoadingHtml()}
     </div>
     <div class="commission-legend">
       <i class="fa-solid fa-circle-info"></i>
@@ -2011,7 +2012,7 @@ function equipeTemplate() {
             </div>
           </div>
           <p class="params-subsection-sub">Les personnes ayant accès à votre espace Xepay et leur rôle.</p>
-          <div id="p-team-body"><p class="text-muted">Chargement...</p></div>
+          <div id="p-team-body">${viewLoadingHtml()}</div>
         </div>
         <div data-equipe-panel="historique" style="display:none;">
           <h6 class="params-subsection-title">Sécurité du compte</h6>
@@ -2033,7 +2034,7 @@ function equipeTemplate() {
 
           <h6 class="params-subsection-title">Journal d'activité</h6>
           <p class="params-subsection-sub">Activité de ce workspace : connexions, mot de passe, 2FA, clés d'accès, compte Google et actions d'équipe de tous ses membres.</p>
-          <div id="p-security-history-body"><p class="text-muted">Chargement...</p></div>
+          <div id="p-security-history-body">${viewLoadingHtml()}</div>
         </div>
       </div>
     </div>
@@ -2877,7 +2878,7 @@ function shopifyCardHtml(status) {
 async function renderShopifySection() {
   const container = document.getElementById("p-shopify-container");
   if (!container) return;
-  container.innerHTML = `<div class="params-promo-card"><p class="text-muted mb-0">Chargement...</p></div>`;
+  container.innerHTML = `<div class="params-promo-card">${viewLoadingHtml()}</div>`;
 
   let status = { connected: false };
   try {
@@ -2931,7 +2932,7 @@ function permissionsTemplate() {
   return `
     ${detailHeader("Permissions")}
     <p class="params-subsection-sub">Choisissez, pour chaque action sensible, le rôle minimal requis dans votre équipe. La configuration actuelle de Xepay est déjà appliquée par défaut ci-dessous - vous pouvez la personnaliser pour ce workspace à tout moment, et revenir au défaut en un clic. Réservé au propriétaire du workspace.</p>
-    <div id="p-permissions-body"><p class="text-muted">Chargement...</p></div>
+    <div id="p-permissions-body">${viewLoadingHtml()}</div>
   `;
 }
 
@@ -3906,7 +3907,7 @@ function retraitsTemplate() {
       <h6 class="params-subsection-title mb-0">Virement vers votre compte bancaire local (UEMOA)</h6>
     </div>
     <p class="params-subsection-sub" style="max-width:100%;">Les fonds collectés sur Xepay transitent par un wallet USD dédié (jamais détenu par Xepay) avant d'être reversés vers votre compte bancaire local, en Bénin, Burkina Faso, Côte d'Ivoire, Niger, Sénégal ou Togo. Deux étapes, dans l'ordre : <strong>Comptes bancaires</strong> (votre wallet USD) puis <strong>Retrait</strong> (votre banque locale UEMOA, destination finale) - vous déclenchez ensuite chaque retrait vous-même depuis le bouton "Retirer des fonds" (vue Solde).</p>
-    <div id="p-verto-body"><p class="text-muted">Chargement...</p></div>
+    <div id="p-verto-body">${viewLoadingHtml()}</div>
 
     <div class="params-subsection-header" style="margin-top: 32px;">
       <h6 class="params-subsection-title mb-0">Vous préférez un compte bancaire US ou EU ?</h6>
