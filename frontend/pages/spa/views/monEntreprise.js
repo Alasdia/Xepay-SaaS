@@ -122,9 +122,6 @@ function statusHeaderHtml(data) {
         </div>
       </div>
       ${stepsHtml(data)}
-      <div class="params-promo-actions">
-        <button type="button" id="p-mon-entreprise-goto-params" class="create-client-btn">${status === "failed" ? "Réessayer" : "Créer une autre société"}</button>
-      </div>
     </div>
   `;
 }
@@ -362,8 +359,6 @@ export async function mount(container) {
       `;
       hasRenderedLayout = true;
     }
-    const btn = document.getElementById("p-mon-entreprise-goto-params");
-    if (btn) btn.addEventListener("click", gotoParametresEntreprise);
 
     fetchBuildnessRawStatus()
       .then((raw) => {
