@@ -18,6 +18,7 @@ import { setViewStyles } from "../core/styleLoader.js";
 import { navigate } from "../core/router.js";
 import { getWorkspaceId } from "../core/state.js";
 import { showToast } from "../shared/toast.js";
+import { viewLoadingHtml } from "../shared/loadingSpinner.js";
 import {
   BUILDNESS_TERMINAL_STATUSES,
   BUILDNESS_POLL_INTERVAL_MS,
@@ -61,7 +62,7 @@ const BUILDNESS_SIGNATURE_MODAL_HTML = `
 const TEMPLATE = `
   <h1 class="page-title"><i class="fa-solid fa-building"></i> Mon entreprise</h1>
   <p class="params-subsection-sub" style="max-width:640px; margin-bottom:24px;">Suivi de la formation de votre société américaine (LLC) et de l'obtention de son EIN (identifiant fiscal fédéral) via notre partenaire doola.</p>
-  <div id="mon-entreprise-container"><p class="text-muted">Chargement...</p></div>
+  <div id="mon-entreprise-container">${viewLoadingHtml()}</div>
 `;
 
 function notStartedHtml() {
@@ -322,6 +323,18 @@ export async function mount(container) {
   // immédiatement ; le récap officiel/fondateur/documents (3 appels
   // doola en parallèle, plus lents) se remplissent ensuite chacun dans
   // leur propre conteneur, sans bloquer l'affichage du statut.
+  //
+  // hasRenderedLayout (ajouté le 2026-11-25, même correctif que les
+  // onglets Shopify) : render() est aussi appelé à chaque tick du
+  // poll ci-dessous, pas juste au premier chargement - sans ce
+  // garde-fou, la reconstruction complète du HTML remettait les 3
+  // cartes en "Chargement..." à CHAQUE refresh auto, faisant sauter la
+  // vue (cas explicitement cité comme contre-exemple pour Shopify).
+  // Seul le bandeau de statut est remis à jour en place sur les
+  // rafraîchissements suivants ; les 3 cartes gardent leur contenu
+  // jusqu'à ce que les nouvelles données soient prêtes.
+  let hasRenderedLayout = false;
+
   function render(data) {
     const el = document.getElementById("mon-entreprise-container");
     if (!el) return;
@@ -329,19 +342,26 @@ export async function mount(container) {
       el.innerHTML = notStartedHtml();
       const btn = document.getElementById("p-mon-entreprise-goto-params");
       if (btn) btn.addEventListener("click", gotoParametresEntreprise);
+      hasRenderedLayout = false;
       return;
     }
-    el.innerHTML = `
-      ${statusHeaderHtml(data)}
-      <div id="mon-entreprise-signature-container"></div>
-      <div class="mon-entreprise-layout">
-        <div class="mon-entreprise-main">
-          <div id="mon-entreprise-official-container"><div class="mon-entreprise-card"><p class="text-muted">Chargement...</p></div></div>
-          <div id="mon-entreprise-documents-container"><div class="mon-entreprise-card"><p class="text-muted">Chargement...</p></div></div>
+    if (hasRenderedLayout) {
+      const banner = document.getElementById("mon-entreprise-status-banner");
+      if (banner) banner.innerHTML = statusHeaderHtml(data);
+    } else {
+      el.innerHTML = `
+        <div id="mon-entreprise-status-banner">${statusHeaderHtml(data)}</div>
+        <div id="mon-entreprise-signature-container"></div>
+        <div class="mon-entreprise-layout">
+          <div class="mon-entreprise-main">
+            <div id="mon-entreprise-official-container"><div class="mon-entreprise-card">${viewLoadingHtml()}</div></div>
+            <div id="mon-entreprise-documents-container"><div class="mon-entreprise-card">${viewLoadingHtml()}</div></div>
+          </div>
+          <div id="mon-entreprise-founder-container"><div class="mon-entreprise-card mon-entreprise-side-card">${viewLoadingHtml()}</div></div>
         </div>
-        <div id="mon-entreprise-founder-container"><div class="mon-entreprise-card mon-entreprise-side-card"><p class="text-muted">Chargement...</p></div></div>
-      </div>
-    `;
+      `;
+      hasRenderedLayout = true;
+    }
     const btn = document.getElementById("p-mon-entreprise-goto-params");
     if (btn) btn.addEventListener("click", gotoParametresEntreprise);
 
