@@ -27,7 +27,7 @@ const MOUNT_SAFETY_TIMEOUT_MS = 8000;
 // Calé sur le rect réel de #main-content (jamais un left/width figé) afin
 // de ne jamais recouvrir la sidebar, y compris sous le breakpoint mobile où
 // #main-content perd son margin-left.
-function showSkeleton(container, routeName) {
+function showSkeleton(container, routeName, params) {
   removeSkeleton();
   const overlay = document.createElement("div");
   overlay.id = SKELETON_OVERLAY_ID;
@@ -35,7 +35,7 @@ function showSkeleton(container, routeName) {
   overlay.style.top = `${rect.top}px`;
   overlay.style.left = `${rect.left}px`;
   overlay.style.width = `${rect.width}px`;
-  overlay.innerHTML = getSkeleton(routeName);
+  overlay.innerHTML = getSkeleton(routeName, params);
   document.body.appendChild(overlay);
 }
 
@@ -127,7 +127,7 @@ async function render(pathname) {
 
   const myToken = ++navToken;
   const container = document.getElementById("main-content");
-  showSkeleton(container, route.name);
+  showSkeleton(container, route.name, params);
   const skeletonStart = Date.now();
 
   const mountPromise = Promise.resolve(route.mountView(container, params));
