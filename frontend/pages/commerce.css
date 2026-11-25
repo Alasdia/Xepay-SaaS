@@ -109,6 +109,17 @@
        juste en dessous. Même correctif appliqué à la barre sticky
        équivalente de Transactions (transactions.css). */
     top: 5vh;
+    /* margin-top négatif (demande du 2026-11-25) : #main-content a
+       padding-top:28px (sidebar.css), donc ce bandeau, premier enfant
+       de #main-content, reposait naturellement 28px plus bas que son
+       point de collage (top:5vh) - il fallait scroller ces 28px avant
+       qu'il se fige, perceptible comme un mouvement au tout début du
+       scroll. En annulant exactement ce padding ici, sa position de
+       repos coïncide déjà avec top:5vh : il est "collé" dès le premier
+       pixel de scroll, jamais après. Valeur réajustée à -66px sous
+       480px (voir media query plus bas), où ce padding passe à 66px
+       (responsive.css). */
+    margin-top: -28px;
     z-index: 20;
     display: flex;
     flex-direction: column;
@@ -188,6 +199,16 @@
         padding: 20px 0;
         gap: 14px;
     }
+    /* Réserve la place du futur KPI (demande du 2026-11-25) : la ligne
+       KPI (#clients-summary etc.) est injectée après un vrai appel
+       réseau, donc après le premier rendu du bandeau déjà collé
+       (sticky) au scroll - sans réservation, sa hauteur augmentait au
+       moment où les données arrivaient, alors que le bandeau ne doit
+       plus bouger une fois affiché. .subview-sticky-intro--compact
+       n'a pas de ligne KPI, donc rien à réserver. */
+    .subview-sticky-intro:not(.subview-sticky-intro--compact) {
+        min-height: 230px;
+    }
     .subview-sticky-intro-top {
         gap: 14px;
     }
@@ -205,6 +226,16 @@
     /* +20% par rapport à la taille mobile d'origine (12px -> 14px). */
     .subview-sticky-intro-body p {
         font-size: 14px;
+    }
+}
+
+/* En dessous de 480px, #main-content passe à padding-top:66px (voir
+   "#main-content, main { padding: 66px 12px 28px !important; }" dans
+   responsive.css) - même correctif que margin-top:-28px ci-dessus,
+   réajusté à cette nouvelle valeur. */
+@media (max-width: 480px) {
+    .subview-sticky-intro {
+        margin-top: -66px;
     }
 }
 
