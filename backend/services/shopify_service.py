@@ -388,7 +388,13 @@ async def get_shop_info(shop: str, access_token: str) -> dict:
         shop, access_token,
         """
         query {
-          shop { name currencyCode ianaTimezone myshopifyDomain }
+          shop {
+            name
+            currencyCode
+            ianaTimezone
+            myshopifyDomain
+            shopAddress { company }
+          }
         }
         """,
     )

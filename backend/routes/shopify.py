@@ -643,6 +643,7 @@ async def shopify_readiness(
 
     # Devise/fuseau horaire - SIGNAL uniquement, jamais corrigé (lecture
     # seule côté API, voir get_shop_info).
+    shop_legal_name = None
     try:
         info = await get_shop_info(shop, token)
         currency = info.get("currencyCode")
@@ -656,23 +657,31 @@ async def shopify_readiness(
             "timezone", "Fuseau horaire de la boutique", "ok",
             f"{info.get('ianaTimezone') or '—'} - purement informatif, non modifiable via l'API.",
         ))
+        raw_legal_name = (info.get("shopAddress") or {}).get("company")
+        shop_legal_name = raw_legal_name.strip() if isinstance(raw_legal_name, str) and raw_legal_name.strip() else None
     except ShopifyAPIError:
         logger.exception("Échec récupération des infos boutique pour %s", shop)
         checks.append(_check("currency", "Devise de la boutique", "error", "Impossible de vérifier (erreur Shopify)."))
 
-    # État d'incorporation de la LLC (Buildness) - CORRIGÉ le 2026-11-25 :
-    # affichait "ok" dès qu'une société existait, PEU IMPORTE son statut
-    # (une LLC encore "draft"/"processing"/"failed" n'est pas une LLC
-    # réellement formée - trompeur dans un contexte de préparation à la
-    # passation). _get_latest_company (routes/buildness.py) elle-même
-    # est correcte (même workspace_id partout, vérifié) - c'était
-    # uniquement cette vérification qui ignorait le statut.
+    # Compare la LLC Buildness à l'entité réellement enregistrée sur
+    # Shopify (shopAddress.company), pas juste à l'existence d'une LLC
+    # côté Xepay - corrigé le 2026-11-25.
     company = _get_latest_company(db, membership.workspace_id)
     if company and company.status == "completed":
-        checks.append(_check(
-            "llc_alignment", "LLC Buildness associée", "ok",
-            f"{company.company_name} ({company.state}) - formée, EIN {company.ein_number or 'non renseigné'}. À comparer au fuseau horaire/à la devise ci-dessus.",
-        ))
+        if shop_legal_name:
+            names_match = shop_legal_name.lower() == company.company_name.strip().lower()
+            checks.append(_check(
+                "llc_alignment", "LLC Buildness associée",
+                "ok" if names_match else "warning",
+                (f"Correspondance confirmée - \"{shop_legal_name}\" (entité Shopify) = \"{company.company_name}\" ({company.state}, EIN {company.ein_number or 'non renseigné'})."
+                 if names_match else
+                 f"Entité enregistrée sur Shopify (\"{shop_legal_name}\") différente de la LLC Buildness (\"{company.company_name}\", {company.state}) - mettez à jour l'adresse de facturation dans l'admin Shopify (Paramètres > Détails de la boutique) avant la passation."),
+            ))
+        else:
+            checks.append(_check(
+                "llc_alignment", "LLC Buildness associée", "warning",
+                f"{company.company_name} ({company.state}) - formée, EIN {company.ein_number or 'non renseigné'}, mais aucune entreprise renseignée dans l'adresse de facturation Shopify pour vérifier la correspondance.",
+            ))
     elif company:
         checks.append(_check(
             "llc_alignment", "LLC Buildness associée", "warning",
@@ -681,7 +690,7 @@ async def shopify_readiness(
     else:
         checks.append(_check(
             "llc_alignment", "LLC Buildness associée", "warning",
-            "Aucune société Buildness trouvée pour ce workspace - la comparaison devise/fuseau horaire n'a pas de référence.",
+            "Aucune société Buildness trouvée pour ce workspace - la comparaison avec l'entité Shopify n'a pas de référence.",
         ))
 
     # Accès réel confirmé (tentative directe, jamais une déduction depuis
