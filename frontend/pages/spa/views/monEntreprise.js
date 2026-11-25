@@ -171,23 +171,30 @@ function signatureBannerHtml(raw) {
 // numéro de dossier, adresses virtuelles, agent enregistré...), jamais
 // stocké côté Xepay : lu directement depuis la réponse brute doola.
 function officialRecapHtml(raw) {
+  // business/mailing lus depuis addresses[] (voir backend/routes/
+  // buildness.py, corrigé le 2026-11-25 pour matcher le schéma doola) -
+  // business = l'adresse du fondateur (provider=customer), mailing =
+  // l'adresse propre de doola pour la correspondance (provider=
+  // registeredAgent, doola la fournit) - PAS supposée identique à
+  // raw.registeredAgent.address (adresse légale de l'agent) : un vrai
+  // prestataire (ex. Firstbase, voir l'exemple de filing réel fourni le
+  // 2026-11-25) utilise souvent 2 adresses distinctes - une pour l'agent
+  // enregistré/l'organisateur, une autre (avec son propre numéro de
+  // suite) pour le courrier/siège - jamais vérifié sur une vraie réponse
+  // doola post-correctif, affichée séparément plutôt que supposée égale.
   const business = findAddress(raw, "business");
+  const mailing = findAddress(raw, "mailing");
   const stats = [
     statHtml("EIN (identifiant fiscal)", raw.ein || "Pas encore émis"),
     statHtml("Numéro de dossier de formation", raw.formationFilingNumber || "En attente"),
     statHtml("Raison sociale validée par l'État", raw.legalName || "En attente de validation"),
     statHtml("Type de société", BUILDNESS_ENTITY_TYPE_LABELS[raw.entityType] || raw.entityType || "—"),
-    statHtml("Adresse commerciale (agent enregistré)", formatAddress(business)),
-    // Boîte postale virtuelle (correspondance) - CORRIGÉ le 2026-11-25 :
-    // affichait l'adresse "mailing" (celle du fondateur, réutilisée telle
-    // quelle dans le payload doola - voir backend/routes/buildness.py),
-    // jamais une vraie boîte postale. raw.registeredAgent.address
-    // (nommé explicitement par doola, pas déduit de "business" qui
-    // n'est que l'adresse demandée avec provider=registeredAgent dans
-    // notre requête, sans garantie de coïncider) est la seule adresse
-    // qui reçoit réellement le courrier officiel (État, IRS) - repli
-    // sur "business" si registeredAgent n'est pas encore renseigné.
-    statHtml("Boîte postale virtuelle (correspondance)", formatAddress(raw.registeredAgent?.address || business)),
+    // Plus de "(agent enregistré)" dans ce libellé - CORRIGÉ le
+    // 2026-11-25 : c'était vrai avant le correctif du payload (business
+    // venait de l'agent enregistré), plus maintenant (business = adresse
+    // du fondateur).
+    statHtml("Adresse commerciale", formatAddress(business)),
+    statHtml("Boîte postale virtuelle (correspondance)", formatAddress(mailing)),
   ];
   if (raw.registeredAgent) {
     stats.push(statHtml("Agent enregistré", raw.registeredAgent.name || "—"));

@@ -178,13 +178,21 @@ async def onboard_buildness(
                 "email": body.email,
                 "address": address_dto,
             },
-            # Adresse "business" fournie par doola lui-même (provider=
-            # registeredAgent, pas d'adresse à donner) - le marchand cible
-            # de Buildness est un fondateur non-résident, sans adresse
-            # professionnelle US existante ; "mailing" reste la sienne.
+            # CORRIGÉ le 2026-11-25 : inversé par rapport à l'exemple
+            # canonique de la doc doola (docs.doola.com/api/formation.md),
+            # qui associe "mailing" à provider=registeredAgent et
+            # "business" à provider=customer - l'ancienne version faisait
+            # l'inverse, donc "Adresse commerciale" affichait en réalité
+            # l'adresse de l'agent enregistré (jamais celle du fondateur,
+            # même en tant qu'approximation). "mailing" (provider=
+            # registeredAgent, pas d'adresse à donner - doola met la
+            # sienne) est la seule adresse qui reçoit réellement le
+            # courrier officiel, déjà exposée côté Xepay via
+            # raw.registeredAgent (champ séparé, voir monEntreprise.js) -
+            # pas besoin d'un affichage dédié supplémentaire pour elle.
             "addresses": [
-                {"provider": "registeredAgent", "type": "business"},
-                {"provider": "customer", "type": "mailing", "address": address_dto},
+                {"provider": "customer", "type": "business", "address": address_dto},
+                {"provider": "registeredAgent", "type": "mailing"},
             ],
             "members": [
                 {

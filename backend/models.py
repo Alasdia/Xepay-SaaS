@@ -243,10 +243,12 @@ class BuildnessOnboardRequest(BaseModel):
     #   adresse de personne physique).
     # - address_* : UNE seule adresse collectée, réutilisée à 3 endroits
     #   côté doola (responsibleParty.address, members[0].address, et
-    #   l'adresse "mailing" du couple addresses[]) - doola exige ces 3
-    #   adresses séparément dans son schéma, mais rien n'empêche qu'elles
-    #   soient identiques, et demander 3 fois la même adresse au marchand
-    #   n'aurait aucune valeur ajoutée.
+    #   l'adresse "business" du couple addresses[] - PAS "mailing",
+    #   corrigé le 2026-11-25 pour matcher l'exemple canonique de la doc
+    #   doola, qui associe "mailing" à provider=registeredAgent) -
+    #   doola exige ces 3 adresses séparément dans son schéma, mais rien
+    #   n'empêche qu'elles soient identiques, et demander 3 fois la même
+    #   adresse au marchand n'aurait aucune valeur ajoutée.
     # - industry : valeur "industry" d'un code NAICS doola (voir
     #   GET /buildness/naics-codes), à transmettre verbatim - jamais du
     #   texte libre, doola la rejette sinon.
