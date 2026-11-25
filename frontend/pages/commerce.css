@@ -113,11 +113,11 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 18px;
-    min-height: 35vh;
+    gap: 12px;
+    min-height: 18vh;
     background: #ffffff;
     border-bottom: 1px solid #e5e7eb;
-    padding: 24px 0;
+    padding: 14px 0;
     margin-bottom: 40px;
     box-shadow: 0 4px 16px rgba(17, 24, 39, 0.03);
 }
@@ -168,17 +168,24 @@
     min-width: 0;
 }
 
+/* 56px -> 44px et titre/description resserrés (demande du 2026-11-25,
+   même raison que la variante compacte : réduire min-height seul ne
+   change rien tant que le contenu réel reste plus grand que lui -
+   voir .subview-sticky-intro--compact plus haut). La ligne KPI
+   (.commerce-kpi, injectée par ensureCommerceKpiStyles dans
+   commerce.js) n'est PAS touchée ici : elle est partagée avec
+   Paramètres et Transactions, hors-sujet de ce correctif. */
 .subview-sticky-intro-icon {
     flex-shrink: 0;
-    width: 56px;
-    height: 56px;
-    border-radius: 16px;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
     background: rgba(180, 83, 9, 0.1);
     color: #b45309;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
+    font-size: 18px;
 }
 
 .subview-sticky-intro-body {
@@ -186,20 +193,20 @@
 }
 
 .subview-sticky-intro-body h1 {
-    font-size: 22px;
+    font-size: 19px;
     font-weight: 700;
     letter-spacing: -0.01em;
-    margin: 0 0 8px;
+    margin: 0 0 4px;
     color: #111827;
 }
 
 /* +20% par rapport à la taille/graisse d'origine (13.5px/normal) :
    13.5px -> 16px, poids 400 -> 500. */
 .subview-sticky-intro-body p {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 500;
     color: #6b7280;
-    line-height: 1.6;
+    line-height: 1.5;
     margin: 0;
     max-width: 640px;
 }
