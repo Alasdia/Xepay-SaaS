@@ -61,9 +61,11 @@ from backend.models import (
     ShopifyShop,
     WorkspaceUser,
 )
+from backend.routes.buildness import _get_latest_company
 from backend.security import create_shopify_state_token, decode_shopify_state_token, decrypt_secret, encrypt_secret
 from backend.services.shopify_service import (
     SHOPIFY_CLIENT_ID,
+    SHOPIFY_MANUAL_GATEWAY_NAME,
     ShopifyAPIError,
     ShopifyRateLimitError,
     ShopifyScopeError,
@@ -72,6 +74,8 @@ from backend.services.shopify_service import (
     create_customer,
     create_product,
     exchange_code_for_token,
+    get_shop_info,
+    is_order_webhook_registered,
     is_valid_shop_domain,
     list_customers,
     list_orders,
@@ -588,3 +592,163 @@ async def shopify_cancel_order(
     # presque toujours false ici : c'est une annulation LANCÉE, pas
     # confirmée. Le frontend doit l'afficher comme telle.
     return {"shop_domain": shop_row.shop_domain, "job": job}
+
+
+# =========================================================
+# "Buildshop" - rapport de préparation technique de la boutique (demande
+# du 2026-11-25) : AUCUNE UI/thème/design, uniquement la lecture d'état
+# réel (jamais ShopifyShop.scope, voir PR #107) et UNE SEULE action
+# corrective, l'enregistrement du webhook orders/create - idempotent et
+# sans risque. Devise/fuseau horaire/taxes/marchés restent des SIGNAUX
+# affichés pour action manuelle du marchand, jamais corrigés
+# automatiquement (devise/fuseau horaire sont de toute façon en lecture
+# seule côté API Shopify, vérifié le 2026-11-25 - voir get_shop_info).
+# =========================================================
+
+def _check(key: str, label: str, status: str, detail: str) -> dict:
+    return {"key": key, "label": label, "status": status, "detail": detail}
+
+
+@router.get("/shopify/readiness")
+async def shopify_readiness(
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("view_shopify_data")),
+):
+    """Rapport de préparation technique - chaque item est vérifié par un
+    VRAI appel Shopify (jamais une déduction depuis une colonne stockée,
+    leçon de PR #107). Purement en LECTURE - aucun effet de bord, voir
+    POST /shopify/readiness/fix-webhook pour la seule action corrective
+    disponible."""
+    shop_row = _get_connected_shop(db, membership.workspace_id)
+    if not shop_row:
+        raise HTTPException(status_code=404, detail="Aucune boutique Shopify connectée")
+    shop = shop_row.shop_domain
+    token = decrypt_secret(shop_row.access_token)
+
+    checks = []
+
+    # Webhook orders/create - seul item avec une action corrective (voir
+    # POST /shopify/readiness/fix-webhook).
+    try:
+        registered = await is_order_webhook_registered(shop, token)
+        checks.append(_check(
+            "orders_webhook", "Webhook commandes",
+            "ok" if registered else "warning",
+            "Enregistré - les commandes Shopify génèrent bien un lien Xepay." if registered
+            else "Non enregistré - aucune commande ne générera de lien Xepay tant que ce n'est pas corrigé.",
+        ))
+    except ShopifyAPIError:
+        logger.exception("Échec vérification webhook orders/create pour %s", shop)
+        checks.append(_check("orders_webhook", "Webhook commandes", "error", "Impossible de vérifier (erreur Shopify)."))
+
+    # Devise/fuseau horaire - SIGNAL uniquement, jamais corrigé (lecture
+    # seule côté API, voir get_shop_info).
+    try:
+        info = await get_shop_info(shop, token)
+        currency = info.get("currencyCode")
+        currency_ok = currency == "USD"
+        checks.append(_check(
+            "currency", "Devise de la boutique",
+            "ok" if currency_ok else "warning",
+            f"{currency or '—'}" + ("" if currency_ok else " - une LLC US encaisse généralement en USD ; à corriger manuellement dans l'admin Shopify si besoin (non modifiable via l'API)."),
+        ))
+        checks.append(_check(
+            "timezone", "Fuseau horaire de la boutique", "ok",
+            f"{info.get('ianaTimezone') or '—'} - purement informatif, non modifiable via l'API.",
+        ))
+    except ShopifyAPIError:
+        logger.exception("Échec récupération des infos boutique pour %s", shop)
+        checks.append(_check("currency", "Devise de la boutique", "error", "Impossible de vérifier (erreur Shopify)."))
+
+    # État d'incorporation de la LLC (Buildness) - comparaison PUREMENT
+    # informative avec le fuseau horaire ci-dessus, aucune règle de
+    # correspondance automatique (un État US ne correspond pas à un
+    # fuseau horaire unique) - affiché pour que le marchand juge
+    # lui-même de la cohérence.
+    company = _get_latest_company(db, membership.workspace_id)
+    if company:
+        checks.append(_check(
+            "llc_alignment", "LLC Buildness associée", "ok",
+            f"{company.company_name} ({company.state}) - à comparer au fuseau horaire/à la devise ci-dessus.",
+        ))
+    else:
+        checks.append(_check(
+            "llc_alignment", "LLC Buildness associée", "warning",
+            "Aucune société Buildness trouvée pour ce workspace - la comparaison devise/fuseau horaire n'a pas de référence.",
+        ))
+
+    # Accès réel confirmé (tentative directe, jamais une déduction depuis
+    # le scope stocké - PR #107) + détection "Xepay" via l'historique des
+    # commandes (AUCUNE query API fiable et confirmée pour lister les
+    # méthodes de paiement configurées à ce jour, voir la conversation :
+    # manualPaymentMethods existe en théorie depuis l'API 2025-07 mais
+    # n'a pas pu être vérifiée - ce fallback reste donc la méthode
+    # retenue pour l'instant).
+    orders_data = None
+    try:
+        orders_data = await list_orders(shop, token)
+        checks.append(_check("orders_access", "Accès aux commandes", "ok", f"{len(orders_data)} commande(s) lue(s)."))
+    except ShopifyScopeError:
+        checks.append(_check("orders_access", "Accès aux commandes", "warning", "Scope read_orders refusé par Shopify."))
+    except ShopifyAPIError:
+        logger.exception("Échec list_orders (readiness) pour %s", shop)
+        checks.append(_check("orders_access", "Accès aux commandes", "error", "Impossible de vérifier (erreur Shopify)."))
+
+    try:
+        products_data = await list_products(shop, token)
+        checks.append(_check("products_access", "Accès aux produits", "ok", f"{len(products_data)} produit(s) lu(s)."))
+    except ShopifyScopeError:
+        checks.append(_check("products_access", "Accès aux produits", "warning", "Scope read_products refusé par Shopify."))
+    except ShopifyAPIError:
+        logger.exception("Échec list_products (readiness) pour %s", shop)
+        checks.append(_check("products_access", "Accès aux produits", "error", "Impossible de vérifier (erreur Shopify)."))
+
+    try:
+        await list_customers(shop, token)
+        checks.append(_check("customers_access", "Accès aux clients", "ok", "Lecture réussie."))
+    except ShopifyScopeError:
+        checks.append(_check("customers_access", "Accès aux clients", "warning", "Scope read_customers refusé par Shopify."))
+    except ShopifyAPIError:
+        logger.exception("Échec list_customers (readiness) pour %s", shop)
+        checks.append(_check("customers_access", "Accès aux clients", "error", "Impossible de vérifier (erreur Shopify)."))
+
+    if orders_data is not None:
+        target = SHOPIFY_MANUAL_GATEWAY_NAME.strip().lower()
+        detected = any(
+            target in [str(n).strip().lower() for n in (o.get("paymentGatewayNames") or [])]
+            for o in orders_data
+        )
+        checks.append(_check(
+            "xepay_payment_method", "Méthode de paiement \"Xepay\"",
+            "ok" if detected else "warning",
+            "Détectée via l'historique des commandes." if detected
+            else "Non détectée dans les commandes récentes - vérifiez qu'elle existe dans Shopify (Paiements > Méthodes manuelles) et qu'au moins une commande test l'a utilisée. Aucune API ne permet de la créer ni de la lister directement.",
+        ))
+    else:
+        checks.append(_check("xepay_payment_method", "Méthode de paiement \"Xepay\"", "error", "Non vérifiable (accès aux commandes indisponible)."))
+
+    return {"shop_domain": shop, "checks": checks}
+
+
+@router.post("/shopify/readiness/fix-webhook")
+async def shopify_readiness_fix_webhook(
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("manage_shopify_data")),
+):
+    """SEULE action corrective du rapport de préparation - idempotente
+    (voir register_order_webhook/_find_order_webhook_subscription_id) :
+    rejouer cette action sans risque, jamais de doublon d'abonnement."""
+    shop_row = _get_connected_shop(db, membership.workspace_id)
+    if not shop_row:
+        raise HTTPException(status_code=404, detail="Aucune boutique Shopify connectée")
+    try:
+        await register_order_webhook(shop_row.shop_domain, decrypt_secret(shop_row.access_token))
+    except ShopifyScopeError:
+        raise HTTPException(status_code=409, detail="Le scope write_orders n'est pas accordé - reconnectez la boutique")
+    except ShopifyRateLimitError:
+        raise HTTPException(status_code=429, detail="Limite Shopify atteinte, réessayez dans quelques secondes")
+    except ShopifyAPIError:
+        logger.exception("Échec fix-webhook pour %s", shop_row.shop_domain)
+        raise HTTPException(status_code=502, detail="Impossible d'enregistrer le webhook")
+    logger.info("Webhook orders/create vérifié/réparé pour %s (workspace %s)", shop_row.shop_domain, membership.workspace_id)
+    return {"shop_domain": shop_row.shop_domain, "ok": True}

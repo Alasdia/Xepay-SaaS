@@ -6959,7 +6959,63 @@ const SHOPIFY_TABS = [
     { key: "produits", label: "Produits", render: renderShopifyProductsSection },
     { key: "commandes", label: "Commandes", render: renderShopifyOrdersSection },
     { key: "clients", label: "Clients", render: renderShopifyCustomersSection },
+    { key: "configuration", label: "Configuration", render: renderShopifyReadinessSection },
 ];
+
+// "Buildshop" (demande du 2026-11-25) - rapport de préparation technique
+// de la boutique, PAS de thème/design : chaque ligne vient d'un VRAI
+// appel Shopify (GET /shopify/readiness, jamais une colonne stockée -
+// même principe que les onglets ci-dessus depuis PR #107). Une seule
+// action corrective existe (réparer le webhook commandes) - tout le
+// reste (devise/fuseau horaire/méthode de paiement) reste un SIGNAL
+// affiché pour action manuelle, jamais une correction automatique.
+const SHOPIFY_READINESS_STATUS_ICON = { ok: "✅", warning: "⚠️", error: "❌" };
+
+async function renderShopifyReadinessSection(container) {
+    container.innerHTML = `<div class="commerce-card"><p>Vérification de la configuration...</p></div>`;
+    try {
+        const response = await apiFetch("/shopify/readiness");
+        const data = await response.json();
+        if (response.status === 404) {
+            container.innerHTML = "";
+            return;
+        }
+        if (!response.ok) throw new Error(data.detail || "Impossible de vérifier la configuration");
+        const checks = data.checks || [];
+        container.innerHTML = `
+            <div class="table-wrap">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <div class="table-title">Configuration de la boutique</div>
+                        <div class="page-subtitle">${data.shop_domain}</div>
+                    </div>
+                    <button type="button" class="create-client-btn" id="shopify-readiness-refresh">Revérifier</button>
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr><th>Vérification</th><th>Détail</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        ${checks.map((c) => `
+                            <tr>
+                                <td>${SHOPIFY_READINESS_STATUS_ICON[c.status] || "—"} ${c.label}</td>
+                                <td>${c.detail}</td>
+                                <td class="text-end">
+                                    ${c.key === "orders_webhook" && c.status !== "ok"
+                                        ? `<button type="button" class="shopify-row-action-btn" data-shopify-fix-webhook="1">Réparer</button>`
+                                        : ""}
+                                </td>
+                            </tr>
+                        `).join("")}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } catch (error) {
+        console.error(error);
+        container.innerHTML = `<div class="commerce-card"><p>${error.message || "Erreur lors de la vérification de la configuration"}</p></div>`;
+    }
+}
 
 // Modales d'écriture (demande du 2026-11-24) - partagées entre tous les
 // onglets, posées UNE SEULE FOIS dans le gabarit statique de
@@ -7314,6 +7370,27 @@ async function renderShopify(container) {
         const cancelOrderBtn = event.target.closest("[data-shopify-cancel-order]");
         if (cancelOrderBtn) {
             openCancelOrderModal(cancelOrderBtn.dataset.shopifyCancelOrder, cancelOrderBtn.dataset.orderName || "");
+            return;
+        }
+        const readinessRefreshBtn = event.target.closest("#shopify-readiness-refresh");
+        if (readinessRefreshBtn) {
+            if (activeTabKey === "configuration") reloadActiveTab();
+            return;
+        }
+        const fixWebhookBtn = event.target.closest("[data-shopify-fix-webhook]");
+        if (fixWebhookBtn) {
+            fixWebhookBtn.disabled = true;
+            fixWebhookBtn.textContent = "...";
+            apiFetch("/shopify/readiness/fix-webhook", { method: "POST" })
+                .then(async (response) => {
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.detail || "Impossible de réparer le webhook");
+                    showToast("Webhook commandes vérifié/réparé", "success");
+                })
+                .catch((error) => showToast(error.message || "Erreur lors de la réparation du webhook", "error"))
+                .finally(() => {
+                    if (activeTabKey === "configuration") reloadActiveTab();
+                });
         }
     });
 }

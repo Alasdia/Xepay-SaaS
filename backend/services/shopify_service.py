@@ -263,17 +263,12 @@ async def _admin_graphql(shop: str, access_token: str, query: str, variables: di
     return data.get("data") or {}
 
 
-async def register_order_webhook(shop: str, access_token: str) -> None:
-    """Enregistre (une seule fois par boutique) le webhook orders/create
-    vers SHOPIFY_ORDERS_WEBHOOK_URL - appelée depuis routes/shopify.py
-    juste après un échange OAuth réussi. Idempotent : liste d'abord les
-    abonnements existants pour ce topic et ne crée rien si CETTE URL y
-    figure déjà (une ré-installation ne doit jamais créer un second
-    abonnement - Shopify livrerait alors CHAQUE commande deux fois,
-    créant deux Link Xepay pour la même commande malgré la
-    UniqueConstraint de ShopifyOrderPayment, qui ne protège que contre un
-    DOUBLE-TRAITEMENT d'un même événement, pas contre deux abonnements
-    distincts générant chacun leur propre événement)."""
+async def _find_order_webhook_subscription_id(shop: str, access_token: str) -> str | None:
+    """Liste les abonnements webhook ORDERS_CREATE et renvoie l'id de
+    celui qui pointe vers SHOPIFY_ORDERS_WEBHOOK_URL, ou None - factorisé
+    le 2026-11-25 (utilisé par register_order_webhook ET par le rapport
+    de préparation Buildshop, routes/shopify.py::shopify_readiness, qui
+    lui ne fait QUE lire, jamais créer)."""
     existing = await _admin_graphql(
         shop, access_token,
         """
@@ -286,9 +281,35 @@ async def register_order_webhook(shop: str, access_token: str) -> None:
     )
     edges = (existing.get("webhookSubscriptions") or {}).get("edges") or []
     for edge in edges:
-        endpoint = (edge.get("node") or {}).get("endpoint") or {}
+        node = edge.get("node") or {}
+        endpoint = node.get("endpoint") or {}
         if endpoint.get("callbackUrl") == SHOPIFY_ORDERS_WEBHOOK_URL:
-            return
+            return node.get("id")
+    return None
+
+
+async def is_order_webhook_registered(shop: str, access_token: str) -> bool:
+    """Lecture PURE (jamais de création) - voir
+    _find_order_webhook_subscription_id. Utilisée par le rapport de
+    préparation Buildshop pour afficher l'état réel sans effet de bord."""
+    return bool(await _find_order_webhook_subscription_id(shop, access_token))
+
+
+async def register_order_webhook(shop: str, access_token: str) -> None:
+    """Enregistre (une seule fois par boutique) le webhook orders/create
+    vers SHOPIFY_ORDERS_WEBHOOK_URL - appelée depuis routes/shopify.py
+    juste après un échange OAuth réussi, ET depuis le rapport de
+    préparation Buildshop (POST /shopify/readiness/fix-webhook) comme
+    SEULE action corrective automatisable - idempotente par construction
+    (voir _find_order_webhook_subscription_id : ne crée rien si CETTE
+    URL figure déjà, une ré-installation ou un second appel ne doit
+    jamais créer un second abonnement - Shopify livrerait alors CHAQUE
+    commande deux fois, créant deux Link Xepay pour la même commande
+    malgré la UniqueConstraint de ShopifyOrderPayment, qui ne protège
+    que contre un DOUBLE-TRAITEMENT d'un même événement, pas contre deux
+    abonnements distincts générant chacun leur propre événement)."""
+    if await _find_order_webhook_subscription_id(shop, access_token):
+        return
 
     result = await _admin_graphql(
         shop, access_token,
@@ -352,6 +373,28 @@ async def mark_order_as_paid(shop: str, access_token: str, order_id) -> dict:
 # Commerce, qui chargent au plus 100 lignes en un seul appel).
 COMMERCE_PAGE_SIZE = 50
 
+
+async def get_shop_info(shop: str, access_token: str) -> dict:
+    """GET infos de boutique (nom, devise, fuseau horaire) - EN LECTURE
+    SEULE : vérifié le 2026-11-25 (doc officielle shopify.dev) qu'AUCUNE
+    mutation Admin API ne permet de modifier currencyCode/ianaTimezone
+    (fixés à la création de la boutique, modifiables uniquement à la
+    main dans l'admin Shopify, parfois même plus du tout après la
+    première vente). Utilisée par le rapport de préparation Buildshop
+    (routes/shopify.py::shopify_readiness) comme SIGNAL de cohérence
+    avec la LLC du marchand, jamais comme cible d'une correction
+    automatique - voir les garde-fous documentés sur cette route."""
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        query {
+          shop { name currencyCode ianaTimezone myshopifyDomain }
+        }
+        """,
+    )
+    return result.get("shop") or {}
+
+
 async def list_products(shop: str, access_token: str) -> list[dict]:
     """GET produits - titre, statut, stock total, image, fourchette de
     prix (priceRangeV2 : min/max des variantes, jamais un prix unique -
@@ -390,7 +433,11 @@ async def list_orders(shop: str, access_token: str) -> list[dict]:
     ancienne. cancelledAt (null si pas annulée) : seul champ fiable pour
     savoir si "Annuler" doit être proposée côté UI (routes/shopify.py,
     POST /shopify/orders/{id}/cancel) - displayFinancialStatus/
-    displayFulfillmentStatus ne reflètent pas forcément l'annulation."""
+    displayFulfillmentStatus ne reflètent pas forcément l'annulation.
+    paymentGatewayNames (camelCase ici, PAS payment_gateway_names comme
+    dans le payload REST du webhook orders/create - deux schémas
+    différents, voir routes/webhook/shopify.py) : utilisé par le rapport
+    de préparation Buildshop pour détecter la méthode "Xepay"."""
     result = await _admin_graphql(
         shop, access_token,
         """
@@ -404,6 +451,7 @@ async def list_orders(shop: str, access_token: str) -> list[dict]:
                 displayFulfillmentStatus
                 cancelledAt
                 createdAt
+                paymentGatewayNames
                 totalPriceSet { shopMoney { amount currencyCode } }
                 customer { displayName email }
               }
