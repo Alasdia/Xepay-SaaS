@@ -6428,7 +6428,7 @@ async function renderPaymentMethods(container) {
 async function renderRisk(container) {
 
     container.innerHTML = `
-        <div class="subview-sticky-intro">
+        <div class="subview-sticky-intro subview-sticky-intro--compact">
             <div class="subview-sticky-intro-top">
                 <div class="subview-sticky-intro-main">
                     <div class="subview-sticky-intro-icon"><i class="fa-solid fa-shield-halved"></i></div>
@@ -7115,7 +7115,7 @@ function shopifyCancelOrderModalHtml() {
 
 async function renderShopify(container) {
     container.innerHTML = `
-        <div class="subview-sticky-intro">
+        <div class="subview-sticky-intro subview-sticky-intro--compact">
             <div class="subview-sticky-intro-top">
                 <div class="subview-sticky-intro-main">
                     <div class="subview-sticky-intro-icon"><i class="fa-brands fa-shopify"></i></div>
