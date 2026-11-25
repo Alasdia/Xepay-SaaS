@@ -181,11 +181,13 @@ function officialRecapHtml(raw) {
     // Boîte postale virtuelle (correspondance) - CORRIGÉ le 2026-11-25 :
     // affichait l'adresse "mailing" (celle du fondateur, réutilisée telle
     // quelle dans le payload doola - voir backend/routes/buildness.py),
-    // jamais une vraie boîte postale. L'agent enregistré (adresse
-    // "business" ci-dessus) est la seule adresse qui reçoit réellement le
-    // courrier officiel (État, IRS) - demande explicite de reprendre
-    // cette même adresse ici plutôt que celle du fondateur.
-    statHtml("Boîte postale virtuelle (correspondance)", formatAddress(business)),
+    // jamais une vraie boîte postale. raw.registeredAgent.address
+    // (nommé explicitement par doola, pas déduit de "business" qui
+    // n'est que l'adresse demandée avec provider=registeredAgent dans
+    // notre requête, sans garantie de coïncider) est la seule adresse
+    // qui reçoit réellement le courrier officiel (État, IRS) - repli
+    // sur "business" si registeredAgent n'est pas encore renseigné.
+    statHtml("Boîte postale virtuelle (correspondance)", formatAddress(raw.registeredAgent?.address || business)),
   ];
   if (raw.registeredAgent) {
     stats.push(statHtml("Agent enregistré", raw.registeredAgent.name || "—"));
