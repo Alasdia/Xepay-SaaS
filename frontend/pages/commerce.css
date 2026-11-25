@@ -127,9 +127,31 @@
    le titre (Clients/Produits/Abonnements/Factures/Moyens de paiement -
    voir #clients-summary etc.). Les sous-vues qui n'en ont pas
    (Shopify, Risque, Liens) n'ont besoin que de l'icône+titre+
-   description - 35vh y laissait un grand vide en haut. */
+   description - 35vh y laissait un grand vide en haut.
+   min-height seul n'a aucun effet visible ici : le contenu réel
+   (padding 24px + icône 56px + titre/description) dépasse déjà 10vh
+   sur la plupart des écrans, donc min-height n'est jamais la
+   contrainte dominante. Padding et icône réduits ci-dessous pour que
+   la hauteur RÉELLE baisse elle aussi, pas seulement son plancher. */
 .subview-sticky-intro--compact {
     min-height: 10vh;
+    padding: 12px 0;
+}
+
+.subview-sticky-intro--compact .subview-sticky-intro-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 15px;
+}
+
+.subview-sticky-intro--compact .subview-sticky-intro-body h1 {
+    font-size: 17px;
+    margin-bottom: 4px;
+}
+
+.subview-sticky-intro--compact .subview-sticky-intro-body p {
+    font-size: 13px;
 }
 
 .subview-sticky-intro-top {
