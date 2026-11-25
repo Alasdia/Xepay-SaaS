@@ -177,17 +177,17 @@ function officialRecapHtml(raw) {
     statHtml("Numéro de dossier de formation", raw.formationFilingNumber || "En attente"),
     statHtml("Raison sociale validée par l'État", raw.legalName || "En attente de validation"),
     statHtml("Type de société", BUILDNESS_ENTITY_TYPE_LABELS[raw.entityType] || raw.entityType || "—"),
+    // "Adresse commerciale" (business) reste un champ à part - CE N'EST
+    // PAS structurellement la même chose que l'adresse de l'agent
+    // enregistré ci-dessous, seulement une valeur qui coïncide avec
+    // elle dans le payload envoyé à doola (voir backend/routes/
+    // buildness.py) quand le fondateur n'a pas d'adresse professionnelle
+    // US propre. "Boîte postale virtuelle (correspondance)" retirée le
+    // 2026-11-25 : elle lisait raw.registeredAgent.address, exactement
+    // la même source que "Adresse de l'agent enregistré" plus bas -
+    // doublon pur, supprimé plutôt que de répéter la même valeur deux
+    // fois sous deux libellés différents.
     statHtml("Adresse commerciale (agent enregistré)", formatAddress(business)),
-    // Boîte postale virtuelle (correspondance) - CORRIGÉ le 2026-11-25 :
-    // affichait l'adresse "mailing" (celle du fondateur, réutilisée telle
-    // quelle dans le payload doola - voir backend/routes/buildness.py),
-    // jamais une vraie boîte postale. raw.registeredAgent.address
-    // (nommé explicitement par doola, pas déduit de "business" qui
-    // n'est que l'adresse demandée avec provider=registeredAgent dans
-    // notre requête, sans garantie de coïncider) est la seule adresse
-    // qui reçoit réellement le courrier officiel (État, IRS) - repli
-    // sur "business" si registeredAgent n'est pas encore renseigné.
-    statHtml("Boîte postale virtuelle (correspondance)", formatAddress(raw.registeredAgent?.address || business)),
   ];
   if (raw.registeredAgent) {
     stats.push(statHtml("Agent enregistré", raw.registeredAgent.name || "—"));
