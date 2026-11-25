@@ -70,14 +70,31 @@ const formCard = (fields = 3) => `
   </div>
 </div>`;
 
-// En-tête + ligne de 3 KPI + tableau (voir .subview-sticky-intro avec
-// ligne de KPI, commerce.js) - partagé par Clients/Produits/Abonnements/
-// Factures/Moyens de paiement, seuls actions/rows diffèrent entre elles.
+// Pastille de KPI cliquable (voir .commerce-kpi, injectée par
+// ensureCommerceKpiStyles dans commerce.js, min-height:58px) -
+// DISTINCTE de kpiCard() (.sk-card générique, bien plus haute) :
+// réutilisée telle quelle par Commerce (Clients/Produits/.../Moyens de
+// paiement) ET Transactions (variante "lg", voir #kpi-row dans
+// transactions.js) - jamais par Accueil, qui n'a pas ce composant du
+// tout (voir le skeleton "dashboard" plus bas, entièrement réécrit).
+const commerceKpiPill = (large = false) => `
+<div class="sk-card" style="min-height: ${large ? 76 : 58}px; padding: 10px 13px; display: flex; flex-direction: column; justify-content: center; gap: 6px;">
+  ${line(50, "sm")}
+  ${line(35, large ? "lg" : "")}
+</div>`;
+
+const commerceKpiRow = (count = 3, large = false) => `
+<div class="sk-row cols-${count}" style="margin-bottom: 20px;">
+  ${Array.from({ length: count }, () => commerceKpiPill(large)).join("")}
+</div>`;
+
+// En-tête + ligne de 3 pastilles KPI (.commerce-kpi) + tableau (voir
+// .subview-sticky-intro avec ligne de KPI, commerce.js) - partagé par
+// Clients/Produits/Abonnements/Factures/Moyens de paiement, seuls
+// actions/rows diffèrent entre elles.
 const kpiTablePage = (actions = 1, rows = 6) => `
 ${head(actions)}
-<div class="sk-row cols-3">
-  ${kpiCard()}${kpiCard()}${kpiCard()}
-</div>
+${commerceKpiRow(3)}
 ${tableCard(rows)}`;
 
 // Bloc de lignes libellé/valeur (voir .params-info-row, parametres.js) -
@@ -115,98 +132,73 @@ const subsectionHeaderWithBtn = () => `
 ${line(75, "sm")}`;
 
 const SKELETONS = {
-  // Accueil : bandeau d'usage, 3 cartes wallet, jauge de plan, graphique.
+  // Accueil - RÉÉCRIT le 2026-11-25 (contestation justifiée : l'ancienne
+  // version, jamais mise à jour depuis la refonte "hero-stat", ne
+  // représentait plus la vraie disposition actuelle, vérifiée dans
+  // dashboard.js/TEMPLATE). Grande carte "hero" (sélecteurs + montant
+  // géant + graphique + solde), puis section "Votre aperçu" (filtres +
+  // grille de blocs configurables).
   dashboard: () => `
-${head(2)}
-<div class="sk-card sk-between" style="margin-bottom: 16px;">
-  ${line(60, "sm")}
-  ${btn("sm")}
+<div class="sk-card" style="margin-bottom: 20px;">
+  <div class="sk-between" style="margin-bottom: 18px;">
+    ${btn("sm")}${btn("sm")}
+  </div>
+  ${line(35, "lg")}
+  <div class="sk-shimmer sk-chart sk-w-100" style="margin-top: 16px;"></div>
+</div>
+<div class="sk-between" style="margin-bottom: 16px;">
+  ${line(20)}
+  <div class="sk-head-actions">
+    ${btn("sm")}${btn("sm")}${btn("sm")}${btn("sm")}
+  </div>
 </div>
 <div class="sk-row cols-3">
   ${kpiCard()}${kpiCard()}${kpiCard()}
-</div>
-<div class="sk-card">
-  <div class="sk-between" style="margin-bottom: 14px;">
-    ${line(35, "sm")}
-    ${line(15, "sm")}
-  </div>
-  <div class="sk-shimmer sk-line sm sk-w-100"></div>
-</div>
-<div class="sk-card">
-  ${line(25)}
-  <div class="sk-shimmer sk-chart sk-w-100" style="margin-top: 18px;"></div>
 </div>`,
 
-  // Transactions : 4 boutons d'export, 3 KPI, graphique + table d'activité.
+  // Transactions - RÉÉCRIT le 2026-11-25 (même contestation) : 4 boutons
+  // d'export, 3 pastilles KPI .commerce-kpi-lg (pas de grande carte
+  // graphique séparée - vérifié dans transactions.js/TEMPLATE, aucun
+  // canvas visible hors tooltip), barre de recherche/filtres/chips,
+  // tableau avec pagination.
   transactions: () => `
 ${head(4)}
-<div class="sk-row cols-3">
-  ${kpiCard()}${kpiCard()}${kpiCard()}
-</div>
-<div class="sk-card">
-  ${line(25)}
-  <div class="sk-shimmer sk-chart sk-w-100" style="margin-top: 18px;"></div>
+${commerceKpiRow(3, true)}
+<div class="sk-between" style="margin-bottom: 18px;">
+  <div class="sk-shimmer sk-input" style="width: 240px;"></div>
+  <div class="sk-chips">
+    ${Array.from({ length: 4 }, () => `<div class="sk-shimmer sk-badge" style="width: 80px;"></div>`).join("")}
+  </div>
 </div>
 ${tableCard(6)}`,
 
   // Liens : compteur de liens + cartes de liens empilées.
   liens: () => `
 ${head(1)}
-<div class="sk-card">
-  <div class="sk-between" style="margin-bottom: 12px;">
-    ${line(35, "sm")}
-    ${line(15, "sm")}
-  </div>
-  <div class="sk-shimmer sk-line sm sk-w-100"></div>
-</div>
-<div class="sk-stack">
+<div class="sk-stack" style="gap: 10px;">
   ${Array.from(
-    { length: 4 },
+    { length: 6 },
     () => `
-  <div class="sk-card sk-between">
-    <div style="flex: 1;">
-      ${line(50)}
-      ${line(90, "sm")}
-    </div>
-    <div class="sk-head-actions">
-      ${btn("sm")}${btn("sm")}
-    </div>
+  <div class="sk-card" style="display: flex; align-items: center; gap: 12px; padding: 14px 16px;">
+    <div class="sk-shimmer" style="width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;"></div>
+    <div style="flex: 1;">${line(50, "sm")}</div>
+    <div class="sk-shimmer sk-badge" style="width: 60px; height: 18px;"></div>
   </div>`
   ).join("")}
 </div>`,
 
-  // API : 3 KPI, clés + logs sur 2 colonnes, table de webhooks, doc.
+  // API Access - RÉÉCRIT le 2026-11-25 (même contestation : aucun KPI,
+  // aucune colonne, aucun graphique dans le vrai api.js/TEMPLATE - juste
+  // titre/sous-titre, 3 lignes libellé/valeur pour les clés API, puis
+  // 2 tableaux Webhooks/Logs l'un sous l'autre).
   api: () => `
-${head(1)}
-<div class="sk-row cols-3">
-  ${kpiCard()}${kpiCard()}${kpiCard()}
-</div>
-<div class="sk-row cols-2">
-  <div class="sk-card">
-    ${line(35)}
-    <div class="sk-stack" style="margin-top: 18px;">
-      <div class="sk-shimmer sk-input sk-w-100"></div>
-      <div class="sk-shimmer sk-input sk-w-100"></div>
-      <div class="sk-head-actions">${btn("sm")}${btn("sm")}</div>
-    </div>
-  </div>
-  <div class="sk-card">
-    ${line(35)}
-    <div class="sk-stack" style="margin-top: 18px;">
-      ${line(90, "sm")}${line(75, "sm")}${line(90, "sm")}${line(60, "sm")}
-    </div>
-  </div>
+${line(35, "lg")}
+${line(75, "sm")}
+<div style="margin: 20px 0 24px;">
+  ${infoRowsCard(3)}
 </div>
 ${tableCard(4)}
-<div class="sk-card">
-  ${line(35, "lg")}
-  <div class="sk-stack" style="margin-top: 18px;">
-    ${line(60, "sm")}
-    <div class="sk-shimmer sk-chart sk-w-100" style="height: 120px;"></div>
-    ${line(50, "sm")}
-    <div class="sk-shimmer sk-chart sk-w-100" style="height: 120px;"></div>
-  </div>
-</div>`,
+${tableCard(4)}`,
 
   // Profil : jauge de complétion + cartes KYC/Stripe sur 2 colonnes.
   profil: () => `
