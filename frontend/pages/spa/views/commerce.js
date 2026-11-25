@@ -6771,8 +6771,15 @@ function escapeHtmlAttr(value) {
     return String(value ?? "").replace(/"/g, "&quot;");
 }
 
-async function renderShopifyProductsSection(container) {
-    container.innerHTML = `<div class="commerce-card"><p>Chargement des produits...</p></div>`;
+async function renderShopifyProductsSection(container, { silent = false } = {}) {
+    // silent (demande du 2026-11-25) : un rafraîchissement (clic sur un
+    // onglet déjà actif, "Revérifier", ou après une action sur CE même
+    // onglet) ne doit JAMAIS faire clignoter la vue vers "Chargement..."
+    // - l'ancien contenu reste affiché tel quel jusqu'à ce que les
+    // nouvelles données soient prêtes, remplacées en un seul coup.
+    // silent=false UNIQUEMENT au premier chargement (rien à montrer
+    // encore) ou en changeant RÉELLEMENT d'onglet (voir renderShopify).
+    if (!silent) container.innerHTML = `<div class="commerce-card"><p>Chargement des produits...</p></div>`;
     try {
         const response = await apiFetch("/shopify/products");
         const data = await response.json();
@@ -6825,8 +6832,8 @@ async function renderShopifyProductsSection(container) {
     }
 }
 
-async function renderShopifyOrdersSection(container) {
-    container.innerHTML = `<div class="commerce-card"><p>Chargement des commandes...</p></div>`;
+async function renderShopifyOrdersSection(container, { silent = false } = {}) {
+    if (!silent) container.innerHTML = `<div class="commerce-card"><p>Chargement des commandes...</p></div>`;
     try {
         const response = await apiFetch("/shopify/orders");
         const data = await response.json();
@@ -6877,8 +6884,8 @@ async function renderShopifyOrdersSection(container) {
     }
 }
 
-async function renderShopifyCustomersSection(container) {
-    container.innerHTML = `<div class="commerce-card"><p>Chargement des clients...</p></div>`;
+async function renderShopifyCustomersSection(container, { silent = false } = {}) {
+    if (!silent) container.innerHTML = `<div class="commerce-card"><p>Chargement des clients...</p></div>`;
     try {
         const response = await apiFetch("/shopify/customers");
         const data = await response.json();
@@ -6971,8 +6978,8 @@ const SHOPIFY_TABS = [
 // affiché pour action manuelle, jamais une correction automatique.
 const SHOPIFY_READINESS_STATUS_ICON = { ok: "✅", warning: "⚠️", error: "❌" };
 
-async function renderShopifyReadinessSection(container) {
-    container.innerHTML = `<div class="commerce-card"><p>Vérification de la configuration...</p></div>`;
+async function renderShopifyReadinessSection(container, { silent = false } = {}) {
+    if (!silent) container.innerHTML = `<div class="commerce-card"><p>Vérification de la configuration...</p></div>`;
     try {
         const response = await apiFetch("/shopify/readiness");
         const data = await response.json();
@@ -7160,9 +7167,11 @@ async function renderShopify(container) {
     const contentEl = container.querySelector("#shopify-tab-content");
     let activeTabKey = "produits";
 
-    async function reloadActiveTab() {
+    // options.silent : voir le commentaire de renderShopifyProductsSection
+    // - passé tel quel au render() de l'onglet actif.
+    async function reloadActiveTab(options = {}) {
         const tab = SHOPIFY_TABS.find((t) => t.key === activeTabKey);
-        await tab.render(contentEl);
+        await tab.render(contentEl, options);
     }
 
     // Premier onglet ("Produits") chargé d'office : sert aussi à
@@ -7177,11 +7186,20 @@ async function renderShopify(container) {
 
     tabsEl.querySelectorAll("[data-shopify-tab]").forEach((btn) => {
         btn.addEventListener("click", async () => {
-            if (btn.classList.contains("shopify-tab--active")) return;
-            tabsEl.querySelectorAll(".shopify-tab").forEach((b) => b.classList.remove("shopify-tab--active"));
-            btn.classList.add("shopify-tab--active");
-            activeTabKey = btn.dataset.shopifyTab;
-            await reloadActiveTab();
+            // Cliquer sur l'onglet DÉJÀ actif (demande du 2026-11-25,
+            // trouvé en répondant à "pourquoi les données ne se mettent
+            // pas à jour") rafraîchit maintenant cet onglet au lieu de ne
+            // rien faire - en silencieux (silent:true), puisqu'on ne
+            // change pas de contenu affiché, juste ses données.
+            const alreadyActive = btn.classList.contains("shopify-tab--active");
+            if (!alreadyActive) {
+                tabsEl.querySelectorAll(".shopify-tab").forEach((b) => b.classList.remove("shopify-tab--active"));
+                btn.classList.add("shopify-tab--active");
+                activeTabKey = btn.dataset.shopifyTab;
+                await reloadActiveTab();
+            } else {
+                await reloadActiveTab({ silent: true });
+            }
         });
     });
 
@@ -7225,7 +7243,7 @@ async function renderShopify(container) {
             if (!response.ok) throw new Error(data.detail || (isEditing ? "Impossible de modifier le client" : "Impossible de créer le client"));
             showToast(isEditing ? "Client Shopify modifié" : "Client Shopify créé", "success");
             customerModal.classList.remove("open");
-            if (activeTabKey === "clients") await reloadActiveTab();
+            if (activeTabKey === "clients") await reloadActiveTab({ silent: true });
         } catch (error) {
             showToast(error.message || "Erreur lors de l'enregistrement du client", "error");
         }
@@ -7288,7 +7306,7 @@ async function renderShopify(container) {
             if (!response.ok) throw new Error(data.detail || (isEditing ? "Impossible de modifier le produit" : "Impossible de créer le produit"));
             showToast(isEditing ? "Produit Shopify modifié" : "Produit Shopify créé", "success");
             productModal.classList.remove("open");
-            if (activeTabKey === "produits") await reloadActiveTab();
+            if (activeTabKey === "produits") await reloadActiveTab({ silent: true });
         } catch (error) {
             showToast(error.message || "Erreur lors de l'enregistrement du produit", "error");
         }
@@ -7330,7 +7348,7 @@ async function renderShopify(container) {
             // avec certitude ici, seulement "annulation lancée".
             showToast("Annulation lancée - le statut se mettra à jour sur Shopify dans un instant", "success");
             cancelOrderModal.classList.remove("open");
-            if (activeTabKey === "commandes") await reloadActiveTab();
+            if (activeTabKey === "commandes") await reloadActiveTab({ silent: true });
         } catch (error) {
             showToast(error.message || "Erreur lors de l'annulation de la commande", "error");
         }
@@ -7381,7 +7399,7 @@ async function renderShopify(container) {
         }
         const readinessRefreshBtn = event.target.closest("#shopify-readiness-refresh");
         if (readinessRefreshBtn) {
-            if (activeTabKey === "configuration") reloadActiveTab();
+            if (activeTabKey === "configuration") reloadActiveTab({ silent: true });
             return;
         }
         const fixWebhookBtn = event.target.closest("[data-shopify-fix-webhook]");
@@ -7396,7 +7414,7 @@ async function renderShopify(container) {
                 })
                 .catch((error) => showToast(error.message || "Erreur lors de la réparation du webhook", "error"))
                 .finally(() => {
-                    if (activeTabKey === "configuration") reloadActiveTab();
+                    if (activeTabKey === "configuration") reloadActiveTab({ silent: true });
                 });
         }
     });
