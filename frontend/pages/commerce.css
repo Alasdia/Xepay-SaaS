@@ -8,9 +8,9 @@
    surcharge #main-content avec d'autres unités (voir le commentaire dans
    toast.js). L'item occupe 90% de cette largeur, centré via align-items. */
 .toast-notif { position: fixed; top: calc(5vh + 16px); z-index: 999999; display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none; }
-.toast-notif-item { box-sizing: border-box; width: 90%; height: 10vh; background: rgba(34,197,94,0.3); color: #111827; padding: 0 20px; box-shadow: 0 10px 30px rgba(0,0,0,.12); font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 10px; opacity: 0; transform: translateY(-12px); animation: toastIn 0.3s ease forwards; pointer-events: all; }
-.toast-notif-item.error { background: rgba(239,68,68,0.3); }
-.toast-notif-item.warning { background: rgba(180,83,9,0.3); }
+.toast-notif-item { box-sizing: border-box; width: 94%; height: 10vh; background: rgba(34,197,94,0.15); color: #111827; padding: 0 20px; box-shadow: 0 10px 30px rgba(0,0,0,.12); font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 10px; opacity: 0; transform: translateY(-12px); animation: toastIn 0.3s ease forwards; pointer-events: all; }
+.toast-notif-item.error { background: rgba(239,68,68,0.15); }
+.toast-notif-item.warning { background: rgba(180,83,9,0.15); }
 @keyframes toastIn { to { opacity: 1; transform: translateY(0); } }
 @keyframes toastOut { to { opacity: 0; transform: translateY(-12px); } }
 
