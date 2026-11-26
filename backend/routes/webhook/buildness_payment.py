@@ -35,15 +35,23 @@ async def buildness_payment_webhook(request: Request, stripe_signature: str = He
     if event["type"] != "checkout.session.completed":
         return {"status": "ignored"}
 
-    session_obj = event["data"]["object"]
+    # .to_dict() OBLIGATOIRE ici - CORRIGÉ le 2026-11-26 (bug réel trouvé
+    # en prod, 500 sur chaque tentative) : event["data"]["object"] est un
+    # objet Stripe typé (Session), pas un dict brut - .get(...) dessus
+    # lève AttributeError ("'get' is a dict method, but a Session is not
+    # a dict"), jamais rattrapée par le try/except plus haut (qui ne
+    # couvre que la vérification de signature), donc 500 à chaque appel
+    # malgré une signature et des métadonnées parfaitement valides.
+    session_obj = event["data"]["object"].to_dict()
     if session_obj.get("payment_status") != "paid":
         # Une session "completed" peut rester impayée pour un mode
         # setup/une carte différée - jamais créer de crédit tant que
         # l'argent n'est pas réellement encaissé.
         return {"status": "ignored"}
 
-    workspace_id = (session_obj.get("metadata") or {}).get("workspace_id")
-    if not workspace_id or (session_obj.get("metadata") or {}).get("purpose") != "buildness_llc_formation":
+    metadata = session_obj.get("metadata") or {}
+    workspace_id = metadata.get("workspace_id")
+    if not workspace_id or metadata.get("purpose") != "buildness_llc_formation":
         return {"status": "ignored"}
 
     db = SessionLocal()
