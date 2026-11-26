@@ -1351,24 +1351,54 @@
   max-width: 40%;
 }
 
-/* Mise en page 60%/40% (ajustée le 2026-11-25, était 75%/25%) :
-   colonne principale (récap officiel + documents, empilés) à gauche,
-   panneau fondateur à droite - même hauteur totale que la colonne
-   principale (align-items: stretch, défaut de grid), jamais recentré
-   verticalement. */
-.mon-entreprise-layout {
-  display: grid;
-  grid-template-columns: 60% 40%;
-  gap: 20px;
-}
-.mon-entreprise-main {
+/* Onglets (demande du 2026-11-26, remplace la mise en page 60%/40%
+   précédente) - même style visuel que .shopify-tabs/.shopify-tab
+   (commerce.css), dupliqué ici pour la même raison d'isolation CSS
+   (setViewStyles ne charge qu'un seul fichier par vue). Les 4 panneaux
+   (voir MON_ENTREPRISE_TABS, spa/views/monEntreprise.js) restent tous
+   montés dans le DOM, juste masqués via display:none - pas de style
+   particulier à prévoir ici pour ça au-delà de la bascule déjà posée en
+   JS. */
+.mon-entreprise-tabs {
   display: flex;
-  flex-direction: column;
-  gap: 20px;
-  min-width: 0;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding-bottom: 1px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #e5e7eb;
 }
-.mon-entreprise-side-card {
-  height: 100%;
+.mon-entreprise-tab {
+  position: relative;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mon-entreprise-tab:hover {
+  color: #111827;
+}
+.mon-entreprise-tab--active {
+  background: rgba(180, 83, 9, 0.08);
+  color: rgba(180, 83, 9, 0.7);
+}
+/* Même calcul que .shopify-tab--active::after (commerce.css) : couvre
+   le trait gris (border-bottom de .mon-entreprise-tabs) exactement sous
+   l'onglet actif, sur sa seule largeur. */
+.mon-entreprise-tab--active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 2px;
+  background: rgba(180, 83, 9, 0.7);
+  border-radius: 1px;
 }
 .mon-entreprise-section-title {
   font-size: 13px;
@@ -1381,8 +1411,9 @@
 }
 .mon-entreprise-section-title i { color: #b45309; font-size: 13px; }
 
-/* Panneau fondateur (25%) : liste verticale simple, pas une grille
-   2 colonnes (trop étroit à 25% de la largeur pour 2 colonnes). */
+/* Panneau fondateur (onglet "Propriétaire et membres", pleine largeur
+   depuis le 2026-11-26) : liste verticale simple conservée telle quelle
+   malgré le passage en pleine largeur - pas de redesign demandé ici. */
 .mon-entreprise-stack {
   display: flex;
   flex-direction: column;
@@ -1456,9 +1487,6 @@
   border-radius: 10px;
 }
 
-@media (max-width: 900px) {
-  .mon-entreprise-layout { grid-template-columns: 1fr; }
-}
 
 @media (max-width: 480px) {
   .params-promo-card { padding: 20px; min-height: unset; }

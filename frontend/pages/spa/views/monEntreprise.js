@@ -5,15 +5,24 @@
 // que pour CONSULTER l'avancement - accessible directement depuis la
 // sidebar (juste sous Commerce), sans repasser par Paramètres.
 //
-// Mise en page refaite le 2026-11-24 (demande explicite) : bandeau de
-// statut en haut (toute la largeur), puis 2 colonnes - 75% à gauche
-// (récap officiel en haut, catalogue de documents en dessous) / 25% à
-// droite (informations du fondateur). Le récap officiel/fondateur/
-// documents viennent de 2 sources qui ne quittent jamais le schéma
-// Xepay (BuildnessCompany ne stocke que status/company_name/state/
-// ein_number) : la réponse BRUTE doola (responsibleParty/addresses/
-// registeredAgent/ein/formationFilingNumber) et le nouveau catalogue de
-// documents (GET /buildness/documents).
+// Passage à des onglets le 2026-11-26 (demande explicite, même patron
+// que les onglets Shopify de commerce.js) : seul le bandeau de statut
+// (nom de la LLC + barre de progression, statusHeaderHtml) reste FIXE
+// en haut - tout le reste se répartit désormais dans 4 onglets
+// (Informations de l'entreprise / Statut de la formation / Documents /
+// Propriétaire et membres). Contrairement à Shopify, les 4 panneaux
+// restent tous montés dans le DOM en permanence (juste masqués via
+// display:none selon l'onglet actif) plutôt que remplacés/re-fetchés à
+// chaque clic : ça préserve tel quel le mécanisme de poll existant
+// (fetchBuildnessStatus toutes les BUILDNESS_POLL_INTERVAL_MS) qui doit
+// continuer à rafraîchir les 4 sections même quand elles sont masquées,
+// pour qu'elles soient à jour si le marchand change d'onglet plus tard.
+// Le récap officiel/fondateur/statut détaillé/documents viennent de 2
+// sources qui ne quittent jamais le schéma Xepay (BuildnessCompany ne
+// stocke que status/company_name/state/ein_number) : la réponse BRUTE
+// doola (responsibleParty/addresses/registeredAgent/ein/
+// formationFilingNumber/services) et le catalogue de documents (GET
+// /buildness/documents).
 import { setViewStyles } from "../core/styleLoader.js";
 import { navigate } from "../core/router.js";
 import { getWorkspaceId } from "../core/state.js";
@@ -208,8 +217,11 @@ function signatureBannerHtml(raw) {
 }
 
 // Récap "officiel" - ce qu'on trouverait dans les documents (EIN,
-// numéro de dossier, adresses virtuelles, agent enregistré...), jamais
-// stocké côté Xepay : lu directement depuis la réponse brute doola.
+// numéro de dossier, adresses, agent enregistré...), jamais stocké côté
+// Xepay : lu directement depuis la réponse brute doola. Limité aux
+// FAITS depuis le passage aux onglets (2026-11-26) - tout ce qui relève
+// de l'avancement/statut de chaque service vit désormais dans
+// formationStatusHtml (onglet "Statut de la formation") plus bas.
 function officialRecapHtml(raw) {
   // business lu depuis addresses[] (voir backend/routes/buildness.py,
   // corrigé le 2026-11-25 pour matcher le schéma doola) - l'adresse
@@ -227,24 +239,9 @@ function officialRecapHtml(raw) {
   const business = findAddress(raw, "business");
   const agentAddress = raw.registeredAgent ? raw.registeredAgent.address : null;
 
-  // Détail des 3 services qu'on demande explicitement (Formation/
-  // EinCreation/RegisteredAgent, voir backend/routes/buildness.py) -
-  // jamais affiché avant le 2026-11-25, alors que subStatus explique
-  // précisément ce qui bloque (ex. "en attente des documents de
-  // l'État") plutôt que le simple "..." générique du bandeau de statut.
-  const formationService = findService(raw, "Formation");
-  const einService = findService(raw, "EinCreation");
-  const agentService = findService(raw, "RegisteredAgent");
-
   const stats = [
-    statHtml(
-      "EIN (identifiant fiscal)",
-      raw.ein || `Pas encore émis${einService ? ` (${serviceStatusText(einService)})` : ""}`
-    ),
-    statHtml(
-      "Numéro de dossier de formation",
-      raw.formationFilingNumber || `En attente${formationService ? ` (${serviceStatusText(formationService)})` : ""}`
-    ),
+    statHtml("EIN (identifiant fiscal)", raw.ein || "Pas encore émis"),
+    statHtml("Numéro de dossier de formation", raw.formationFilingNumber || "En attente"),
     statHtml("Raison sociale validée par l'État", raw.legalName || "En attente de validation"),
     statHtml("Type de société", BUILDNESS_ENTITY_TYPE_LABELS[raw.entityType] || raw.entityType || "—"),
     // État confirmé par doola (raw.state) - jamais réaffiché avant le
@@ -270,12 +267,37 @@ function officialRecapHtml(raw) {
   if (business && business.phone) stats.push(statHtml("Téléphone de contact", business.phone));
 
   if (raw.registeredAgent) {
-    // Juste le nom ici (CORRIGÉ le 2026-11-26, demande explicite) - le
-    // statut du service RegisteredAgent a sa propre ligne plus bas,
-    // jamais mélangé au nom de l'agent lui-même.
     stats.push(statHtml("Agent enregistré", raw.registeredAgent.name || "—"));
     stats.push(statHtml("Adresse de l'agent enregistré", formatAddress(agentAddress)));
-    if (agentService) stats.push(statHtml("Avancement - agent enregistré", serviceStatusText(agentService)));
+  }
+
+  return `
+    <div class="mon-entreprise-card">
+      <h4 class="mon-entreprise-section-title"><i class="fa-solid fa-landmark"></i> Informations de l'entreprise</h4>
+      <div class="mon-entreprise-grid">${stats.join("")}</div>
+    </div>
+  `;
+}
+
+// Avancement service par service - extrait d'officialRecapHtml le
+// 2026-11-26 (passage aux onglets, demande explicite) : onglet dédié
+// "Statut de la formation", séparé des faits "officiels" ci-dessus. Les
+// 3 services qu'on demande explicitement (Formation/EinCreation/
+// RegisteredAgent, voir backend/routes/buildness.py) ont chacun leur
+// propre ligne via subStatus (ex. "en attente des documents de
+// l'État") - plus précis que le simple "..." du bandeau de statut fixe
+// en haut (statusHeaderHtml, jamais touché par ce découpage).
+function formationStatusHtml(raw) {
+  const formationService = findService(raw, "Formation");
+  const einService = findService(raw, "EinCreation");
+  const agentService = findService(raw, "RegisteredAgent");
+
+  const stats = [
+    statHtml("Formation de la société", serviceStatusText(formationService) || "—"),
+    statHtml("Obtention de l'EIN", serviceStatusText(einService) || "—"),
+  ];
+  if (raw.registeredAgent) {
+    stats.push(statHtml("Agent enregistré", serviceStatusText(agentService) || "—"));
   }
 
   // Signatures déjà complétées (ex. SS4) - AJOUTÉ le 2026-11-26 :
@@ -298,7 +320,7 @@ function officialRecapHtml(raw) {
 
   return `
     <div class="mon-entreprise-card">
-      <h4 class="mon-entreprise-section-title"><i class="fa-solid fa-landmark"></i> Informations officielles</h4>
+      <h4 class="mon-entreprise-section-title"><i class="fa-solid fa-list-check"></i> Avancement détaillé</h4>
       <div class="mon-entreprise-grid">${stats.join("")}</div>
     </div>
   `;
@@ -321,7 +343,7 @@ function founderPanelHtml(raw) {
     });
   }
   return `
-    <div class="mon-entreprise-card mon-entreprise-side-card">
+    <div class="mon-entreprise-card">
       <h4 class="mon-entreprise-section-title"><i class="fa-solid fa-user"></i> Fondateur / Responsable légal</h4>
       <div class="mon-entreprise-stack">${stats.join("")}</div>
     </div>
@@ -359,6 +381,63 @@ function documentsCardHtml(documents) {
         : `<p class="text-muted" style="font-size:13.5px;">Aucun document disponible pour le moment - ils apparaîtront ici dès que doola les transmettra (statuts déposés, lettre EIN...).</p>`}
     </div>
   `;
+}
+
+// 4 onglets (demande du 2026-11-26, même patron que SHOPIFY_TABS dans
+// commerce.js) - paneHtml pose juste le squelette (conteneur + état de
+// chargement initial), rempli ensuite par render() via les mêmes ids
+// qu'avant le passage aux onglets (#mon-entreprise-official-container
+// etc.), jamais détruits/recréés au changement d'onglet (voir le
+// commentaire en tête de fichier).
+const MON_ENTREPRISE_TABS = [
+  {
+    key: "infos",
+    label: "Informations de l'entreprise",
+    paneHtml: `<div id="mon-entreprise-official-container"><div class="mon-entreprise-card">${viewLoadingHtml()}</div></div>`,
+  },
+  {
+    key: "statut",
+    label: "Statut de la formation",
+    paneHtml: `<div id="mon-entreprise-signature-container"></div><div id="mon-entreprise-status-detail-container"><div class="mon-entreprise-card">${viewLoadingHtml()}</div></div>`,
+  },
+  {
+    key: "documents",
+    label: "Documents de l'entreprise",
+    paneHtml: `<div id="mon-entreprise-documents-container"><div class="mon-entreprise-card">${viewLoadingHtml()}</div></div>`,
+  },
+  {
+    key: "proprietaire",
+    label: "Propriétaire et membres",
+    paneHtml: `<div id="mon-entreprise-founder-container"><div class="mon-entreprise-card">${viewLoadingHtml()}</div></div>`,
+  },
+];
+
+function monEntrepriseTabsHtml() {
+  return `
+    <div class="mon-entreprise-tabs" id="mon-entreprise-tabs">
+      ${MON_ENTREPRISE_TABS.map((t, i) => `<button type="button" class="mon-entreprise-tab${i === 0 ? " mon-entreprise-tab--active" : ""}" data-mon-entreprise-tab="${t.key}">${t.label}</button>`).join("")}
+    </div>
+    ${MON_ENTREPRISE_TABS.map((t, i) => `<div class="mon-entreprise-tab-pane" data-mon-entreprise-pane="${t.key}"${i === 0 ? "" : ' style="display:none;"'}>${t.paneHtml}</div>`).join("")}
+  `;
+}
+
+// Simple bascule d'affichage (display:none), jamais un remplacement de
+// contenu : les 4 panneaux restent tous montés et à jour en continu
+// (voir le commentaire en tête de fichier sur le poll).
+function wireMonEntrepriseTabs(root) {
+  const tabsEl = root.querySelector("#mon-entreprise-tabs");
+  if (!tabsEl) return;
+  tabsEl.querySelectorAll("[data-mon-entreprise-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.classList.contains("mon-entreprise-tab--active")) return;
+      tabsEl.querySelectorAll(".mon-entreprise-tab").forEach((b) => b.classList.remove("mon-entreprise-tab--active"));
+      btn.classList.add("mon-entreprise-tab--active");
+      const key = btn.dataset.monEntrepriseTab;
+      root.querySelectorAll("[data-mon-entreprise-pane]").forEach((pane) => {
+        pane.style.display = pane.dataset.monEntreprisePane === key ? "" : "none";
+      });
+    });
+  });
 }
 
 export async function mount(container) {
@@ -428,19 +507,19 @@ export async function mount(container) {
   }
 
   // Rendu en 2 temps : le bandeau de statut (rapide, DB Xepay) s'affiche
-  // immédiatement ; le récap officiel/fondateur/documents (3 appels
-  // doola en parallèle, plus lents) se remplissent ensuite chacun dans
-  // leur propre conteneur, sans bloquer l'affichage du statut.
+  // immédiatement ; le récap officiel/statut détaillé/fondateur/
+  // documents (appels doola en parallèle, plus lents) se remplissent
+  // ensuite chacun dans leur propre conteneur (voir MON_ENTREPRISE_TABS),
+  // sans bloquer l'affichage du statut.
   //
   // hasRenderedLayout (ajouté le 2026-11-25, même correctif que les
   // onglets Shopify) : render() est aussi appelé à chaque tick du
   // poll ci-dessous, pas juste au premier chargement - sans ce
-  // garde-fou, la reconstruction complète du HTML remettait les 3
-  // cartes en "Chargement..." à CHAQUE refresh auto, faisant sauter la
-  // vue (cas explicitement cité comme contre-exemple pour Shopify).
-  // Seul le bandeau de statut est remis à jour en place sur les
-  // rafraîchissements suivants ; les 3 cartes gardent leur contenu
-  // jusqu'à ce que les nouvelles données soient prêtes.
+  // garde-fou, la reconstruction complète du HTML (+ les onglets)
+  // remettait tout en "Chargement..." à CHAQUE refresh auto, faisant
+  // sauter la vue. Seul le bandeau de statut est remis à jour en place
+  // sur les rafraîchissements suivants ; les 4 panneaux gardent leur
+  // contenu jusqu'à ce que les nouvelles données soient prêtes.
   let hasRenderedLayout = false;
 
   function render(data) {
@@ -459,15 +538,9 @@ export async function mount(container) {
     } else {
       el.innerHTML = `
         <div id="mon-entreprise-status-banner">${statusHeaderHtml(data)}</div>
-        <div id="mon-entreprise-signature-container"></div>
-        <div class="mon-entreprise-layout">
-          <div class="mon-entreprise-main">
-            <div id="mon-entreprise-official-container"><div class="mon-entreprise-card">${viewLoadingHtml()}</div></div>
-            <div id="mon-entreprise-documents-container"><div class="mon-entreprise-card">${viewLoadingHtml()}</div></div>
-          </div>
-          <div id="mon-entreprise-founder-container"><div class="mon-entreprise-card mon-entreprise-side-card">${viewLoadingHtml()}</div></div>
-        </div>
+        ${monEntrepriseTabsHtml()}
       `;
+      wireMonEntrepriseTabs(el);
       hasRenderedLayout = true;
     }
 
@@ -479,6 +552,8 @@ export async function mount(container) {
           signatureEl.innerHTML = signatureBannerHtml(raw);
           wireSignatureButtons(signatureEl);
         }
+        const statusDetailEl = document.getElementById("mon-entreprise-status-detail-container");
+        if (statusDetailEl) statusDetailEl.innerHTML = formationStatusHtml(raw);
         const officialEl = document.getElementById("mon-entreprise-official-container");
         if (officialEl) officialEl.innerHTML = officialRecapHtml(raw);
         const founderEl = document.getElementById("mon-entreprise-founder-container");
