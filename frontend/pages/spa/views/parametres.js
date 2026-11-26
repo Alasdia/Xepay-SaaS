@@ -2643,12 +2643,22 @@ async function startBuildnessFlow(triggerBtn) {
   const originalLabel = triggerBtn ? triggerBtn.innerHTML : null;
   if (triggerBtn) {
     triggerBtn.disabled = true;
-    triggerBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Chargement...`;
+    triggerBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
   }
   try {
     const res = await apiFetch("/buildness/credit-status");
     const data = await res.json();
     if (res.ok && data.has_unused_credit) {
+      // Restaure le bouton AVANT de passer la main - CORRIGÉ le
+      // 2026-11-26 : openBuildnessWizard capture elle-même
+      // triggerBtn.innerHTML comme "valeur d'origine" à restaurer plus
+      // tard, mais à cet instant le bouton affiche encore CE spinner -
+      // elle restaurait donc le spinner lui-même indéfiniment au lieu
+      // du libellé du bouton.
+      if (triggerBtn) {
+        triggerBtn.disabled = false;
+        triggerBtn.innerHTML = originalLabel;
+      }
       openBuildnessWizard(triggerBtn);
       return;
     }
@@ -2735,7 +2745,7 @@ function openBuildnessWizard(triggerBtn) {
   const originalLabel = triggerBtn ? triggerBtn.innerHTML : null;
   if (triggerBtn) {
     triggerBtn.disabled = true;
-    triggerBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Chargement...`;
+    triggerBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
   }
   loadBuildnessReferenceOptions().finally(() => {
     if (triggerBtn) {
