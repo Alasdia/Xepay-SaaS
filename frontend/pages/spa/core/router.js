@@ -58,8 +58,8 @@ function showOfflineFallback(container, pathname) {
         <i class="fa-solid fa-wifi" aria-hidden="true"></i>
       </div>
       <p style="margin:0; font-size:15px; font-weight:600; color:#111827;">Vous n'êtes pas connecté à Internet</p>
-      <p style="margin:0; font-size:13px; color:#6b7280; max-width:360px;">Vérifiez votre connexion, puis réessayez.</p>
-      <button type="button" id="spa-offline-retry-btn" style="margin-top:6px; background:transparent; border:1px solid rgba(180,83,9,0.7); color:rgba(180,83,9,0.7); border-radius:8px; padding:8px 18px; font-size:13.5px; font-weight:600; cursor:pointer;">Réessayer</button>
+      <p style="margin:0; font-size:13px; color:#6b7280; max-width:360px;">Vérifiez votre connexion, puis</p>
+      <span id="spa-offline-retry-btn" role="button" style="margin-top:-6px; color:rgba(180,83,9,0.7); font-size:13.5px; font-weight:600; text-decoration:underline; cursor:pointer;">réessayez</span>
     </div>
   `;
   const btn = container.querySelector("#spa-offline-retry-btn");
@@ -151,14 +151,13 @@ async function render(pathname) {
   const myToken = ++navToken;
   const container = document.getElementById("main-content");
 
-  // Détecté AVANT même d'essayer (demande du 2026-11-26) : évite le
-  // flash skeleton -> HTML non stylé que provoquait l'ancien
-  // comportement de setViewStyles (voir styleLoader.js).
-  if (!navigator.onLine) {
-    showOfflineFallback(container, pathname);
-    return;
-  }
-
+  // Le skeleton s'affiche TOUJOURS en premier (CORRIGÉ le 2026-11-26) -
+  // même hors ligne : sans ça, un clic sur un lien de sidebar pendant
+  // que l'écran de secours est déjà affiché ne "bougeait" jamais (même
+  // message statique instantanément remplacé par lui-même), au lieu de
+  // donner l'impression que CE lien précis a bien été pris en compte et
+  // a tenté de charger. navigator.onLine n'est vérifié qu'APRÈS, comme
+  // un échec de mountView() parmi d'autres.
   showSkeleton(container, route.name, params);
   const skeletonStart = Date.now();
 
@@ -168,11 +167,13 @@ async function render(pathname) {
   // laissé non rattrapé comme avant, sinon le router restait bloqué
   // avec le skeleton affiché indéfiniment au lieu de proposer de
   // réessayer.
-  let mountFailed = false;
-  const mountPromise = Promise.resolve(route.mountView(container, params)).catch((err) => {
-    console.error("Erreur montage vue (hors ligne ?):", err);
-    mountFailed = true;
-  });
+  let mountFailed = !navigator.onLine;
+  const mountPromise = mountFailed
+    ? Promise.resolve()
+    : Promise.resolve(route.mountView(container, params)).catch((err) => {
+        console.error("Erreur montage vue (hors ligne ?):", err);
+        mountFailed = true;
+      });
   const safetyTimeout = new Promise((resolve) => setTimeout(resolve, MOUNT_SAFETY_TIMEOUT_MS));
   const result = await Promise.race([mountPromise, safetyTimeout]);
 
