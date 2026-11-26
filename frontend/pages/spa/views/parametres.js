@@ -2643,10 +2643,14 @@ function renderBuildnessSection() {
 // cercle de 16px sur un .create-client-btn en width:fit-content par
 // défaut). Cercle à 2px, couleur du site (#b45309) à 70% d'opacité -
 // style posé en ligne pour surcharger les valeurs par défaut de
-// .spinner-border (bootstrap).
+// .spinner-border (bootstrap). justify-content forcé à "center" (pas
+// défini par .create-client-btn, qui s'aligne normalement à gauche pour
+// du texte+icône) pour que le cercle seul soit centré dans le bouton,
+// pas collé à son bord gauche.
 function showButtonSpinner(btn) {
   if (!btn) return;
   btn.style.width = `${btn.offsetWidth}px`;
+  btn.style.justifyContent = "center";
   btn.disabled = true;
   btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="border-width:2px; border-color:rgba(180,83,9,0.7); border-right-color:transparent;"></span>`;
 }
@@ -2656,6 +2660,7 @@ function restoreButtonLabel(btn, originalLabel) {
   btn.disabled = false;
   btn.innerHTML = originalLabel;
   btn.style.width = "";
+  btn.style.justifyContent = "";
 }
 
 // "Créer ma société" (demande du 2026-11-26, 500 USD dus avant toute
