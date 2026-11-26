@@ -1208,6 +1208,25 @@
   gap: 16px;
   margin-bottom: 8px;
 }
+
+/* État "aucun dossier" (demande du 2026-11-26) - centré, icône au-dessus
+   du texte, bouton en dessous, plutôt que la ligne icône+texte côte à
+   côte de .mon-entreprise-header (utilisé tel quel ailleurs). */
+.mon-entreprise-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 24px 0;
+}
+.mon-entreprise-empty-state .mon-entreprise-icon {
+  margin-bottom: 8px;
+}
+.mon-entreprise-empty-state .params-promo-actions {
+  margin-top: 12px;
+  justify-content: center;
+}
 .mon-entreprise-icon {
   width: 52px;
   height: 52px;
