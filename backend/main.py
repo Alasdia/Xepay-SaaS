@@ -29,6 +29,7 @@ from backend.routes.webhook.verto import router as verto_router
 from backend.routes.verto import router as verto_api_router
 from backend.routes.buildness import router as buildness_router
 from backend.routes.webhook.doola import router as doola_webhook_router
+from backend.routes.webhook.buildness_payment import router as buildness_payment_webhook_router
 from backend.routes.shopify import router as shopify_router
 from backend.routes.shopify import handle_shopify_app_entry
 from backend.routes.webhook.shopify import router as shopify_order_webhook_router
@@ -77,6 +78,7 @@ app.include_router(verto_router)
 app.include_router(verto_api_router)
 app.include_router(buildness_router)
 app.include_router(doola_webhook_router)
+app.include_router(buildness_payment_webhook_router)
 app.include_router(shopify_router)
 app.include_router(shopify_order_webhook_router)
 app.include_router(ai_router)

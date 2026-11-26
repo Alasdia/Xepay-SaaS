@@ -4,18 +4,78 @@ services/doola_mock_service.py, routes/webhook/doola.py) - prérequis à
 l'activation du compte Stripe Connect d'un marchand non-résident."""
 
 import logging
+import os
+from datetime import datetime, timezone
 
+import stripe
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models import BuildnessCustomer, BuildnessCompany, BuildnessOnboardRequest, BuildnessSignatureSessionRequest, WorkspaceUser
+from backend.models import BuildnessCustomer, BuildnessCompany, BuildnessLlcCredit, BuildnessOnboardRequest, BuildnessSignatureSessionRequest, WorkspaceUser
 from backend.middleware.authorization import require_capability
 from backend.services.doola_client import get_doola_service, DoolaNotConfiguredError
 from backend.services.doola_service import DoolaAPIError
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_BUILDNESS_PRICE_ID = os.getenv("STRIPE_BUILDNESS_PRICE_ID")
+FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "https://api.xepay.finance")
+
+
+def _get_unused_credit(db: Session, workspace_id: str) -> BuildnessLlcCredit | None:
+    """Dernier crédit payé et pas encore consommé pour ce workspace (voir
+    BuildnessLlcCredit, models.py) - jamais plus d'un ne devrait exister
+    en pratique (on en consomme un à chaque onboarding réussi), mais
+    .first() reste sûr même si plusieurs s'accumulaient."""
+    return (
+        db.query(BuildnessLlcCredit)
+        .filter(BuildnessLlcCredit.workspace_id == workspace_id, BuildnessLlcCredit.status == "paid_unused")
+        .order_by(BuildnessLlcCredit.created_at.asc())
+        .first()
+    )
+
+
+@router.post("/buildness/checkout", status_code=200)
+def create_buildness_checkout(
+    membership: WorkspaceUser = Depends(require_capability("manage_company_formation")),
+):
+    """Crée une Checkout Session Stripe sur le compte PLATEFORME Xepay
+    (jamais Connect - voir services/stripe_service.py pour la
+    distinction) pour les 500 USD dus avant toute formation de LLC. Le
+    crédit (BuildnessLlcCredit) n'est posé qu'à la réception du webhook
+    checkout.session.completed (routes/webhook/buildness_payment.py),
+    jamais ici - cette route ne fait que démarrer le paiement."""
+    if not STRIPE_BUILDNESS_PRICE_ID:
+        raise HTTPException(503, "Le paiement de formation de LLC n'est pas encore configuré.")
+    try:
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            line_items=[{"price": STRIPE_BUILDNESS_PRICE_ID, "quantity": 1}],
+            metadata={"workspace_id": membership.workspace_id, "purpose": "buildness_llc_formation"},
+            success_url=f"{FRONTEND_BASE_URL}/dash/workspace/{membership.workspace_id}/parametres/entreprise?buildness_payment=success",
+            cancel_url=f"{FRONTEND_BASE_URL}/dash/workspace/{membership.workspace_id}/parametres/entreprise?buildness_payment=cancelled",
+        )
+    except stripe.error.StripeError as e:
+        logger.exception("Echec creation Checkout Session Buildness pour workspace_id=%s", membership.workspace_id)
+        raise HTTPException(502, "Impossible de démarrer le paiement. Réessayez plus tard.") from e
+    return {"checkout_url": session.url}
+
+
+@router.get("/buildness/credit-status")
+def get_buildness_credit_status(
+    membership: WorkspaceUser = Depends(require_capability("manage_company_formation")),
+    db: Session = Depends(get_db),
+):
+    """Permet au frontend de savoir, AVANT de cliquer "Créer ma société",
+    s'il doit rediriger vers /buildness/checkout ou ouvrir directement
+    l'assistant - jamais exposé ailleurs que pour cette décision
+    d'affichage, /buildness/onboard reste la seule vraie vérification
+    (jamais fait confiance côté client)."""
+    has_unused_credit = _get_unused_credit(db, membership.workspace_id) is not None
+    return {"has_unused_credit": has_unused_credit}
 
 
 def _get_latest_company(db: Session, merchant_id: str) -> BuildnessCompany | None:
@@ -90,6 +150,15 @@ async def onboard_buildness(
     UNIQUE, voir models.py) - jamais un second customer doola pour la
     même tentative/un double-clic."""
     merchant_id = membership.workspace_id
+
+    # Bloqué tant que ce workspace n'a pas payé 500 USD (voir
+    # POST /buildness/checkout, BuildnessLlcCredit) - jamais de LLC
+    # formée gratuitement. Le crédit n'est consommé qu'après un
+    # create_company réussi plus bas, jamais ici.
+    credit = _get_unused_credit(db, merchant_id)
+    if not credit:
+        raise HTTPException(402, "Payez d'abord la formation de votre LLC (POST /buildness/checkout).")
+
     try:
         doola = get_doola_service()
     except DoolaNotConfiguredError:
@@ -231,6 +300,14 @@ async def onboard_buildness(
     company.doola_company_id = response.get("doolaCompanyId")
     company.status = "submitted"
     company.last_successful_step = "submitted"
+
+    # Crédit consommé UNIQUEMENT ici, sur le vrai succès de
+    # create_company - jamais sur la branche d'échec ci-dessus, pour que
+    # le marchand puisse réessayer sans repayer 500 USD.
+    credit.status = "consumed"
+    credit.consumed_at = datetime.now(timezone.utc)
+    credit.buildness_company_id = company.id
+
     db.commit()
 
     return {"status": company.status, "company_id": company.id}
