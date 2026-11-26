@@ -9,6 +9,18 @@
 export function showToast(message, type = "success") {
   const container = document.getElementById("toast-container");
   if (!container) return;
+  // Largeur/position calées sur le rect réel de #main-content (demande du
+  // 2026-11-26 : toast à 90% de la largeur de la vue/sous-vue active) -
+  // jamais une valeur CSS fixe (left/width en %), car plusieurs vues
+  // surchargent elles-mêmes #main-content avec des unités différentes
+  // (px vs %, voir dashboard.css vs sidebar.css) selon le CSS actif à cet
+  // instant (styleLoader.js). Même principe que showSkeleton (router.js).
+  const mainContent = document.getElementById("main-content");
+  if (mainContent) {
+    const rect = mainContent.getBoundingClientRect();
+    container.style.left = `${rect.left}px`;
+    container.style.width = `${rect.width}px`;
+  }
   const icons = { success: "✅", error: "⚠️", warning: "⏳" };
   const toast = document.createElement("div");
   toast.className = `toast-notif-item ${type}`;

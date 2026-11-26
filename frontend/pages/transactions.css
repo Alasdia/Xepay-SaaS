@@ -23,13 +23,18 @@ table td div { color: #111827;}
 --font-b: "DM Sans", sans-serif;
 }
 body { font-family: var(--font-d); background: #ffffff !important; color: var(--text); color: #111827 !important; margin: 0; min-height: 100vh; overflow-x: hidden; }
-.toast-notif { position: fixed; top: 24px; right: 24px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; }
-.toast-notif-item { min-width: 280px; max-width: 380px; background: #ffffff; border: 1px solid #e5e7eb; border-left: 4px solid #22c55e; border-radius: 12px; padding: 14px 18px; box-shadow: 0 10px 30px rgba(0,0,0,.12); font-size: 14px; color: #111827; display: flex; align-items: flex-start; gap: 10px; opacity: 0; transform: translateX(20px); animation: toastIn 0.3s ease forwards; }
-.toast-notif-item.error { border-left-color: #ef4444; }
-.toast-notif-item.warning { border-left-color: #b45309; }
-.toast-notif-item .icon { font-size: 16px; margin-top: 1px; }
-@keyframes toastIn { to { opacity: 1; transform: translateX(0); } }
-@keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
+/* Position/largeur réelles (left/width) posées en JS sur #toast-container
+   par showToast (shared/toast.js), calées sur le rect réel de #main-content
+   - jamais une valeur fixe ici, elle serait fausse dès qu'une autre vue
+   surcharge #main-content avec d'autres unités (voir le commentaire dans
+   toast.js). L'item occupe 90% de cette largeur, centré via align-items. */
+.toast-notif { position: fixed; top: 24px; z-index: 999999; display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none; }
+.toast-notif-item { box-sizing: border-box; width: 90%; height: 10vh; background: rgba(34,197,94,0.6); color: #ffffff; border-radius: 12px; padding: 0 20px; box-shadow: 0 10px 30px rgba(0,0,0,.12); font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 10px; opacity: 0; transform: translateY(-12px); animation: toastIn 0.3s ease forwards; pointer-events: all; }
+.toast-notif-item.error { background: rgba(239,68,68,0.6); }
+.toast-notif-item.warning { background: rgba(180,83,9,0.6); }
+.toast-notif-item .icon { font-size: 18px; }
+@keyframes toastIn { to { opacity: 1; transform: translateY(0); } }
+@keyframes toastOut { to { opacity: 0; transform: translateY(-12px); } }
 #main-content { position: relative; z-index: 1; margin-left: 260px; padding: 28px 40px; flex-grow: 1; }
 .page-title { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 6px; }
 .page-subtitle { font-size: 12px; color: #6b7280; }
