@@ -2637,6 +2637,27 @@ function renderBuildnessSection() {
   }
 }
 
+// Verrouille la largeur du bouton avant de remplacer son contenu par un
+// simple cercle (corrigé le 2026-11-26 : sans ça, le bouton se
+// rétrécissait au même instant, son innerHTML passant d'un texte à un
+// cercle de 16px sur un .create-client-btn en width:fit-content par
+// défaut). Cercle à 2px, couleur du site (#b45309) à 70% d'opacité -
+// style posé en ligne pour surcharger les valeurs par défaut de
+// .spinner-border (bootstrap).
+function showButtonSpinner(btn) {
+  if (!btn) return;
+  btn.style.width = `${btn.offsetWidth}px`;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="border-width:2px; border-color:rgba(180,83,9,0.7); border-right-color:transparent;"></span>`;
+}
+
+function restoreButtonLabel(btn, originalLabel) {
+  if (!btn) return;
+  btn.disabled = false;
+  btn.innerHTML = originalLabel;
+  btn.style.width = "";
+}
+
 // "Créer ma société" (demande du 2026-11-26, 500 USD dus avant toute
 // formation - voir POST /buildness/checkout, /buildness/onboard) :
 // vérifie d'abord si un paiement déjà effectué attend d'être utilisé
@@ -2645,10 +2666,7 @@ function renderBuildnessSection() {
 // directement si oui, sinon redirige vers le paiement Stripe.
 async function startBuildnessFlow(triggerBtn) {
   const originalLabel = triggerBtn ? triggerBtn.innerHTML : null;
-  if (triggerBtn) {
-    triggerBtn.disabled = true;
-    triggerBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
-  }
+  showButtonSpinner(triggerBtn);
   try {
     const res = await apiFetch("/buildness/credit-status");
     const data = await res.json();
@@ -2659,10 +2677,7 @@ async function startBuildnessFlow(triggerBtn) {
       // tard, mais à cet instant le bouton affiche encore CE spinner -
       // elle restaurait donc le spinner lui-même indéfiniment au lieu
       // du libellé du bouton.
-      if (triggerBtn) {
-        triggerBtn.disabled = false;
-        triggerBtn.innerHTML = originalLabel;
-      }
+      restoreButtonLabel(triggerBtn, originalLabel);
       openBuildnessWizard(triggerBtn);
       return;
     }
@@ -2682,20 +2697,14 @@ async function startBuildnessFlow(triggerBtn) {
     window.addEventListener(
       "pageshow",
       (event) => {
-        if (event.persisted && triggerBtn) {
-          triggerBtn.disabled = false;
-          triggerBtn.innerHTML = originalLabel;
-        }
+        if (event.persisted) restoreButtonLabel(triggerBtn, originalLabel);
       },
       { once: true }
     );
     window.location.href = checkoutData.checkout_url;
   } catch (err) {
     showToast(err.message || "Erreur lors de la vérification du paiement", "error");
-    if (triggerBtn) {
-      triggerBtn.disabled = false;
-      triggerBtn.innerHTML = originalLabel;
-    }
+    restoreButtonLabel(triggerBtn, originalLabel);
   }
 }
 
@@ -2794,15 +2803,9 @@ function openBuildnessWizard(triggerBtn) {
     submitBtn.textContent = "Lancer la création de ma LLC";
   }
   const originalLabel = triggerBtn ? triggerBtn.innerHTML : null;
-  if (triggerBtn) {
-    triggerBtn.disabled = true;
-    triggerBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
-  }
+  showButtonSpinner(triggerBtn);
   loadBuildnessReferenceOptions().finally(() => {
-    if (triggerBtn) {
-      triggerBtn.disabled = false;
-      triggerBtn.innerHTML = originalLabel;
-    }
+    restoreButtonLabel(triggerBtn, originalLabel);
     bootstrap.Modal.getOrCreateInstance(document.getElementById("paramsBuildnessWizardModal")).show();
   });
 }
