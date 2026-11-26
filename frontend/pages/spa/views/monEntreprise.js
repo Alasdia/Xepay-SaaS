@@ -143,6 +143,45 @@ function formatAddress(addr) {
   return parts.join(", ") || "—";
 }
 
+// Disposition multi-ligne demandée le 2026-11-26 (remplace la version
+// en une seule ligne de formatAddress ci-dessus, réservée à cet usage
+// précis - formatAddress reste utilisée telle quelle ailleurs, ex.
+// founderPanelHtml) : ligne 1, ligne 2 (optionnelle), "code postal,
+// ville", "état, pays" - jamais de ligne vide si line2 est absent.
+function addressLines(addr) {
+  if (!addr) return [];
+  const lines = [];
+  if (addr.line1) lines.push(`${addr.line1},`);
+  if (addr.line2) lines.push(`${addr.line2},`);
+  const cityLine = [addr.postalCode, addr.city].filter(Boolean).join(", ");
+  if (cityLine) lines.push(cityLine);
+  const stateLine = [addr.state, addr.country].filter(Boolean).join(", ");
+  if (stateLine) lines.push(stateLine);
+  return lines;
+}
+
+// Bloc adresse copiable (icône copier, demande du 2026-11-26) - exclu
+// de la grille scintillée en vrac (.mon-entreprise-grid, voir son
+// commentaire) via la classe mon-entreprise-stat--address : un bloc de
+// 4 lignes ne peut pas recevoir les mêmes décalages verticaux
+// nth-child, pensés pour des valeurs d'une seule ligne. Le texte copié
+// (wireAddressCopyButtons, plus bas) est lu directement depuis le DOM
+// rendu (innerText, qui respecte les <br>), jamais reconstruit à part -
+// une seule source de vérité pour ce qui est affiché vs copié.
+function addressBlockHtml(label, addr) {
+  const lines = addressLines(addr);
+  if (!lines.length) return statHtml(label, "—");
+  return `
+    <div class="mon-entreprise-stat mon-entreprise-stat--address">
+      <div class="mon-entreprise-stat-label">${label}</div>
+      <div class="mon-entreprise-address">
+        <div class="mon-entreprise-stat-value mon-entreprise-address-lines">${lines.join("<br>")}</div>
+        <button type="button" class="mon-entreprise-copy-btn" title="Copier l'adresse"><i class="fa-regular fa-copy"></i></button>
+      </div>
+    </div>
+  `;
+}
+
 function findAddress(raw, type) {
   const entry = (raw.addresses || []).find((a) => a.type === type);
   return entry ? entry.address : null;
@@ -256,9 +295,8 @@ function officialRecapHtml(raw) {
   ].filter(Boolean);
   stats.push(...dateStats);
 
-  const businessAddressFormatted = formatAddress(business);
-  if (businessAddressFormatted !== "—") {
-    stats.push(statHtml("Adresse commerciale", businessAddressFormatted));
+  if (formatAddress(business) !== "—") {
+    stats.push(addressBlockHtml("Adresse commerciale", business));
   }
 
   // Téléphone de contact - rattaché à l'adresse commerciale fournie par
@@ -268,7 +306,7 @@ function officialRecapHtml(raw) {
 
   if (raw.registeredAgent) {
     stats.push(statHtml("Agent enregistré", raw.registeredAgent.name || "—"));
-    stats.push(statHtml("Adresse de l'agent enregistré", formatAddress(agentAddress)));
+    stats.push(addressBlockHtml("Adresse de l'agent enregistré", agentAddress));
   }
 
   return `
@@ -326,26 +364,39 @@ function formationStatusHtml(raw) {
   `;
 }
 
-// Panneau latéral (25%) - le fondateur/responsable légal, tel que
-// transmis à doola lors de la création (voir responsibleParty/members
-// dans la réponse brute).
+// Membres à gauche / propriétaire à droite (demande du 2026-11-26,
+// remplace le panneau unique précédent) : raw.members[] (chacun avec sa
+// part, ownershipPercent) à gauche, raw.responsibleParty (le fondateur/
+// responsable légal transmis à doola lors de la création) à droite -
+// 2 sources déjà distinctes dans la réponse brute doola, jamais
+// mélangées entre elles.
 function founderPanelHtml(raw) {
   const rp = raw.responsibleParty || {};
-  const stats = [
+  const members = Array.isArray(raw.members) ? raw.members : [];
+
+  const ownerStats = [
     statHtml("Nom complet", [rp.legalFirstName, rp.legalLastName].filter(Boolean).join(" ") || "—"),
     statHtml("Email", rp.email || "—"),
     statHtml("Adresse", formatAddress(rp.address)),
   ];
-  if (Array.isArray(raw.members)) {
-    raw.members.forEach((m) => {
-      const name = m.legalFirstName ? [m.legalFirstName, m.legalLastName].filter(Boolean).join(" ") : (m.contactFullName || "Ce membre");
-      stats.push(statHtml(`Part de ${name}`, `${m.ownershipPercent}%`));
-    });
-  }
+
+  const memberStats = members.map((m) => {
+    const name = m.legalFirstName ? [m.legalFirstName, m.legalLastName].filter(Boolean).join(" ") : (m.contactFullName || "Ce membre");
+    return statHtml(name, `${m.ownershipPercent}%`);
+  });
+
   return `
-    <div class="mon-entreprise-card">
-      <h4 class="mon-entreprise-section-title"><i class="fa-solid fa-user"></i> Fondateur / Responsable légal</h4>
-      <div class="mon-entreprise-stack">${stats.join("")}</div>
+    <div class="mon-entreprise-owners-layout">
+      <div class="mon-entreprise-card">
+        <h4 class="mon-entreprise-section-title"><i class="fa-solid fa-users"></i> Membres</h4>
+        ${memberStats.length
+          ? `<div class="mon-entreprise-stack">${memberStats.join("")}</div>`
+          : `<p class="text-muted" style="font-size:13.5px;">Aucun membre renseigné.</p>`}
+      </div>
+      <div class="mon-entreprise-card">
+        <h4 class="mon-entreprise-section-title"><i class="fa-solid fa-user"></i> Propriétaire</h4>
+        <div class="mon-entreprise-stack">${ownerStats.join("")}</div>
+      </div>
     </div>
   `;
 }
@@ -353,7 +404,15 @@ function founderPanelHtml(raw) {
 // NON VÉRIFIÉ sur un vrai document (voir doola_service.list_documents) -
 // plusieurs noms de champs possibles tentés par ordre de plausibilité,
 // jamais une forme supposée à l'aveugle comme définitive.
-function documentRowHtml(doc) {
+//
+// Disposition "carte" (demande du 2026-11-26, remplace la liste de
+// lignes précédente) - doola ne fournit aucune vignette/aperçu visuel
+// du document (juste downloadUrl, récupéré à la demande via
+// fetchBuildnessDocument) : la "zone image" est donc une icône de
+// document stylée en grand format, jamais une fausse miniature
+// inventée. Bouton de téléchargement réduit à l'icône seule (pas de
+// texte "Télécharger").
+function documentCardHtml(doc) {
   const name = doc.name || doc.documentType || doc.type || "Document";
   const rawDate = doc.createdAt || doc.uploadedAt || doc.date;
   const dateLabel = rawDate && !isNaN(new Date(rawDate))
@@ -361,13 +420,13 @@ function documentRowHtml(doc) {
     : "—";
   const docId = doc.documentId || doc.id || "";
   return `
-    <div class="mon-entreprise-doc-row">
-      <div class="mon-entreprise-doc-icon"><i class="fa-solid fa-file-lines"></i></div>
-      <div class="mon-entreprise-doc-info">
+    <div class="mon-entreprise-doc-card">
+      <div class="mon-entreprise-doc-preview"><i class="fa-solid fa-file-lines"></i></div>
+      <div class="mon-entreprise-doc-caption">
         <div class="mon-entreprise-doc-name">${name}</div>
         <div class="mon-entreprise-doc-date">${dateLabel}</div>
       </div>
-      <button type="button" class="mon-entreprise-doc-download" data-document-id="${docId}"><i class="fa-solid fa-download"></i> Télécharger</button>
+      <button type="button" class="mon-entreprise-doc-download" data-document-id="${docId}" title="Télécharger"><i class="fa-solid fa-download"></i></button>
     </div>
   `;
 }
@@ -377,7 +436,7 @@ function documentsCardHtml(documents) {
     <div class="mon-entreprise-card">
       <h4 class="mon-entreprise-section-title"><i class="fa-solid fa-folder-open"></i> Documents</h4>
       ${documents && documents.length
-        ? documents.map(documentRowHtml).join("")
+        ? `<div class="mon-entreprise-doc-grid">${documents.map(documentCardHtml).join("")}</div>`
         : `<p class="text-muted" style="font-size:13.5px;">Aucun document disponible pour le moment - ils apparaîtront ici dès que doola les transmettra (statuts déposés, lettre EIN...).</p>`}
     </div>
   `;
@@ -455,6 +514,25 @@ export async function mount(container) {
 
   function gotoParametresEntreprise() {
     navigate(`/dash/workspace/${encodeURIComponent(getWorkspaceId())}/parametres/entreprise`);
+  }
+
+  // Copie l'adresse affichée (demande du 2026-11-26) - lue directement
+  // depuis le DOM rendu (innerText respecte les <br>), jamais
+  // reconstruite à part : garantit que ce qui est copié correspond
+  // exactement à ce qui est affiché.
+  function wireAddressCopyButtons(root) {
+    root.querySelectorAll(".mon-entreprise-copy-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const lines = btn.closest(".mon-entreprise-address")?.querySelector(".mon-entreprise-address-lines");
+        if (!lines) return;
+        try {
+          await navigator.clipboard.writeText(lines.innerText);
+          showToast("Adresse copiée", "success");
+        } catch (err) {
+          showToast("Impossible de copier l'adresse", "error");
+        }
+      });
+    });
   }
 
   function wireDocumentDownloads(root) {
@@ -555,7 +633,10 @@ export async function mount(container) {
         const statusDetailEl = document.getElementById("mon-entreprise-status-detail-container");
         if (statusDetailEl) statusDetailEl.innerHTML = formationStatusHtml(raw);
         const officialEl = document.getElementById("mon-entreprise-official-container");
-        if (officialEl) officialEl.innerHTML = officialRecapHtml(raw);
+        if (officialEl) {
+          officialEl.innerHTML = officialRecapHtml(raw);
+          wireAddressCopyButtons(officialEl);
+        }
         const founderEl = document.getElementById("mon-entreprise-founder-container");
         if (founderEl) founderEl.innerHTML = founderPanelHtml(raw);
       })

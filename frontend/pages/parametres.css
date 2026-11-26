@@ -1314,20 +1314,28 @@
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 22px 36px;
+  gap: 36px 48px;
   margin-bottom: 28px;
 }
 .mon-entreprise-grid > .mon-entreprise-stat {
   flex: 0 0 auto;
+  /* Sous-titre centré par rapport au titre (demande du 2026-11-26) -
+     le bloc adresse (.mon-entreprise-stat--address, multi-ligne +
+     icône copier) repasse explicitement à gauche ci-dessous, ce
+     centrage ne lui convient pas. */
+  text-align: center;
 }
-.mon-entreprise-grid > .mon-entreprise-stat:nth-child(2n) { margin-top: 16px; }
-.mon-entreprise-grid > .mon-entreprise-stat:nth-child(3n) { margin-top: 30px; align-self: flex-end; }
-.mon-entreprise-grid > .mon-entreprise-stat:nth-child(5n) { margin-top: 4px; }
+/* :not(...) (demande du 2026-11-26) - le bloc adresse (4 lignes) ne
+   peut pas recevoir les mêmes décalages verticaux nth-child, pensés
+   pour des valeurs d'une seule ligne de hauteur comparable. */
+.mon-entreprise-grid > .mon-entreprise-stat:nth-child(2n):not(.mon-entreprise-stat--address) { margin-top: 16px; }
+.mon-entreprise-grid > .mon-entreprise-stat:nth-child(3n):not(.mon-entreprise-stat--address) { margin-top: 30px; align-self: flex-end; }
+.mon-entreprise-grid > .mon-entreprise-stat:nth-child(5n):not(.mon-entreprise-stat--address) { margin-top: 4px; }
 .mon-entreprise-stat-label {
   font-size: 13px;
   font-weight: 700;
   color: #111827;
-  margin-bottom: 2px;
+  margin-bottom: 6px;
 }
 .mon-entreprise-stat-value {
   font-size: 13px;
@@ -1335,6 +1343,36 @@
   color: #374151;
   text-transform: lowercase;
 }
+
+/* Bloc adresse multi-ligne copiable (demande du 2026-11-26) - exclu du
+   centrage/décalage nth-child ci-dessus : texte à gauche (une adresse
+   centrée ligne par ligne, de largeurs différentes, serait illisible),
+   et JAMAIS en minuscule (text-transform:lowercase ci-dessus) - l'État
+   ("WYOMING") doit rester tel que renvoyé par doola. */
+.mon-entreprise-grid > .mon-entreprise-stat--address {
+  text-align: left;
+  flex: 1 1 280px;
+}
+.mon-entreprise-address {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.mon-entreprise-address-lines {
+  text-transform: none;
+  line-height: 1.6;
+}
+.mon-entreprise-copy-btn {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.mon-entreprise-copy-btn:hover { color: #b45309; }
 /* Pas de retour à la ligne (demande du 2026-11-25) - limité au bloc
    Informations officielles : le panneau Fondateur partage ces mêmes
    classes mais affiche des adresses potentiellement longues, où
@@ -1411,9 +1449,22 @@
 }
 .mon-entreprise-section-title i { color: #b45309; font-size: 13px; }
 
-/* Panneau fondateur (onglet "Propriétaire et membres", pleine largeur
-   depuis le 2026-11-26) : liste verticale simple conservée telle quelle
-   malgré le passage en pleine largeur - pas de redesign demandé ici. */
+/* Onglet "Propriétaire et membres" (demande du 2026-11-26) : membres
+   (raw.members[]) à gauche, propriétaire (raw.responsibleParty) à
+   droite - 2 cartes côte à côte, dans cet ordre précis (ordre du DOM =
+   ordre visuel en grid). */
+.mon-entreprise-owners-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 900px) {
+  .mon-entreprise-owners-layout { grid-template-columns: 1fr; }
+}
+
+/* Panneau fondateur/membres : liste verticale simple conservée telle
+   quelle malgré le passage en pleine largeur - pas de redesign demandé
+   ici. */
 .mon-entreprise-stack {
   display: flex;
   flex-direction: column;
@@ -1430,6 +1481,42 @@
   border-bottom: 1px solid #f1f3f5;
 }
 .mon-entreprise-doc-row:last-child { border-bottom: none; padding-bottom: 0; }
+
+/* Grille de cartes "aperçu" (demande du 2026-11-26, remplace la liste
+   de lignes ci-dessus pour les documents de l'onglet dédié - la
+   bannière d'action requise, plus haut, continue d'utiliser
+   .mon-entreprise-doc-row telle quelle). doola ne fournit aucune
+   vignette réelle du document : .mon-entreprise-doc-preview est une
+   grande icône stylée en guise de "zone image", jamais une fausse
+   miniature inventée. */
+.mon-entreprise-doc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 20px;
+}
+.mon-entreprise-doc-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 20px 14px;
+  border: 1px solid #f1f3f5;
+  border-radius: 12px;
+}
+.mon-entreprise-doc-preview {
+  width: 100%;
+  height: 72px;
+  border-radius: 10px;
+  background: #fafafa;
+  color: #b45309;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+}
+.mon-entreprise-doc-caption { min-width: 0; }
 .mon-entreprise-doc-icon {
   width: 38px;
   height: 38px;
@@ -1445,13 +1532,19 @@
 .mon-entreprise-doc-info { flex: 1; min-width: 0; }
 .mon-entreprise-doc-name { font-size: 13px; font-weight: 600; color: #111827; }
 .mon-entreprise-doc-date { font-size: 13px; color: #9ca3af; margin-top: 2px; }
+/* Icône seule (demande du 2026-11-26, remplace le bouton texte+icône
+   "Télécharger") - cercle plutôt qu'un rectangle, cohérent avec la
+   carte compacte et centrée ci-dessus. */
 .mon-entreprise-doc-download {
+  width: 32px;
+  height: 32px;
   background: transparent;
   border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 6px 12px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 13px;
-  font-weight: 600;
   color: #374151;
   cursor: pointer;
   transition: .2s;
