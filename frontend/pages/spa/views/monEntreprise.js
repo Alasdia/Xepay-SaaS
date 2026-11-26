@@ -289,7 +289,18 @@ function officialRecapHtml(raw) {
     statHtml("État de formation", raw.state || "—"),
   ];
 
+  // Secteur/description de l'activité (ajoutés le 2026-11-26, jamais
+  // affichés avant - confirmés inutilisés par l'utilisateur). Pas
+  // doolaCompanyId/doolaCustomerId : identifiants techniques internes,
+  // sans intérêt pour le marchand (voir backend/models.py,
+  // BuildnessCompany.doola_company_id - déjà stocké côté Xepay, unique,
+  // c'est lui qui sert à certifier qu'une LLC vient bien du partenariat
+  // Xepay/doola, pas un champ à afficher ici).
+  if (raw.industry) stats.push(statHtml("Secteur d'activité", raw.industry));
+  if (raw.description) stats.push(statHtml("Description de l'activité", raw.description));
+
   const dateStats = [
+    raw.formationSubmittedToStateAt ? statHtml("Soumis à l'État le", formatDateFr(raw.formationSubmittedToStateAt)) : null,
     raw.formationFilingDate ? statHtml("Formation déposée le", formatDateFr(raw.formationFilingDate)) : null,
     raw.einApplicationSubmittedAt ? statHtml("EIN demandé le", formatDateFr(raw.einApplicationSubmittedAt)) : null,
   ].filter(Boolean);
