@@ -209,49 +209,21 @@ function signatureBannerHtml(raw) {
 // numéro de dossier, adresses virtuelles, agent enregistré...), jamais
 // stocké côté Xepay : lu directement depuis la réponse brute doola.
 function officialRecapHtml(raw) {
-  // business/mailing lus depuis addresses[] (voir backend/routes/
-  // buildness.py, corrigé le 2026-11-25 pour matcher le schéma doola) -
-  // business = l'adresse du fondateur (provider=customer), mailing =
-  // l'adresse propre de doola pour la correspondance (provider=
-  // registeredAgent, doola la fournit).
+  // business lu depuis addresses[] (voir backend/routes/buildness.py,
+  // corrigé le 2026-11-25 pour matcher le schéma doola) - l'adresse
+  // commerciale DE LA LLC, un champ à part de celle de l'agent
+  // enregistré même quand les deux coïncident physiquement (le
+  // fondateur n'a pas d'autre adresse à donner) - CORRIGÉ le
+  // 2026-11-26 : identifié sur un vrai dossier que "business"
+  // (state="WYOMING") et "registeredAgent.address" (state="WY") sont
+  // deux CHAMPS distincts côté doola représentant 2 concepts différents
+  // (adresse de la LLC vs adresse de l'agent), même quand leur rue
+  // coïncide - jamais à dédoublonner entre eux, contrairement à ce
+  // qu'on pensait la veille. "mailing" (adresse de correspondance,
+  // souvent celle, personnelle, du fondateur hors des US) retirée de ce
+  // bloc à la demande explicite.
   const business = findAddress(raw, "business");
-  const mailing = findAddress(raw, "mailing");
   const agentAddress = raw.registeredAgent ? raw.registeredAgent.address : null;
-
-  // Dédoublonnage (demande du 2026-11-25) : sur un dossier formé avant
-  // le correctif du payload ci-dessus, "business" est encore
-  // littéralement identique à l'adresse de l'agent enregistré (même
-  // valeur dupliquée côté doola) - l'adresse de l'agent enregistré est
-  // réservée EN PREMIER (elle reste toujours affichée, rattachée à son
-  // nom) ; "Adresse commerciale"/"Boîte postale virtuelle" ne
-  // s'affichent que si elles apportent une adresse réellement
-  // différente.
-  //
-  // addressSignature (CORRIGÉ le 2026-11-25) : comparer formatAddress()
-  // tel quel ratait le cas réel que ce dédoublonnage doit justement
-  // couvrir - même adresse physique (30 N Gould St, STE R, Sheridan,
-  // 82801), mais state="WY" côté registeredAgent.address contre
-  // state="WYOMING" côté addresses[] - deux chaînes formatées
-  // différentes pour le même lieu. La signature exclut délibérément
-  // "state" (rue + ville + code postal + pays suffisent déjà à
-  // identifier une adresse physique) plutôt que de tenter une table de
-  // correspondance abrégé/toutes-lettres pour les 50 États.
-  function addressSignature(addr) {
-    if (!addr) return null;
-    return [addr.line1, addr.line2, addr.postalCode, addr.city, addr.country]
-      .filter(Boolean)
-      .map((p) => String(p).trim().toLowerCase())
-      .join("|");
-  }
-  const shownAddresses = new Set();
-  if (agentAddress) shownAddresses.add(addressSignature(agentAddress));
-  function addressStatOnce(label, addr) {
-    const formatted = formatAddress(addr);
-    const signature = addressSignature(addr);
-    if (formatted === "—" || (signature && shownAddresses.has(signature))) return null;
-    if (signature) shownAddresses.add(signature);
-    return statHtml(label, formatted);
-  }
 
   // Détail des 3 services qu'on demande explicitement (Formation/
   // EinCreation/RegisteredAgent, voir backend/routes/buildness.py) -
@@ -285,25 +257,35 @@ function officialRecapHtml(raw) {
   ].filter(Boolean);
   stats.push(...dateStats);
 
-  const addressStats = [
-    addressStatOnce("Adresse commerciale", business),
-    addressStatOnce("Boîte postale virtuelle (correspondance)", mailing),
-  ].filter(Boolean);
-  stats.push(...addressStats);
+  const businessAddressFormatted = formatAddress(business);
+  if (businessAddressFormatted !== "—") {
+    stats.push(statHtml("Adresse commerciale", businessAddressFormatted));
+  }
 
-  // Téléphone de contact - rattaché à l'adresse business/mailing
-  // fournie par le fondateur (provider=customer), jamais affiché avant
-  // le 2026-11-25.
-  const contactPhone = (business && business.phone) || (mailing && mailing.phone) || null;
-  if (contactPhone) stats.push(statHtml("Téléphone de contact", contactPhone));
+  // Téléphone de contact - rattaché à l'adresse commerciale fournie par
+  // le fondateur (provider=customer), jamais affiché avant le
+  // 2026-11-25.
+  if (business && business.phone) stats.push(statHtml("Téléphone de contact", business.phone));
 
   if (raw.registeredAgent) {
-    stats.push(statHtml(
-      "Agent enregistré",
-      `${raw.registeredAgent.name || "—"}${agentService ? ` (${serviceStatusText(agentService)})` : ""}`
-    ));
+    // Juste le nom ici (CORRIGÉ le 2026-11-26, demande explicite) - le
+    // statut du service RegisteredAgent a sa propre ligne plus bas,
+    // jamais mélangé au nom de l'agent lui-même.
+    stats.push(statHtml("Agent enregistré", raw.registeredAgent.name || "—"));
     stats.push(statHtml("Adresse de l'agent enregistré", formatAddress(agentAddress)));
+    if (agentService) stats.push(statHtml("Avancement - agent enregistré", serviceStatusText(agentService)));
   }
+
+  // Signatures déjà complétées (ex. SS4) - AJOUTÉ le 2026-11-26 :
+  // jusqu'ici, une fois signée, aucune trace n'en restait nulle part
+  // (signatureBannerHtml ne montre que les signatures EN ATTENTE) - le
+  // marchand n'avait aucun moyen de revérifier qu'il avait bien signé.
+  (raw.signatureRequirements || [])
+    .filter((s) => String(s.status || "").toUpperCase() === "COMPLETED")
+    .forEach((s) => stats.push(statHtml(
+      BUILDNESS_SIGNATURE_LABELS[s.documentType] || s.documentType,
+      "Déjà signé ✓"
+    )));
 
   // Tout service qu'on n'a jamais explicitement demandé (ex.
   // "AiCofounder", vu sur un vrai dossier le 2026-11-25) - affiché tel
