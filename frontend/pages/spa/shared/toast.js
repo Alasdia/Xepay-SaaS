@@ -21,10 +21,9 @@ export function showToast(message, type = "success") {
     container.style.left = `${rect.left}px`;
     container.style.width = `${rect.width}px`;
   }
-  const icons = { success: "✅", error: "⚠️", warning: "⏳" };
   const toast = document.createElement("div");
   toast.className = `toast-notif-item ${type}`;
-  toast.innerHTML = `<span class="icon">${icons[type] || icons.success}</span><span>${message}</span>`;
+  toast.innerHTML = `<span>${message}</span>`;
   container.appendChild(toast);
   setTimeout(() => {
     toast.style.animation = "toastOut 0.3s ease forwards";
