@@ -2819,9 +2819,8 @@ async function submitBuildnessOnboard(e) {
   e.preventDefault();
   const form = e.target;
   const btn = document.getElementById("p-buildness-submit-btn");
-  const originalLabel = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = "Envoi en cours...";
+  const originalLabel = btn.innerHTML;
+  showButtonSpinner(btn);
 
   const body = {
     company_name: form.company_name.value.trim(),
@@ -2853,8 +2852,7 @@ async function submitBuildnessOnboard(e) {
   } catch (err) {
     showToast(err.message || "Erreur lors de l'envoi", "error");
   } finally {
-    btn.disabled = false;
-    btn.textContent = originalLabel;
+    restoreButtonLabel(btn, originalLabel);
   }
 }
 
