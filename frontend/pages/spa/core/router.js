@@ -43,6 +43,29 @@ function removeSkeleton() {
   document.getElementById(SKELETON_OVERLAY_ID)?.remove();
 }
 
+// Écran de secours (demande du 2026-11-26) - affiché à la place d'une
+// vue quand la navigation échoue pour une raison réseau (hors ligne
+// détecté via navigator.onLine AVANT même d'essayer, ou setViewStyles/
+// mountView qui rejette APRÈS coup, ex. le JS de la vue elle-même pas
+// en cache). Styles posés en ligne (jamais une classe CSS externe) :
+// c'est précisément le cas où aucun CSS externe n'est fiable. Couleur
+// du site (#b45309) à 70% d'opacité sur "Réessayer", même convention
+// que .shopify-tab--active (commerce.css).
+function showOfflineFallback(container, pathname) {
+  container.innerHTML = `
+    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; min-height:60vh; text-align:center; font-family:system-ui,-apple-system,sans-serif;">
+      <div style="width:56px; height:56px; border-radius:16px; background:rgba(180,83,9,0.1); color:rgba(180,83,9,0.7); display:flex; align-items:center; justify-content:center; font-size:22px;">
+        <i class="fa-solid fa-wifi" aria-hidden="true"></i>
+      </div>
+      <p style="margin:0; font-size:15px; font-weight:600; color:#111827;">Vous n'êtes pas connecté à Internet</p>
+      <p style="margin:0; font-size:13px; color:#6b7280; max-width:360px;">Vérifiez votre connexion, puis réessayez.</p>
+      <button type="button" id="spa-offline-retry-btn" style="margin-top:6px; background:transparent; border:1px solid rgba(180,83,9,0.7); color:rgba(180,83,9,0.7); border-radius:8px; padding:8px 18px; font-size:13.5px; font-weight:600; cursor:pointer;">Réessayer</button>
+    </div>
+  `;
+  const btn = container.querySelector("#spa-offline-retry-btn");
+  if (btn) btn.addEventListener("click", () => render(pathname));
+}
+
 const routes = [];
 let currentUnmount = null;
 let navToken = 0;
@@ -127,10 +150,29 @@ async function render(pathname) {
 
   const myToken = ++navToken;
   const container = document.getElementById("main-content");
+
+  // Détecté AVANT même d'essayer (demande du 2026-11-26) : évite le
+  // flash skeleton -> HTML non stylé que provoquait l'ancien
+  // comportement de setViewStyles (voir styleLoader.js).
+  if (!navigator.onLine) {
+    showOfflineFallback(container, pathname);
+    return;
+  }
+
   showSkeleton(container, route.name, params);
   const skeletonStart = Date.now();
 
-  const mountPromise = Promise.resolve(route.mountView(container, params));
+  // mountFailed (demande du 2026-11-26) : mountView() peut rejeter
+  // (setViewStyles qui a réellement échoué - voir styleLoader.js - ou
+  // le JS de la vue elle-même, s'il n'était pas déjà en cache) - jamais
+  // laissé non rattrapé comme avant, sinon le router restait bloqué
+  // avec le skeleton affiché indéfiniment au lieu de proposer de
+  // réessayer.
+  let mountFailed = false;
+  const mountPromise = Promise.resolve(route.mountView(container, params)).catch((err) => {
+    console.error("Erreur montage vue (hors ligne ?):", err);
+    mountFailed = true;
+  });
   const safetyTimeout = new Promise((resolve) => setTimeout(resolve, MOUNT_SAFETY_TIMEOUT_MS));
   const result = await Promise.race([mountPromise, safetyTimeout]);
 
@@ -144,6 +186,12 @@ async function render(pathname) {
   if (myToken !== navToken) return;
 
   removeSkeleton();
+
+  if (mountFailed) {
+    showOfflineFallback(container, pathname);
+    return;
+  }
+
   if (result && typeof result.unmount === "function") {
     currentUnmount = result.unmount;
   }

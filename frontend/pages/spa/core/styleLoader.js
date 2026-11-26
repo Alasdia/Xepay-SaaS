@@ -15,10 +15,16 @@ function toRootRelative(href) {
   return "/" + href;
 }
 
-// Retourne une promesse résolue une fois les CSS demandés chargés (ou en
-// échec — ne bloque jamais indéfiniment) : permet au router d'attendre que
-// le style de la vue soit prêt avant d'injecter son HTML, pour ne jamais
-// afficher de contenu non stylé.
+// Retourne une promesse résolue une fois les CSS demandés chargés, ou
+// REJETÉE si l'un d'eux a échoué (ex. hors ligne) - CORRIGÉ le
+// 2026-11-26 : l'ancienne version résolvait aussi sur l'événement
+// "error" du <link>, exactement comme un succès - le router continuait
+// donc à afficher la vue (son HTML réel) sans jamais avoir réellement
+// chargé son CSS, d'où du HTML brut non stylé plutôt qu'un message
+// clair. Un simple ralentissement (timeout 4s sans ni load ni error)
+// reste traité comme un succès - seul un VRAI échec réseau (error) fait
+// désormais rejeter, voir router.js pour l'écran de secours qui
+// intercepte ce rejet.
 export function setViewStyles(hrefs = []) {
   currentLinks.forEach((link) => link.remove());
   const loaded = [];
@@ -29,13 +35,18 @@ export function setViewStyles(hrefs = []) {
     link.dataset.viewStyle = "true";
     loaded.push(
       new Promise((resolve) => {
-        link.addEventListener("load", resolve, { once: true });
-        link.addEventListener("error", resolve, { once: true });
+        link.addEventListener("load", () => resolve(true), { once: true });
+        link.addEventListener("error", () => resolve(false), { once: true });
       })
     );
     document.head.appendChild(link);
     return link;
   });
-  const timeout = new Promise((resolve) => setTimeout(resolve, 4000));
-  return Promise.race([Promise.all(loaded), timeout]);
+  const timeout = new Promise((resolve) => setTimeout(() => resolve("timeout"), 4000));
+  return Promise.race([Promise.all(loaded), timeout]).then((result) => {
+    if (result === "timeout") return;
+    if (result.some((ok) => ok === false)) {
+      throw new Error("Impossible de charger le style de cette vue (hors ligne ?).");
+    }
+  });
 }
