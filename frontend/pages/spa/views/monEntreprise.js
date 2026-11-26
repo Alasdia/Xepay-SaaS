@@ -65,18 +65,20 @@ const TEMPLATE = `
   <div id="mon-entreprise-container">${viewLoadingHtml()}</div>
 `;
 
+// Centré (demande du 2026-11-26) - PAS .mon-entreprise-header (flex-row,
+// icône+texte côte à côte, utilisé tel quel par statusHeaderHtml) :
+// classe dédiée à cet état vide précisément pour ne jamais affecter
+// l'autre usage.
 function notStartedHtml() {
   return `
     <div class="mon-entreprise-card">
-      <div class="mon-entreprise-header">
+      <div class="mon-entreprise-empty-state">
         <div class="mon-entreprise-icon"><i class="fa-solid fa-building-circle-xmark"></i></div>
-        <div>
-          <h3 class="mon-entreprise-title">Aucun dossier en cours</h3>
-          <p class="mon-entreprise-status">Vous n'avez pas encore lancé la création de votre société américaine.</p>
+        <h3 class="mon-entreprise-title">Aucun dossier en cours</h3>
+        <p class="mon-entreprise-status">Vous n'avez pas encore lancé la création de votre société américaine.</p>
+        <div class="params-promo-actions">
+          <button type="button" id="p-mon-entreprise-goto-params" class="create-client-btn">Créer ma société</button>
         </div>
-      </div>
-      <div class="params-promo-actions">
-        <button type="button" id="p-mon-entreprise-goto-params" class="create-client-btn">Créer ma société</button>
       </div>
     </div>
   `;
