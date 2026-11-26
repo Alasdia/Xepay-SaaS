@@ -2601,7 +2601,7 @@ function buildnessCardHtml() {
       <h3 class="params-promo-title">Créer votre entreprise aux États-Unis avec Xepay Buildness</h3>
       <p class="params-promo-sub">Pour encaisser vos paiements via Stripe Connect en toute légalité aux États-Unis, il vous faut une société américaine (LLC) et son EIN (identifiant fiscal fédéral délivré par l'IRS) - sans ça, Stripe limite ou bloque l'activation complète de votre compte. Xepay s'occupe de toute la constitution avec notre partenaire doola : choix de l'État, dépôt des statuts, obtention de l'EIN - sans démarche administrative ni déplacement de votre côté.</p>
       <div class="params-promo-actions">
-        <button type="button" id="p-buildness-cta-btn" class="create-client-btn">Créer ma société</button>
+        <button type="button" id="p-buildness-cta-btn" class="create-client-btn">Créer ma société (500 $)</button>
         <button type="button" id="p-buildness-info-btn" class="create-client-btn">En savoir plus</button>
       </div>
     </div>
@@ -2613,13 +2613,57 @@ function renderBuildnessSection() {
   if (!container) return;
   container.innerHTML = buildnessCardHtml();
 
+  // Retour de Stripe après paiement (success_url de POST /buildness/checkout,
+  // voir routes/buildness.py) - juste un accusé visuel, le crédit lui-même
+  // vient du webhook, jamais de ce paramètre d'URL.
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("buildness_payment") === "success") {
+    showToast("Paiement reçu - vous pouvez créer votre société", "success");
+  } else if (params.get("buildness_payment") === "cancelled") {
+    showToast("Paiement annulé", "warning");
+  }
+
   const ctaBtn = container.querySelector("#p-buildness-cta-btn");
-  if (ctaBtn) ctaBtn.addEventListener("click", () => openBuildnessWizard(ctaBtn));
+  if (ctaBtn) ctaBtn.addEventListener("click", () => startBuildnessFlow(ctaBtn));
   const infoBtn = container.querySelector("#p-buildness-info-btn");
   if (infoBtn) {
     infoBtn.addEventListener("click", () => {
       bootstrap.Modal.getOrCreateInstance(document.getElementById("paramsBuildnessInfoModal")).show();
     });
+  }
+}
+
+// "Créer ma société" (demande du 2026-11-26, 500 USD dus avant toute
+// formation - voir POST /buildness/checkout, /buildness/onboard) :
+// vérifie d'abord si un paiement déjà effectué attend d'être utilisé
+// (GET /buildness/credit-status, pur affichage - /buildness/onboard
+// reste la seule vraie vérification côté serveur) - ouvre l'assistant
+// directement si oui, sinon redirige vers le paiement Stripe.
+async function startBuildnessFlow(triggerBtn) {
+  const originalLabel = triggerBtn ? triggerBtn.innerHTML : null;
+  if (triggerBtn) {
+    triggerBtn.disabled = true;
+    triggerBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Chargement...`;
+  }
+  try {
+    const res = await apiFetch("/buildness/credit-status");
+    const data = await res.json();
+    if (res.ok && data.has_unused_credit) {
+      openBuildnessWizard(triggerBtn);
+      return;
+    }
+    const checkoutRes = await apiFetch("/buildness/checkout", { method: "POST" });
+    const checkoutData = await checkoutRes.json();
+    if (!checkoutRes.ok || !checkoutData.checkout_url) {
+      throw new Error(checkoutData.detail || "Impossible de démarrer le paiement");
+    }
+    window.location.href = checkoutData.checkout_url;
+  } catch (err) {
+    showToast(err.message || "Erreur lors de la vérification du paiement", "error");
+    if (triggerBtn) {
+      triggerBtn.disabled = false;
+      triggerBtn.innerHTML = originalLabel;
+    }
   }
 }
 

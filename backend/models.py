@@ -917,6 +917,25 @@ class BuildnessCompany(Base):
     customer = relationship("BuildnessCustomer", back_populates="companies")
 
 
+class BuildnessLlcCredit(Base):
+    """Un paiement de 500 USD confirmé (Stripe, compte PLATEFORME Xepay -
+    jamais Connect) pour UNE formation de LLC - voir routes/
+    buildness_payment.py. "paid_unused" dès la réception du webhook
+    checkout.session.completed ; "consumed" UNIQUEMENT quand ce crédit a
+    réellement servi à former une LLC (create_company a réussi côté
+    doola, voir onboard_buildness dans routes/buildness.py) - jamais sur
+    un échec, pour que le marchand puisse réessayer sans repayer."""
+    __tablename__ = "buildness_llc_credits"
+
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("bnllccr"))
+    workspace_id = Column(String, ForeignKey("users.id"), nullable=False)
+    stripe_checkout_session_id = Column(String, unique=True, nullable=False)
+    status = Column(String, nullable=False, default="paid_unused")
+    buildness_company_id = Column(String, ForeignKey("buildness_companies.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    consumed_at = Column(DateTime(timezone=True), nullable=True)
+
+
 class BuildnessWebhookLog(Base):
     """Trace de chaque événement webhook doola déjà traité - event_id
     UNIQUE est le filet de sécurité qui empêche un même événement
