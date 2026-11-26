@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_BUILDNESS_PRICE_ID = os.getenv("STRIPE_BUILDNESS_PRICE_ID")
-FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "https://api.xepay.finance")
+FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "https://app.xepay.finance")
 
 
 def _get_unused_credit(db: Session, workspace_id: str) -> BuildnessLlcCredit | None:
