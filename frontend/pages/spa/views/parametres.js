@@ -2614,11 +2614,15 @@ function renderBuildnessSection() {
   container.innerHTML = buildnessCardHtml();
 
   // Retour de Stripe après paiement (success_url de POST /buildness/checkout,
-  // voir routes/buildness.py) - juste un accusé visuel, le crédit lui-même
-  // vient du webhook, jamais de ce paramètre d'URL.
+  // voir routes/buildness.py) - le crédit lui-même vient du webhook
+  // (asynchrone, serveur-à-serveur), jamais de ce paramètre d'URL - voir
+  // openBuildnessWizardAfterPayment ci-dessous pour la course possible
+  // entre cette redirection (immédiate) et le webhook (peut arriver
+  // quelques instants après).
   const params = new URLSearchParams(window.location.search);
   if (params.get("buildness_payment") === "success") {
-    showToast("Paiement reçu - vous pouvez créer votre société", "success");
+    showToast("Paiement reçu - ouverture de votre dossier...", "success");
+    openBuildnessWizardAfterPayment(container.querySelector("#p-buildness-cta-btn"));
   } else if (params.get("buildness_payment") === "cancelled") {
     showToast("Paiement annulé", "warning");
   }
@@ -2674,6 +2678,35 @@ async function startBuildnessFlow(triggerBtn) {
       triggerBtn.disabled = false;
       triggerBtn.innerHTML = originalLabel;
     }
+  }
+}
+
+// Ouvre directement l'assistant au retour de Stripe (demande du
+// 2026-11-26 : le marchand doit arriver sur le modal de création dès
+// que le paiement est fait, pas juste sur la carte avec un bouton à
+// recliquer). Le webhook checkout.session.completed (serveur-à-serveur,
+// voir routes/webhook/buildness_payment.py) peut arriver quelques
+// instants APRÈS cette redirection navigateur (immédiate dès le
+// paiement confirmé côté Stripe) - on retente /buildness/credit-status
+// jusqu'à 5 fois (1s d'écart) avant d'ouvrir l'assistant quand même :
+// le paiement est déjà confirmé par Stripe à ce stade (success_url
+// n'est atteinte qu'après), /buildness/onboard refera de toute façon la
+// vraie vérification au moment de soumettre.
+async function openBuildnessWizardAfterPayment(triggerBtn, attempt = 0) {
+  try {
+    const res = await apiFetch("/buildness/credit-status");
+    const data = await res.json();
+    if (res.ok && data.has_unused_credit) {
+      openBuildnessWizard(triggerBtn);
+      return;
+    }
+  } catch (err) {
+    // Ignoré - retenté ci-dessous comme un simple "pas encore disponible".
+  }
+  if (attempt < 5) {
+    setTimeout(() => openBuildnessWizardAfterPayment(triggerBtn, attempt + 1), 1000);
+  } else {
+    openBuildnessWizard(triggerBtn);
   }
 }
 
