@@ -2671,6 +2671,24 @@ async function startBuildnessFlow(triggerBtn) {
     if (!checkoutRes.ok || !checkoutData.checkout_url) {
       throw new Error(checkoutData.detail || "Impossible de démarrer le paiement");
     }
+    // Bouton figé au chargement indéfiniment au retour en arrière depuis
+    // Stripe (signalé le 2026-11-26) : la navigation vers checkout_url
+    // (autre origine) ne décharge pas vraiment cette page, elle la gèle -
+    // le bouton "Retour" du navigateur la restaure donc depuis le
+    // bfcache EXACTEMENT dans l'état figé au moment du départ (spinner
+    // inclus), sans jamais ré-exécuter ce code. "pageshow" avec
+    // persisted=true est l'évènement standard pour détecter cette
+    // restauration et remettre le bouton dans son état normal.
+    window.addEventListener(
+      "pageshow",
+      (event) => {
+        if (event.persisted && triggerBtn) {
+          triggerBtn.disabled = false;
+          triggerBtn.innerHTML = originalLabel;
+        }
+      },
+      { once: true }
+    );
     window.location.href = checkoutData.checkout_url;
   } catch (err) {
     showToast(err.message || "Erreur lors de la vérification du paiement", "error");
