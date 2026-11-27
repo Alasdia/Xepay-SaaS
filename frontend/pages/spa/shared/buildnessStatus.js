@@ -97,3 +97,25 @@ export async function fetchBuildnessDocument(documentId) {
   if (!res.ok) throw new Error("Impossible de récupérer ce document");
   return res.json();
 }
+
+// Demandes de correction (ajouté le 2026-11-27) - doola n'expose aucun
+// endpoint pour modifier une société déjà créée (vérifié dans leur doc
+// API + Embedded SDK + spec OpenAPI) et n'a de relation directe qu'avec
+// Xepay : POST /buildness/correction-request ne fait qu'enregistrer la
+// demande et alerter un humain côté Xepay par email, jamais une mise à
+// jour automatique côté doola - voir backend/routes/buildness.py.
+export async function createBuildnessCorrectionRequest(fieldLabel, requestedValue, note) {
+  const res = await apiFetch("/buildness/correction-request", {
+    method: "POST",
+    body: { field_label: fieldLabel, requested_value: requestedValue, note: note || null },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || "Impossible d'envoyer la demande de correction");
+  return data;
+}
+
+export async function fetchBuildnessCorrectionRequests() {
+  const res = await apiFetch("/buildness/correction-requests");
+  if (!res.ok) throw new Error("Impossible de récupérer les demandes de correction");
+  return res.json();
+}

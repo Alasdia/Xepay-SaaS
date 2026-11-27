@@ -1580,6 +1580,25 @@
   border-radius: 10px;
 }
 
+/* Modal "Demander une correction" (ajouté le 2026-11-27) - .form-group
+   scopé à #buildnessCorrectionModal, jamais une règle générique
+   ".form-group" : ce fichier n'a pas le même rôle que .customer-modal/
+   .form-group de commerce.css (non chargé ici, voir styleLoader.js), ce
+   modal a sa propre forme simple. */
+#buildnessCorrectionModal .form-group {
+  margin-bottom: 18px;
+}
+#buildnessCorrectionModal .form-group label {
+  display: block;
+  font-weight: 700;
+  color: #1f2937;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+#buildnessCorrectionModal .form-group textarea {
+  min-height: 80px;
+}
+
 
 @media (max-width: 480px) {
   .params-promo-card { padding: 20px; min-height: unset; }

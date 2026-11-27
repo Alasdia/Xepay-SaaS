@@ -1214,6 +1214,20 @@ const NOTIFICATION_CATEGORIES = [
       { key: "product_updates", label: "Nouvelles fonctionnalités" },
     ],
   },
+  // Ajouté le 2026-11-27 - jusqu'ici, aucun email n'était envoyé sur les
+  // événements du dossier Buildness (formation/EIN via doola), le
+  // marchand ne pouvait le savoir qu'en ouvrant "Mon entreprise" -
+  // mêmes 3 transitions de statut réellement gérées côté webhook (voir
+  // routes/webhook/doola.py, _apply_doola_event).
+  {
+    key: "entreprise",
+    label: "Entreprise (LLC)",
+    events: [
+      { key: "formation_processing", label: "Dossier en cours de traitement" },
+      { key: "formation_completed", label: "Société formée" },
+      { key: "formation_failed", label: "Formation échouée" },
+    ],
+  },
 ];
 
 function notificationsTemplate() {

@@ -42,9 +42,15 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from sqlalchemy.exc import IntegrityError
 
 from backend.database import SessionLocal
-from backend.models import BuildnessCompany, BuildnessWebhookLog
+from backend.models import BuildnessCompany, BuildnessCustomer, BuildnessWebhookLog, UserDB
 from backend.services.doola_client import get_doola_service, DoolaNotConfiguredError
 from backend.services.doola_service import DoolaAPIError
+from backend.services.email_service import (
+    is_notification_enabled,
+    send_buildness_completed_email,
+    send_buildness_failed_email,
+    send_buildness_processing_email,
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -109,6 +115,14 @@ async def _apply_doola_event(event_type: str, payload: dict) -> None:
             )
             return
 
+        # Capturé AVANT mutation (demande du 2026-11-27, notifications
+        # email) - _PROCESSING_EVENTS regroupe 3 noms d'événements doola
+        # distincts sous un seul statut Xepay "processing" : sans ce
+        # contrôle de VRAIE transition, les 2e/3e webhooks (déjà
+        # "processing") renverraient le même email "en cours" une 2e/3e
+        # fois pour la même étape.
+        previous_status = company.status
+
         if event_type in _PROCESSING_EVENTS:
             company.status = "processing"
             company.last_successful_step = "processing"
@@ -137,6 +151,25 @@ async def _apply_doola_event(event_type: str, payload: dict) -> None:
             return
 
         db.commit()
+
+        # Email de suivi (demande du 2026-11-27, catégorie "entreprise"
+        # dans NOTIFICATION_CATEGORIES/spa/views/parametres.js) - jamais
+        # avant ce commit (company.status doit déjà être à jour en base
+        # si l'envoi échoue), jamais sur une transition vers le MÊME
+        # statut (voir previous_status plus haut).
+        if company.status != previous_status:
+            customer = db.query(BuildnessCustomer).filter(BuildnessCustomer.id == company.customer_id).first()
+            user = (
+                db.query(UserDB).filter(UserDB.id == customer.xepay_merchant_id).first()
+                if customer else None
+            )
+            if user and user.email:
+                if company.status == "processing" and is_notification_enabled(user, "entreprise.formation_processing"):
+                    send_buildness_processing_email(user.email, company.company_name)
+                elif company.status == "completed" and is_notification_enabled(user, "entreprise.formation_completed"):
+                    send_buildness_completed_email(user.email, company.company_name, company.ein_number)
+                elif company.status == "failed" and is_notification_enabled(user, "entreprise.formation_failed"):
+                    send_buildness_failed_email(user.email, company.company_name)
     except Exception:
         logger.exception("Echec traitement webhook doola (event_type=%s)", event_type)
         db.rollback()
