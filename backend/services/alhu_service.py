@@ -1,14 +1,24 @@
-"""Alhu — assistant marchand en LECTURE SEULE (demandé le 2026-11-27,
-première brique d'une architecture agent plus large envisagée par
-l'utilisateur). Volontairement minimal pour ce premier chantier :
+"""Alhu — assistant marchand intégré au tableau de bord Xepay (demandé
+le 2026-11-27, première brique d'une architecture agent plus large
+envisagée par l'utilisateur). Volontairement minimal pour ce premier
+chantier :
 - UN seul agent (pas de directeur + sous-agents, voir la discussion
   avec l'utilisateur - on commence petit, on scale seulement une fois
   l'approche prouvée).
-- AUCUN outil d'écriture : les 3 outils exposés (solde, transactions
-  récentes, statut Buildness) ne font que lire des données déjà
-  visibles ailleurs dans le dashboard, jamais une action côté Stripe/
-  doola/Shopify. Pas de permission_policy "always_ask" à construire ici
-  tant qu'aucun outil n'écrit quoi que ce soit.
+- Presque exclusivement des outils de LECTURE (solde, transactions,
+  statut Buildness, produit, Stripe Connect, workspace/permissions).
+  Les 2 SEULES exceptions qui écrivent (change_member_role,
+  remove_team_member) sont réservées au PROPRIÉTAIRE du workspace
+  (demande du 2026-11-27 : "des outils spécifiques dont seul le owner
+  du workspace peut demander à Alhu d'effectuer... certaines
+  modifications concernant son equipe") et gardées en défense en
+  profondeur : jamais proposées au modèle pour un non-owner
+  (_build_tools), ET re-vérifiées indépendamment à l'exécution
+  (_require_owner, jamais une confiance aveugle dans ce qui a été
+  proposé), ET conditionnées à une confirmation explicite du marchand
+  dans la conversation (voir ALHU_SYSTEM_PROMPT), ET journalisées
+  (log_security_event, libellé "(via Alhu)" pour distinguer une
+  modification faite par l'assistant d'une action directe dans l'UI).
 - Remplace routes/app.py (ancien stub OpenAI /ai/chat, jamais appelé par
   aucun frontend, supprimé le 2026-11-27) - clé/SDK différents
   (ANTHROPIC_API_KEY, pas OPENAI_API_KEY), jamais réutilisé.
@@ -21,7 +31,21 @@ import re
 import stripe
 from sqlalchemy.orm import Session
 
-from backend.models import BuildnessCompany, BuildnessCustomer, Profile, Wallet, WalletTransaction
+from backend.models import (
+    BuildnessCompany,
+    BuildnessCustomer,
+    Profile,
+    UserDB,
+    Wallet,
+    WalletTransaction,
+    WorkspaceUser,
+)
+from backend.services import permission_service
+from backend.services.security_log_service import log_security_event
+
+# Doit rester synchro avec ASSIGNABLE_ROLES (routes/users.py) - jamais
+# "owner" (protégé, voir _require_owner/_change_member_role plus bas).
+_ASSIGNABLE_ROLES = {"admin", "manager", "membre", "lecteur"}
 
 logger = logging.getLogger(__name__)
 
@@ -74,19 +98,21 @@ def _resolve_product_path(relative_path: str) -> str:
 
 ALHU_SYSTEM_PROMPT = """Tu es Alhu, l'assistant intégré au tableau de bord Xepay (plateforme de paiement pour marchands).
 
-Tu réponds à 3 types de questions, toujours via les outils fournis - jamais à partir de connaissances générales non vérifiées, et jamais en inventant une donnée ou une fonctionnalité :
+Tu réponds à 5 types de questions, toujours via les outils fournis - jamais à partir de connaissances générales non vérifiées, et jamais en inventant une donnée ou une fonctionnalité :
 1. Questions sur les DONNÉES PROPRES du marchand (solde, transactions, dossier de création de société/LLC) - outils get_balance/get_recent_transactions/get_buildness_status.
 2. Questions sur LE PRODUIT Xepay lui-même (fonctionnalités, tarifs, fonctionnement du tableau de bord) - outils list_product_files/read_product_file, qui donnent accès en LECTURE SEULE aux pages marketing et à tout le code source du SPA (frontend/pages/*.html et frontend/pages/spa/). ATTENTION : les pages marketing (frontend/pages/accueil.html, tarif.html...) décrivent l'offre générale (plans Free/Pro/Business) mais PAS les fonctionnalités internes au tableau de bord (Buildness, Stripe Connect, Shopify...) - leur coût/fonctionnement réels sont codés en dur dans le SPA, jamais sur une page marketing. Pour le coût/processus de la formation de LLC spécifiquement, utilise TOUJOURS get_buildness_info (rapide, lit la bonne info directement) plutôt que read_product_file sur parametres.js en entier (40+ Ko, beaucoup trop lent et peu fiable sur ce fichier précis). Pour toute autre question précise sur une fonctionnalité du tableau de bord sans outil dédié, lis le fichier de vue correspondant dans frontend/pages/spa/views/ avec read_product_file avant de répondre - ne te contente jamais d'une recherche dans les pages marketing seules pour ce type de question, et si après une recherche réelle tu ne trouves toujours rien, dis-le explicitement plutôt que de deviner.
 3. Questions sur l'ACTIVATION DU COMPTE STRIPE CONNECT du marchand - outil get_stripe_connect_status. Tous les marchands Xepay sont des fondateurs non-résidents ayant formé une LLC américaine (via Buildness/doola) pour pouvoir utiliser Stripe Connect. Tu peux expliquer en général les grandes étapes de cette activation (informations de l'entreprise, informations du représentant légal, coordonnées bancaires, documents de vérification d'identité) MAIS pour savoir précisément ce qu'IL reste à fournir à CE marchand, utilise TOUJOURS get_stripe_connect_status et base-toi sur ses champs currently_due/eventually_due_in_addition réels (déjà traduits en français, identiques à ce que voit le marchand dans Paramètres > Compte Stripe Connect > État du compte) - ne récite jamais une liste de documents par cœur, elle peut être fausse ou incomplète pour sa situation. Tu ne peux JAMAIS remplir ce formulaire à sa place (Stripe l'interdit structurellement, les champs KYC doivent venir directement du titulaire du compte) : ton rôle est de l'accompagner et de lui relayer clairement ce qui lui manque, pas de le compléter pour lui.
+4. Questions sur LE WORKSPACE ou SON PROPRE RÔLE (n'importe quel membre) - outils get_workspace_info (identifiant/nom du workspace, son rôle, nombre de membres) et get_my_permissions (ce qu'il peut/ne peut pas faire, selon son rôle réel dans CE workspace, jamais une règle générique mémorisée).
+5. Demandes de GESTION D'ÉQUIPE (list_team_members/change_member_role/remove_team_member) - outils réservés au PROPRIÉTAIRE du workspace, qui ne te sont même pas proposés si le marchand n'est pas owner ; si un non-owner demande ce genre d'action, dis simplement que c'est réservé au propriétaire, n'essaie jamais ces outils. change_member_role et remove_team_member MODIFIENT réellement l'équipe (contrairement à tout le reste, en lecture seule) : avant de les appeler, décris PRÉCISÉMENT l'action prévue (qui, quoi) et attends un message de confirmation explicite et sans ambiguïté du propriétaire (ex. "oui", "confirme") dans un tour de conversation SÉPARÉ - jamais dans la même réponse que la proposition, jamais sur une simple formulation ambiguë.
 
 Règles strictes :
-- Tu ne peux RIEN modifier, créer ou annuler, nulle part : tu n'as accès qu'à des outils de LECTURE. Si le marchand demande une action (remboursement, modification, création), explique clairement que tu ne peux pas l'exécuter et indique où le faire dans le dashboard (ex. Paramètres > Entreprise pour une demande de correction LLC).
+- En dehors des 2 outils de gestion d'équipe ci-dessus (strictement réservés au owner, avec confirmation explicite obligatoire), tu ne peux RIEN modifier, créer ou annuler ailleurs : le reste n'est que LECTURE. Si le marchand demande une autre action (remboursement, modification Stripe/LLC, création), explique clairement que tu ne peux pas l'exécuter et indique où le faire dans le dashboard (ex. Paramètres > Entreprise pour une demande de correction LLC).
 - Les outils produit ne donnent accès qu'au code FRONTEND (pages marketing + SPA) - jamais au code backend, à des secrets ou à des données d'autres marchands.
 - Si une information demandée n'est couverte par aucun outil, dis-le explicitement plutôt que de deviner.
 - Réponds en français, de façon concise et directe.
 """
 
-ALHU_TOOLS = [
+_BASE_TOOLS = [
     {
         "name": "get_balance",
         "description": "Renvoie le solde du workspace du marchand (disponible et en attente), en devise de la plateforme.",
@@ -147,7 +173,56 @@ ALHU_TOOLS = [
         "description": "Renvoie le prix actuel de la formation de LLC (Buildness) et le détail des étapes du processus, extraits en direct du tableau de bord (jamais une valeur devinée ou mémorisée). Toujours utiliser cet outil pour une question sur le coût ou le déroulement de la création de LLC, plutôt que de chercher dans les pages marketing (qui ne couvrent pas cette fonctionnalité) ou de lire parametres.js en entier.",
         "input_schema": {"type": "object", "properties": {}},
     },
+    {
+        "name": "get_workspace_info",
+        "description": "Renvoie l'identifiant et le nom du workspace actuel, le rôle du marchand dans CE workspace, et le nombre total de membres.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_my_permissions",
+        "description": "Renvoie, pour le rôle RÉEL du marchand dans ce workspace, la liste des actions qu'il peut ou ne peut pas effectuer (ex. gérer l'équipe, retirer des fonds...). Toujours utiliser cet outil plutôt que de deviner les permissions d'un rôle - elles peuvent être personnalisées par le propriétaire pour ce workspace précis.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
 ]
+
+# Réservés au PROPRIÉTAIRE du workspace (voir le docstring du module) -
+# jamais inclus dans la liste d'outils envoyée au modèle pour un
+# non-owner (_build_tools), et re-vérifiés indépendamment à
+# l'exécution (_require_owner) même si cette offre était contournée.
+_OWNER_ONLY_TOOLS = [
+    {
+        "name": "list_team_members",
+        "description": "Liste tous les membres du workspace (email et rôle). Réservé au propriétaire du workspace.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "change_member_role",
+        "description": "Change le rôle d'un membre du workspace (admin, manager, membre ou lecteur - jamais owner, protégé). Réservé au propriétaire. NE JAMAIS appeler sans avoir d'abord obtenu une confirmation explicite et sans ambiguïté du propriétaire dans un message séparé de la proposition.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "member_email": {"type": "string", "description": "Email du membre à modifier."},
+                "new_role": {"type": "string", "description": "Nouveau rôle : admin, manager, membre ou lecteur."},
+            },
+            "required": ["member_email", "new_role"],
+        },
+    },
+    {
+        "name": "remove_team_member",
+        "description": "Retire définitivement un membre du workspace. Réservé au propriétaire. NE JAMAIS appeler sans avoir d'abord obtenu une confirmation explicite et sans ambiguïté du propriétaire dans un message séparé de la proposition.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "member_email": {"type": "string", "description": "Email du membre à retirer."},
+            },
+            "required": ["member_email"],
+        },
+    },
+]
+
+
+def _build_tools(is_owner: bool) -> list[dict]:
+    return (_BASE_TOOLS + _OWNER_ONLY_TOOLS) if is_owner else list(_BASE_TOOLS)
 
 
 def _get_balance(db: Session, workspace_id: str) -> dict:
@@ -394,7 +469,152 @@ def _get_buildness_info() -> dict:
     }
 
 
-def _execute_tool(tool_name: str, tool_input: dict, db: Session, workspace_id: str) -> dict:
+def _get_workspace_info(db: Session, workspace_id: str, caller_user_id: str) -> dict:
+    owner = db.query(UserDB).filter(UserDB.id == workspace_id).first()
+    # Même convention que get_my_workspaces (routes/users.py) : aucun nom
+    # de workspace stocké en base, dérivé de l'email du propriétaire.
+    workspace_name = f"{owner.email.split('@')[0]} Workspace" if owner else workspace_id
+    membership = (
+        db.query(WorkspaceUser)
+        .filter(WorkspaceUser.workspace_id == workspace_id, WorkspaceUser.user_id == caller_user_id)
+        .first()
+    )
+    member_count = db.query(WorkspaceUser).filter(WorkspaceUser.workspace_id == workspace_id).count()
+    return {
+        "workspace_id": workspace_id,
+        "workspace_name": workspace_name,
+        "my_role": membership.role if membership else None,
+        "member_count": member_count,
+    }
+
+
+def _get_my_permissions(db: Session, workspace_id: str, caller_user_id: str) -> dict:
+    membership = (
+        db.query(WorkspaceUser)
+        .filter(WorkspaceUser.workspace_id == workspace_id, WorkspaceUser.user_id == caller_user_id)
+        .first()
+    )
+    if not membership:
+        return {"error": "Vous n'appartenez pas à ce workspace."}
+    # list_capabilities lit les surcharges propres à CE workspace - jamais
+    # une table de rôles générique mémorisée par le modèle, qui serait
+    # fausse dès qu'un propriétaire personnalise ses permissions.
+    capabilities = permission_service.list_capabilities(db, workspace_id)
+    return {
+        "role": membership.role,
+        "capabilities": [
+            {
+                "key": c["key"],
+                "label": c["label"],
+                "description": c["description"],
+                "allowed": permission_service.role_satisfies(membership.role, c["current_role"]),
+            }
+            for c in capabilities
+        ],
+    }
+
+
+def _require_owner(db: Session, workspace_id: str, caller_user_id: str) -> str | None:
+    """Re-vérifie INDÉPENDAMMENT (nouvelle requête DB, jamais un
+    booléen transmis par l'appelant) que caller_user_id est bien owner
+    de workspace_id - appelé au tout début de chacun des 3 outils
+    réservés au propriétaire, même s'ils ne sont déjà proposés au
+    modèle que pour un owner (_build_tools) : défense en profondeur,
+    jamais une confiance aveugle dans ce qui a été offert plus haut.
+    Renvoie un message d'erreur si le caller n'est pas owner, None sinon."""
+    membership = (
+        db.query(WorkspaceUser)
+        .filter(WorkspaceUser.workspace_id == workspace_id, WorkspaceUser.user_id == caller_user_id)
+        .first()
+    )
+    if not membership or membership.role != "owner":
+        return "Cette action est réservée au propriétaire du workspace."
+    return None
+
+
+def _list_team_members(db: Session, workspace_id: str, caller_user_id: str) -> dict:
+    error = _require_owner(db, workspace_id, caller_user_id)
+    if error:
+        return {"error": error}
+    rows = db.query(WorkspaceUser).filter(WorkspaceUser.workspace_id == workspace_id).all()
+    members = []
+    for row in rows:
+        user = db.query(UserDB).filter(UserDB.id == row.user_id).first()
+        members.append({
+            "email": user.email if user else None,
+            "role": row.role,
+            "is_owner": row.user_id == workspace_id,
+        })
+    return {"members": members}
+
+
+def _find_member_by_email(db: Session, workspace_id: str, member_email: str):
+    """Renvoie (user, membership) pour un email donné À L'INTÉRIEUR de
+    ce workspace - jamais un UserDB résolu globalement par email, qui
+    pourrait exister hors de ce workspace et laisserait modifier/
+    retirer n'importe qui ailleurs sur la plateforme."""
+    user = db.query(UserDB).filter(UserDB.email == member_email).first()
+    if not user:
+        return None, None
+    membership = (
+        db.query(WorkspaceUser)
+        .filter(WorkspaceUser.workspace_id == workspace_id, WorkspaceUser.user_id == user.id)
+        .first()
+    )
+    if not membership:
+        return None, None
+    return user, membership
+
+
+def _change_member_role(db: Session, workspace_id: str, caller_user_id: str, member_email: str, new_role: str) -> dict:
+    error = _require_owner(db, workspace_id, caller_user_id)
+    if error:
+        return {"error": error}
+    new_role = (new_role or "").strip().lower()
+    if new_role not in _ASSIGNABLE_ROLES:
+        return {"error": f"Rôle invalide : {new_role}."}
+    user, membership = _find_member_by_email(db, workspace_id, member_email)
+    if not membership:
+        return {"error": "Ce membre n'appartient pas à ce workspace."}
+    if user.id == workspace_id:
+        return {"error": "Impossible de modifier le rôle du propriétaire."}
+    membership.role = new_role
+    db.commit()
+    log_security_event(
+        db,
+        caller_user_id,
+        "member_role_changed",
+        f"Rôle de {user.email} changé en {new_role.capitalize()} (via Alhu)",
+        workspace_id=workspace_id,
+    )
+    return {"success": True, "email": user.email, "new_role": new_role}
+
+
+def _remove_team_member(db: Session, workspace_id: str, caller_user_id: str, member_email: str) -> dict:
+    error = _require_owner(db, workspace_id, caller_user_id)
+    if error:
+        return {"error": error}
+    user, membership = _find_member_by_email(db, workspace_id, member_email)
+    if not membership:
+        return {"error": "Ce membre n'appartient pas à ce workspace."}
+    if user.id == workspace_id:
+        return {"error": "Impossible de retirer le propriétaire."}
+    if user.id == caller_user_id:
+        return {"error": "Vous ne pouvez pas vous retirer vous-même."}
+    removed_email = user.email
+    db.delete(membership)
+    db.commit()
+    log_security_event(
+        db,
+        caller_user_id,
+        "member_removed",
+        f"{removed_email} retiré de l'équipe (via Alhu)",
+        workspace_id=workspace_id,
+    )
+    return {"success": True, "email": removed_email}
+
+
+def _execute_tool(tool_name: str, tool_input: dict, db: Session, workspace_id: str, caller_user_id: str) -> dict:
     if tool_name == "get_balance":
         return _get_balance(db, workspace_id)
     if tool_name == "get_recent_transactions":
@@ -409,6 +629,16 @@ def _execute_tool(tool_name: str, tool_input: dict, db: Session, workspace_id: s
         return _get_stripe_connect_status(db, workspace_id)
     if tool_name == "get_buildness_info":
         return _get_buildness_info()
+    if tool_name == "get_workspace_info":
+        return _get_workspace_info(db, workspace_id, caller_user_id)
+    if tool_name == "get_my_permissions":
+        return _get_my_permissions(db, workspace_id, caller_user_id)
+    if tool_name == "list_team_members":
+        return _list_team_members(db, workspace_id, caller_user_id)
+    if tool_name == "change_member_role":
+        return _change_member_role(db, workspace_id, caller_user_id, tool_input.get("member_email"), tool_input.get("new_role"))
+    if tool_name == "remove_team_member":
+        return _remove_team_member(db, workspace_id, caller_user_id, tool_input.get("member_email"))
     return {"error": f"Outil inconnu : {tool_name}"}
 
 
@@ -429,10 +659,15 @@ _TOOL_STATUS_LABELS = {
     "get_buildness_info": "📖 Je consulte les informations sur la formation de LLC...",
     "list_product_files": "🔍 J'explore la documentation du produit...",
     "read_product_file": "📄 Je lis la documentation du produit...",
+    "get_workspace_info": "🧭 Je consulte les informations du workspace...",
+    "get_my_permissions": "🔑 Je vérifie vos permissions...",
+    "list_team_members": "👥 Je consulte la liste de l'équipe...",
+    "change_member_role": "✏️ Je modifie le rôle du membre...",
+    "remove_team_member": "🚪 Je retire ce membre de l'équipe...",
 }
 
 
-def stream_alhu_chat(workspace_id: str, user_messages: list[dict]):
+def stream_alhu_chat(workspace_id: str, caller_user_id: str, is_owner: bool, user_messages: list[dict]):
     """Générateur d'évènements ({"type": "status"|"delta"|"done"|"error", ...})
     pour streamer la réflexion/réponse d'Alhu en direct (demande du
     2026-11-27 : "le chat doit montrer au marchand qu'il est en train de
@@ -464,20 +699,26 @@ def stream_alhu_chat(workspace_id: str, user_messages: list[dict]):
     messages = list(user_messages)
     full_text_parts = []
     db = SessionLocal()
+    # Figée UNE SEULE FOIS ici, au tout début de la conversation - jamais
+    # recalculée à partir d'une entrée du modèle : c'est elle qui décide
+    # quels outils sont même proposés à Claude pour tout ce tour (voir
+    # _build_tools), et chaque outil réservé au owner re-vérifie quand
+    # même indépendamment via _require_owner.
+    tools = _build_tools(is_owner)
 
     try:
-        yield from _stream_alhu_rounds(client, db, workspace_id, messages, full_text_parts)
+        yield from _stream_alhu_rounds(client, db, workspace_id, caller_user_id, tools, messages, full_text_parts)
     finally:
         db.close()
 
 
-def _stream_alhu_rounds(client, db, workspace_id, messages, full_text_parts):
+def _stream_alhu_rounds(client, db, workspace_id, caller_user_id, tools, messages, full_text_parts):
     for _ in range(MAX_TOOL_ROUNDS):
         with client.messages.stream(
             model=ALHU_MODEL,
             max_tokens=1024,
             system=ALHU_SYSTEM_PROMPT,
-            tools=ALHU_TOOLS,
+            tools=tools,
             messages=messages,
         ) as stream:
             for event in stream:
@@ -499,7 +740,7 @@ def _stream_alhu_rounds(client, db, workspace_id, messages, full_text_parts):
             if block.type != "tool_use":
                 continue
             try:
-                result = _execute_tool(block.name, block.input or {}, db, workspace_id)
+                result = _execute_tool(block.name, block.input or {}, db, workspace_id, caller_user_id)
             except Exception:
                 logger.exception("Echec execution outil Alhu %s", block.name)
                 result = {"error": "Erreur interne lors de l'exécution de cet outil."}
@@ -515,6 +756,3 @@ def _stream_alhu_rounds(client, db, workspace_id, messages, full_text_parts):
         "type": "done",
         "reply": "Désolé, je n'ai pas pu finaliser ma réponse. Réessayez en reformulant votre question.",
     }
-
-    logger.warning("Alhu : MAX_TOOL_ROUNDS atteint pour workspace_id=%s sans réponse finale", workspace_id)
-    return "Désolé, je n'ai pas pu finaliser ma réponse. Réessayez en reformulant votre question."
