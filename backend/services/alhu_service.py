@@ -16,6 +16,7 @@ l'utilisateur). Volontairement minimal pour ce premier chantier :
 
 import logging
 import os
+import re
 
 import stripe
 from sqlalchemy.orm import Session
@@ -76,7 +77,7 @@ ALHU_SYSTEM_PROMPT = """Tu es Alhu, l'assistant intégré au tableau de bord Xep
 Tu réponds à 3 types de questions, toujours via les outils fournis - jamais à partir de connaissances générales non vérifiées, et jamais en inventant une donnée ou une fonctionnalité :
 1. Questions sur les DONNÉES PROPRES du marchand (solde, transactions, dossier de création de société/LLC) - outils get_balance/get_recent_transactions/get_buildness_status.
 2. Questions sur LE PRODUIT Xepay lui-même (fonctionnalités, pages marketing, fonctionnement du tableau de bord) - outils list_product_files/read_product_file, qui donnent accès en LECTURE SEULE aux pages marketing et à tout le code source du SPA (frontend/pages/*.html et frontend/pages/spa/). Utilise list_product_files pour explorer AVANT de lire, puis read_product_file sur les fichiers pertinents - ne réponds sur le fonctionnement du produit qu'après avoir réellement lu le code/contenu concerné, jamais en supposant.
-3. Questions sur l'ACTIVATION DU COMPTE STRIPE CONNECT du marchand - outil get_stripe_connect_status. Tous les marchands Xepay sont des fondateurs non-résidents ayant formé une LLC américaine (via Buildness/doola) pour pouvoir utiliser Stripe Connect. Tu peux expliquer en général les grandes étapes de cette activation (informations de l'entreprise, informations du représentant légal, coordonnées bancaires, documents de vérification d'identité) MAIS pour savoir précisément ce qu'IL reste à fournir à CE marchand, utilise TOUJOURS get_stripe_connect_status et base-toi sur ses champs currently_due/eventually_due réels - ne récite jamais une liste de documents par cœur, elle peut être fausse ou incomplète pour sa situation. Tu ne peux JAMAIS remplir ce formulaire à sa place (Stripe l'interdit structurellement, les champs KYC doivent venir directement du titulaire du compte) : ton rôle est de l'accompagner et de lui relayer clairement ce qui lui manque, pas de le compléter pour lui.
+3. Questions sur l'ACTIVATION DU COMPTE STRIPE CONNECT du marchand - outil get_stripe_connect_status. Tous les marchands Xepay sont des fondateurs non-résidents ayant formé une LLC américaine (via Buildness/doola) pour pouvoir utiliser Stripe Connect. Tu peux expliquer en général les grandes étapes de cette activation (informations de l'entreprise, informations du représentant légal, coordonnées bancaires, documents de vérification d'identité) MAIS pour savoir précisément ce qu'IL reste à fournir à CE marchand, utilise TOUJOURS get_stripe_connect_status et base-toi sur ses champs currently_due/eventually_due_in_addition réels (déjà traduits en français, identiques à ce que voit le marchand dans Paramètres > Compte Stripe Connect > État du compte) - ne récite jamais une liste de documents par cœur, elle peut être fausse ou incomplète pour sa situation. Tu ne peux JAMAIS remplir ce formulaire à sa place (Stripe l'interdit structurellement, les champs KYC doivent venir directement du titulaire du compte) : ton rôle est de l'accompagner et de lui relayer clairement ce qui lui manque, pas de le compléter pour lui.
 
 Règles strictes :
 - Tu ne peux RIEN modifier, créer ou annuler, nulle part : tu n'as accès qu'à des outils de LECTURE. Si le marchand demande une action (remboursement, modification, création), explique clairement que tu ne peux pas l'exécuter et indique où le faire dans le dashboard (ex. Paramètres > Entreprise pour une demande de correction LLC).
@@ -138,7 +139,7 @@ ALHU_TOOLS = [
     },
     {
         "name": "get_stripe_connect_status",
-        "description": "Renvoie l'état RÉEL et à jour de l'activation du compte Stripe Connect du marchand : si le compte existe, si les paiements/retraits sont activés, et surtout la liste exacte des informations encore requises par Stripe pour CE marchand précis (currently_due/eventually_due). Toujours utiliser cet outil plutôt que deviner une liste générique de documents.",
+        "description": "Renvoie l'état RÉEL et à jour de l'activation du compte Stripe Connect du marchand : si le compte existe, si les paiements/retraits sont activés, et la liste exacte (currently_due/eventually_due_in_addition) des informations encore requises par Stripe pour CE marchand précis - déjà traduite en français, identique à ce qu'affiche Paramètres > Compte Stripe Connect > État du compte. Toujours utiliser cet outil plutôt que deviner une liste générique de documents.",
         "input_schema": {"type": "object", "properties": {}},
     },
 ]
@@ -246,6 +247,73 @@ def _read_product_file(path: str | None) -> dict:
     return {"content": content, "truncated": truncated}
 
 
+# Port Python EXACT de STRIPE_REQUIREMENT_LABELS/formatStripeRequirement
+# (frontend/pages/spa/views/parametres.js, section "État du compte") -
+# demandé le 2026-11-27 pour qu'Alhu donne toujours le MÊME libellé
+# français que ce que voit déjà le marchand à l'écran. Traduit ici
+# directement en Python (déterministe, zéro appel d'outil
+# supplémentaire) plutôt que de faire relire ce fichier de 40+ Ko par
+# le modèle à chaque question Stripe - testé, beaucoup trop lent/
+# instable (plusieurs relectures redondantes, risque de ne jamais
+# conclure dans MAX_TOOL_ROUNDS). Les deux copies doivent rester
+# synchronisées manuellement si l'une des deux change.
+_STRIPE_REQUIREMENT_LABELS = {
+    "business_profile.mcc": "Secteur d'activité",
+    "business_profile.url": "Site web de l'entreprise",
+    "business_profile.product_description": "Description du produit ou service",
+    "business_profile.support_phone": "Téléphone du service client",
+    "business_profile.support_email": "Email du service client",
+    "business_profile.support_address": "Adresse du service client",
+    "business_type": "Type d'entreprise (société, particulier...)",
+    "external_account": "Coordonnées bancaires pour recevoir les virements",
+    "tos_acceptance.date": "Acceptation des conditions Stripe",
+    "tos_acceptance.ip": "Acceptation des conditions Stripe",
+    "settings.payments.statement_descriptor": "Libellé affiché sur les relevés bancaires de vos clients",
+    "company.name": "Raison sociale de l'entreprise",
+    "company.tax_id": "Numéro fiscal (SIRET/TVA) de l'entreprise",
+    "company.phone": "Téléphone de l'entreprise",
+    "company.address.line1": "Adresse de l'entreprise",
+    "company.address.postal_code": "Adresse de l'entreprise",
+    "company.address.city": "Adresse de l'entreprise",
+    "company.verification.document": "Document d'immatriculation de l'entreprise",
+}
+for _field in ("dob.day", "dob.month", "dob.year"):
+    _STRIPE_REQUIREMENT_LABELS[f"representative.{_field}"] = "Date de naissance du représentant légal"
+    _STRIPE_REQUIREMENT_LABELS[f"individual.{_field}"] = "Date de naissance"
+for _key, _label in (
+    ("first_name", "Prénom"),
+    ("last_name", "Nom"),
+    ("email", "Email"),
+    ("phone", "Numéro de téléphone"),
+    ("id_number", "Numéro d'identité"),
+    ("verification.document", "Pièce d'identité"),
+    ("address.line1", "Adresse"),
+    ("address.postal_code", "Adresse"),
+    ("address.city", "Adresse"),
+):
+    _STRIPE_REQUIREMENT_LABELS[f"representative.{_key}"] = f"{_label} du représentant légal"
+    _STRIPE_REQUIREMENT_LABELS[f"individual.{_key}"] = _label
+
+
+def _format_stripe_requirement(code: str) -> str:
+    if code in _STRIPE_REQUIREMENT_LABELS:
+        return _STRIPE_REQUIREMENT_LABELS[code]
+    # Repli pour un code non mappé (même logique que le frontend) :
+    # rendre au moins lisible plutôt que d'afficher le jargon brut.
+    return " ".join(w.capitalize() for w in re.split(r"[._]", code) if w)
+
+
+def _format_stripe_requirement_list(codes: list[str]) -> list[str]:
+    seen = set()
+    labels = []
+    for code in codes:
+        label = _format_stripe_requirement(code)
+        if label not in seen:
+            seen.add(label)
+            labels.append(label)
+    return labels
+
+
 def _get_stripe_connect_status(db: Session, workspace_id: str) -> dict:
     profile = db.query(Profile).filter(Profile.user_id == workspace_id).first()
     if not profile or not profile.stripe_account_id:
@@ -269,17 +337,23 @@ def _get_stripe_connect_status(db: Session, workspace_id: str) -> dict:
     else:
         status = "in_progress"
 
+    currently_due = requirements.get("currently_due", [])
+    # eventually_due est un sur-ensemble de currently_due (même remarque
+    # que côté frontend) - on ne renvoie que ce qui s'ajoute EN PLUS,
+    # jamais une liste dupliquée.
+    eventually_due_extra = [c for c in requirements.get("eventually_due", []) if c not in currently_due]
+
     return {
         "status": status,
         "details_submitted": account.details_submitted,
         "charges_enabled": charges_enabled,
         "payouts_enabled": payouts_enabled,
-        # Noms de champs bruts Stripe (ex. "individual.verification.document",
-        # "external_account") - à traduire en français clair pour le
-        # marchand, jamais à afficher tels quels sans explication.
-        "currently_due": requirements.get("currently_due", []),
-        "eventually_due": requirements.get("eventually_due", []),
-        "past_due": requirements.get("past_due", []),
+        # Déjà traduits en français (identique à Paramètres > Compte
+        # Stripe Connect > État du compte) - jamais les codes bruts
+        # Stripe, jamais une traduction inventée par le modèle.
+        "currently_due": _format_stripe_requirement_list(currently_due),
+        "eventually_due_in_addition": _format_stripe_requirement_list(eventually_due_extra),
+        "past_due": _format_stripe_requirement_list(requirements.get("past_due", [])),
         "disabled_reason": requirements.get("disabled_reason"),
     }
 
