@@ -34,6 +34,7 @@ chantier :
   (ANTHROPIC_API_KEY, pas OPENAI_API_KEY), jamais réutilisé.
 """
 
+import json
 import logging
 import os
 import re
@@ -62,7 +63,13 @@ _ASSIGNABLE_ROLES = {"admin", "manager", "membre", "lecteur"}
 logger = logging.getLogger(__name__)
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-ALHU_MODEL = os.getenv("ALHU_MODEL", "claude-sonnet-5")
+# Haiku 4.5 (demande du 2026-11-27, optimisation du coût par jeton) -
+# "claude-haiku-5-5" n'existe pas (aucun modèle Anthropic de ce nom à
+# ce jour) : identifiant RÉEL le plus proche, claude-haiku-4-5, utilisé
+# ici avec sa date de snapshot explicite (claude-haiku-4-5-20251001) -
+# contrairement à Sonnet/Opus/Fable (alias sans date disponibles),
+# Haiku 4.5 n'a pas d'alias non daté connu, jamais deviné ici.
+ALHU_MODEL = os.getenv("ALHU_MODEL", "claude-haiku-4-5-20251001")
 # Même clé/convention que services/stripe_service.py, routes/buildness.py -
 # posée ici aussi (pas seulement supposée déjà positionnée par un autre
 # module importé avant celui-ci) pour que get_stripe_connect_status
@@ -122,8 +129,81 @@ Règles strictes :
 - En dehors des outils d'écriture explicitement prévus ci-dessus (gestion d'équipe - strictement réservée au owner, avec confirmation explicite obligatoire dans un tour séparé ; demande de boutique Shopify - réservée à qui peut gérer l'intégration Shopify dans ce workspace, avec confirmation avant envoi), tu ne peux RIEN modifier, créer ou annuler ailleurs : le reste n'est que LECTURE. Si le marchand demande une autre action (remboursement, modification Stripe/LLC, création), explique clairement que tu ne peux pas l'exécuter et indique où le faire dans le dashboard (ex. Paramètres > Entreprise pour une demande de correction LLC).
 - Les outils produit ne donnent accès qu'au code FRONTEND (pages marketing + SPA) - jamais au code backend, à des secrets ou à des données d'autres marchands.
 - Si une information demandée n'est couverte par aucun outil, dis-le explicitement plutôt que de deviner.
-- Réponds en français, de façon concise et directe.
+- Réponds en français, de façon concise et directe : va droit à l'information utile, évite les reformulations, les listes exhaustives quand un résumé suffit, et toute phrase qui n'ajoute rien de nouveau.
 """
+
+# Forme "bloc de contenu" (pas une simple string) du prompt système,
+# avec cache_control (demande du 2026-11-27, optimisation du coût par
+# jeton) - ALHU_SYSTEM_PROMPT est 100% STATIQUE (jamais interpolé avec
+# une donnée dynamique), donc ce bloc est identique à chaque appel :
+# Anthropic met en cache tout le préfixe de la requête jusqu'à CE point
+# (tools + system), relu quasi gratuitement sur chaque round suivant de
+# la même conversation (voir _stream_alhu_rounds) et sur tout appel
+# ultérieur dont les tools proposés sont identiques (voir
+# _tools_with_cache_control). Sous le seuil minimal de mise en cache
+# (1024 jetons Sonnet/Opus, 2048 Haiku - voir docs.anthropic.com/
+# prompt-caching), cache_control est un no-op silencieux, jamais une
+# erreur : tools+system dépassent largement ce seuil ici (plusieurs
+# centaines de mots de descriptions d'outils).
+_SYSTEM_PROMPT_BLOCKS = [
+    {"type": "text", "text": ALHU_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}},
+]
+
+
+def _tools_with_cache_control(tools: list[dict]) -> list[dict]:
+    """Pose cache_control SEULEMENT sur le DERNIER outil de la liste -
+    Anthropic met en cache tout le préfixe jusqu'au dernier breakpoint
+    marqué, jamais outil par outil : un seul marqueur, en fin de liste,
+    suffit à couvrir tous les outils qui précèdent. Copie superficielle
+    du dernier élément (jamais une mutation in-place) - _BASE_TOOLS/
+    _OWNER_ONLY_TOOLS/_CAPABILITY_GATED_TOOLS sont des listes PARTAGÉES
+    entre toutes les conversations ; threads muter directement le dict
+    partagé corromprait silencieusement un autre appel où cet outil
+    n'est plus forcément en dernière position."""
+    if not tools:
+        return tools
+    capped = list(tools)
+    capped[-1] = {**capped[-1], "cache_control": {"type": "ephemeral"}}
+    return capped
+
+
+# Fenêtre glissante sur l'historique envoyé à l'API (demande du
+# 2026-11-27, optimisation du coût par jeton) - limite la partie qui
+# grossit sans bornes sur une longue conversation (le client renvoie
+# tout l'historique à chaque appel, voir docstring de stream_alhu_chat),
+# jamais la boucle outil/réponse interne d'UN SEUL tour (déjà bornée
+# par MAX_TOOL_ROUNDS, et nécessaire en entier pour la cohérence de CE
+# tour précis).
+MAX_HISTORY_MESSAGES = 8
+
+
+def _is_tool_result_message(message: dict) -> bool:
+    content = message.get("content")
+    return isinstance(content, list) and any(
+        isinstance(block, dict) and block.get("type") == "tool_result" for block in content
+    )
+
+
+def _trim_message_history(messages: list[dict], max_messages: int = MAX_HISTORY_MESSAGES) -> list[dict]:
+    """Garde au plus les max_messages derniers messages - SAUF si la
+    coupe tomberait au milieu d'une paire tool_use/tool_result,
+    interdite par l'API Anthropic (un message "user" contenant un
+    tool_result doit TOUJOURS être immédiatement précédé du message
+    "assistant" qui a émis le tool_use correspondant). Recule le point
+    de coupe tant que le message retenu en premier est soit un
+    tool_result (il faut alors inclure son tool_use, juste avant), soit
+    un message "assistant" (l'API exige que le tout premier message
+    envoyé soit "user" - jamais un historique qui démarre par une
+    réponse de l'assistant) : converge toujours vers 0 au pire cas,
+    puisque messages[0] est garanti "user" (1er message réel du
+    marchand, voir stream_alhu_chat)."""
+    if len(messages) <= max_messages:
+        return messages
+    cut = len(messages) - max_messages
+    while cut > 0 and (messages[cut]["role"] == "assistant" or _is_tool_result_message(messages[cut])):
+        cut -= 1
+    return messages[cut:]
+
 
 _BASE_TOOLS = [
     {
@@ -801,7 +881,12 @@ def stream_alhu_chat(workspace_id: str, caller_user_id: str, caller_role: str, u
     from backend.database import SessionLocal
 
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    messages = list(user_messages)
+    # Fenêtre glissante (voir _trim_message_history) - appliquée UNE
+    # SEULE FOIS ici, sur l'historique entrant (celui qui grossit sans
+    # bornes sur une longue conversation), jamais à l'intérieur de la
+    # boucle outil/réponse ci-dessous (_stream_alhu_rounds), qui doit
+    # voir la totalité de CE tour précis pour rester cohérente.
+    messages = _trim_message_history(list(user_messages))
     full_text_parts = []
     db = SessionLocal()
     # Figée UNE SEULE FOIS ici, au tout début de la conversation - jamais
@@ -809,7 +894,7 @@ def stream_alhu_chat(workspace_id: str, caller_user_id: str, caller_role: str, u
     # quels outils sont même proposés à Claude pour tout ce tour (voir
     # _build_tools), et chaque outil réservé re-vérifie quand même
     # indépendamment (_require_owner/_require_capability).
-    tools = _build_tools(db, workspace_id, caller_role, caller_role == "owner")
+    tools = _tools_with_cache_control(_build_tools(db, workspace_id, caller_role, caller_role == "owner"))
 
     try:
         yield from _stream_alhu_rounds(client, db, workspace_id, caller_user_id, tools, messages, full_text_parts)
@@ -822,7 +907,7 @@ def _stream_alhu_rounds(client, db, workspace_id, caller_user_id, tools, message
         with client.messages.stream(
             model=ALHU_MODEL,
             max_tokens=1024,
-            system=ALHU_SYSTEM_PROMPT,
+            system=_SYSTEM_PROMPT_BLOCKS,
             tools=tools,
             messages=messages,
         ) as stream:
@@ -852,7 +937,14 @@ def _stream_alhu_rounds(client, db, workspace_id, caller_user_id, tools, message
             tool_results.append({
                 "type": "tool_result",
                 "tool_use_id": block.id,
-                "content": str(result),
+                # json.dumps (demande du 2026-11-27, optimisation du coût
+                # par jeton) plutôt que str(result) : syntaxe JSON
+                # compacte (pas d'espace "clé: valeur", pas de
+                # répétition de guillemets Python ', ") cohérente avec
+                # le format déjà attendu par le modèle (input_schema des
+                # outils), jamais plus verbeux que l'ancienne
+                # représentation Python.
+                "content": json.dumps(result, ensure_ascii=False),
             })
         messages.append({"role": "user", "content": tool_results})
 
