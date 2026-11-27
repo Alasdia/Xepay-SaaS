@@ -290,6 +290,14 @@ class BuildnessCorrectionRequestCreate(BaseModel):
     requested_value: str
     note: str | None = None
 
+class ShopifyStoreRequestCreate(BaseModel):
+    # "note" libre et optionnel (ajouté le 2026-11-27) : seul point
+    # d'entrée pour un marchand qui demande une boutique Shopify
+    # "prête à l'emploi" (Buildshop) - cette route n'assigne RIEN
+    # automatiquement, voir ShopifyStoreRequest ci-dessous et
+    # routes/shopify.py::create_shopify_store_request.
+    note: str | None = Field(default=None, max_length=1000)
+
 class AlhuChatMessage(BaseModel):
     # Historique envoyé tel quel par le client à chaque appel (ajouté le
     # 2026-11-27, voir services/alhu_service.py) - rien n'est persisté
@@ -1009,6 +1017,31 @@ class BuildnessCorrectionRequest(Base):
     company_id = Column(String, ForeignKey("buildness_companies.id"), nullable=False)
     field_label = Column(String, nullable=False)
     requested_value = Column(String, nullable=False)
+    note = Column(String, nullable=True)
+    status = Column(String, nullable=False, default="pending")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class ShopifyStoreRequest(Base):
+    """Demande d'une boutique Shopify "prête à l'emploi" (Buildshop) par
+    un marchand - ajouté le 2026-11-27, même esprit que
+    BuildnessCorrectionRequest ci-dessus : le transfert réel d'une
+    boutique pré-provisionnée (voir services/buildshop_service.py,
+    backend/routes/shopify.py section "Buildshop") est une action
+    PUREMENT MANUELLE (Partner Dashboard "Transfer store" - confirmé
+    impossible à automatiser via l'API publique Shopify aujourd'hui).
+    Cette table trace donc UNIQUEMENT la demande à traiter par un
+    humain côté Xepay (voir routes/shopify.py::
+    create_shopify_store_request, services/email_service.py::
+    send_shopify_store_request_internal_email) - AUCUNE assignation ni
+    transfert automatique. C'est notamment la table que l'outil Alhu
+    request_shopify_store (alhu_service.py) écrit : Alhu ne peut QUE
+    créer cette ligne + déclencher l'email, jamais aller plus loin."""
+    __tablename__ = "shopify_store_requests"
+
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("ssr"))
+    workspace_id = Column(String, ForeignKey("users.id"), nullable=False)
     note = Column(String, nullable=True)
     status = Column(String, nullable=False, default="pending")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

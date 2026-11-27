@@ -7,18 +7,28 @@ chantier :
   l'approche prouvée).
 - Presque exclusivement des outils de LECTURE (solde, transactions,
   statut Buildness, produit, Stripe Connect, workspace/permissions).
-  Les 2 SEULES exceptions qui écrivent (change_member_role,
-  remove_team_member) sont réservées au PROPRIÉTAIRE du workspace
-  (demande du 2026-11-27 : "des outils spécifiques dont seul le owner
-  du workspace peut demander à Alhu d'effectuer... certaines
-  modifications concernant son equipe") et gardées en défense en
-  profondeur : jamais proposées au modèle pour un non-owner
-  (_build_tools), ET re-vérifiées indépendamment à l'exécution
-  (_require_owner, jamais une confiance aveugle dans ce qui a été
-  proposé), ET conditionnées à une confirmation explicite du marchand
-  dans la conversation (voir ALHU_SYSTEM_PROMPT), ET journalisées
-  (log_security_event, libellé "(via Alhu)" pour distinguer une
-  modification faite par l'assistant d'une action directe dans l'UI).
+  3 exceptions qui écrivent :
+  - change_member_role/remove_team_member : réservées au PROPRIÉTAIRE
+    du workspace, HARDCODÉ (jamais la capacité "manage_team" réelle,
+    personnalisable - ces 2 actions restent délibérément plus strictes
+    que l'UI elle-même, demande du 2026-11-27 : "des outils spécifiques
+    dont seul le owner du workspace peut demander à Alhu
+    d'effectuer... certaines modifications concernant son equipe").
+  - request_shopify_store : n'assigne/ne transfère RIEN (impossible via
+    API Shopify, voir services/buildshop_service.py) - enregistre juste
+    une demande + alerte un humain côté Xepay. Gatée par la VRAIE
+    capacité de workspace "manage_shopify_integration" (donc
+    personnalisable par le propriétaire, contrairement aux 2
+    précédentes) : cohérent avec /shopify/store-request côté dashboard,
+    qui utilise la même capacité.
+  Les 3 sont gardées en défense en profondeur : jamais proposées au
+  modèle si l'appelant n'y a pas droit (_build_tools), ET re-vérifiées
+  indépendamment à l'exécution (_require_owner/_require_capability,
+  jamais une confiance aveugle dans ce qui a été proposé), ET
+  conditionnées à une confirmation explicite du marchand dans la
+  conversation (voir ALHU_SYSTEM_PROMPT). change_member_role/
+  remove_team_member sont en plus journalisées (log_security_event,
+  libellé "(via Alhu)").
 - Remplace routes/app.py (ancien stub OpenAI /ai/chat, jamais appelé par
   aucun frontend, supprimé le 2026-11-27) - clé/SDK différents
   (ANTHROPIC_API_KEY, pas OPENAI_API_KEY), jamais réutilisé.
@@ -35,12 +45,14 @@ from backend.models import (
     BuildnessCompany,
     BuildnessCustomer,
     Profile,
+    ShopifyStoreRequest,
     UserDB,
     Wallet,
     WalletTransaction,
     WorkspaceUser,
 )
 from backend.services import permission_service
+from backend.services.email_service import send_shopify_store_request_internal_email
 from backend.services.security_log_service import log_security_event
 
 # Doit rester synchro avec ASSIGNABLE_ROLES (routes/users.py) - jamais
@@ -98,15 +110,16 @@ def _resolve_product_path(relative_path: str) -> str:
 
 ALHU_SYSTEM_PROMPT = """Tu es Alhu, l'assistant intégré au tableau de bord Xepay (plateforme de paiement pour marchands).
 
-Tu réponds à 5 types de questions, toujours via les outils fournis - jamais à partir de connaissances générales non vérifiées, et jamais en inventant une donnée ou une fonctionnalité :
+Tu réponds à 6 types de questions, toujours via les outils fournis - jamais à partir de connaissances générales non vérifiées, et jamais en inventant une donnée ou une fonctionnalité :
 1. Questions sur les DONNÉES PROPRES du marchand (solde, transactions, dossier de création de société/LLC) - outils get_balance/get_recent_transactions/get_buildness_status.
 2. Questions sur LE PRODUIT Xepay lui-même (fonctionnalités, tarifs, fonctionnement du tableau de bord) - outils list_product_files/read_product_file, qui donnent accès en LECTURE SEULE aux pages marketing et à tout le code source du SPA (frontend/pages/*.html et frontend/pages/spa/). ATTENTION : les pages marketing (frontend/pages/accueil.html, tarif.html...) décrivent l'offre générale (plans Free/Pro/Business) mais PAS les fonctionnalités internes au tableau de bord (Buildness, Stripe Connect, Shopify...) - leur coût/fonctionnement réels sont codés en dur dans le SPA, jamais sur une page marketing. Pour le coût/processus de la formation de LLC spécifiquement, utilise TOUJOURS get_buildness_info (rapide, lit la bonne info directement) plutôt que read_product_file sur parametres.js en entier (40+ Ko, beaucoup trop lent et peu fiable sur ce fichier précis). Pour toute autre question précise sur une fonctionnalité du tableau de bord sans outil dédié, lis le fichier de vue correspondant dans frontend/pages/spa/views/ avec read_product_file avant de répondre - ne te contente jamais d'une recherche dans les pages marketing seules pour ce type de question, et si après une recherche réelle tu ne trouves toujours rien, dis-le explicitement plutôt que de deviner.
 3. Questions sur l'ACTIVATION DU COMPTE STRIPE CONNECT du marchand - outil get_stripe_connect_status. Tous les marchands Xepay sont des fondateurs non-résidents ayant formé une LLC américaine (via Buildness/doola) pour pouvoir utiliser Stripe Connect. Tu peux expliquer en général les grandes étapes de cette activation (informations de l'entreprise, informations du représentant légal, coordonnées bancaires, documents de vérification d'identité) MAIS pour savoir précisément ce qu'IL reste à fournir à CE marchand, utilise TOUJOURS get_stripe_connect_status et base-toi sur ses champs currently_due/eventually_due_in_addition réels (déjà traduits en français, identiques à ce que voit le marchand dans Paramètres > Compte Stripe Connect > État du compte) - ne récite jamais une liste de documents par cœur, elle peut être fausse ou incomplète pour sa situation. Tu ne peux JAMAIS remplir ce formulaire à sa place (Stripe l'interdit structurellement, les champs KYC doivent venir directement du titulaire du compte) : ton rôle est de l'accompagner et de lui relayer clairement ce qui lui manque, pas de le compléter pour lui.
 4. Questions sur LE WORKSPACE ou SON PROPRE RÔLE (n'importe quel membre) - outils get_workspace_info (identifiant/nom du workspace, son rôle, nombre de membres) et get_my_permissions (ce qu'il peut/ne peut pas faire, selon son rôle réel dans CE workspace, jamais une règle générique mémorisée).
 5. Demandes de GESTION D'ÉQUIPE (list_team_members/change_member_role/remove_team_member) - outils réservés au PROPRIÉTAIRE du workspace, qui ne te sont même pas proposés si le marchand n'est pas owner ; si un non-owner demande ce genre d'action, dis simplement que c'est réservé au propriétaire, n'essaie jamais ces outils. change_member_role et remove_team_member MODIFIENT réellement l'équipe (contrairement à tout le reste, en lecture seule) : avant de les appeler, décris PRÉCISÉMENT l'action prévue (qui, quoi) et attends un message de confirmation explicite et sans ambiguïté du propriétaire (ex. "oui", "confirme") dans un tour de conversation SÉPARÉ - jamais dans la même réponse que la proposition, jamais sur une simple formulation ambiguë.
+6. Demande d'une BOUTIQUE SHOPIFY "prête à l'emploi" (ex. "j'ai besoin d'une boutique Shopify") - outil request_shopify_store, proposé uniquement si le marchand a la capacité de gérer l'intégration Shopify dans ce workspace (variable selon le rôle et d'éventuelles personnalisations du propriétaire - si tu as un doute, vérifie avec get_my_permissions avant de proposer cet outil). ATTENTION, à expliquer clairement si demandé : cet outil N'ASSIGNE NI NE TRANSFÈRE AUCUNE boutique - aucune API Shopify ne permet d'automatiser la création d'un "Client Transfer Store" ni son transfert à un marchand (action Partner Dashboard purement manuelle). Il se contente d'enregistrer la demande et d'alerter l'équipe Xepay, qui assignera ensuite manuellement une boutique déjà préparée. Avant de l'appeler, confirme avec le marchand qu'il souhaite bien envoyer cette demande.
 
 Règles strictes :
-- En dehors des 2 outils de gestion d'équipe ci-dessus (strictement réservés au owner, avec confirmation explicite obligatoire), tu ne peux RIEN modifier, créer ou annuler ailleurs : le reste n'est que LECTURE. Si le marchand demande une autre action (remboursement, modification Stripe/LLC, création), explique clairement que tu ne peux pas l'exécuter et indique où le faire dans le dashboard (ex. Paramètres > Entreprise pour une demande de correction LLC).
+- En dehors des outils d'écriture explicitement prévus ci-dessus (gestion d'équipe - strictement réservée au owner, avec confirmation explicite obligatoire dans un tour séparé ; demande de boutique Shopify - réservée à qui peut gérer l'intégration Shopify dans ce workspace, avec confirmation avant envoi), tu ne peux RIEN modifier, créer ou annuler ailleurs : le reste n'est que LECTURE. Si le marchand demande une autre action (remboursement, modification Stripe/LLC, création), explique clairement que tu ne peux pas l'exécuter et indique où le faire dans le dashboard (ex. Paramètres > Entreprise pour une demande de correction LLC).
 - Les outils produit ne donnent accès qu'au code FRONTEND (pages marketing + SPA) - jamais au code backend, à des secrets ou à des données d'autres marchands.
 - Si une information demandée n'est couverte par aucun outil, dis-le explicitement plutôt que de deviner.
 - Réponds en français, de façon concise et directe.
@@ -220,9 +233,41 @@ _OWNER_ONLY_TOOLS = [
     },
 ]
 
+# Outils gatés par une VRAIE capacité de workspace (jamais "owner" codé
+# en dur comme _OWNER_ONLY_TOOLS ci-dessus) - chaque entrée est
+# (définition d'outil, clé de capacité à vérifier via
+# permission_service.get_effective_min_role, qui respecte les
+# surcharges posées par le propriétaire pour SON workspace). _build_tools
+# vérifie cette capacité AVANT de proposer l'outil au modèle ; chaque
+# fonction d'exécution la re-vérifie quand même indépendamment
+# (_require_capability), même principe de défense en profondeur que
+# _OWNER_ONLY_TOOLS/_require_owner.
+_CAPABILITY_GATED_TOOLS = [
+    (
+        {
+            "name": "request_shopify_store",
+            "description": "Enregistre une demande de boutique Shopify \"prête à l'emploi\" (Buildshop) et alerte l'équipe Xepay, qui assignera manuellement une boutique déjà préparée (AUCUNE boutique n'est créée, assignée ou transférée automatiquement par cet outil - impossible via l'API Shopify). Proposé uniquement si le marchand a la capacité de gérer l'intégration Shopify dans ce workspace. Toujours confirmer avec le marchand qu'il souhaite envoyer cette demande avant d'appeler cet outil.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "note": {"type": "string", "description": "Précisions optionnelles du marchand sur sa demande."},
+                },
+            },
+        },
+        "manage_shopify_integration",
+    ),
+]
 
-def _build_tools(is_owner: bool) -> list[dict]:
-    return (_BASE_TOOLS + _OWNER_ONLY_TOOLS) if is_owner else list(_BASE_TOOLS)
+
+def _build_tools(db: Session, workspace_id: str, caller_role: str, is_owner: bool) -> list[dict]:
+    tools = list(_BASE_TOOLS)
+    if is_owner:
+        tools += _OWNER_ONLY_TOOLS
+    for tool_def, capability_key in _CAPABILITY_GATED_TOOLS:
+        min_role = permission_service.get_effective_min_role(db, workspace_id, capability_key)
+        if permission_service.role_satisfies(caller_role, min_role):
+            tools.append(tool_def)
+    return tools
 
 
 def _get_balance(db: Session, workspace_id: str) -> dict:
@@ -532,6 +577,56 @@ def _require_owner(db: Session, workspace_id: str, caller_user_id: str) -> str |
     return None
 
 
+def _require_capability(db: Session, workspace_id: str, caller_user_id: str, capability_key: str) -> str | None:
+    """Équivalent de _require_owner, mais pour une VRAIE capacité de
+    workspace (respecte les surcharges du propriétaire, via
+    permission_service.get_effective_min_role) plutôt qu'un rôle
+    "owner" figé - utilisé par request_shopify_store, pas par les
+    outils de gestion d'équipe (délibérément plus stricts, voir
+    _require_owner). Re-vérifie INDÉPENDAMMENT (nouvelle requête DB)
+    même si l'outil n'a déjà été proposé au modèle que pour un
+    appelant éligible (_build_tools) - même défense en profondeur."""
+    membership = (
+        db.query(WorkspaceUser)
+        .filter(WorkspaceUser.workspace_id == workspace_id, WorkspaceUser.user_id == caller_user_id)
+        .first()
+    )
+    if not membership:
+        return "Vous n'appartenez pas à ce workspace."
+    min_role = permission_service.get_effective_min_role(db, workspace_id, capability_key)
+    if not permission_service.role_satisfies(membership.role, min_role):
+        return "Permission insuffisante pour cette action dans ce workspace."
+    return None
+
+
+def _request_shopify_store(db: Session, workspace_id: str, caller_user_id: str, note: str | None) -> dict:
+    """N'ASSIGNE NI NE TRANSFÈRE AUCUNE boutique (impossible via l'API
+    Shopify, voir services/buildshop_service.py) - enregistre juste la
+    demande et alerte un humain côté Xepay, même route/même email que
+    POST /shopify/store-request (routes/shopify.py) : aucune distinction
+    entre une demande faite depuis le dashboard ou depuis Alhu."""
+    error = _require_capability(db, workspace_id, caller_user_id, "manage_shopify_integration")
+    if error:
+        return {"error": error}
+    safe_note = (note or "").strip()[:1000] or None
+    request_row = ShopifyStoreRequest(workspace_id=workspace_id, note=safe_note)
+    db.add(request_row)
+    db.commit()
+    db.refresh(request_row)
+    # owner_email/requester_email (jamais juste workspace_id, un humain
+    # côté Xepay ne peut rien en faire) - même convention que
+    # routes/shopify.py::create_shopify_store_request.
+    owner = db.query(UserDB).filter(UserDB.id == workspace_id).first()
+    requester = db.query(UserDB).filter(UserDB.id == caller_user_id).first()
+    send_shopify_store_request_internal_email(
+        workspace_id,
+        owner.email if owner else None,
+        requester.email if requester else None,
+        safe_note,
+    )
+    return {"success": True, "id": request_row.id, "status": request_row.status}
+
+
 def _list_team_members(db: Session, workspace_id: str, caller_user_id: str) -> dict:
     error = _require_owner(db, workspace_id, caller_user_id)
     if error:
@@ -639,6 +734,8 @@ def _execute_tool(tool_name: str, tool_input: dict, db: Session, workspace_id: s
         return _change_member_role(db, workspace_id, caller_user_id, tool_input.get("member_email"), tool_input.get("new_role"))
     if tool_name == "remove_team_member":
         return _remove_team_member(db, workspace_id, caller_user_id, tool_input.get("member_email"))
+    if tool_name == "request_shopify_store":
+        return _request_shopify_store(db, workspace_id, caller_user_id, tool_input.get("note"))
     return {"error": f"Outil inconnu : {tool_name}"}
 
 
@@ -664,10 +761,11 @@ _TOOL_STATUS_LABELS = {
     "list_team_members": "👥 Je consulte la liste de l'équipe...",
     "change_member_role": "✏️ Je modifie le rôle du membre...",
     "remove_team_member": "🚪 Je retire ce membre de l'équipe...",
+    "request_shopify_store": "🛍️ J'envoie votre demande de boutique Shopify...",
 }
 
 
-def stream_alhu_chat(workspace_id: str, caller_user_id: str, is_owner: bool, user_messages: list[dict]):
+def stream_alhu_chat(workspace_id: str, caller_user_id: str, caller_role: str, user_messages: list[dict]):
     """Générateur d'évènements ({"type": "status"|"delta"|"done"|"error", ...})
     pour streamer la réflexion/réponse d'Alhu en direct (demande du
     2026-11-27 : "le chat doit montrer au marchand qu'il est en train de
@@ -678,6 +776,13 @@ def stream_alhu_chat(workspace_id: str, caller_user_id: str, is_owner: bool, use
     de la conversation côté client, déjà au format Anthropic, jamais
     persisté côté serveur (voir le commentaire d'en-tête) - le client
     renvoie tout l'historique à chaque appel.
+
+    caller_role (ajouté le 2026-11-27, remplace l'ancien is_owner: bool) :
+    le rôle RÉEL de l'appelant (membership.role), nécessaire pour
+    évaluer à la fois l'accès owner-only (gestion d'équipe) ET une
+    VRAIE capacité de workspace personnalisable (request_shopify_store,
+    voir _CAPABILITY_GATED_TOOLS/_build_tools) - un simple booléen
+    is_owner ne suffisait plus pour ce 2e cas.
 
     Ouvre SA PROPRE session DB (jamais Depends(get_db)) - même raison
     que _apply_doola_event (webhook/doola.py) : get_db() ferme sa
@@ -702,9 +807,9 @@ def stream_alhu_chat(workspace_id: str, caller_user_id: str, is_owner: bool, use
     # Figée UNE SEULE FOIS ici, au tout début de la conversation - jamais
     # recalculée à partir d'une entrée du modèle : c'est elle qui décide
     # quels outils sont même proposés à Claude pour tout ce tour (voir
-    # _build_tools), et chaque outil réservé au owner re-vérifie quand
-    # même indépendamment via _require_owner.
-    tools = _build_tools(is_owner)
+    # _build_tools), et chaque outil réservé re-vérifie quand même
+    # indépendamment (_require_owner/_require_capability).
+    tools = _build_tools(db, workspace_id, caller_role, caller_role == "owner")
 
     try:
         yield from _stream_alhu_rounds(client, db, workspace_id, caller_user_id, tools, messages, full_text_parts)

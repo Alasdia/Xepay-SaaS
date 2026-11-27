@@ -39,21 +39,42 @@ class AlhuTeamToolOfferingTests(unittest.TestCase):
 
     _OWNER_ONLY_NAMES = {"list_team_members", "change_member_role", "remove_team_member"}
 
+    def setUp(self):
+        # _build_tools interroge désormais aussi une VRAIE capacité de
+        # workspace (request_shopify_store) - un workspace_id réel (même
+        # inexistant en base, get_effective_min_role retombe sur
+        # CAPABILITY_DEFAULTS sans erreur) est nécessaire, plus un simple
+        # booléen is_owner.
+        self.db = TestingSessionLocal()
+        self.workspace_id = f"ws-tools-{id(self)}"
+
+    def tearDown(self):
+        self.db.close()
+
     def test_owner_only_tools_hidden_for_non_owner(self):
-        tools = alhu_service._build_tools(is_owner=False)
+        tools = alhu_service._build_tools(self.db, self.workspace_id, "membre", is_owner=False)
         names = {t["name"] for t in tools}
         self.assertFalse(self._OWNER_ONLY_NAMES & names)
 
     def test_owner_only_tools_offered_for_owner(self):
-        tools = alhu_service._build_tools(is_owner=True)
+        tools = alhu_service._build_tools(self.db, self.workspace_id, "owner", is_owner=True)
         names = {t["name"] for t in tools}
         self.assertTrue(self._OWNER_ONLY_NAMES.issubset(names))
 
     def test_base_tools_always_offered_regardless_of_role(self):
         base_names = {t["name"] for t in alhu_service._BASE_TOOLS}
-        for is_owner in (True, False):
-            names = {t["name"] for t in alhu_service._build_tools(is_owner)}
+        for role, is_owner in (("owner", True), ("membre", False)):
+            names = {t["name"] for t in alhu_service._build_tools(self.db, self.workspace_id, role, is_owner)}
             self.assertTrue(base_names.issubset(names))
+
+    def test_shopify_store_tool_offered_only_for_owner_by_default(self):
+        # manage_shopify_integration = "owner" par défaut (aucune
+        # surcharge posée pour ce workspace jetable) - un non-owner ne
+        # doit pas voir request_shopify_store, un owner si.
+        owner_tools = {t["name"] for t in alhu_service._build_tools(self.db, self.workspace_id, "owner", True)}
+        member_tools = {t["name"] for t in alhu_service._build_tools(self.db, self.workspace_id, "membre", False)}
+        self.assertIn("request_shopify_store", owner_tools)
+        self.assertNotIn("request_shopify_store", member_tools)
 
 
 class AlhuTeamToolExecutionTests(unittest.TestCase):
