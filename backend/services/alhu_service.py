@@ -17,14 +17,20 @@ l'utilisateur). Volontairement minimal pour ce premier chantier :
 import logging
 import os
 
+import stripe
 from sqlalchemy.orm import Session
 
-from backend.models import BuildnessCompany, BuildnessCustomer, Wallet, WalletTransaction
+from backend.models import BuildnessCompany, BuildnessCustomer, Profile, Wallet, WalletTransaction
 
 logger = logging.getLogger(__name__)
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 ALHU_MODEL = os.getenv("ALHU_MODEL", "claude-sonnet-5")
+# Même clé/convention que services/stripe_service.py, routes/buildness.py -
+# posée ici aussi (pas seulement supposée déjà positionnée par un autre
+# module importé avant celui-ci) pour que get_stripe_connect_status
+# fonctionne même si alhu_service est importé isolément.
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 # Boucle outil/réponse bornée (demande normale : plusieurs outils en
 # chaîne, ex. lister un dossier PUIS lire 2-3 fichiers PUIS répondre) -
@@ -67,9 +73,10 @@ def _resolve_product_path(relative_path: str) -> str:
 
 ALHU_SYSTEM_PROMPT = """Tu es Alhu, l'assistant intégré au tableau de bord Xepay (plateforme de paiement pour marchands).
 
-Tu réponds à 2 types de questions, toujours via les outils fournis - jamais à partir de connaissances générales non vérifiées, et jamais en inventant une donnée ou une fonctionnalité :
+Tu réponds à 3 types de questions, toujours via les outils fournis - jamais à partir de connaissances générales non vérifiées, et jamais en inventant une donnée ou une fonctionnalité :
 1. Questions sur les DONNÉES PROPRES du marchand (solde, transactions, dossier de création de société/LLC) - outils get_balance/get_recent_transactions/get_buildness_status.
 2. Questions sur LE PRODUIT Xepay lui-même (fonctionnalités, pages marketing, fonctionnement du tableau de bord) - outils list_product_files/read_product_file, qui donnent accès en LECTURE SEULE aux pages marketing et à tout le code source du SPA (frontend/pages/*.html et frontend/pages/spa/). Utilise list_product_files pour explorer AVANT de lire, puis read_product_file sur les fichiers pertinents - ne réponds sur le fonctionnement du produit qu'après avoir réellement lu le code/contenu concerné, jamais en supposant.
+3. Questions sur l'ACTIVATION DU COMPTE STRIPE CONNECT du marchand - outil get_stripe_connect_status. Tous les marchands Xepay sont des fondateurs non-résidents ayant formé une LLC américaine (via Buildness/doola) pour pouvoir utiliser Stripe Connect. Tu peux expliquer en général les grandes étapes de cette activation (informations de l'entreprise, informations du représentant légal, coordonnées bancaires, documents de vérification d'identité) MAIS pour savoir précisément ce qu'IL reste à fournir à CE marchand, utilise TOUJOURS get_stripe_connect_status et base-toi sur ses champs currently_due/eventually_due réels - ne récite jamais une liste de documents par cœur, elle peut être fausse ou incomplète pour sa situation. Tu ne peux JAMAIS remplir ce formulaire à sa place (Stripe l'interdit structurellement, les champs KYC doivent venir directement du titulaire du compte) : ton rôle est de l'accompagner et de lui relayer clairement ce qui lui manque, pas de le compléter pour lui.
 
 Règles strictes :
 - Tu ne peux RIEN modifier, créer ou annuler, nulle part : tu n'as accès qu'à des outils de LECTURE. Si le marchand demande une action (remboursement, modification, création), explique clairement que tu ne peux pas l'exécuter et indique où le faire dans le dashboard (ex. Paramètres > Entreprise pour une demande de correction LLC).
@@ -128,6 +135,11 @@ ALHU_TOOLS = [
             },
             "required": ["path"],
         },
+    },
+    {
+        "name": "get_stripe_connect_status",
+        "description": "Renvoie l'état RÉEL et à jour de l'activation du compte Stripe Connect du marchand : si le compte existe, si les paiements/retraits sont activés, et surtout la liste exacte des informations encore requises par Stripe pour CE marchand précis (currently_due/eventually_due). Toujours utiliser cet outil plutôt que deviner une liste générique de documents.",
+        "input_schema": {"type": "object", "properties": {}},
     },
 ]
 
@@ -234,6 +246,44 @@ def _read_product_file(path: str | None) -> dict:
     return {"content": content, "truncated": truncated}
 
 
+def _get_stripe_connect_status(db: Session, workspace_id: str) -> dict:
+    profile = db.query(Profile).filter(Profile.user_id == workspace_id).first()
+    if not profile or not profile.stripe_account_id:
+        return {
+            "status": "not_started",
+            "note": "Aucun compte Stripe Connect n'a encore été créé pour ce marchand.",
+        }
+    try:
+        account = stripe.Account.retrieve(profile.stripe_account_id)
+    except stripe.error.StripeError:
+        logger.exception("Echec recuperation compte Stripe Connect pour workspace_id=%s", workspace_id)
+        return {"error": "Impossible de récupérer le statut Stripe Connect pour le moment."}
+
+    requirements = account.requirements or {}
+    charges_enabled = account.charges_enabled
+    payouts_enabled = account.payouts_enabled
+    if charges_enabled and payouts_enabled:
+        status = "active"
+    elif account.details_submitted:
+        status = "pending_review"
+    else:
+        status = "in_progress"
+
+    return {
+        "status": status,
+        "details_submitted": account.details_submitted,
+        "charges_enabled": charges_enabled,
+        "payouts_enabled": payouts_enabled,
+        # Noms de champs bruts Stripe (ex. "individual.verification.document",
+        # "external_account") - à traduire en français clair pour le
+        # marchand, jamais à afficher tels quels sans explication.
+        "currently_due": requirements.get("currently_due", []),
+        "eventually_due": requirements.get("eventually_due", []),
+        "past_due": requirements.get("past_due", []),
+        "disabled_reason": requirements.get("disabled_reason"),
+    }
+
+
 def _execute_tool(tool_name: str, tool_input: dict, db: Session, workspace_id: str) -> dict:
     if tool_name == "get_balance":
         return _get_balance(db, workspace_id)
@@ -245,6 +295,8 @@ def _execute_tool(tool_name: str, tool_input: dict, db: Session, workspace_id: s
         return _list_product_files(tool_input.get("subpath"))
     if tool_name == "read_product_file":
         return _read_product_file(tool_input.get("path"))
+    if tool_name == "get_stripe_connect_status":
+        return _get_stripe_connect_status(db, workspace_id)
     return {"error": f"Outil inconnu : {tool_name}"}
 
 
