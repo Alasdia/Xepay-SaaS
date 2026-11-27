@@ -99,7 +99,9 @@ export function initAlhuWidget() {
 
   appendMessageBubble("assistant", "Bonjour, je suis Alhu. Je peux répondre à vos questions sur votre solde, vos transactions récentes ou votre dossier de création de société (LLC) - je ne peux rien modifier.");
 
-  document.getElementById("alhu-widget-toggle").addEventListener("click", () => togglePanel());
+  // Ouvre toujours (demande du 2026-11-27) - ce bouton ne referme plus
+  // le panneau s'il est déjà ouvert, seul #alhu-widget-close le fait.
+  document.getElementById("alhu-widget-toggle").addEventListener("click", () => togglePanel(true));
   document.getElementById("alhu-widget-close").addEventListener("click", () => togglePanel(false));
   formEl.addEventListener("submit", handleSubmit);
 }

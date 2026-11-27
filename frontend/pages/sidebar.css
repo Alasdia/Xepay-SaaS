@@ -71,13 +71,13 @@
   position: fixed;
   bottom: 24px;
   right: 24px;
-  width: 52px;
-  height: 52px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   border: none;
   background: #b45309;
   color: #ffffff;
-  font-size: 20px;
+  font-size: 10px;
   box-shadow: 0 8px 24px rgba(180, 83, 9, .35);
   cursor: pointer;
   z-index: 600000;
@@ -87,10 +87,14 @@
 }
 #alhu-widget-panel {
   position: fixed;
-  bottom: 88px;
+  /* Calé juste au-dessus du bouton réduit (24px de marge + 26px de
+     hauteur + 8px d'air) - demande du 2026-11-27 : laissé à l'ancienne
+     valeur (88px, pensée pour un bouton de 52px), le panneau flottait
+     avec un grand vide sous lui. */
+  bottom: 58px;
   right: 24px;
-  width: min(340px, calc(100vw - 32px));
-  height: min(480px, calc(100vh - 140px));
+  width: min(425px, calc(100vw - 32px));
+  height: min(600px, calc(100vh - 140px));
   background: #ffffff;
   border-radius: 16px;
   box-shadow: 0 16px 48px rgba(0, 0, 0, .18);
@@ -161,12 +165,13 @@
   border-color: #b45309;
 }
 #alhu-widget-send {
-  width: 36px;
-  height: 36px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   border: none;
   background: #b45309;
   color: #ffffff;
+  font-size: 9px;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -178,7 +183,7 @@
 @media (max-width: 480px) {
   #alhu-widget-panel {
     right: 16px;
-    bottom: 84px;
+    bottom: 50px;
   }
   #alhu-widget-toggle {
     right: 16px;
