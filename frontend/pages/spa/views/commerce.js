@@ -827,14 +827,27 @@ async function renderClients(container) {
 
                 if (!filteredCustomers.length) {
 
+                    // Vrai premier démarrage uniquement sous filter="all"
+                    // (demande du 2026-11-27) - filteredCustomers === customers
+                    // dans ce cas, donc vide ici veut dire vide partout,
+                    // jamais juste "aucun résultat pour CE filtre" (ex.
+                    // filter="balance" alors qu'il existe déjà des clients).
+                    const isFirstTime = filter === "all";
                     list.innerHTML = `
                         <div class="commerce-card">
                             <div class="commerce-empty-state">
                                 <div class="commerce-empty-icon"><i class="fa-solid fa-users"></i></div>
-                                <p class="commerce-empty-sub">Aucun client dans cette catégorie.</p>
+                                ${isFirstTime ? `
+                                    <h3 class="commerce-empty-title">Pas encore de client</h3>
+                                    <p class="commerce-empty-sub">Ajoutez votre premier client pour commencer à suivre son activité.</p>
+                                    <button type="button" class="create-client-btn" id="empty-open-create-client">Ajouter mon premier client</button>
+                                ` : `<p class="commerce-empty-sub">Aucun client ne correspond à ce filtre.</p>`}
                             </div>
                         </div>
                     `;
+                    if (isFirstTime) {
+                        list.querySelector("#empty-open-create-client")?.addEventListener("click", () => openClientModalForCreate());
+                    }
 
                     return;
                 }
@@ -1730,14 +1743,25 @@ async function renderProducts(container) {
 
                 if (!filteredProducts.length) {
 
+                    // Vrai premier démarrage uniquement sous filter="all"
+                    // (demande du 2026-11-27) - voir le commentaire
+                    // équivalent dans renderClients.
+                    const isFirstTime = filter === "all";
                     list.innerHTML = `
                         <div class="commerce-card">
                             <div class="commerce-empty-state">
                                 <div class="commerce-empty-icon"><i class="fa-solid fa-box-open"></i></div>
-                                <p class="commerce-empty-sub">Aucun produit dans cette catégorie.</p>
+                                ${isFirstTime ? `
+                                    <h3 class="commerce-empty-title">Pas encore de produit</h3>
+                                    <p class="commerce-empty-sub">Créez votre premier produit pour commencer à vendre.</p>
+                                    <button type="button" class="create-client-btn" id="empty-open-create-product">Créer mon premier produit</button>
+                                ` : `<p class="commerce-empty-sub">Aucun produit ne correspond à ce filtre.</p>`}
                             </div>
                         </div>
                     `;
+                    if (isFirstTime) {
+                        list.querySelector("#empty-open-create-product")?.addEventListener("click", () => createModal.classList.add("open"));
+                    }
 
                     return;
 
@@ -3412,14 +3436,25 @@ async function renderSubscriptions(container) {
 
                 if (!filteredSubscriptions.length) {
 
+                    // Vrai premier démarrage uniquement sous filter="all"
+                    // (demande du 2026-11-27) - voir le commentaire
+                    // équivalent dans renderClients.
+                    const isFirstTime = filter === "all";
                     list.innerHTML = `
                         <div class="commerce-card">
                             <div class="commerce-empty-state">
                                 <div class="commerce-empty-icon"><i class="fa-solid fa-rotate"></i></div>
-                                <p class="commerce-empty-sub">Aucun abonnement dans cette catégorie.</p>
+                                ${isFirstTime ? `
+                                    <h3 class="commerce-empty-title">Pas encore d'abonnement</h3>
+                                    <p class="commerce-empty-sub">Créez votre premier abonnement pour commencer à facturer vos clients régulièrement.</p>
+                                    <button type="button" class="create-client-btn" id="empty-open-create-subscription">Créer mon premier abonnement</button>
+                                ` : `<p class="commerce-empty-sub">Aucun abonnement ne correspond à ce filtre.</p>`}
                             </div>
                         </div>
                     `;
+                    if (isFirstTime) {
+                        list.querySelector("#empty-open-create-subscription")?.addEventListener("click", () => createModal.classList.add("open"));
+                    }
 
                     return;
 
@@ -4961,14 +4996,25 @@ async function renderInvoices(container) {
                 );
 
                 if (!filteredInvoices.length) {
+                    // Vrai premier démarrage uniquement sous filter="all"
+                    // (demande du 2026-11-27) - voir le commentaire
+                    // équivalent dans renderClients.
+                    const isFirstTime = filter === "all";
                     list.innerHTML = `
                         <div class="commerce-card">
                             <div class="commerce-empty-state">
                                 <div class="commerce-empty-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
-                                <p class="commerce-empty-sub">Aucune facture dans cette catégorie.</p>
+                                ${isFirstTime ? `
+                                    <h3 class="commerce-empty-title">Pas encore de facture</h3>
+                                    <p class="commerce-empty-sub">Créez votre première facture pour commencer à facturer vos clients.</p>
+                                    <button type="button" class="create-client-btn" id="empty-open-create-invoice">Créer ma première facture</button>
+                                ` : `<p class="commerce-empty-sub">Aucune facture ne correspond à ce filtre.</p>`}
                             </div>
                         </div>
                     `;
+                    if (isFirstTime) {
+                        list.querySelector("#empty-open-create-invoice")?.addEventListener("click", () => createModal.classList.add("open"));
+                    }
                     return;
                 }
 
