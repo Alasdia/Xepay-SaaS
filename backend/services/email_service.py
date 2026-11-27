@@ -1,3 +1,5 @@
+import html
+import logging
 import os
 import base64
 import requests
@@ -5,7 +7,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+# Boîte interne Xepay (jamais doola, jamais le marchand) qui reçoit les
+# demandes de correction Buildness (voir send_buildness_correction_
+# request_internal_email ci-dessous) - doola n'a de relation directe
+# qu'avec Xepay, un humain ici relaie ensuite manuellement vers leur
+# support s'il y a lieu.
+BUILDNESS_CORRECTION_NOTIFY_EMAIL = os.getenv("BUILDNESS_CORRECTION_NOTIFY_EMAIL")
 
 
 def is_notification_enabled(user, event_key: str, legacy_flag: bool | None = None) -> bool:
@@ -425,3 +435,129 @@ def send_shopify_payment_link_email(to_email, order_name, amount, currency, pay_
         }
     )
     print("SHOPIFY PAYMENT LINK EMAIL", response.status_code, response.text)
+
+
+# Notifications Buildness (LLC/EIN via doola) - ajoutées le 2026-11-27,
+# déclenchées depuis routes/webhook/doola.py (_apply_doola_event) sur les
+# 3 vraies transitions de statut gérées (processing/completed/failed),
+# même garde is_notification_enabled que le reste de ce fichier
+# (catégorie "entreprise" dans NOTIFICATION_CATEGORIES, spa/views/
+# parametres.js).
+def send_buildness_processing_email(to_email, company_name):
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": "Xepay <noreply@alasdia.com>",
+            "to": [to_email],
+            "subject": "Votre dossier de création de société est en cours",
+            "html": f"""
+                <h2>Dossier en cours de traitement 🧾</h2>
+                <p>La formation de <b>{company_name}</b> a été transmise à l'État et est en cours de traitement.</p>
+                <p>Suivez l'avancement dans "Mon entreprise" sur votre tableau de bord Xepay.</p>
+            """
+        }
+    )
+    print("BUILDNESS PROCESSING EMAIL", response.status_code, response.text)
+
+
+def send_buildness_completed_email(to_email, company_name, ein_number=None):
+    ein_line = f"<p>EIN (identifiant fiscal) : <b>{ein_number}</b></p>" if ein_number else ""
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": "Xepay <noreply@alasdia.com>",
+            "to": [to_email],
+            "subject": "Votre société est formée 🎉",
+            "html": f"""
+                <h2>Félicitations, votre société est formée ✅</h2>
+                <p><b>{company_name}</b> est officiellement formée et son EIN a été émis.</p>
+                {ein_line}
+                <p>Retrouvez tous les détails et documents dans "Mon entreprise" sur votre tableau de bord Xepay.</p>
+            """
+        }
+    )
+    print("BUILDNESS COMPLETED EMAIL", response.status_code, response.text)
+
+
+def send_buildness_failed_email(to_email, company_name):
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": "Xepay <noreply@alasdia.com>",
+            "to": [to_email],
+            "subject": "Problème avec votre dossier de création de société",
+            "html": f"""
+                <h2>Votre dossier n'a pas pu aboutir ❌</h2>
+                <p>La formation de <b>{company_name}</b> a échoué.</p>
+                <p>Rendez-vous dans Paramètres &gt; Entreprise sur votre tableau de bord Xepay pour réessayer.</p>
+            """
+        }
+    )
+    print("BUILDNESS FAILED EMAIL", response.status_code, response.text)
+
+
+def send_buildness_correction_request_internal_email(workspace_id, company_name, doola_company_id, field_label, requested_value, note):
+    """Vers BUILDNESS_CORRECTION_NOTIFY_EMAIL (boîte interne Xepay),
+    JAMAIS vers doola ni le marchand - voir BuildnessCorrectionRequest
+    (models.py) : doola n'a de relation directe qu'avec Xepay, c'est
+    donc un humain côté Xepay qui lit cet email et relaie manuellement
+    la demande à leur support s'il y a lieu. doola_company_id (demandé
+    le 2026-11-27, manquait jusqu'ici) est l'identifiant à communiquer à
+    doola pour qu'ils retrouvent la société - company_name seul ne
+    suffit pas (pas garanti unique chez eux, "raison sociale validée
+    par l'État" peut même différer du nom demandé initialement). Pas de
+    garde is_notification_enabled : ce n'est pas une préférence de
+    notification du marchand, c'est une alerte opérationnelle interne,
+    toujours envoyée."""
+    if not BUILDNESS_CORRECTION_NOTIFY_EMAIL:
+        logger.warning(
+            "BUILDNESS_CORRECTION_NOTIFY_EMAIL non configuré - demande de correction "
+            "(workspace_id=%s, company=%s, doolaCompanyId=%s, champ=%s) non notifiée par email.",
+            workspace_id, company_name, doola_company_id, field_label,
+        )
+        return
+    # Échappé (contrairement aux autres fonctions de ce fichier, qui
+    # n'interpolent que des valeurs déjà fiables type montant/statut
+    # Stripe) : field_label/requested_value/note viennent en texte libre
+    # d'un membre quelconque du workspace, jamais fiable par défaut dans
+    # un email HTML.
+    safe_company_name = html.escape(company_name or "")
+    safe_doola_company_id = html.escape(doola_company_id or "")
+    safe_field_label = html.escape(field_label or "")
+    safe_requested_value = html.escape(requested_value or "")
+    note_line = f"<p>Note du marchand : {html.escape(note)}</p>" if note else ""
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": "Xepay <noreply@alasdia.com>",
+            "to": [BUILDNESS_CORRECTION_NOTIFY_EMAIL],
+            "subject": f"[Buildness] Demande de correction - {safe_company_name} ({safe_doola_company_id or 'doolaCompanyId manquant'})",
+            "html": f"""
+                <h2>Nouvelle demande de correction Buildness</h2>
+                <p>Workspace : <b>{html.escape(workspace_id or "")}</b></p>
+                <p>Société : <b>{safe_company_name}</b></p>
+                <p>doolaCompanyId (à communiquer à doola) : <b>{safe_doola_company_id or "manquant - dossier jamais soumis à doola"}</b></p>
+                <p>Champ à corriger : <b>{safe_field_label}</b></p>
+                <p>Nouvelle valeur souhaitée : <b>{safe_requested_value}</b></p>
+                {note_line}
+                <p>doola n'a de relation directe qu'avec Xepay : relayer manuellement cette demande à leur support si nécessaire.</p>
+            """
+        }
+    )
+    print("BUILDNESS CORRECTION REQUEST INTERNAL EMAIL", response.status_code, response.text)

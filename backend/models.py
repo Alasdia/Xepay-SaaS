@@ -278,6 +278,18 @@ class BuildnessSignatureSessionRequest(BaseModel):
     # EIN en traitement accéléré.
     document_type: Literal["SS4", "FORM8821"] = "SS4"
 
+class BuildnessCorrectionRequestCreate(BaseModel):
+    # field_label en texte libre plutôt qu'un enum fermé (ajouté le
+    # 2026-11-27) : doola traite ces demandes manuellement (voir
+    # BuildnessCorrectionRequest ci-dessus) - un humain lit field_label/
+    # requested_value/note, un Literal figé n'apporterait aucune garantie
+    # supplémentaire côté API et empêcherait de couvrir un champ non
+    # prévu à l'avance. L'UI (spa/views/monEntreprise.js) propose
+    # toutefois une liste de champs courants + "Autre".
+    field_label: str
+    requested_value: str
+    note: str | None = None
+
 class ShopifyCustomerUpsertRequest(BaseModel):
     # Mêmes champs pour créer (POST /shopify/customers) et modifier
     # (PATCH /shopify/customers/{id}) - voir services/shopify_service.py
@@ -949,6 +961,34 @@ class BuildnessWebhookLog(Base):
     event_type = Column(String, nullable=False)
     payload = Column(JSON, nullable=True)
     processed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class BuildnessCorrectionRequest(Base):
+    """Demande de correction sur une info déjà soumise à doola (adresse,
+    raison sociale, secteur, description...) - ajouté le 2026-11-27 :
+    vérifié dans la doc officielle de doola (docs.doola.com, API +
+    Embedded SDK + spec OpenAPI) qu'il n'existe AUCUN endpoint PUT/PATCH
+    pour modifier une société déjà créée, et que leur mécanisme de
+    "required actions" est exclusivement RÉACTIF (doola nous demande une
+    info précise, on ne peut jamais soumettre une correction de notre
+    propre initiative). doola n'a de relation directe qu'avec Xepay (pas
+    avec nos marchands) : cette table trace donc une demande à relayer
+    MANUELLEMENT par un humain côté Xepay vers le support doola, jamais
+    une mise à jour automatique - voir routes/buildness.py
+    (create_correction_request) et services/email_service.py
+    (send_buildness_correction_request_internal_email, envoyé à une
+    adresse interne Xepay, jamais à doola directement ni au marchand)."""
+    __tablename__ = "buildness_correction_requests"
+
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("bncorr"))
+    workspace_id = Column(String, ForeignKey("users.id"), nullable=False)
+    company_id = Column(String, ForeignKey("buildness_companies.id"), nullable=False)
+    field_label = Column(String, nullable=False)
+    requested_value = Column(String, nullable=False)
+    note = Column(String, nullable=True)
+    status = Column(String, nullable=False, default="pending")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class ShopifyShop(Base):

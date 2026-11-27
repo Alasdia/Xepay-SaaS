@@ -12,10 +12,20 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models import BuildnessCustomer, BuildnessCompany, BuildnessLlcCredit, BuildnessOnboardRequest, BuildnessSignatureSessionRequest, WorkspaceUser
+from backend.models import (
+    BuildnessCorrectionRequest,
+    BuildnessCorrectionRequestCreate,
+    BuildnessCustomer,
+    BuildnessCompany,
+    BuildnessLlcCredit,
+    BuildnessOnboardRequest,
+    BuildnessSignatureSessionRequest,
+    WorkspaceUser,
+)
 from backend.middleware.authorization import require_capability
 from backend.services.doola_client import get_doola_service, DoolaNotConfiguredError
 from backend.services.doola_service import DoolaAPIError
+from backend.services.email_service import send_buildness_correction_request_internal_email
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -475,3 +485,71 @@ async def get_buildness_document(
     except DoolaAPIError:
         logger.exception("Echec recuperation document doola id=%s pour company_id=%s", document_id, company.id)
         raise HTTPException(502, "Impossible de recuperer ce document depuis doola.")
+
+
+# Demande de correction (ajouté le 2026-11-27) - vérifié dans la doc
+# officielle de doola (API + Embedded SDK + spec OpenAPI) qu'il n'existe
+# AUCUN endpoint pour modifier une société déjà créée, et que leur
+# mécanisme de "required actions" est exclusivement réactif (doola nous
+# demande une info précise, jamais l'inverse). doola n'a de relation
+# directe qu'avec Xepay : ces 2 routes ne font qu'enregistrer la demande
+# et alerter un humain côté Xepay par email (voir
+# BuildnessCorrectionRequest, models.py) - AUCUNE mise à jour
+# automatique n'est envoyée à doola.
+@router.post("/buildness/correction-request", status_code=201)
+def create_buildness_correction_request(
+    body: BuildnessCorrectionRequestCreate,
+    membership: WorkspaceUser = Depends(require_capability("manage_company_formation")),
+    db: Session = Depends(get_db),
+):
+    merchant_id = membership.workspace_id
+    company = _get_latest_company(db, merchant_id)
+    if not company:
+        raise HTTPException(404, "Aucun dossier de société trouvé pour ce workspace.")
+
+    request_row = BuildnessCorrectionRequest(
+        workspace_id=merchant_id,
+        company_id=company.id,
+        field_label=body.field_label,
+        requested_value=body.requested_value,
+        note=body.note,
+    )
+    db.add(request_row)
+    db.commit()
+    db.refresh(request_row)
+
+    send_buildness_correction_request_internal_email(
+        merchant_id, company.company_name, company.doola_company_id,
+        body.field_label, body.requested_value, body.note,
+    )
+
+    return {
+        "id": request_row.id,
+        "status": request_row.status,
+        "created_at": request_row.created_at,
+    }
+
+
+@router.get("/buildness/correction-requests")
+def list_buildness_correction_requests(
+    membership: WorkspaceUser = Depends(require_capability("manage_company_formation")),
+    db: Session = Depends(get_db),
+):
+    rows = (
+        db.query(BuildnessCorrectionRequest)
+        .filter(BuildnessCorrectionRequest.workspace_id == membership.workspace_id)
+        .order_by(BuildnessCorrectionRequest.created_at.desc())
+        .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "field_label": r.field_label,
+            "requested_value": r.requested_value,
+            "note": r.note,
+            "status": r.status,
+            "created_at": r.created_at,
+            "resolved_at": r.resolved_at,
+        }
+        for r in rows
+    ]
