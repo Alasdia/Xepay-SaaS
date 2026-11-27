@@ -32,6 +32,16 @@ function appendMessageBubble(role, text) {
   return bubble;
 }
 
+// Consomme le flux NDJSON de POST /alhu/chat (demande du 2026-11-27 :
+// "montrer que le marchand réfléchit... les réponses défilent ligne
+// par ligne... voir que la réflexion est en cours" pendant un appel
+// d'outil) - fetch()+ReadableStream, jamais res.json() (qui attendrait
+// la fin complète de la réponse avant d'afficher quoi que ce soit) ni
+// EventSource (GET uniquement, incompatible avec X-CSRF-Token sur ce
+// POST). Chaque ligne est un évènement JSON : "status" (un outil est en
+// cours d'exécution, ex. "💰 Je consulte votre solde..."), "delta" (un
+// morceau de texte de la réponse finale, affiché au fur et à mesure),
+// "done" (texte complet, poussé dans l'historique) ou "error".
 async function handleSubmit(e) {
   e.preventDefault();
   const text = inputEl.value.trim();
@@ -42,20 +52,62 @@ async function handleSubmit(e) {
   inputEl.value = "";
   inputEl.disabled = true;
   sendBtnEl.disabled = true;
-  const typingBubble = appendMessageBubble("assistant", "...");
+  const typingBubble = appendMessageBubble("assistant", "Alhu réfléchit...");
+  typingBubble.classList.add("alhu-bubble--status");
+
+  let fullText = "";
+  let sawDelta = false;
 
   try {
     const res = await apiFetch("/alhu/chat", { method: "POST", body: { messages } });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Alhu n'est pas disponible pour le moment.");
-    typingBubble.innerHTML = escapeHtml(data.reply).replace(/\n/g, "<br>");
-    messages.push({ role: "assistant", content: data.reply });
+    if (!res.ok || !res.body) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || "Alhu n'est pas disponible pour le moment.");
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      // Dernière entrée = ligne potentiellement incomplète (coupée en
+      // plein milieu par un chunk réseau) - remise en attente du
+      // prochain morceau, jamais parsée telle quelle.
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const evt = JSON.parse(line);
+        if (evt.type === "status") {
+          if (!sawDelta) typingBubble.innerHTML = escapeHtml(evt.text);
+        } else if (evt.type === "delta") {
+          if (!sawDelta) {
+            sawDelta = true;
+            typingBubble.classList.remove("alhu-bubble--status");
+          }
+          fullText += evt.text;
+          typingBubble.innerHTML = escapeHtml(fullText).replace(/\n/g, "<br>");
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+        } else if (evt.type === "done") {
+          fullText = evt.reply ?? fullText;
+          typingBubble.classList.remove("alhu-bubble--status");
+          typingBubble.innerHTML = escapeHtml(fullText).replace(/\n/g, "<br>");
+          messages.push({ role: "assistant", content: fullText });
+        } else if (evt.type === "error") {
+          throw new Error(evt.message || "Erreur de connexion à Alhu.");
+        }
+      }
+    }
   } catch (err) {
+    typingBubble.classList.remove("alhu-bubble--status");
     typingBubble.innerHTML = escapeHtml(err.message || "Erreur de connexion à Alhu.");
-    // Message d'erreur retiré de l'historique envoyé au serveur (demande
-    // normale : un échec réseau ne doit jamais polluer le contexte de la
-    // conversation avec un rôle "assistant" factice).
-    messages.pop();
+    // Jamais poussé dans messages (demande normale : seul le handler
+    // "done" ci-dessus ajoute une vraie réponse complète à l'historique
+    // - un échec, même après un début de texte affiché, ne doit jamais
+    // polluer le contexte envoyé au prochain appel).
   } finally {
     inputEl.disabled = false;
     sendBtnEl.disabled = false;

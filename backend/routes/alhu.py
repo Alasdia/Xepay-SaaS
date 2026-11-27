@@ -6,31 +6,45 @@ par n'importe quel membre du workspace ailleurs dans le dashboard,
 même un "lecteur" - aucune raison de restreindre davantage un
 assistant qui ne fait QUE lire."""
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+import json
+import logging
 
-from backend.database import get_db
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
+
 from backend.middleware.authorization import get_membership
 from backend.models import AlhuChatRequest, WorkspaceUser
-from backend.services.alhu_service import AlhuNotConfiguredError, run_alhu_chat
+from backend.services.alhu_service import AlhuNotConfiguredError, stream_alhu_chat
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+def _ndjson_stream(workspace_id: str, messages: list[dict]):
+    """NDJSON (une ligne JSON par évènement) plutôt que du SSE classique
+    (text/event-stream) - demande du 2026-11-27 (streaming) : consommé
+    côté client via fetch()+ReadableStream (voir shared/alhuWidget.js),
+    jamais EventSource (GET uniquement, incompatible avec le header
+    X-CSRF-Token exigé sur ce POST)."""
+    try:
+        for event in stream_alhu_chat(workspace_id, messages):
+            yield json.dumps(event, ensure_ascii=False) + "\n"
+    except AlhuNotConfiguredError:
+        yield json.dumps({"type": "error", "message": "Alhu n'est pas encore disponible."}) + "\n"
+    except Exception:
+        logger.exception("Echec stream Alhu pour workspace_id=%s", workspace_id)
+        yield json.dumps({"type": "error", "message": "Erreur interne. Réessayez."}) + "\n"
 
 
 @router.post("/alhu/chat")
 def alhu_chat(
     body: AlhuChatRequest,
     membership: WorkspaceUser = Depends(get_membership),
-    db: Session = Depends(get_db),
 ):
     if not body.messages:
         raise HTTPException(400, "Aucun message.")
-    try:
-        reply = run_alhu_chat(
-            db,
-            membership.workspace_id,
-            [{"role": m.role, "content": m.content} for m in body.messages],
-        )
-    except AlhuNotConfiguredError:
-        raise HTTPException(503, "Alhu n'est pas encore disponible.")
-    return {"reply": reply}
+    messages = [{"role": m.role, "content": m.content} for m in body.messages]
+    return StreamingResponse(
+        _ndjson_stream(membership.workspace_id, messages),
+        media_type="application/x-ndjson",
+    )
