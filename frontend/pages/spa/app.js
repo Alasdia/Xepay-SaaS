@@ -5,6 +5,7 @@ import { isAuthenticated, setSession, getWorkspaceId, setWorkspaceId } from "./c
 import { apiFetch } from "./core/apiClient.js";
 import { initSidebar, setActiveRoute } from "./sidebar.js";
 import { showToast } from "./shared/toast.js";
+import { initAlhuWidget } from "./shared/alhuWidget.js";
 
 import { mount as mountDashboard } from "./views/dashboard.js";
 import { mount as mountSolde } from "./views/solde.js";
@@ -156,6 +157,7 @@ async function init() {
   );
 
   await initSidebar();
+  initAlhuWidget();
 
   // Icône ⚙️ du bandeau jaune (#top-banner, dashboard.html) - navigue vers
   // la vue Paramètres (ex-pages Profil/KYC + Sécurité, voir

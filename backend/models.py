@@ -290,6 +290,19 @@ class BuildnessCorrectionRequestCreate(BaseModel):
     requested_value: str
     note: str | None = None
 
+class AlhuChatMessage(BaseModel):
+    # Historique envoyé tel quel par le client à chaque appel (ajouté le
+    # 2026-11-27, voir services/alhu_service.py) - rien n'est persisté
+    # côté serveur pour ce premier chantier, le contenu reste donc un
+    # simple str (jamais la forme riche par blocs qu'Anthropic utilise
+    # pour les tool_use/tool_result internes, reconstruite uniquement en
+    # mémoire pendant le traitement d'une requête).
+    role: Literal["user", "assistant"]
+    content: str
+
+class AlhuChatRequest(BaseModel):
+    messages: list[AlhuChatMessage]
+
 class ShopifyCustomerUpsertRequest(BaseModel):
     # Mêmes champs pour créer (POST /shopify/customers) et modifier
     # (PATCH /shopify/customers/{id}) - voir services/shopify_service.py

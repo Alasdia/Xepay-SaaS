@@ -59,6 +59,133 @@
   color: #6b7280;
 }
 
+/* Widget flottant Alhu (demandé le 2026-11-27, voir spa/shared/
+   alhuWidget.js) - monté une seule fois par app.js, survit à toute
+   navigation interne, donc sa CSS doit vivre dans un fichier TOUJOURS
+   chargé (comme #sidebar/#top-banner ci-dessus), jamais dans un CSS de
+   vue swappable. z-index au-dessus de #sidebar/#top-banner (500000/
+   500001) mais sous #workspace-switch-overlay (2000000, plein écran
+   bloquant) et le toast (999999, voir dashboard.css etc.) - bas/droite,
+   chevauchement improbable avec l'un ou l'autre de toute façon. */
+#alhu-widget-toggle {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  background: #b45309;
+  color: #ffffff;
+  font-size: 20px;
+  box-shadow: 0 8px 24px rgba(180, 83, 9, .35);
+  cursor: pointer;
+  z-index: 600000;
+}
+#alhu-widget-toggle:hover {
+  background: #9a4807;
+}
+#alhu-widget-panel {
+  position: fixed;
+  bottom: 88px;
+  right: 24px;
+  width: min(340px, calc(100vw - 32px));
+  height: min(480px, calc(100vh - 140px));
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, .18);
+  z-index: 600000;
+  flex-direction: column;
+  overflow: hidden;
+}
+#alhu-widget-header {
+  background: #b45309;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+#alhu-widget-close {
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+#alhu-widget-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.alhu-bubble {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.alhu-bubble--assistant {
+  align-self: flex-start;
+  background: #f3f4f6;
+  color: #111827;
+}
+.alhu-bubble--user {
+  align-self: flex-end;
+  background: rgba(180, 83, 9, 0.12);
+  color: #111827;
+}
+#alhu-widget-form {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid #f1f3f5;
+  flex-shrink: 0;
+}
+#alhu-widget-input {
+  flex: 1;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  outline: none;
+}
+#alhu-widget-input:focus {
+  border-color: #b45309;
+}
+#alhu-widget-send {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #b45309;
+  color: #ffffff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+#alhu-widget-send:disabled,
+#alhu-widget-input:disabled {
+  opacity: .6;
+  cursor: default;
+}
+@media (max-width: 480px) {
+  #alhu-widget-panel {
+    right: 16px;
+    bottom: 84px;
+  }
+  #alhu-widget-toggle {
+    right: 16px;
+    bottom: 16px;
+  }
+}
+
 /* Fond par défaut de tous les modals Bootstrap de l'app n'ayant pas déjà
    leur propre fond (voir les overrides dans commerce.css/dashboard.css/
    API.css/profil.css/transactions.css, qui gagnent par
