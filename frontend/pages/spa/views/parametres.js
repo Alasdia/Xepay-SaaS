@@ -12,7 +12,7 @@ import { setViewStyles } from "../core/styleLoader.js";
 import { showToast } from "../shared/toast.js";
 import { viewLoadingHtml } from "../shared/loadingSpinner.js";
 import { showWorkspaceSwitchOverlay, hideWorkspaceSwitchOverlay } from "../shared/workspaceSwitchOverlay.js";
-import { BUILDNESS_US_STATES } from "../shared/buildnessStatus.js";
+import { BUILDNESS_US_STATES, createBuildnessCorrectionRequest, fetchBuildnessCorrectionRequests } from "../shared/buildnessStatus.js";
 import { clearSession, getWorkspaceId, setWorkspaceId } from "../core/state.js";
 import { navigate } from "../core/router.js";
 import { getCurrency, getRate, formatMoney } from "../core/currency.js";
@@ -2448,6 +2448,8 @@ function entrepriseTemplate() {
 
     <div id="p-buildness-container"></div>
 
+    <div id="p-buildness-correction-container" style="margin-top: 32px;"></div>
+
     <div class="params-subsection-header" style="margin-top: 32px;">
       <h6 class="params-subsection-title mb-0">Informations sur votre entreprise</h6>
       <button type="button" id="p-company-widget-btn" class="create-client-btn">Se connecter</button>
@@ -2494,6 +2496,89 @@ const BUILDNESS_INFO_MODAL_HTML = `
   </div>
 </div>
 `;
+
+// "Demander une correction" (déplacé depuis spa/views/monEntreprise.js
+// le 2026-11-27, demande explicite : ce mécanisme appartient à la page
+// de GESTION de la société - Paramètres > Entreprise, point d'entrée
+// pour lancer/relancer un dossier - pas à "Mon entreprise", qui ne sert
+// QUE à consulter l'avancement, voir son commentaire d'en-tête) - doola
+// n'expose aucun endpoint pour modifier une société déjà créée (vérifié
+// dans leur doc API + Embedded SDK + spec OpenAPI) et n'a de relation
+// directe qu'avec Xepay : ce formulaire ne fait qu'enregistrer la
+// demande côté Xepay (POST /buildness/correction-request) et alerter un
+// humain côté Xepay par email - JAMAIS une mise à jour automatique chez
+// doola, d'où l'avertissement explicite dans le corps du modal.
+const BUILDNESS_CORRECTION_MODAL_HTML = `
+<div class="modal fade" id="buildnessCorrectionModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold">Demander une correction</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body px-4 pb-4">
+        <p class="text-muted" style="font-size:13px;">doola n'a de relation directe qu'avec Xepay : votre demande nous est transmise, nous relayons ensuite la correction auprès d'eux - ce n'est pas une modification automatique.</p>
+        <form id="p-buildness-correction-form">
+          <div class="form-group">
+            <label>Champ à corriger</label>
+            <select id="p-buildness-correction-field" class="form-select" required>
+              <option value="" disabled selected>Choisir un champ</option>
+              <option value="Raison sociale">Raison sociale</option>
+              <option value="Adresse commerciale">Adresse commerciale</option>
+              <option value="Secteur d'activité">Secteur d'activité</option>
+              <option value="Description de l'activité">Description de l'activité</option>
+              <option value="Autre">Autre</option>
+            </select>
+          </div>
+          <div class="form-group" id="p-buildness-correction-field-other-group" style="display:none;">
+            <label>Précisez le champ</label>
+            <input type="text" id="p-buildness-correction-field-other" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Nouvelle valeur souhaitée</label>
+            <input type="text" id="p-buildness-correction-value" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label>Note (optionnel)</label>
+            <textarea id="p-buildness-correction-note" class="form-control"></textarea>
+          </div>
+          <button type="submit" class="create-client-btn" id="p-buildness-correction-submit">Envoyer la demande</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+const BUILDNESS_CORRECTION_STATUS_LABELS = { pending: "En attente", resolved: "Résolue", rejected: "Refusée" };
+
+function formatBuildnessCorrectionDate(value) {
+  if (!value || isNaN(new Date(value))) return "—";
+  return new Date(value).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function buildnessCorrectionRowHtml(r) {
+  const statusLabel = BUILDNESS_CORRECTION_STATUS_LABELS[r.status] || r.status;
+  return `
+    <div class="params-correction-row">
+      <div class="fw-semibold" style="font-size:13px;">${r.field_label} → ${r.requested_value}</div>
+      <div class="text-muted" style="font-size:12.5px;">${formatBuildnessCorrectionDate(r.created_at)} - ${statusLabel}</div>
+    </div>
+  `;
+}
+
+function buildnessCorrectionSectionHtml(requests) {
+  return `
+    <div class="params-promo-card params-promo-card--compact">
+      <h3 class="params-promo-title" style="font-size:16px;">Demander une correction</h3>
+      <p class="params-promo-sub" style="font-size:13px;">Une info à corriger sur votre LLC (adresse, secteur, description...) ? doola n'a de relation directe qu'avec Xepay - votre demande nous est transmise, nous relayons ensuite la correction auprès d'eux.</p>
+      <div class="params-promo-actions">
+        <button type="button" class="create-client-btn" id="p-buildness-open-correction">Demander une correction</button>
+      </div>
+      ${requests && requests.length ? `<div style="margin-top:20px;">${requests.map(buildnessCorrectionRowHtml).join("")}</div>` : ""}
+    </div>
+  `;
+}
 
 function buildnessWizardStateOptionsHtml() {
   return BUILDNESS_US_STATES.map(
@@ -2897,12 +2982,60 @@ async function loadCompanyWidget() {
   }
 }
 
+function openBuildnessCorrectionModal() {
+  const form = document.getElementById("p-buildness-correction-form");
+  if (form) form.reset();
+  const otherGroup = document.getElementById("p-buildness-correction-field-other-group");
+  if (otherGroup) otherGroup.style.display = "none";
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("buildnessCorrectionModal")).show();
+}
+
+async function submitBuildnessCorrection(e) {
+  e.preventDefault();
+  const fieldSelect = document.getElementById("p-buildness-correction-field");
+  const fieldOther = document.getElementById("p-buildness-correction-field-other");
+  const fieldLabel = fieldSelect.value === "Autre" ? (fieldOther.value || "").trim() : fieldSelect.value;
+  const requestedValue = document.getElementById("p-buildness-correction-value").value.trim();
+  const note = document.getElementById("p-buildness-correction-note").value.trim();
+  if (!fieldLabel || !requestedValue) return;
+
+  const btn = document.getElementById("p-buildness-correction-submit");
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
+  try {
+    await createBuildnessCorrectionRequest(fieldLabel, requestedValue, note);
+    showToast("Demande envoyée - nous la transmettrons à doola", "success");
+    const modalEl = document.getElementById("buildnessCorrectionModal");
+    const instance = modalEl && bootstrap.Modal.getInstance(modalEl);
+    if (instance) instance.hide();
+    loadBuildnessCorrectionSection();
+  } catch (err) {
+    showToast(err.message || "Erreur lors de l'envoi", "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+  }
+}
+
+function loadBuildnessCorrectionSection() {
+  const el = document.getElementById("p-buildness-correction-container");
+  if (!el) return;
+  fetchBuildnessCorrectionRequests()
+    .then((requests) => {
+      el.innerHTML = buildnessCorrectionSectionHtml(requests);
+      el.querySelector("#p-buildness-open-correction")?.addEventListener("click", openBuildnessCorrectionModal);
+    })
+    .catch((err) => console.warn("Echec recuperation demandes de correction Buildness :", err));
+}
+
 function mountEntreprise(on) {
   companyWidgetLoaded = false;
   on(document.getElementById("p-company-widget-btn"), "click", loadCompanyWidget);
 
   document.body.insertAdjacentHTML("beforeend", BUILDNESS_INFO_MODAL_HTML);
   document.body.insertAdjacentHTML("beforeend", BUILDNESS_WIZARD_MODAL_HTML);
+  document.body.insertAdjacentHTML("beforeend", BUILDNESS_CORRECTION_MODAL_HTML);
 
   // BUG PRÉ-EXISTANT (jamais présent dans aucune version antérieure de ce
   // fichier, confirmé par `git log -S` - trouvé le 2026-11-24 suite à un
@@ -2913,10 +3046,17 @@ function mountEntreprise(on) {
   // aucune requête réseau, aucune erreur visible, "aucun résultat".
   on(document.getElementById("p-buildness-wizard-form"), "submit", submitBuildnessOnboard);
 
+  on(document.getElementById("p-buildness-correction-field"), "change", (e) => {
+    const otherGroup = document.getElementById("p-buildness-correction-field-other-group");
+    if (otherGroup) otherGroup.style.display = e.target.value === "Autre" ? "" : "none";
+  });
+  on(document.getElementById("p-buildness-correction-form"), "submit", submitBuildnessCorrection);
+
   renderBuildnessSection();
+  loadBuildnessCorrectionSection();
 
   return () => {
-    for (const id of ["paramsBuildnessInfoModal", "paramsBuildnessWizardModal"]) {
+    for (const id of ["paramsBuildnessInfoModal", "paramsBuildnessWizardModal", "buildnessCorrectionModal"]) {
       const modalEl = document.getElementById(id);
       const instance = modalEl && bootstrap.Modal.getInstance(modalEl);
       if (instance) {

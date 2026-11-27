@@ -37,8 +37,6 @@ import {
   fetchBuildnessDocuments,
   fetchBuildnessDocument,
   createBuildnessSignatureSession,
-  createBuildnessCorrectionRequest,
-  fetchBuildnessCorrectionRequests,
 } from "../shared/buildnessStatus.js";
 
 const BUILDNESS_STEPS = ["draft", "submitted", "processing", "completed"];
@@ -64,55 +62,6 @@ const BUILDNESS_SIGNATURE_MODAL_HTML = `
       </div>
       <div class="modal-body px-4 pb-4">
         <div id="buildness-signature-frame-container"></div>
-      </div>
-    </div>
-  </div>
-</div>
-`;
-
-// Modal "Demander une correction" (ajouté le 2026-11-27) - doola
-// n'expose aucun endpoint pour modifier une société déjà créée
-// (vérifié dans leur doc API + Embedded SDK + spec OpenAPI) et n'a de
-// relation directe qu'avec Xepay : ce formulaire ne fait qu'enregistrer
-// la demande côté Xepay (POST /buildness/correction-request) et alerter
-// un humain côté Xepay par email - JAMAIS une mise à jour automatique
-// chez doola, d'où l'avertissement explicite dans le corps du modal.
-const BUILDNESS_CORRECTION_MODAL_HTML = `
-<div class="modal fade" id="buildnessCorrectionModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header border-0">
-        <h5 class="modal-title fw-bold">Demander une correction</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-      </div>
-      <div class="modal-body px-4 pb-4">
-        <p class="text-muted" style="font-size:13px;">doola n'a de relation directe qu'avec Xepay : votre demande nous est transmise, nous relayons ensuite la correction auprès d'eux - ce n'est pas une modification automatique.</p>
-        <form id="p-buildness-correction-form">
-          <div class="form-group">
-            <label>Champ à corriger</label>
-            <select id="p-buildness-correction-field" class="form-select" required>
-              <option value="" disabled selected>Choisir un champ</option>
-              <option value="Raison sociale">Raison sociale</option>
-              <option value="Adresse commerciale">Adresse commerciale</option>
-              <option value="Secteur d'activité">Secteur d'activité</option>
-              <option value="Description de l'activité">Description de l'activité</option>
-              <option value="Autre">Autre</option>
-            </select>
-          </div>
-          <div class="form-group" id="p-buildness-correction-field-other-group" style="display:none;">
-            <label>Précisez le champ</label>
-            <input type="text" id="p-buildness-correction-field-other" class="form-control">
-          </div>
-          <div class="form-group">
-            <label>Nouvelle valeur souhaitée</label>
-            <input type="text" id="p-buildness-correction-value" class="form-control" required>
-          </div>
-          <div class="form-group">
-            <label>Note (optionnel)</label>
-            <textarea id="p-buildness-correction-note" class="form-control"></textarea>
-          </div>
-          <button type="submit" class="create-client-btn" id="p-buildness-correction-submit">Envoyer la demande</button>
-        </form>
       </div>
     </div>
   </div>
@@ -504,37 +453,6 @@ function documentsCardHtml(documents) {
   `;
 }
 
-// Demande de correction (ajouté le 2026-11-27) - bouton + historique des
-// demandes déjà envoyées (POST/GET /buildness/correction-request(s)) -
-// voir le commentaire de BUILDNESS_CORRECTION_MODAL_HTML plus haut :
-// jamais une modification automatique, juste une demande tracée.
-const BUILDNESS_CORRECTION_STATUS_LABELS = { pending: "En attente", resolved: "Résolue", rejected: "Refusée" };
-
-function correctionRequestRowHtml(r) {
-  const dateLabel = formatDateFr(r.created_at) || "—";
-  const statusLabel = BUILDNESS_CORRECTION_STATUS_LABELS[r.status] || r.status;
-  return `
-    <div class="mon-entreprise-doc-row">
-      <div class="mon-entreprise-doc-icon"><i class="fa-solid fa-pen"></i></div>
-      <div class="mon-entreprise-doc-info">
-        <div class="mon-entreprise-doc-name">${r.field_label} → ${r.requested_value}</div>
-        <div class="mon-entreprise-doc-date">${dateLabel} - ${statusLabel}</div>
-      </div>
-    </div>
-  `;
-}
-
-function correctionSectionHtml(requests) {
-  return `
-    <div class="mon-entreprise-card">
-      <h4 class="mon-entreprise-section-title"><i class="fa-solid fa-pen-to-square"></i> Demande de correction</h4>
-      <p class="text-muted" style="font-size:13px; margin-bottom:12px;">Une info à corriger (adresse, secteur, description...) ? doola n'a de relation directe qu'avec Xepay - votre demande nous est transmise, nous relayons ensuite la correction auprès d'eux.</p>
-      <button type="button" class="create-client-btn" id="p-buildness-open-correction">Demander une correction</button>
-      ${requests && requests.length ? `<div style="margin-top:20px;">${requests.map(correctionRequestRowHtml).join("")}</div>` : ""}
-    </div>
-  `;
-}
-
 // 4 onglets (demande du 2026-11-26, même patron que SHOPIFY_TABS dans
 // commerce.js) - paneHtml pose juste le squelette (conteneur + état de
 // chargement initial), rempli ensuite par render() via les mêmes ids
@@ -545,10 +463,7 @@ const MON_ENTREPRISE_TABS = [
   {
     key: "infos",
     label: "Informations de l'entreprise",
-    paneHtml: `
-      <div id="mon-entreprise-official-container"><div class="mon-entreprise-card">${viewLoadingHtml()}</div></div>
-      <div id="mon-entreprise-correction-container"></div>
-    `,
+    paneHtml: `<div id="mon-entreprise-official-container"><div class="mon-entreprise-card">${viewLoadingHtml()}</div></div>`,
   },
   {
     key: "statut",
@@ -599,13 +514,6 @@ export async function mount(container) {
   await setViewStyles(["parametres.css"]);
   container.innerHTML = TEMPLATE;
   document.body.insertAdjacentHTML("beforeend", BUILDNESS_SIGNATURE_MODAL_HTML);
-  document.body.insertAdjacentHTML("beforeend", BUILDNESS_CORRECTION_MODAL_HTML);
-
-  document.getElementById("p-buildness-correction-field")?.addEventListener("change", (e) => {
-    const otherGroup = document.getElementById("p-buildness-correction-field-other-group");
-    if (otherGroup) otherGroup.style.display = e.target.value === "Autre" ? "" : "none";
-  });
-  document.getElementById("p-buildness-correction-form")?.addEventListener("submit", submitBuildnessCorrection);
 
   let pollTimer = null;
   function stopPolling() {
@@ -687,59 +595,6 @@ export async function mount(container) {
     });
   }
 
-  function openCorrectionModal() {
-    const form = document.getElementById("p-buildness-correction-form");
-    if (form) form.reset();
-    const otherGroup = document.getElementById("p-buildness-correction-field-other-group");
-    if (otherGroup) otherGroup.style.display = "none";
-    bootstrap.Modal.getOrCreateInstance(document.getElementById("buildnessCorrectionModal")).show();
-  }
-
-  async function submitBuildnessCorrection(e) {
-    e.preventDefault();
-    const fieldSelect = document.getElementById("p-buildness-correction-field");
-    const fieldOther = document.getElementById("p-buildness-correction-field-other");
-    const fieldLabel = fieldSelect.value === "Autre" ? (fieldOther.value || "").trim() : fieldSelect.value;
-    const requestedValue = document.getElementById("p-buildness-correction-value").value.trim();
-    const note = document.getElementById("p-buildness-correction-note").value.trim();
-    if (!fieldLabel || !requestedValue) return;
-
-    const btn = document.getElementById("p-buildness-correction-submit");
-    const originalHtml = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
-    try {
-      await createBuildnessCorrectionRequest(fieldLabel, requestedValue, note);
-      showToast("Demande envoyée - nous la transmettrons à doola", "success");
-      const modalEl = document.getElementById("buildnessCorrectionModal");
-      const instance = modalEl && bootstrap.Modal.getInstance(modalEl);
-      if (instance) instance.hide();
-      loadCorrectionSection();
-    } catch (err) {
-      showToast(err.message || "Erreur lors de l'envoi", "error");
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = originalHtml;
-    }
-  }
-
-  // Charge/affiche le bouton + l'historique des demandes de correction -
-  // appelée au premier rendu du dossier ET juste après l'envoi d'une
-  // nouvelle demande (demande du 2026-11-27), jamais à chaque tick du
-  // poll (contrairement au récap officiel/fondateur/documents) : les
-  // demandes de correction ne changent jamais côté doola/webhook, rien
-  // ne justifie un refresh automatique périodique ici.
-  function loadCorrectionSection() {
-    const el = document.getElementById("mon-entreprise-correction-container");
-    if (!el) return;
-    fetchBuildnessCorrectionRequests()
-      .then((requests) => {
-        el.innerHTML = correctionSectionHtml(requests);
-        el.querySelector("#p-buildness-open-correction")?.addEventListener("click", openCorrectionModal);
-      })
-      .catch((err) => console.warn("[Mon entreprise] Echec recuperation demandes de correction :", err));
-  }
-
   // Rendu en 2 temps : le bandeau de statut (rapide, DB Xepay) s'affiche
   // immédiatement ; le récap officiel/statut détaillé/fondateur/
   // documents (appels doola en parallèle, plus lents) se remplissent
@@ -775,7 +630,6 @@ export async function mount(container) {
         ${monEntrepriseTabsHtml()}
       `;
       wireMonEntrepriseTabs(el);
-      loadCorrectionSection();
       hasRenderedLayout = true;
     }
 
@@ -843,7 +697,7 @@ export async function mount(container) {
       // Même nettoyage que les autres vues à modal (voir mountEntreprise
       // dans parametres.js) : sans ça, le backdrop et les classes posées
       // sur <body> survivent à la navigation.
-      ["buildnessSignatureModal", "buildnessCorrectionModal"].forEach((id) => {
+      ["buildnessSignatureModal"].forEach((id) => {
         const modalEl = document.getElementById(id);
         const instance = modalEl && bootstrap.Modal.getInstance(modalEl);
         if (instance) {
