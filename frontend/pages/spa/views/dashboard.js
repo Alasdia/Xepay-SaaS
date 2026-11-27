@@ -13,8 +13,10 @@ import { setViewStyles } from "../core/styleLoader.js";
 import { navigate } from "../core/router.js";
 import { getWorkspaceId } from "../core/state.js";
 import { getCurrency, setCurrency, getRate as sharedGetRate, formatMoney as sharedFormatMoney } from "../core/currency.js";
+import { fetchBuildnessStatus } from "../shared/buildnessStatus.js";
 
 const TEMPLATE = `
+<div id="dashboard-llc-banner"></div>
 <div class="hero-stat mb-4" id="hero-stat">
   <div class="hero-stat-title" id="hero-stat-title">Aujourd'hui</div>
   <div class="hero-stat-divider"></div>
@@ -1935,6 +1937,57 @@ export async function mount(container) {
     renderAllActivityCards();
   }
 
+  // Bandeau "il faut une LLC" (demandé le 2026-11-27) - fait comprendre
+  // AVANT tout, dès l'atterrissage sur le tableau de bord (1ère
+  // connexion ou pas), qu'une société américaine (LLC, via Buildness/
+  // doola) est nécessaire pour encaisser/retirer - Xepay s'appuie sur
+  // Stripe Connect, qui l'exige pour tout marchand non-résident. Jamais
+  // masqué/fermable tant que le dossier n'est pas "completed" : contrairement
+  // au badge Alhu (Stripe Connect), cette info est trop importante pour
+  // dépendre du marchand qui ouvre le chat de son propre chef.
+  async function loadLlcBanner() {
+    const el = document.getElementById("dashboard-llc-banner");
+    if (!el) return;
+    let data;
+    try {
+      data = await fetchBuildnessStatus();
+    } catch (err) {
+      return; // Silencieux : un bandeau d'info ne doit jamais faire planter le tableau de bord.
+    }
+    if (data.status === "completed") {
+      el.innerHTML = "";
+      return;
+    }
+    const isFailed = data.status === "failed";
+    const title = data.status === "not_started"
+      ? "Une société américaine (LLC) est nécessaire pour encaisser et retirer vos fonds"
+      : isFailed
+        ? "La création de votre société américaine (LLC) a échoué"
+        : "Votre dossier de création de société américaine (LLC) est en cours";
+    const sub = data.status === "not_started"
+      ? "Xepay s'appuie sur Stripe Connect, qui exige une société américaine (LLC) et son EIN pour tout marchand non-résident. Sans cette étape, vous ne pourrez ni recevoir de paiements, ni effectuer de retrait."
+      : isFailed
+        ? "Rendez-vous dans Paramètres > Entreprise pour réessayer - tant qu'elle n'est pas formée, vous ne pourrez ni recevoir de paiements, ni effectuer de retrait."
+        : "Suivez son avancement dans \"Mon entreprise\" - tant qu'elle n'est pas formée, vous ne pourrez ni recevoir de paiements, ni effectuer de retrait.";
+    const ctaLabel = data.status === "not_started" || isFailed ? "Créer ma société" : "Voir l'avancement";
+    const ctaTarget = data.status === "not_started" || isFailed ? "parametres/entreprise" : "mon-entreprise";
+
+    el.innerHTML = `
+      <div class="dashboard-llc-banner">
+        <div class="dashboard-llc-banner-icon"><i class="fa-solid fa-building-circle-exclamation"></i></div>
+        <div class="dashboard-llc-banner-body">
+          <div class="dashboard-llc-banner-title">${title}</div>
+          <p class="dashboard-llc-banner-sub">${sub}</p>
+        </div>
+        <button type="button" class="create-client-btn" id="dashboard-llc-banner-cta">${ctaLabel}</button>
+      </div>
+    `;
+    document.getElementById("dashboard-llc-banner-cta")?.addEventListener("click", () => {
+      navigate(`/dash/workspace/${encodeURIComponent(getWorkspaceId())}/${ctaTarget}`);
+    });
+  }
+
+  loadLlcBanner();
   initActivitySection();
 
   return {
