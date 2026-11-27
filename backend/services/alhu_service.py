@@ -76,7 +76,7 @@ ALHU_SYSTEM_PROMPT = """Tu es Alhu, l'assistant intégré au tableau de bord Xep
 
 Tu réponds à 3 types de questions, toujours via les outils fournis - jamais à partir de connaissances générales non vérifiées, et jamais en inventant une donnée ou une fonctionnalité :
 1. Questions sur les DONNÉES PROPRES du marchand (solde, transactions, dossier de création de société/LLC) - outils get_balance/get_recent_transactions/get_buildness_status.
-2. Questions sur LE PRODUIT Xepay lui-même (fonctionnalités, pages marketing, fonctionnement du tableau de bord) - outils list_product_files/read_product_file, qui donnent accès en LECTURE SEULE aux pages marketing et à tout le code source du SPA (frontend/pages/*.html et frontend/pages/spa/). Utilise list_product_files pour explorer AVANT de lire, puis read_product_file sur les fichiers pertinents - ne réponds sur le fonctionnement du produit qu'après avoir réellement lu le code/contenu concerné, jamais en supposant.
+2. Questions sur LE PRODUIT Xepay lui-même (fonctionnalités, tarifs, fonctionnement du tableau de bord) - outils list_product_files/read_product_file, qui donnent accès en LECTURE SEULE aux pages marketing et à tout le code source du SPA (frontend/pages/*.html et frontend/pages/spa/). ATTENTION : les pages marketing (frontend/pages/accueil.html, tarif.html...) décrivent l'offre générale (plans Free/Pro/Business) mais PAS les fonctionnalités internes au tableau de bord (Buildness, Stripe Connect, Shopify...) - leur coût/fonctionnement réels sont codés en dur dans le SPA, jamais sur une page marketing. Pour le coût/processus de la formation de LLC spécifiquement, utilise TOUJOURS get_buildness_info (rapide, lit la bonne info directement) plutôt que read_product_file sur parametres.js en entier (40+ Ko, beaucoup trop lent et peu fiable sur ce fichier précis). Pour toute autre question précise sur une fonctionnalité du tableau de bord sans outil dédié, lis le fichier de vue correspondant dans frontend/pages/spa/views/ avec read_product_file avant de répondre - ne te contente jamais d'une recherche dans les pages marketing seules pour ce type de question, et si après une recherche réelle tu ne trouves toujours rien, dis-le explicitement plutôt que de deviner.
 3. Questions sur l'ACTIVATION DU COMPTE STRIPE CONNECT du marchand - outil get_stripe_connect_status. Tous les marchands Xepay sont des fondateurs non-résidents ayant formé une LLC américaine (via Buildness/doola) pour pouvoir utiliser Stripe Connect. Tu peux expliquer en général les grandes étapes de cette activation (informations de l'entreprise, informations du représentant légal, coordonnées bancaires, documents de vérification d'identité) MAIS pour savoir précisément ce qu'IL reste à fournir à CE marchand, utilise TOUJOURS get_stripe_connect_status et base-toi sur ses champs currently_due/eventually_due_in_addition réels (déjà traduits en français, identiques à ce que voit le marchand dans Paramètres > Compte Stripe Connect > État du compte) - ne récite jamais une liste de documents par cœur, elle peut être fausse ou incomplète pour sa situation. Tu ne peux JAMAIS remplir ce formulaire à sa place (Stripe l'interdit structurellement, les champs KYC doivent venir directement du titulaire du compte) : ton rôle est de l'accompagner et de lui relayer clairement ce qui lui manque, pas de le compléter pour lui.
 
 Règles strictes :
@@ -140,6 +140,11 @@ ALHU_TOOLS = [
     {
         "name": "get_stripe_connect_status",
         "description": "Renvoie l'état RÉEL et à jour de l'activation du compte Stripe Connect du marchand : si le compte existe, si les paiements/retraits sont activés, et la liste exacte (currently_due/eventually_due_in_addition) des informations encore requises par Stripe pour CE marchand précis - déjà traduite en français, identique à ce qu'affiche Paramètres > Compte Stripe Connect > État du compte. Toujours utiliser cet outil plutôt que deviner une liste générique de documents.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_buildness_info",
+        "description": "Renvoie le prix actuel de la formation de LLC (Buildness) et le détail des étapes du processus, extraits en direct du tableau de bord (jamais une valeur devinée ou mémorisée). Toujours utiliser cet outil pour une question sur le coût ou le déroulement de la création de LLC, plutôt que de chercher dans les pages marketing (qui ne couvrent pas cette fonctionnalité) ou de lire parametres.js en entier.",
         "input_schema": {"type": "object", "properties": {}},
     },
 ]
@@ -358,6 +363,37 @@ def _get_stripe_connect_status(db: Session, workspace_id: str) -> dict:
     }
 
 
+def _get_buildness_info() -> dict:
+    """Extrait le prix et le processus Buildness directement depuis
+    parametres.js, LU À CHAQUE APPEL (jamais mis en cache ni codé en
+    dur - reste toujours synchro avec le vrai texte affiché) - ajouté
+    le 2026-11-27 : laisser le modèle lire ce fichier de 40+ Ko en
+    entier à chaque question Buildness était trop lent/peu fiable
+    (même constat que pour get_stripe_connect_status/parametres.js
+    plus haut - plusieurs relectures redondantes, risque de ne jamais
+    conclure dans MAX_TOOL_ROUNDS)."""
+    try:
+        path = _resolve_product_path("pages/spa/views/parametres.js")
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            content = f.read()
+    except (ValueError, OSError) as e:
+        return {"error": f"Lecture impossible : {e}"}
+
+    price_match = re.search(r"Créer ma société \(([^)]+)\)", content)
+
+    steps = []
+    modal_start = content.find("BUILDNESS_INFO_MODAL_HTML")
+    if modal_start != -1:
+        modal_chunk = content[modal_start:modal_start + 3000]
+        for raw_step in re.findall(r"<li>(.*?)</li>", modal_chunk, re.DOTALL):
+            steps.append(re.sub(r"<[^>]+>", "", raw_step).strip())
+
+    return {
+        "price": price_match.group(1) if price_match else None,
+        "process_steps": steps,
+    }
+
+
 def _execute_tool(tool_name: str, tool_input: dict, db: Session, workspace_id: str) -> dict:
     if tool_name == "get_balance":
         return _get_balance(db, workspace_id)
@@ -371,6 +407,8 @@ def _execute_tool(tool_name: str, tool_input: dict, db: Session, workspace_id: s
         return _read_product_file(tool_input.get("path"))
     if tool_name == "get_stripe_connect_status":
         return _get_stripe_connect_status(db, workspace_id)
+    if tool_name == "get_buildness_info":
+        return _get_buildness_info()
     return {"error": f"Outil inconnu : {tool_name}"}
 
 
