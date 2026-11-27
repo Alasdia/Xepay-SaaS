@@ -829,7 +829,10 @@ async function renderClients(container) {
 
                     list.innerHTML = `
                         <div class="commerce-card">
-                            <p>Aucun client dans cette catégorie.</p>
+                            <div class="commerce-empty-state">
+                                <div class="commerce-empty-icon"><i class="fa-solid fa-users"></i></div>
+                                <p class="commerce-empty-sub">Aucun client dans cette catégorie.</p>
+                            </div>
                         </div>
                     `;
 
@@ -1729,9 +1732,10 @@ async function renderProducts(container) {
 
                     list.innerHTML = `
                         <div class="commerce-card">
-                            <p>
-                                Aucun produit dans cette catégorie.
-                            </p>
+                            <div class="commerce-empty-state">
+                                <div class="commerce-empty-icon"><i class="fa-solid fa-box-open"></i></div>
+                                <p class="commerce-empty-sub">Aucun produit dans cette catégorie.</p>
+                            </div>
                         </div>
                     `;
 
@@ -3410,11 +3414,10 @@ async function renderSubscriptions(container) {
 
                     list.innerHTML = `
                         <div class="commerce-card">
-
-                            <p>
-                                Aucun abonnement dans cette catégorie.
-                            </p>
-
+                            <div class="commerce-empty-state">
+                                <div class="commerce-empty-icon"><i class="fa-solid fa-rotate"></i></div>
+                                <p class="commerce-empty-sub">Aucun abonnement dans cette catégorie.</p>
+                            </div>
                         </div>
                     `;
 
@@ -4960,9 +4963,10 @@ async function renderInvoices(container) {
                 if (!filteredInvoices.length) {
                     list.innerHTML = `
                         <div class="commerce-card">
-                            <p>
-                                Aucune facture dans cette catégorie.
-                            </p>
+                            <div class="commerce-empty-state">
+                                <div class="commerce-empty-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                                <p class="commerce-empty-sub">Aucune facture dans cette catégorie.</p>
+                            </div>
                         </div>
                     `;
                     return;
@@ -6702,11 +6706,19 @@ async function renderRisk(container) {
    Produits/Commandes de s'afficher, et inversement.
 ========================================================= */
 
+// Centré (demande du 2026-11-27, même patron que
+// .mon-entreprise-empty-state dans parametres.css) - icône au-dessus,
+// titre + sous-titre, bouton d'action en dessous, plutôt que 2
+// paragraphes alignés à gauche collés au bord du conteneur.
 function shopifyNotConnectedCardHtml() {
     return `
         <div class="commerce-card">
-            <p>Aucune boutique Shopify connectée.</p>
-            <p class="text-muted" style="font-size:12.5px;">Connectez votre boutique depuis <strong>Paramètres &gt; Shopify</strong> pour voir ses produits, commandes et clients ici.</p>
+            <div class="commerce-empty-state">
+                <div class="commerce-empty-icon"><i class="fa-brands fa-shopify"></i></div>
+                <h3 class="commerce-empty-title">Aucune boutique Shopify connectée</h3>
+                <p class="commerce-empty-sub">Connectez votre boutique depuis Paramètres &gt; Shopify pour voir ses produits, commandes et clients ici.</p>
+                <button type="button" class="create-client-btn" id="shopify-empty-goto-params">Aller dans Paramètres</button>
+            </div>
         </div>
     `;
 }
@@ -7154,7 +7166,11 @@ async function renderShopify(container) {
     // proposer "Commandes"/"Clients".
     const connected = await renderShopifyProductsSection(contentEl);
     if (connected === false) {
-        container.querySelector("#shopify-not-connected").innerHTML = shopifyNotConnectedCardHtml();
+        const notConnectedEl = container.querySelector("#shopify-not-connected");
+        notConnectedEl.innerHTML = shopifyNotConnectedCardHtml();
+        notConnectedEl.querySelector("#shopify-empty-goto-params")?.addEventListener("click", () => {
+            navigate(`/dash/workspace/${encodeURIComponent(getWorkspaceId())}/parametres/shopify`);
+        });
         return;
     }
     tabsEl.style.display = "";

@@ -261,6 +261,51 @@
     color: #111827;
 }
 
+/* État vide centré (demande du 2026-11-27, même patron visuel que
+   .mon-entreprise-empty-state dans parametres.css) - icône au-dessus,
+   titre + sous-titre, bouton d'action optionnel en dessous, plutôt
+   qu'un simple paragraphe aligné à gauche. Sélecteurs ".commerce-card
+   .commerce-empty-*" (jamais juste ".commerce-empty-*") pour primer
+   sur .commerce-card h3/p ci-dessus/dessous (spécificité CSS : 2
+   classes > 1 classe + 1 type). */
+.commerce-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+    padding: 40px 20px;
+}
+.commerce-empty-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: rgba(180, 83, 9, 0.08);
+    color: #b45309;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    margin-bottom: 8px;
+}
+.commerce-card .commerce-empty-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: #111827;
+    margin: 0 0 4px;
+}
+.commerce-card .commerce-empty-sub {
+    font-size: 13px;
+    font-weight: 400;
+    color: #374151;
+    margin: 0;
+    max-width: 420px;
+}
+.commerce-empty-state .create-client-btn {
+    margin-top: 8px;
+}
+
 .commerce-card p {
     margin: 0;
     font-size: 13px;
