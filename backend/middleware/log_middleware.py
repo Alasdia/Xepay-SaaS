@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy.orm import Session
 from backend.database import SessionLocal
@@ -5,10 +7,18 @@ from backend.models import WebhookDeliveryLog
 from datetime import datetime, timezone
 from backend.models import UserDB
 from backend.security import decode_token, ACCESS_COOKIE_NAME, CSRF_COOKIE_NAME
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Domaine PUBLIC de l'API, jamais déduit de request.url (scheme/host
+# peuvent être faux derrière un reverse proxy sans en-têtes X-Forwarded-*
+# configurés côté uvicorn, voir .github/workflows/deploy-ec2.yml - aucune
+# option --proxy-headers) - même constante que SHOPIFY_REDIRECT_URI
+# (services/shopify_service.py) et les autres URLs absolues du projet.
+API_BASE_URL = "https://api.xepay.finance"
+LOGIN_URL = "https://www.xepay.finance/login.html"
 
 # Dispensés de la vérification du cookie d'ACCÈS (access_token) : routes
 # pré-session (login, signup, 2FA, OAuth, reset password), /refresh et
@@ -98,6 +108,31 @@ class LogMiddleware(BaseHTTPMiddleware):
             payload = decode_token(token) if token else None
 
             if not payload or not payload.get("sub"):
+                # Navigation navigateur réelle (clic sur un lien, URL
+                # tapée/collée, redirection suivie) PLUTÔT qu'un appel
+                # fetch()/XHR du SPA (demande du 2026-11-27, suite d'un
+                # 401 brut reçu en collant /shopify/install directement -
+                # route conçue pour être atteinte par navigation
+                # top-level, jamais via apiFetch) : Sec-Fetch-Mode vaut
+                # "navigate" UNIQUEMENT dans ce cas (tous navigateurs
+                # modernes) - un fetch() same-origin/cross-origin envoie
+                # "same-origin"/"cors", jamais "navigate". Absent (vieux
+                # navigateur, client non-navigateur type curl) -> repli
+                # sur l'ancien JSON brut, jamais un comportement nouveau
+                # risqué pour un client qu'on ne peut pas identifier avec
+                # certitude. Renvoie vers la connexion AVEC l'URL
+                # d'origine en "next" plutôt qu'un JSON illisible - après
+                # connexion, login.js revalide strictement ce "next"
+                # (doit commencer par API_BASE_URL, jamais une URL
+                # arbitraire - anti open-redirect) avant d'y renvoyer.
+                if request.headers.get("sec-fetch-mode") == "navigate":
+                    next_url = f"{API_BASE_URL}{path}"
+                    if request.url.query:
+                        next_url += f"?{request.url.query}"
+                    return RedirectResponse(
+                        url=f"{LOGIN_URL}?next={quote(next_url, safe='')}",
+                        status_code=302,
+                    )
                 return JSONResponse(
                     status_code=401,
                     content={"error": "Unauthorized"}
