@@ -16,6 +16,13 @@ RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 # qu'avec Xepay, un humain ici relaie ensuite manuellement vers leur
 # support s'il y a lieu.
 BUILDNESS_CORRECTION_NOTIFY_EMAIL = os.getenv("BUILDNESS_CORRECTION_NOTIFY_EMAIL")
+# Boîte interne Xepay (jamais le marchand) qui reçoit les demandes de
+# boutique Shopify "prête à l'emploi" (Buildshop, voir send_shopify_
+# store_request_internal_email ci-dessous) - un humain assigne ensuite
+# manuellement une boutique déjà provisionnée (services/
+# buildshop_service.py) et effectue le transfert Partner Dashboard,
+# confirmé impossible à automatiser.
+SHOPIFY_STORE_REQUEST_NOTIFY_EMAIL = os.getenv("SHOPIFY_STORE_REQUEST_NOTIFY_EMAIL")
 
 
 def is_notification_enabled(user, event_key: str, legacy_flag: bool | None = None) -> bool:
@@ -561,3 +568,48 @@ def send_buildness_correction_request_internal_email(workspace_id, company_name,
         }
     )
     print("BUILDNESS CORRECTION REQUEST INTERNAL EMAIL", response.status_code, response.text)
+
+
+def send_shopify_store_request_internal_email(workspace_id, note):
+    """Vers SHOPIFY_STORE_REQUEST_NOTIFY_EMAIL (boîte interne Xepay),
+    JAMAIS vers le marchand - voir ShopifyStoreRequest (models.py) :
+    aucune boutique n'est assignée/transférée automatiquement, c'est un
+    humain côté Xepay qui lit cet email et assigne manuellement une
+    boutique déjà provisionnée (services/buildshop_service.py) puis
+    effectue le "Transfer store" (Partner Dashboard, confirmé
+    impossible à automatiser via l'API publique Shopify). Pas de garde
+    is_notification_enabled : ce n'est pas une préférence de
+    notification du marchand, c'est une alerte opérationnelle interne,
+    toujours envoyée. Peut être déclenché depuis le dashboard ou depuis
+    Alhu (voir alhu_service.py::_request_shopify_store) - même route/
+    même email dans les deux cas, aucune distinction nécessaire ici."""
+    if not SHOPIFY_STORE_REQUEST_NOTIFY_EMAIL:
+        logger.warning(
+            "SHOPIFY_STORE_REQUEST_NOTIFY_EMAIL non configuré - demande de boutique Shopify "
+            "(workspace_id=%s) non notifiée par email.",
+            workspace_id,
+        )
+        return
+    # Échappé (texte libre d'un membre quelconque du workspace, jamais
+    # fiable par défaut dans un email HTML) - même précaution que
+    # send_buildness_correction_request_internal_email ci-dessus.
+    note_line = f"<p>Note du marchand : {html.escape(note)}</p>" if note else ""
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": "Xepay <noreply@alasdia.com>",
+            "to": [SHOPIFY_STORE_REQUEST_NOTIFY_EMAIL],
+            "subject": "[Buildshop] Nouvelle demande de boutique Shopify",
+            "html": f"""
+                <h2>Nouvelle demande de boutique Shopify "prête à l'emploi"</h2>
+                <p>Workspace : <b>{html.escape(workspace_id or "")}</b></p>
+                {note_line}
+                <p>Assigner manuellement une boutique déjà provisionnée (voir GET /buildshop/readiness) puis effectuer le transfert depuis le Partner Dashboard Shopify.</p>
+            """
+        }
+    )
+    print("SHOPIFY STORE REQUEST INTERNAL EMAIL", response.status_code, response.text)

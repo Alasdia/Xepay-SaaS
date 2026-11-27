@@ -63,10 +63,13 @@ from backend.models import (
     ShopifyOrderPayment,
     ShopifyProductUpsertRequest,
     ShopifyShop,
+    ShopifyStoreRequest,
+    ShopifyStoreRequestCreate,
     WorkspaceUser,
 )
 from backend.routes.buildness import _get_latest_company
 from backend.security import create_shopify_state_token, decode_shopify_state_token, decrypt_secret, encrypt_secret
+from backend.services.email_service import send_shopify_store_request_internal_email
 from backend.services.buildshop_service import (
     get_buildshop_readiness,
     provision_catalog,
@@ -332,6 +335,50 @@ def shopify_status(
     if not shop_row:
         return {"connected": False}
     return {"connected": True, "shop_domain": shop_row.shop_domain, "scope": shop_row.scope}
+
+
+# Demande d'une boutique Shopify "prête à l'emploi" (ajouté le
+# 2026-11-27, même esprit que /buildness/correction-request plus haut
+# dans ce fichier) : le transfert réel d'une boutique Buildshop déjà
+# provisionnée (voir services/buildshop_service.py, section "Buildshop"
+# plus bas dans ce fichier) reste une action PUREMENT MANUELLE (Partner
+# Dashboard "Transfer store" - confirmé impossible à automatiser via
+# l'API publique Shopify). Ces 2 routes n'assignent/ne transfèrent
+# RIEN : elles enregistrent la demande et alertent un humain côté Xepay
+# par email (voir ShopifyStoreRequest, models.py). Même capacité que
+# /shopify/install ("manage_shopify_integration") : demander une
+# boutique relève de la même responsabilité que la connecter.
+@router.post("/shopify/store-request", status_code=201)
+def create_shopify_store_request(
+    body: ShopifyStoreRequestCreate,
+    membership: WorkspaceUser = Depends(require_capability("manage_shopify_integration")),
+    db: Session = Depends(get_db),
+):
+    request_row = ShopifyStoreRequest(workspace_id=membership.workspace_id, note=body.note)
+    db.add(request_row)
+    db.commit()
+    db.refresh(request_row)
+
+    send_shopify_store_request_internal_email(membership.workspace_id, body.note)
+
+    return {"id": request_row.id, "status": request_row.status, "created_at": request_row.created_at}
+
+
+@router.get("/shopify/store-requests")
+def list_shopify_store_requests(
+    membership: WorkspaceUser = Depends(require_capability("manage_shopify_integration")),
+    db: Session = Depends(get_db),
+):
+    rows = (
+        db.query(ShopifyStoreRequest)
+        .filter(ShopifyStoreRequest.workspace_id == membership.workspace_id)
+        .order_by(ShopifyStoreRequest.created_at.desc())
+        .all()
+    )
+    return [
+        {"id": r.id, "note": r.note, "status": r.status, "created_at": r.created_at, "resolved_at": r.resolved_at}
+        for r in rows
+    ]
 
 
 def _get_connected_shop(db: Session, workspace_id: str) -> ShopifyShop | None:
