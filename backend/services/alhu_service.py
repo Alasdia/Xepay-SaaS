@@ -416,12 +416,41 @@ class AlhuNotConfiguredError(Exception):
     pass
 
 
-def run_alhu_chat(db: Session, workspace_id: str, user_messages: list[dict]) -> str:
-    """user_messages : historique de la conversation côté client, déjà
-    au format Anthropic ({"role": "user"/"assistant", "content": "..."}),
-    jamais persisté côté serveur pour ce premier chantier (voir le
-    commentaire d'en-tête) - le client renvoie tout l'historique à
-    chaque appel."""
+# Libellés affichés côté client pendant l'exécution d'un outil (demande
+# du 2026-11-27 : "le marchand doit voir et comprendre que la réflexion
+# est en cours", pas juste un indicateur générique) - un par outil,
+# plutôt qu'un message unique "Je réfléchis" qui ne dit rien de ce qui
+# se passe réellement.
+_TOOL_STATUS_LABELS = {
+    "get_balance": "💰 Je consulte votre solde...",
+    "get_recent_transactions": "📋 Je consulte vos transactions récentes...",
+    "get_buildness_status": "🏢 Je vérifie le statut de votre dossier de création de société...",
+    "get_stripe_connect_status": "🔐 Je vérifie votre compte Stripe Connect...",
+    "get_buildness_info": "📖 Je consulte les informations sur la formation de LLC...",
+    "list_product_files": "🔍 J'explore la documentation du produit...",
+    "read_product_file": "📄 Je lis la documentation du produit...",
+}
+
+
+def stream_alhu_chat(workspace_id: str, user_messages: list[dict]):
+    """Générateur d'évènements ({"type": "status"|"delta"|"done"|"error", ...})
+    pour streamer la réflexion/réponse d'Alhu en direct (demande du
+    2026-11-27 : "le chat doit montrer au marchand qu'il est en train de
+    réfléchir... les réponses défilent ligne par ligne... le marchand
+    doit voir que la réflexion est en cours" pendant un appel d'outil) -
+    remplace l'ancienne version bloquante (run_alhu_chat, qui renvoyait
+    une seule string une fois tout terminé). user_messages : historique
+    de la conversation côté client, déjà au format Anthropic, jamais
+    persisté côté serveur (voir le commentaire d'en-tête) - le client
+    renvoie tout l'historique à chaque appel.
+
+    Ouvre SA PROPRE session DB (jamais Depends(get_db)) - même raison
+    que _apply_doola_event (webhook/doola.py) : get_db() ferme sa
+    session dans un finally dès que la fonction de route RETOURNE, ce
+    qui arrive dès que StreamingResponse reçoit ce générateur, PAS une
+    fois le flux entièrement consommé - réutiliser la session de la
+    requête planterait sur le 1er appel d'outil après le tout premier
+    yield."""
     if not ANTHROPIC_API_KEY:
         raise AlhuNotConfiguredError("ANTHROPIC_API_KEY non configurée")
 
@@ -429,21 +458,40 @@ def run_alhu_chat(db: Session, workspace_id: str, user_messages: list[dict]) -> 
     # SDK est absent/la clé manquante - même raison que get_doola_service
     # dans doola_client.py, pattern déjà établi dans ce projet).
     import anthropic
+    from backend.database import SessionLocal
 
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     messages = list(user_messages)
+    full_text_parts = []
+    db = SessionLocal()
 
+    try:
+        yield from _stream_alhu_rounds(client, db, workspace_id, messages, full_text_parts)
+    finally:
+        db.close()
+
+
+def _stream_alhu_rounds(client, db, workspace_id, messages, full_text_parts):
     for _ in range(MAX_TOOL_ROUNDS):
-        response = client.messages.create(
+        with client.messages.stream(
             model=ALHU_MODEL,
             max_tokens=1024,
             system=ALHU_SYSTEM_PROMPT,
             tools=ALHU_TOOLS,
             messages=messages,
-        )
+        ) as stream:
+            for event in stream:
+                if event.type == "content_block_start" and event.content_block.type == "tool_use":
+                    label = _TOOL_STATUS_LABELS.get(event.content_block.name, "🔎 Je recherche...")
+                    yield {"type": "status", "text": label}
+                elif event.type == "content_block_delta" and event.delta.type == "text_delta":
+                    full_text_parts.append(event.delta.text)
+                    yield {"type": "delta", "text": event.delta.text}
+            response = stream.get_final_message()
 
         if response.stop_reason != "tool_use":
-            return "".join(block.text for block in response.content if block.type == "text")
+            yield {"type": "done", "reply": "".join(full_text_parts)}
+            return
 
         messages.append({"role": "assistant", "content": response.content})
         tool_results = []
@@ -461,6 +509,12 @@ def run_alhu_chat(db: Session, workspace_id: str, user_messages: list[dict]) -> 
                 "content": str(result),
             })
         messages.append({"role": "user", "content": tool_results})
+
+    logger.warning("Alhu : MAX_TOOL_ROUNDS atteint pour workspace_id=%s sans réponse finale", workspace_id)
+    yield {
+        "type": "done",
+        "reply": "Désolé, je n'ai pas pu finaliser ma réponse. Réessayez en reformulant votre question.",
+    }
 
     logger.warning("Alhu : MAX_TOOL_ROUNDS atteint pour workspace_id=%s sans réponse finale", workspace_id)
     return "Désolé, je n'ai pas pu finaliser ma réponse. Réessayez en reformulant votre question."
