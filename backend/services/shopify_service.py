@@ -663,6 +663,87 @@ async def update_product(shop: str, access_token: str, product_id, title=None, d
     return payload.get("product") or {}
 
 
+# =========================================================
+# Thèmes + recherche de produit par titre (Buildshop - voir services/
+# buildshop_service.py, routes/shopify.py section "Buildshop") - utilisé
+# UNIQUEMENT pour les boutiques pré-transfert provisionnées par l'équipe
+# Xepay (ShopifyShop.merchant_id NULL), jamais pour une boutique déjà
+# rattachée à un marchand - garde-fou côté routes/shopify.py, jamais ici
+# (ces fonctions reçoivent déjà shop/access_token validés par l'appelant,
+# même convention que le reste de ce fichier).
+# =========================================================
+
+async def create_theme_from_url(shop: str, access_token: str, source_url: str, name: str | None = None, role: str = "UNPUBLISHED") -> dict:
+    """themeCreate - ASYNCHRONE côté Shopify (confirmé le 2026-11-27
+    contre shopify.dev/docs/api/admin-graphql/latest/mutations/
+    themecreate) : la réponse porte un thème avec processing=true juste
+    après cet appel, jamais un thème déjà prêt à l'emploi - voir
+    list_themes pour le suivi processing/processingFailed, jamais
+    supposé terminé ici. role ne peut valoir QUE "UNPUBLISHED" ou
+    "DEVELOPMENT" pour un nouveau thème (confirmé contre la même doc) -
+    jamais "MAIN" directement : publier (themePublish) est une décision
+    humaine distincte, hors périmètre de cette fonction."""
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        mutation themeCreate($source: URL!, $name: String, $role: ThemeRole) {
+          themeCreate(source: $source, name: $name, role: $role) {
+            theme { id name role processing processingFailed }
+            userErrors { field message }
+          }
+        }
+        """,
+        {"source": source_url, "name": name, "role": role},
+    )
+    payload = result.get("themeCreate") or {}
+    user_errors = payload.get("userErrors") or []
+    if user_errors:
+        raise ShopifyAPIError(200, str(user_errors))
+    return payload.get("theme") or {}
+
+
+async def list_themes(shop: str, access_token: str) -> list[dict]:
+    """Lecture PURE - sert à la fois à l'idempotence (provision_theme,
+    buildshop_service.py : ne jamais recréer un thème déjà présent sous
+    le même nom) et au suivi processing/processingFailed
+    (get_buildshop_readiness, buildshop_service.py)."""
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        query {
+          themes(first: 20) {
+            edges { node { id name role processing processingFailed } }
+          }
+        }
+        """,
+    )
+    edges = (result.get("themes") or {}).get("edges") or []
+    return [e["node"] for e in edges]
+
+
+async def find_products_by_title(shop: str, access_token: str, title: str) -> list[dict]:
+    """Lecture PURE - vérification d'idempotence pour provision_catalog
+    (buildshop_service.py) : ne jamais créer un second produit du même
+    titre sur un appel répété (retry après échec partiel). Échappe les
+    guillemets du titre dans le filtre "query" Shopify (syntaxe de
+    recherche dédiée, PAS du GraphQL - un titre contenant déjà un
+    guillemet casserait sinon ce filtre)."""
+    escaped = (title or "").replace('"', '\\"')
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        query($search: String!) {
+          products(first: 5, query: $search) {
+            edges { node { id title status } }
+          }
+        }
+        """,
+        {"search": f'title:"{escaped}"'},
+    )
+    edges = (result.get("products") or {}).get("edges") or []
+    return [e["node"] for e in edges]
+
+
 async def cancel_order(shop: str, access_token: str, order_id, reason: str, restock: bool, notify_customer: bool = False, staff_note: str | None = None) -> dict:
     """orderCancel - ASYNCHRONE côté Shopify (confirmé le 2026-11-24) :
     la réponse porte un "job" (id/done), jamais la commande annulée

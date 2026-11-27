@@ -45,16 +45,19 @@ simulation (DB jetable + hmac recalculé + échange de code mocké, voir
 le script de test), jamais par un vrai appel. À confirmer par le
 marchand sur Connect1."""
 
+import hmac
 import json
 import logging
+import os
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.middleware.authorization import require_capability
 from backend.models import (
+    BuildshopProvisionRequest,
     ShopifyCustomerUpsertRequest,
     ShopifyOrderCancelRequest,
     ShopifyOrderPayment,
@@ -64,6 +67,12 @@ from backend.models import (
 )
 from backend.routes.buildness import _get_latest_company
 from backend.security import create_shopify_state_token, decode_shopify_state_token, decrypt_secret, encrypt_secret
+from backend.services.buildshop_service import (
+    get_buildshop_readiness,
+    provision_catalog,
+    provision_theme,
+    provision_webhook,
+)
 from backend.services.shopify_service import (
     SHOPIFY_CLIENT_ID,
     ShopifyAPIError,
@@ -806,3 +815,129 @@ async def shopify_readiness_fix_webhook(
         raise HTTPException(status_code=502, detail="Impossible d'enregistrer le webhook")
     logger.info("Webhook orders/create vérifié/réparé pour %s (workspace %s)", shop_row.shop_domain, membership.workspace_id)
     return {"shop_domain": shop_row.shop_domain, "ok": True}
+
+
+# =========================================================
+# "Buildshop" (provisioning) - automatise le thème/catalogue/webhook
+# d'une boutique PRÉ-TRANSFERT (demande du 2026-11-27, suite de la
+# discussion d'architecture) - voir le docstring de services/
+# buildshop_service.py pour le détail de ce qui reste MANUEL (création
+# du Client Transfer Store, moyen de paiement manuel "Xepay",
+# installation OAuth de l'app) et pourquoi (limites structurelles de
+# l'API Shopify, pas de notre implémentation).
+#
+# AUCUN rapport avec le rapport de préparation GET /shopify/readiness
+# ci-dessus : celui-là est merchant-facing (gaté par une capacité de
+# workspace, pour une boutique déjà rattachée à un marchand réel).
+# Ici, aucun marchand n'existe encore - gaté par une clé interne
+# partagée (_require_buildshop_internal_key), jamais par
+# get_current_user/get_membership. Le garde-fou critique est
+# _require_buildshop_shop : il refuse systématiquement toute boutique
+# déjà rattachée à un marchand (ShopifyShop.merchant_id non NULL),
+# qu'une mauvaise utilisation de ces routes ne puisse JAMAIS toucher
+# une boutique en production chez un marchand.
+# =========================================================
+
+BUILDSHOP_INTERNAL_API_KEY = os.getenv("BUILDSHOP_INTERNAL_API_KEY")
+
+
+def _require_buildshop_internal_key(x_buildshop_internal_key: str | None = Header(default=None)):
+    """Gate dédiée aux 2 routes Buildshop ci-dessous - jamais
+    get_current_user/get_membership : ces routes agissent AVANT qu'un
+    marchand existe (boutique pré-transfert), aucune session Xepay ni
+    capacité de workspace ne correspond à "l'équipe interne qui
+    provisionne une boutique". Clé partagée comparée en temps constant
+    (hmac.compare_digest, même précaution que verify_hmac/
+    verify_webhook_signature plus haut dans ce fichier) - non
+    configurée = routes indisponibles (503), jamais un contournement
+    implicite qui les laisserait ouvertes sans clé."""
+    if not BUILDSHOP_INTERNAL_API_KEY:
+        raise HTTPException(status_code=503, detail="Buildshop non configuré (BUILDSHOP_INTERNAL_API_KEY manquante)")
+    if not x_buildshop_internal_key or not hmac.compare_digest(x_buildshop_internal_key, BUILDSHOP_INTERNAL_API_KEY):
+        raise HTTPException(status_code=401, detail="Clé interne invalide")
+
+
+def _require_buildshop_shop(db: Session, shop_domain: str) -> ShopifyShop:
+    """Résout une boutique PRÉ-TRANSFERT par shop_domain (jamais par
+    merchant_id/membership, contrairement à _get_connected_shop plus
+    haut - ces routes n'ont aucun marchand authentifié). GARDE-FOU
+    CRITIQUE, jamais contourné : refuse toute boutique déjà rattachée à
+    un marchand réel (merchant_id non NULL) - aucune action Buildshop
+    ne doit jamais pouvoir s'exécuter sur la boutique d'un marchand en
+    production."""
+    if not is_valid_shop_domain(shop_domain):
+        raise HTTPException(status_code=400, detail="Domaine shop invalide (attendu : boutique.myshopify.com)")
+    shop_row = db.query(ShopifyShop).filter(ShopifyShop.shop_domain == shop_domain).first()
+    if not shop_row or not shop_row.access_token:
+        raise HTTPException(
+            status_code=404,
+            detail="Boutique introuvable - l'app Xepay doit déjà être installée à la main sur cette boutique (voir l'étape manuelle d'installation OAuth).",
+        )
+    if shop_row.merchant_id is not None:
+        raise HTTPException(status_code=409, detail="Cette boutique est déjà rattachée à un marchand - provisioning Buildshop refusé.")
+    return shop_row
+
+
+@router.post("/buildshop/provision")
+async def buildshop_provision(
+    body: BuildshopProvisionRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_buildshop_internal_key),
+):
+    """Démarre le provisioning (thème + catalogue + webhook) d'une
+    boutique pré-transfert déjà installée à la main. Thème créé de
+    façon ASYNCHRONE côté Shopify (processing pas forcément terminé à
+    la fin de cet appel, voir provision_theme/services/
+    buildshop_service.py) - utiliser GET /buildshop/readiness pour
+    confirmer l'état réel avant le transfert manuel final, jamais
+    déduit de la seule réponse ci-dessous. Chaque étape est idempotente
+    (voir buildshop_service.py) : rappelable sans risque après un échec
+    partiel."""
+    shop_row = _require_buildshop_shop(db, body.shop_domain)
+    token = decrypt_secret(shop_row.access_token)
+    catalog = [item.model_dump() for item in body.catalog] if body.catalog is not None else None
+
+    try:
+        theme_result = await provision_theme(shop_row.shop_domain, token)
+        catalog_result = await provision_catalog(shop_row.shop_domain, token, catalog)
+        webhook_result = await provision_webhook(shop_row.shop_domain, token)
+    except ShopifyScopeError:
+        raise HTTPException(status_code=409, detail="Un scope requis n'est pas accordé sur cette boutique - réinstallez l'app")
+    except ShopifyRateLimitError:
+        raise HTTPException(status_code=429, detail="Limite Shopify atteinte, réessayez dans quelques secondes")
+    except ShopifyAPIError:
+        logger.exception("Échec provisioning Buildshop pour %s", shop_row.shop_domain)
+        raise HTTPException(status_code=502, detail="Échec du provisioning Shopify")
+
+    logger.info("Buildshop : provisioning exécuté pour %s", shop_row.shop_domain)
+    return {
+        "shop_domain": shop_row.shop_domain,
+        "theme": theme_result,
+        "catalog": catalog_result,
+        "webhook": webhook_result,
+    }
+
+
+@router.get("/buildshop/readiness")
+async def buildshop_readiness(
+    shop_domain: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_buildshop_internal_key),
+):
+    """Équivalent Buildshop de GET /shopify/readiness ci-dessus - mêmes
+    conventions de réponse (status/outstanding/checks), mais gatée par
+    la clé interne Buildshop (aucun marchand n'est rattaché à une
+    boutique pré-transfert, aucune capacité de workspace n'a de sens
+    ici). À appeler après POST /buildshop/provision, et avant le
+    "Transfer store" manuel dans le Partner Dashboard, pour confirmer
+    thème traité, catalogue présent et webhook enregistré."""
+    shop_row = _require_buildshop_shop(db, shop_domain)
+    token = decrypt_secret(shop_row.access_token)
+    checks = await get_buildshop_readiness(shop_row.shop_domain, token)
+
+    has_error = any(c["status"] == "error" for c in checks)
+    has_warning = any(c["status"] == "warning" for c in checks)
+    overall_status = "needs_attention" if (has_error or has_warning) else "ready"
+    outstanding = [c["label"] for c in checks if c["status"] in ("warning", "error")]
+
+    return {"shop_domain": shop_row.shop_domain, "status": overall_status, "outstanding": outstanding, "checks": checks}
