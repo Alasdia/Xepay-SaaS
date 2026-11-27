@@ -75,7 +75,7 @@
   height: 26px;
   border-radius: 50%;
   border: none;
-  background: #b45309;
+  background: rgba(180, 83, 9, 0.2);
   color: #ffffff;
   font-size: 10px;
   box-shadow: 0 8px 24px rgba(180, 83, 9, .35);
@@ -83,7 +83,7 @@
   z-index: 600000;
 }
 #alhu-widget-toggle:hover {
-  background: #9a4807;
+  background: rgba(180, 83, 9, 0.35);
 }
 #alhu-widget-panel {
   position: fixed;
@@ -103,7 +103,7 @@
   overflow: hidden;
 }
 #alhu-widget-header {
-  background: #b45309;
+  background: rgba(180, 83, 9, 0.2);
   color: #ffffff;
   font-weight: 700;
   font-size: 14px;
@@ -162,16 +162,19 @@
   outline: none;
 }
 #alhu-widget-input:focus {
-  border-color: #b45309;
+  border-color: rgba(180, 83, 9, 0.2);
 }
 #alhu-widget-send {
   width: 18px;
   height: 18px;
   border-radius: 50%;
   border: none;
-  background: #b45309;
+  background: rgba(180, 83, 9, 0.2);
   color: #ffffff;
   font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
 }
