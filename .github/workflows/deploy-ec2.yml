@@ -3,8 +3,10 @@ name: Deploy backend to AWS EC2
 # Déploiement automatique de l'instance EC2 Xepay_backendServer via AWS
 # Systems Manager (SSM Run Command) - aucun port SSH ouvert publiquement,
 # authentification GitHub Actions -> AWS par OIDC (pas de clé statique).
-# Complète le déploiement Railway existant (.railway/railway.ts), ne le
-# remplace pas.
+# Backend ET base de données tournent chez AWS (confirmé le 2026-11-27) -
+# l'ancienne config .railway/railway.ts (supprimée le même jour, périmée
+# et jamais le déploiement réel) ne s'applique plus, ce workflow est
+# désormais le SEUL mécanisme de déploiement du backend.
 #
 # Ce pipeline n'injecte PAS de secrets via SSM Parameter Store/Secrets
 # Manager : .env est un fichier statique déjà présent sur l'instance EC2
