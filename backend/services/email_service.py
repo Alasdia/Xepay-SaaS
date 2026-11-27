@@ -508,20 +508,24 @@ def send_buildness_failed_email(to_email, company_name):
     print("BUILDNESS FAILED EMAIL", response.status_code, response.text)
 
 
-def send_buildness_correction_request_internal_email(workspace_id, company_name, field_label, requested_value, note):
+def send_buildness_correction_request_internal_email(workspace_id, company_name, doola_company_id, field_label, requested_value, note):
     """Vers BUILDNESS_CORRECTION_NOTIFY_EMAIL (boîte interne Xepay),
     JAMAIS vers doola ni le marchand - voir BuildnessCorrectionRequest
     (models.py) : doola n'a de relation directe qu'avec Xepay, c'est
     donc un humain côté Xepay qui lit cet email et relaie manuellement
-    la demande à leur support s'il y a lieu. Pas de garde
-    is_notification_enabled : ce n'est pas une préférence de
+    la demande à leur support s'il y a lieu. doola_company_id (demandé
+    le 2026-11-27, manquait jusqu'ici) est l'identifiant à communiquer à
+    doola pour qu'ils retrouvent la société - company_name seul ne
+    suffit pas (pas garanti unique chez eux, "raison sociale validée
+    par l'État" peut même différer du nom demandé initialement). Pas de
+    garde is_notification_enabled : ce n'est pas une préférence de
     notification du marchand, c'est une alerte opérationnelle interne,
     toujours envoyée."""
     if not BUILDNESS_CORRECTION_NOTIFY_EMAIL:
         logger.warning(
             "BUILDNESS_CORRECTION_NOTIFY_EMAIL non configuré - demande de correction "
-            "(workspace_id=%s, company=%s, champ=%s) non notifiée par email.",
-            workspace_id, company_name, field_label,
+            "(workspace_id=%s, company=%s, doolaCompanyId=%s, champ=%s) non notifiée par email.",
+            workspace_id, company_name, doola_company_id, field_label,
         )
         return
     # Échappé (contrairement aux autres fonctions de ce fichier, qui
@@ -530,6 +534,7 @@ def send_buildness_correction_request_internal_email(workspace_id, company_name,
     # d'un membre quelconque du workspace, jamais fiable par défaut dans
     # un email HTML.
     safe_company_name = html.escape(company_name or "")
+    safe_doola_company_id = html.escape(doola_company_id or "")
     safe_field_label = html.escape(field_label or "")
     safe_requested_value = html.escape(requested_value or "")
     note_line = f"<p>Note du marchand : {html.escape(note)}</p>" if note else ""
@@ -542,11 +547,12 @@ def send_buildness_correction_request_internal_email(workspace_id, company_name,
         json={
             "from": "Xepay <noreply@alasdia.com>",
             "to": [BUILDNESS_CORRECTION_NOTIFY_EMAIL],
-            "subject": f"[Buildness] Demande de correction - {safe_company_name}",
+            "subject": f"[Buildness] Demande de correction - {safe_company_name} ({safe_doola_company_id or 'doolaCompanyId manquant'})",
             "html": f"""
                 <h2>Nouvelle demande de correction Buildness</h2>
                 <p>Workspace : <b>{html.escape(workspace_id or "")}</b></p>
                 <p>Société : <b>{safe_company_name}</b></p>
+                <p>doolaCompanyId (à communiquer à doola) : <b>{safe_doola_company_id or "manquant - dossier jamais soumis à doola"}</b></p>
                 <p>Champ à corriger : <b>{safe_field_label}</b></p>
                 <p>Nouvelle valeur souhaitée : <b>{safe_requested_value}</b></p>
                 {note_line}

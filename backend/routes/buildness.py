@@ -519,7 +519,8 @@ def create_buildness_correction_request(
     db.refresh(request_row)
 
     send_buildness_correction_request_internal_email(
-        merchant_id, company.company_name, body.field_label, body.requested_value, body.note,
+        merchant_id, company.company_name, company.doola_company_id,
+        body.field_label, body.requested_value, body.note,
     )
 
     return {
