@@ -7,6 +7,7 @@ import { initSidebar, setActiveRoute } from "./sidebar.js";
 import { showToast } from "./shared/toast.js";
 import { initAlhuWidget } from "./shared/alhuWidget.js";
 import { initLlcBanner } from "./shared/llcBanner.js";
+import { initPostLlcOnboardingBanner } from "./shared/postLlcOnboardingBanner.js";
 
 import { mount as mountDashboard } from "./views/dashboard.js";
 import { mount as mountSolde } from "./views/solde.js";
@@ -161,8 +162,11 @@ async function init() {
   // await (pas fire-and-forget comme initAlhuWidget) : décale #sidebar/
   // #main-content avant le 1er rendu du router ci-dessous, pour éviter
   // un flash où le contenu démarre sous #top-banner seul puis saute
-  // d'un coup une fois le bandeau LLC chargé.
+  // d'un coup une fois un bandeau chargé. Les 2 bandeaux sont
+  // mutuellement exclusifs (LLC pas complétée / LLC complétée) mais
+  // tous les 2 awaités avant initAlhuWidget pour la même raison.
   await initLlcBanner();
+  await initPostLlcOnboardingBanner();
   initAlhuWidget();
 
   // Icône ⚙️ du bandeau jaune (#top-banner, dashboard.html) - navigue vers

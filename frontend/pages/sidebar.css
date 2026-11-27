@@ -98,6 +98,84 @@
   }
 }
 
+/* Bandeau "prochaine étape d'activation" (Stripe Connect / retrait
+   UEMOA, voir spa/shared/postLlcOnboardingBanner.js, 2026-11-27) - même
+   gabarit que #llc-required-banner (position/offset géré par
+   spa/shared/topBannerStack.js, partagé entre les 2) mais en bleu
+   (pas urgent/bloquant comme l'absence de LLC, juste la prochaine
+   étape à faire) - jamais visibles en même temps (mutuellement
+   exclusifs selon le statut Buildness). */
+#post-llc-onboarding-banner {
+  position: fixed;
+  top: 5vh;
+  left: 0;
+  width: 100%;
+  z-index: 500000;
+  align-items: center;
+  gap: 16px;
+  background: #eff6ff;
+  border-bottom: 1px solid rgba(29, 78, 216, 0.2);
+  padding: 14px 24px;
+}
+#post-llc-onboarding-banner-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(29, 78, 216, 0.12);
+  color: #1d4ed8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+#post-llc-onboarding-banner-body {
+  flex: 1;
+  min-width: 0;
+}
+#post-llc-onboarding-banner-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 2px;
+}
+#post-llc-onboarding-banner-sub {
+  font-size: 12.5px;
+  color: #4b5563;
+  line-height: 1.4;
+  margin: 0;
+}
+#post-llc-onboarding-banner-cta {
+  background: transparent;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  border-radius: 8px;
+  height: 32px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: .2s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+#post-llc-onboarding-banner-cta:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+#post-llc-onboarding-banner-cta:active {
+  transform: translateY(1px);
+}
+@media (max-width: 480px) {
+  #post-llc-onboarding-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 /* Petit modal de chargement pendant un changement de workspace (voir
    spa/shared/workspaceSwitchOverlay.js) - le VOILE DE FOND (cet élément,
    #workspace-switch-overlay) couvre tout l'écran et bloque l'interaction

@@ -8,48 +8,37 @@
 // Fixé en position, juste sous #top-banner (5vh) - décale dynamiquement
 // #sidebar (top/height) et #main-content (margin-top) de sa propre
 // hauteur réelle (mesurée, jamais supposée) pour ne jamais les
-// recouvrir, même si son contenu varie selon le statut Buildness.
+// recouvrir, même si son contenu varie selon le statut Buildness. Voir
+// shared/topBannerStack.js (extrait le 2026-11-27 lors de l'ajout du
+// bandeau postLlcOnboardingBanner.js, mutuellement exclusif avec
+// celui-ci - jamais visibles en même temps, mais chacun recalcule le
+// total à partir de TOUS les bandeaux empilés, pas seulement le sien).
 // Jamais masqué/fermable tant que le dossier n'est pas "completed" :
 // trop important pour dépendre d'un marchand qui le fermerait une fois
 // et l'oublierait.
 import { fetchBuildnessStatus } from "./buildnessStatus.js";
 import { navigate } from "../core/router.js";
 import { getWorkspaceId } from "../core/state.js";
-
-function applyLayoutOffset() {
-  const topBanner = document.getElementById("top-banner");
-  const llcBanner = document.getElementById("llc-required-banner");
-  const sidebar = document.getElementById("sidebar");
-  const mainContent = document.getElementById("main-content");
-  if (!topBanner || !sidebar || !mainContent) return;
-  const totalHeight = topBanner.getBoundingClientRect().height
-    + (llcBanner && llcBanner.style.display !== "none" ? llcBanner.getBoundingClientRect().height : 0);
-  sidebar.style.top = `${totalHeight}px`;
-  sidebar.style.height = `calc(100vh - ${totalHeight}px)`;
-  mainContent.style.marginTop = `${totalHeight}px`;
-}
+import { applyTopStackOffset, initTopStackResizeListener } from "./topBannerStack.js";
 
 export async function initLlcBanner() {
   if (document.getElementById("llc-required-banner")) return;
 
   document.body.insertAdjacentHTML(
     "afterbegin",
-    `<div id="llc-required-banner" style="display:none;"></div>`
+    `<div id="llc-required-banner" class="top-stack-banner" style="display:none;"></div>`
   );
-  // Recalé à chaque redimensionnement (demande normale : #top-banner et
-  // #sidebar sont en unités vh, leur hauteur réelle en px change avec
-  // la fenêtre).
-  window.addEventListener("resize", applyLayoutOffset);
+  initTopStackResizeListener();
 
   let data;
   try {
     data = await fetchBuildnessStatus();
   } catch (err) {
-    applyLayoutOffset(); // Pas de bandeau, mais #sidebar/#main-content doivent quand même être calés sous #top-banner seul.
+    applyTopStackOffset(); // Pas de bandeau, mais #sidebar/#main-content doivent quand même être calés sous #top-banner seul.
     return;
   }
   if (data.status === "completed") {
-    applyLayoutOffset();
+    applyTopStackOffset();
     return;
   }
 
@@ -81,5 +70,5 @@ export async function initLlcBanner() {
     navigate(`/dash/workspace/${encodeURIComponent(getWorkspaceId())}/${ctaTarget}`);
   });
 
-  applyLayoutOffset();
+  applyTopStackOffset();
 }
