@@ -81,9 +81,32 @@
   box-shadow: 0 8px 24px rgba(180, 83, 9, .35);
   cursor: pointer;
   z-index: 600000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Pulsation douce en continu autour du bouton (demande du 2026-11-27 :
+     signe de vie, comme l'assistant qu'il représente) - anneau qui
+     respire, séparé du box-shadow fixe ci-dessus (concaténés dans
+     l'animation pour ne jamais perdre l'ombre portée pendant la
+     pulsation). */
+  animation: alhu-toggle-pulse 2.4s ease-in-out infinite;
 }
 #alhu-widget-toggle:hover {
   background: rgba(180, 83, 9, 0.8);
+}
+#alhu-widget-toggle i {
+  display: inline-block;
+  /* Léger balancement de l'icône elle-même, désynchronisé du pouls du
+     bouton (durée différente) pour un mouvement moins mécanique. */
+  animation: alhu-icon-bob 1.6s ease-in-out infinite;
+}
+@keyframes alhu-toggle-pulse {
+  0%, 100% { box-shadow: 0 8px 24px rgba(180, 83, 9, .35), 0 0 0 0 rgba(180, 83, 9, .45); }
+  50% { box-shadow: 0 8px 24px rgba(180, 83, 9, .35), 0 0 0 7px rgba(180, 83, 9, 0); }
+}
+@keyframes alhu-icon-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-1.5px) rotate(-6deg); }
 }
 #alhu-widget-panel {
   position: fixed;
