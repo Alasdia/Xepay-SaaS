@@ -94,6 +94,21 @@
 #alhu-widget-toggle:hover {
   background: rgba(180, 83, 9, 0.8);
 }
+/* Badge "message proactif non lu" (demande du 2026-11-27) - affiché par
+   alhuProactiveMessage (shared/alhuWidget.js) quand Alhu parle le
+   premier sans ouvrir le panneau, retiré dès l'ouverture (togglePanel).
+   Position absolue : #alhu-widget-toggle est déjà en position:fixed,
+   qui établit aussi un bloc de confinement pour un descendant absolu. */
+#alhu-widget-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 1px solid #ffffff;
+}
 #alhu-widget-toggle i {
   display: inline-block;
   /* Léger balancement de l'icône elle-même, désynchronisé du pouls du

@@ -13,6 +13,7 @@ import { showToast } from "../shared/toast.js";
 import { viewLoadingHtml } from "../shared/loadingSpinner.js";
 import { showWorkspaceSwitchOverlay, hideWorkspaceSwitchOverlay } from "../shared/workspaceSwitchOverlay.js";
 import { BUILDNESS_US_STATES, createBuildnessCorrectionRequest, fetchBuildnessCorrectionRequests } from "../shared/buildnessStatus.js";
+import { alhuProactiveMessage } from "../shared/alhuWidget.js";
 import { clearSession, getWorkspaceId, setWorkspaceId } from "../core/state.js";
 import { navigate } from "../core/router.js";
 import { getCurrency, getRate, formatMoney } from "../core/currency.js";
@@ -1724,6 +1725,12 @@ let stripeBusinessError = null;
 let stripeStatusData = null;
 let stripeBrandingData = null;
 let stripeActiveTab = "account";
+// Remis à false à chaque NAVIGATION vers cette section (mountStripe),
+// pas à chaque rechargement interne du statut (loadStripeDetails peut
+// être rappelée dans la même visite, ex. à la sortie de l'onboarding
+// intégré) - demande du 2026-11-27 : l'offre proactive d'Alhu ne doit
+// apparaître qu'une fois par visite de "Compte Stripe Connect".
+let alhuStripeOfferShown = false;
 
 async function goToStripeLoginLink() {
   const res = await apiFetch("/stripe/login-link");
@@ -1844,12 +1851,24 @@ async function loadStripeDetails() {
     body.innerHTML = stripeTabsHtml();
     wireStripeActionButton();
     wireStripeBrandingPanel();
+
+    // Offre proactive d'Alhu (demande du 2026-11-27) - une seule fois
+    // par visite de cette section (voir alhuStripeOfferShown), jamais
+    // tant que le compte n'est pas "Entièrement vérifié".
+    if (!alhuStripeOfferShown && stripeStatusLabel(stripeStatusData) !== "Entièrement vérifié") {
+      alhuStripeOfferShown = true;
+      alhuProactiveMessage(
+        "Je vois que votre compte Stripe Connect n'est pas encore entièrement activé. Je peux vous dire précisément ce qu'il vous reste à fournir, et vous accompagner jusqu'à l'activation complète - voulez-vous de l'aide ?",
+        { openPanel: false }
+      );
+    }
   } catch (err) {
     body.innerHTML = `<p class="text-muted">Erreur de chargement.</p>`;
   }
 }
 
 function mountStripe(on) {
+  alhuStripeOfferShown = false;
   on(document.getElementById("p-stripe-body"), "click", (e) => {
     if (e.target.closest("#p-stripe-delete-account-btn")) {
       supprimerCompte();

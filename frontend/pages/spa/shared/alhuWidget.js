@@ -14,6 +14,8 @@ let messagesEl = null;
 let formEl = null;
 let inputEl = null;
 let sendBtnEl = null;
+let toggleBtnEl = null;
+let badgeEl = null;
 
 function escapeHtml(text) {
   const div = document.createElement("div");
@@ -65,7 +67,36 @@ async function handleSubmit(e) {
 function togglePanel(forceOpen) {
   const willOpen = forceOpen ?? panelEl.style.display === "none";
   panelEl.style.display = willOpen ? "flex" : "none";
-  if (willOpen) inputEl.focus();
+  if (willOpen) {
+    inputEl.focus();
+    // Le marchand vient de voir la conversation : le badge n'a plus de
+    // raison d'être, qu'il ait été posé par un message proactif ou non.
+    badgeEl.style.display = "none";
+  }
+}
+
+// Message proactif (demande du 2026-11-27, ex: Paramètres > Compte
+// Stripe Connect quand le statut n'est pas "actif") - Alhu parle le
+// premier, sans question préalable du marchand. Poussé dans `messages`
+// comme un VRAI tour "assistant" (pas juste affiché visuellement) :
+// sinon un "oui" de réponse du marchand n'aurait aucun contexte côté
+// modèle au prochain appel, qui ignorerait tout de cette suggestion.
+// La déduplication "une seule fois par visite" est de la responsabilité
+// de l'appelant (ex. un flag module-level dans parametres.js) - ce
+// widget ne sait rien de QUAND il est pertinent de reproposer, il
+// affiche juste ce qu'on lui demande d'afficher.
+export function alhuProactiveMessage(text, { openPanel = true } = {}) {
+  if (!messagesEl) return;
+  messages.push({ role: "assistant", content: text });
+  appendMessageBubble("assistant", text);
+  if (openPanel) {
+    togglePanel(true);
+  } else {
+    // Panneau fermé (demande du 2026-11-27, moins intrusif qu'une
+    // ouverture forcée) : un badge sur le bouton flottant signale qu'il
+    // s'est passé quelque chose, sans interrompre le marchand.
+    badgeEl.style.display = "block";
+  }
 }
 
 export function initAlhuWidget() {
@@ -76,6 +107,7 @@ export function initAlhuWidget() {
     `
     <button type="button" id="alhu-widget-toggle" title="Alhu, votre assistant Xepay">
       <i class="fa-solid fa-robot"></i>
+      <span id="alhu-widget-badge" style="display:none;"></span>
     </button>
     <div id="alhu-widget-panel" style="display:none;">
       <div id="alhu-widget-header">
@@ -96,12 +128,14 @@ export function initAlhuWidget() {
   formEl = document.getElementById("alhu-widget-form");
   inputEl = document.getElementById("alhu-widget-input");
   sendBtnEl = document.getElementById("alhu-widget-send");
+  toggleBtnEl = document.getElementById("alhu-widget-toggle");
+  badgeEl = document.getElementById("alhu-widget-badge");
 
   appendMessageBubble("assistant", "Bonjour, je suis Alhu. Je peux répondre à vos questions sur votre solde, vos transactions récentes ou votre dossier de création de société (LLC) - je ne peux rien modifier.");
 
   // Ouvre toujours (demande du 2026-11-27) - ce bouton ne referme plus
   // le panneau s'il est déjà ouvert, seul #alhu-widget-close le fait.
-  document.getElementById("alhu-widget-toggle").addEventListener("click", () => togglePanel(true));
+  toggleBtnEl.addEventListener("click", () => togglePanel(true));
   document.getElementById("alhu-widget-close").addEventListener("click", () => togglePanel(false));
   formEl.addEventListener("submit", handleSubmit);
 }
