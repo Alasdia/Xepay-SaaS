@@ -27,17 +27,54 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 ALHU_MODEL = os.getenv("ALHU_MODEL", "claude-sonnet-5")
 
 # Boucle outil/réponse bornée (demande normale : plusieurs outils en
-# chaîne, ex. solde PUIS transactions) - jamais illimitée, au cas où le
-# modèle boucle sur un appel d'outil sans jamais conclure.
-MAX_TOOL_ROUNDS = 5
+# chaîne, ex. lister un dossier PUIS lire 2-3 fichiers PUIS répondre) -
+# jamais illimitée, au cas où le modèle boucle sur un appel d'outil sans
+# jamais conclure. Relevé de 5 à 8 le 2026-11-27 (ajout des outils
+# produit ci-dessous, qui demandent souvent plusieurs allers-retours
+# lister/lire avant de pouvoir répondre).
+MAX_TOOL_ROUNDS = 8
+
+# Racine UNIQUE et FERMÉE pour les outils de lecture produit ci-dessous
+# (list_product_files/read_product_file, demandés le 2026-11-27) :
+# "frontend" seulement - jamais "backend" (logique métier/sécurité
+# interne, hors sujet pour un assistant marchand) ni la racine du dépôt
+# (.env, alembic/...). Couvre à la fois les pages marketing
+# (frontend/pages/*.html) et "absolument tout" le code source du SPA
+# (frontend/pages/spa/**) avec le même mécanisme, puisque les deux
+# vivent sous ce même répertoire.
+_SERVICE_DIR = os.path.dirname(os.path.abspath(__file__))
+PRODUCT_READ_ROOT = os.path.abspath(os.path.join(_SERVICE_DIR, "..", "..", "frontend"))
+
+# Extensions texte autorisées en lecture - jamais un binaire (image/
+# police/etc.) renvoyé tel quel comme "contenu de fichier".
+_PRODUCT_READ_EXTENSIONS = {".html", ".js", ".css", ".json", ".md", ".txt"}
+_PRODUCT_READ_MAX_CHARS = 40_000
+_PRODUCT_LIST_MAX_ENTRIES = 400
+# Jamais parcourus/lus (demande implicite - rien à voir avec les pages
+# marketing ou l'architecture du SPA, uniquement du bruit/des assets).
+_PRODUCT_READ_EXCLUDED_DIRS = {"node_modules", ".git"}
+
+
+def _resolve_product_path(relative_path: str) -> str:
+    """Résout relative_path SOUS PRODUCT_READ_ROOT uniquement - lève
+    ValueError si le chemin résolu sort de cette racine (traversée "..",
+    chemin absolu détourné...). Seul point d'entrée filesystem des 2
+    outils ci-dessous, jamais contourné."""
+    candidate = os.path.abspath(os.path.join(PRODUCT_READ_ROOT, relative_path or ""))
+    if not (candidate == PRODUCT_READ_ROOT or candidate.startswith(PRODUCT_READ_ROOT + os.sep)):
+        raise ValueError("Chemin hors du périmètre autorisé (frontend/ uniquement).")
+    return candidate
 
 ALHU_SYSTEM_PROMPT = """Tu es Alhu, l'assistant intégré au tableau de bord Xepay (plateforme de paiement pour marchands).
 
-Tu réponds UNIQUEMENT aux questions du marchand sur SES PROPRES données (solde, transactions, dossier de création de société/LLC) via les outils fournis - jamais à partir de connaissances générales non vérifiées, et jamais en inventant une donnée.
+Tu réponds à 2 types de questions, toujours via les outils fournis - jamais à partir de connaissances générales non vérifiées, et jamais en inventant une donnée ou une fonctionnalité :
+1. Questions sur les DONNÉES PROPRES du marchand (solde, transactions, dossier de création de société/LLC) - outils get_balance/get_recent_transactions/get_buildness_status.
+2. Questions sur LE PRODUIT Xepay lui-même (fonctionnalités, pages marketing, fonctionnement du tableau de bord) - outils list_product_files/read_product_file, qui donnent accès en LECTURE SEULE aux pages marketing et à tout le code source du SPA (frontend/pages/*.html et frontend/pages/spa/). Utilise list_product_files pour explorer AVANT de lire, puis read_product_file sur les fichiers pertinents - ne réponds sur le fonctionnement du produit qu'après avoir réellement lu le code/contenu concerné, jamais en supposant.
 
 Règles strictes :
-- Tu ne peux RIEN modifier, créer ou annuler : tu n'as accès qu'à des outils de LECTURE. Si le marchand demande une action (remboursement, modification, création), explique clairement que tu ne peux pas l'exécuter et indique où le faire dans le dashboard (ex. Paramètres > Entreprise pour une demande de correction LLC).
-- Si une information demandée n'est pas couverte par tes outils, dis-le explicitement plutôt que de deviner.
+- Tu ne peux RIEN modifier, créer ou annuler, nulle part : tu n'as accès qu'à des outils de LECTURE. Si le marchand demande une action (remboursement, modification, création), explique clairement que tu ne peux pas l'exécuter et indique où le faire dans le dashboard (ex. Paramètres > Entreprise pour une demande de correction LLC).
+- Les outils produit ne donnent accès qu'au code FRONTEND (pages marketing + SPA) - jamais au code backend, à des secrets ou à des données d'autres marchands.
+- Si une information demandée n'est couverte par aucun outil, dis-le explicitement plutôt que de deviner.
 - Réponds en français, de façon concise et directe.
 """
 
@@ -64,6 +101,33 @@ ALHU_TOOLS = [
         "name": "get_buildness_status",
         "description": "Renvoie l'état du dossier de création de société américaine (LLC) et d'obtention de l'EIN du marchand, s'il en a lancé un.",
         "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "list_product_files",
+        "description": "Liste les fichiers/dossiers sous un sous-chemin de frontend/ (pages marketing HTML + tout le code source du SPA). Appeler avec subpath=\"\" pour voir la racine, puis descendre dans les sous-dossiers d'intérêt (ex. \"pages/spa/views\").",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "subpath": {
+                    "type": "string",
+                    "description": "Sous-chemin relatif à frontend/ à lister (ex. \"pages\", \"pages/spa/views\"). Vide ou omis = racine de frontend/.",
+                }
+            },
+        },
+    },
+    {
+        "name": "read_product_file",
+        "description": "Lit le contenu d'un fichier texte sous frontend/ (page marketing HTML, ou tout fichier du code source du SPA - .js/.css/.json/.md). Lecture seule, jamais d'écriture.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Chemin relatif à frontend/ du fichier à lire (ex. \"pages/accueil.html\", \"pages/spa/views/commerce.js\").",
+                }
+            },
+            "required": ["path"],
+        },
     },
 ]
 
@@ -127,6 +191,49 @@ def _get_buildness_status(db: Session, workspace_id: str) -> dict:
     }
 
 
+def _list_product_files(subpath: str | None) -> dict:
+    try:
+        base = _resolve_product_path(subpath or "")
+    except ValueError as e:
+        return {"error": str(e)}
+    if not os.path.isdir(base):
+        return {"error": "Ce chemin n'est pas un dossier."}
+
+    entries = []
+    for root, dirnames, filenames in os.walk(base):
+        dirnames[:] = [d for d in dirnames if d not in _PRODUCT_READ_EXCLUDED_DIRS]
+        for name in sorted(dirnames) + sorted(filenames):
+            full = os.path.join(root, name)
+            rel = os.path.relpath(full, PRODUCT_READ_ROOT)
+            entries.append(rel + ("/" if os.path.isdir(full) else ""))
+            if len(entries) >= _PRODUCT_LIST_MAX_ENTRIES:
+                return {"entries": entries, "truncated": True}
+    return {"entries": entries, "truncated": False}
+
+
+def _read_product_file(path: str | None) -> dict:
+    if not path:
+        return {"error": "path manquant."}
+    try:
+        full = _resolve_product_path(path)
+    except ValueError as e:
+        return {"error": str(e)}
+    if not os.path.isfile(full):
+        return {"error": "Ce fichier n'existe pas."}
+    _, ext = os.path.splitext(full)
+    if ext.lower() not in _PRODUCT_READ_EXTENSIONS:
+        return {"error": f"Extension non lisible ({ext or 'inconnue'}) - fichiers texte uniquement (.html/.js/.css/.json/.md/.txt)."}
+    try:
+        with open(full, "r", encoding="utf-8", errors="replace") as f:
+            content = f.read(_PRODUCT_READ_MAX_CHARS + 1)
+    except OSError as e:
+        return {"error": f"Lecture impossible : {e}"}
+    truncated = len(content) > _PRODUCT_READ_MAX_CHARS
+    if truncated:
+        content = content[:_PRODUCT_READ_MAX_CHARS]
+    return {"content": content, "truncated": truncated}
+
+
 def _execute_tool(tool_name: str, tool_input: dict, db: Session, workspace_id: str) -> dict:
     if tool_name == "get_balance":
         return _get_balance(db, workspace_id)
@@ -134,6 +241,10 @@ def _execute_tool(tool_name: str, tool_input: dict, db: Session, workspace_id: s
         return _get_recent_transactions(db, workspace_id, tool_input.get("limit"))
     if tool_name == "get_buildness_status":
         return _get_buildness_status(db, workspace_id)
+    if tool_name == "list_product_files":
+        return _list_product_files(tool_input.get("subpath"))
+    if tool_name == "read_product_file":
+        return _read_product_file(tool_input.get("path"))
     return {"error": f"Outil inconnu : {tool_name}"}
 
 
