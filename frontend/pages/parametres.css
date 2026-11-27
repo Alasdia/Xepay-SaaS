@@ -1170,6 +1170,25 @@
   flex-wrap: wrap;
   gap: 10px;
 }
+/* Section "Demander une correction" (ajoutée le 2026-11-27, Paramètres >
+   Entreprise) - même traitement visuel (fond/bordure teintés) que la
+   carte Buildness au-dessus, mais sans le min-height:45vh/centrage
+   vertical pensés pour une grande carte promo héro - cette section est
+   une simple sous-section utilitaire. */
+.params-promo-card--compact {
+  min-height: 0;
+  justify-content: flex-start;
+  padding: 24px;
+  margin-bottom: 0;
+}
+.params-correction-row {
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(180, 83, 9, 0.08);
+}
+.params-correction-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
 .params-promo-status {
   font-size: 14px;
   font-weight: 600;
