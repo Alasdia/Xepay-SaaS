@@ -2448,7 +2448,7 @@ function entrepriseTemplate() {
 
     <div id="p-buildness-container"></div>
 
-    <div id="p-buildness-correction-container" style="margin-top: 32px;"></div>
+    <div id="p-buildness-correction-container"></div>
 
     <div class="params-subsection-header" style="margin-top: 32px;">
       <h6 class="params-subsection-title mb-0">Informations sur votre entreprise</h6>
@@ -2567,16 +2567,20 @@ function buildnessCorrectionRowHtml(r) {
   `;
 }
 
+// Même disposition que la section "Informations sur votre entreprise"
+// juste en dessous (titre + bouton sur la même ligne, voir
+// .params-subsection-header) - corrigé le 2026-11-27 : pas de fond
+// teinté (contrairement à la carte Buildness au-dessus, qui est le
+// grand encart promo hero), cette section est une sous-section comme
+// les autres de cette page.
 function buildnessCorrectionSectionHtml(requests) {
   return `
-    <div class="params-promo-card params-promo-card--compact">
-      <h3 class="params-promo-title" style="font-size:16px;">Demander une correction</h3>
-      <p class="params-promo-sub" style="font-size:13px;">Une info à corriger sur votre LLC (adresse, secteur, description...) ? doola n'a de relation directe qu'avec Xepay - votre demande nous est transmise, nous relayons ensuite la correction auprès d'eux.</p>
-      <div class="params-promo-actions">
-        <button type="button" class="create-client-btn" id="p-buildness-open-correction">Demander une correction</button>
-      </div>
-      ${requests && requests.length ? `<div style="margin-top:20px;">${requests.map(buildnessCorrectionRowHtml).join("")}</div>` : ""}
+    <div class="params-subsection-header" style="margin-top: 32px;">
+      <h6 class="params-subsection-title mb-0">Demander une correction</h6>
+      <button type="button" class="create-client-btn" id="p-buildness-open-correction">Demander une correction</button>
     </div>
+    <p class="params-subsection-sub">Une info à corriger sur votre LLC (adresse, secteur, description...) ? doola n'a de relation directe qu'avec Xepay - votre demande nous est transmise, nous relayons ensuite la correction auprès d'eux.</p>
+    ${requests && requests.length ? `<div>${requests.map(buildnessCorrectionRowHtml).join("")}</div>` : ""}
   `;
 }
 

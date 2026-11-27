@@ -1170,17 +1170,11 @@
   flex-wrap: wrap;
   gap: 10px;
 }
-/* Section "Demander une correction" (ajoutée le 2026-11-27, Paramètres >
-   Entreprise) - même traitement visuel (fond/bordure teintés) que la
-   carte Buildness au-dessus, mais sans le min-height:45vh/centrage
-   vertical pensés pour une grande carte promo héro - cette section est
-   une simple sous-section utilitaire. */
-.params-promo-card--compact {
-  min-height: 0;
-  justify-content: flex-start;
-  padding: 24px;
-  margin-bottom: 0;
-}
+/* Historique des demandes de correction (Paramètres > Entreprise,
+   section "Demander une correction") - simple séparateur fin entre
+   lignes, jamais de fond : cette section n'a pas de carte englobante
+   (corrigé le 2026-11-27), elle suit le même patron que "Informations
+   sur votre entreprise" juste en dessous (.params-subsection-header). */
 .params-correction-row {
   padding: 12px 0;
   border-bottom: 1px solid rgba(180, 83, 9, 0.08);
