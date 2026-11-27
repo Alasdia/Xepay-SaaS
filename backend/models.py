@@ -338,6 +338,17 @@ class ShopifyOrderCancelRequest(BaseModel):
     notify_customer: bool = False
     staff_note: str | None = Field(default=None, max_length=255)
 
+class BuildshopProvisionRequest(BaseModel):
+    # shop_domain : la boutique pré-transfert déjà installée à la main
+    # par l'équipe interne (voir services/buildshop_service.py) - jamais
+    # déduite d'une session, cette route n'est pas rattachée à un
+    # marchand. "catalog" optionnel réutilise ShopifyProductUpsertRequest
+    # (mêmes champs/validation que la création produit "normale") pour
+    # permettre un catalogue différent de BASE_CATALOG sans dupliquer de
+    # modèle - None = BASE_CATALOG par défaut (voir buildshop_service.py).
+    shop_domain: str
+    catalog: list[ShopifyProductUpsertRequest] | None = None
+
 class ConnectCustomerCreateRequest(BaseModel):
     # Aucun champ n'est obligatoire chez Stripe pour créer un Customer -
     # on garde cette même souplesse ici plutôt que d'imposer une
