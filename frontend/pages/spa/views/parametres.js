@@ -1854,12 +1854,16 @@ async function loadStripeDetails() {
 
     // Offre proactive d'Alhu (demande du 2026-11-27) - une seule fois
     // par visite de cette section (voir alhuStripeOfferShown), jamais
-    // tant que le compte n'est pas "Entièrement vérifié".
+    // tant que le compte n'est pas "Entièrement vérifié". openPanel:true
+    // (CORRIGÉ le 2026-11-27, signalé par l'utilisateur) : un simple
+    // badge sur le bouton flottant ne suffit pas pour une étape aussi
+    // critique - un marchand qui n'ouvre jamais le chat ne verrait
+    // sinon jamais cette proposition.
     if (!alhuStripeOfferShown && stripeStatusLabel(stripeStatusData) !== "Entièrement vérifié") {
       alhuStripeOfferShown = true;
       alhuProactiveMessage(
         "Je vois que votre compte Stripe Connect n'est pas encore entièrement activé. Je peux vous dire précisément ce qu'il vous reste à fournir, et vous accompagner jusqu'à l'activation complète - voulez-vous de l'aide ?",
-        { openPanel: false }
+        { openPanel: true }
       );
     }
   } catch (err) {
