@@ -47,58 +47,6 @@ h1,h2,h3,h4,h5,h6{ color:#111827 !important; }
    correspondant + son graphique ; le solde total est poussé dans les ~20%
    de largeur avant la fin de #main-content, avec un lien vers la vue Solde.
    ============================================ */
-/* Bandeau "il faut une LLC" (demandé le 2026-11-27, voir spa/views/
-   dashboard.js, loadLlcBanner) - placé juste avant le bloc héro, jamais
-   masqué/fermable tant que le dossier n'est pas "completed". */
-.dashboard-llc-banner {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background: rgba(180, 83, 9, 0.06);
-  border: 1px solid rgba(180, 83, 9, 0.2);
-  border-radius: 12px;
-  padding: 16px 20px;
-  margin-bottom: 20px;
-}
-.dashboard-llc-banner-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: rgba(180, 83, 9, 0.12);
-  color: #b45309;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  flex-shrink: 0;
-}
-.dashboard-llc-banner-body {
-  flex: 1;
-  min-width: 0;
-}
-.dashboard-llc-banner-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: #111827;
-  margin-bottom: 4px;
-}
-.dashboard-llc-banner-sub {
-  font-size: 13px;
-  color: #4b5563;
-  line-height: 1.5;
-  margin: 0;
-}
-.dashboard-llc-banner .create-client-btn {
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-@media (max-width: 768px) {
-  .dashboard-llc-banner {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-}
-
 .hero-stat { position:relative; }
 /* 10% de la zone visible sous le bandeau du haut (5vh, voir #top-banner),
    comme les 30% déjà utilisés ailleurs dans cette vue pour le même repère. */

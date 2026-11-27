@@ -6,6 +6,7 @@ import { apiFetch } from "./core/apiClient.js";
 import { initSidebar, setActiveRoute } from "./sidebar.js";
 import { showToast } from "./shared/toast.js";
 import { initAlhuWidget } from "./shared/alhuWidget.js";
+import { initLlcBanner } from "./shared/llcBanner.js";
 
 import { mount as mountDashboard } from "./views/dashboard.js";
 import { mount as mountSolde } from "./views/solde.js";
@@ -157,6 +158,11 @@ async function init() {
   );
 
   await initSidebar();
+  // await (pas fire-and-forget comme initAlhuWidget) : décale #sidebar/
+  // #main-content avant le 1er rendu du router ci-dessous, pour éviter
+  // un flash où le contenu démarre sous #top-banner seul puis saute
+  // d'un coup une fois le bandeau LLC chargé.
+  await initLlcBanner();
   initAlhuWidget();
 
   // Icône ⚙️ du bandeau jaune (#top-banner, dashboard.html) - navigue vers

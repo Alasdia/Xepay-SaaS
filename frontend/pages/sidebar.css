@@ -14,6 +14,90 @@
    entier qui doit passer au-dessus. */
 #top-banner { position: fixed; top: 0; left: 0; width: 100%; height: 5vh; background: rgba(180, 83, 9, 0.9); z-index: 500001; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; gap: 16px; }
 
+/* Bandeau "il faut une LLC" (étendu à toutes les vues le 2026-11-27,
+   voir spa/shared/llcBanner.js) - juste sous #top-banner, sur toute la
+   largeur. #sidebar (top/height) et #main-content (margin-top) sont
+   décalés dynamiquement en JS (applyLayoutOffset) de sa hauteur réelle,
+   jamais une valeur fixe ici : son contenu varie selon le statut
+   Buildness. */
+#llc-required-banner {
+  position: fixed;
+  top: 5vh;
+  left: 0;
+  width: 100%;
+  z-index: 500000;
+  align-items: center;
+  gap: 16px;
+  background: #fff7ed;
+  border-bottom: 1px solid rgba(180, 83, 9, 0.2);
+  padding: 14px 24px;
+}
+#llc-required-banner-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(180, 83, 9, 0.12);
+  color: #b45309;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+#llc-required-banner-body {
+  flex: 1;
+  min-width: 0;
+}
+#llc-required-banner-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 2px;
+}
+#llc-required-banner-sub {
+  font-size: 12.5px;
+  color: #4b5563;
+  line-height: 1.4;
+  margin: 0;
+}
+/* Même recette que .create-client-btn (commerce.css/parametres.css,
+   dupliquée par fichier pour la même raison d'isolation CSS) - jamais
+   ".create-client-btn" elle-même ici : sidebar.css est TOUJOURS chargé,
+   lui donner ce nom générique créerait une collision avec le CSS
+   swappable de la vue active au lieu de rester isolé comme les autres
+   copies. */
+#llc-required-banner-cta {
+  background: transparent;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  border-radius: 8px;
+  height: 32px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: .2s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+#llc-required-banner-cta:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: #111827;
+}
+#llc-required-banner-cta:active {
+  transform: translateY(1px);
+}
+@media (max-width: 480px) {
+  #llc-required-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 /* Petit modal de chargement pendant un changement de workspace (voir
    spa/shared/workspaceSwitchOverlay.js) - le VOILE DE FOND (cet élément,
    #workspace-switch-overlay) couvre tout l'écran et bloque l'interaction
