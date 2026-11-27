@@ -27,7 +27,7 @@ from sqlalchemy.pool import StaticPool
 
 from backend.database import Base, get_db
 from backend.auth import get_current_user
-from backend.models import ShopifyStoreRequest, UserDB, WorkspaceUser
+from backend.models import ShopifyStoreRequest, UserDB, WorkspacePermissionOverride, WorkspaceUser
 
 import backend.database as _database
 
@@ -111,7 +111,9 @@ class ShopifyStoreRequestRouteTests(unittest.TestCase):
         self.assertEqual(res.status_code, 201)
         body = res.json()
         self.assertEqual(body["status"], "pending")
-        mock_email.assert_called_once_with(self.workspace_id, "Pour ma nouvelle gamme de produits")
+        mock_email.assert_called_once_with(
+            self.workspace_id, self.owner.email, self.owner.email, "Pour ma nouvelle gamme de produits"
+        )
 
         row = self.db.query(ShopifyStoreRequest).filter(ShopifyStoreRequest.id == body["id"]).first()
         self.assertIsNotNone(row)
@@ -140,6 +142,29 @@ class ShopifyStoreRequestRouteTests(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(len(res.json()), 1)
 
+    @patch("backend.routes.shopify.send_shopify_store_request_internal_email")
+    def test_overridden_capability_lets_member_request_and_email_shows_both_emails(self, mock_email):
+        # Le propriétaire a personnalisé manage_shopify_integration pour
+        # "membre" sur CE workspace - le membre peut alors soumettre la
+        # demande lui-même, et l'email doit distinguer qui l'a demandé
+        # (requester_email) de qui est réellement propriétaire
+        # (owner_email), jamais les confondre.
+        self.db.add(WorkspacePermissionOverride(
+            workspace_id=self.workspace_id, capability_key="manage_shopify_integration", min_role="membre",
+        ))
+        self.db.commit()
+
+        _active_user_id["value"] = self.member.id
+        res = self.client.post(
+            "/shopify/store-request",
+            headers={"X-Workspace-Id": self.workspace_id},
+            json={"note": "demande par un membre"},
+        )
+        self.assertEqual(res.status_code, 201)
+        mock_email.assert_called_once_with(
+            self.workspace_id, self.owner.email, self.member.email, "demande par un membre"
+        )
+
 
 class AlhuRequestShopifyStoreTests(unittest.TestCase):
     """Même action, déclenchée via l'outil Alhu plutôt que la route
@@ -166,7 +191,7 @@ class AlhuRequestShopifyStoreTests(unittest.TestCase):
     def test_owner_can_request_store_via_alhu(self, mock_email):
         result = alhu_service._request_shopify_store(self.db, self.workspace_id, self.owner.id, "besoin rapide")
         self.assertTrue(result["success"])
-        mock_email.assert_called_once_with(self.workspace_id, "besoin rapide")
+        mock_email.assert_called_once_with(self.workspace_id, self.owner.email, self.owner.email, "besoin rapide")
         self.assertEqual(
             self.db.query(ShopifyStoreRequest).filter(ShopifyStoreRequest.workspace_id == self.workspace_id).count(),
             1,

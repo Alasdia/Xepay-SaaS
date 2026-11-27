@@ -613,7 +613,17 @@ def _request_shopify_store(db: Session, workspace_id: str, caller_user_id: str, 
     db.add(request_row)
     db.commit()
     db.refresh(request_row)
-    send_shopify_store_request_internal_email(workspace_id, safe_note)
+    # owner_email/requester_email (jamais juste workspace_id, un humain
+    # côté Xepay ne peut rien en faire) - même convention que
+    # routes/shopify.py::create_shopify_store_request.
+    owner = db.query(UserDB).filter(UserDB.id == workspace_id).first()
+    requester = db.query(UserDB).filter(UserDB.id == caller_user_id).first()
+    send_shopify_store_request_internal_email(
+        workspace_id,
+        owner.email if owner else None,
+        requester.email if requester else None,
+        safe_note,
+    )
     return {"success": True, "id": request_row.id, "status": request_row.status}
 
 

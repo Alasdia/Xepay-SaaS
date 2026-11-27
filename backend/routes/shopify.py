@@ -65,6 +65,7 @@ from backend.models import (
     ShopifyShop,
     ShopifyStoreRequest,
     ShopifyStoreRequestCreate,
+    UserDB,
     WorkspaceUser,
 )
 from backend.routes.buildness import _get_latest_company
@@ -359,7 +360,18 @@ def create_shopify_store_request(
     db.commit()
     db.refresh(request_row)
 
-    send_shopify_store_request_internal_email(membership.workspace_id, body.note)
+    # owner_email/requester_email (jamais juste workspace_id, un humain
+    # ne peut rien en faire) - workspace_id EST l'id du propriétaire par
+    # convention dans tout ce projet, requester_email peut différer si
+    # le propriétaire a personnalisé cette capacité pour un rôle moindre.
+    owner = db.query(UserDB).filter(UserDB.id == membership.workspace_id).first()
+    requester = db.query(UserDB).filter(UserDB.id == membership.user_id).first()
+    send_shopify_store_request_internal_email(
+        membership.workspace_id,
+        owner.email if owner else None,
+        requester.email if requester else None,
+        body.note,
+    )
 
     return {"id": request_row.id, "status": request_row.status, "created_at": request_row.created_at}
 
