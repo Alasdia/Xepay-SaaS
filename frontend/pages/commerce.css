@@ -268,6 +268,13 @@
    .commerce-empty-*" (jamais juste ".commerce-empty-*") pour primer
    sur .commerce-card h3/p ci-dessus/dessous (spécificité CSS : 2
    classes > 1 classe + 1 type). */
+/* Sans bordure (demande du 2026-11-27) - :has() plutôt qu'une classe à
+   poser sur chaque .commerce-card appelante (5 endroits) : ce .commerce-
+   card précis (celui qui contient un état vide) perd sa bordure, tous
+   les autres usages de .commerce-card gardent la leur. */
+.commerce-card:has(.commerce-empty-state) {
+    border: none;
+}
 .commerce-empty-state {
     display: flex;
     flex-direction: column;
