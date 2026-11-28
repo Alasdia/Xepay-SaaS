@@ -67,7 +67,7 @@ CAPABILITY_DEFAULTS = {
     "export_reports": "manager",              # /reports/financial, /reports/connect-session
     "manage_company_formation": "owner",      # /buildness/onboard, /buildness/status/{merchant_id} (routes/buildness.py)
     "manage_shopify_integration": "owner",    # GET /shopify/install, /shopify/status (routes/shopify.py)
-    "view_shopify_data": "manager",           # GET /shopify/products, /orders, /customers (routes/shopify.py)
+    "view_shopify_data": "manager",           # GET /shopify/products, /orders, /customers, /draft-orders (routes/shopify.py)
     "manage_shopify_data": "manager",         # POST/PATCH /shopify/customers, /products, /orders/{id}/cancel (routes/shopify.py)
 }
 

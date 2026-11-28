@@ -6865,16 +6865,61 @@ async function renderShopifyProductsSection(container, { silent = false } = {}) 
     }
 }
 
+function shopifyDraftOrdersTableHtml(draftOrders) {
+    // Historique des commandes créées DEPUIS le dashboard Xepay (ajouté
+    // le 2026-11-28, demande explicite : le marchand veut aussi les
+    // VOIR, pas seulement les créer) - scopé par GET /shopify/draft-
+    // orders (merchant_id, jamais _get_connected_shop), reste donc
+    // affiché même si la boutique a depuis été déconnectée. "status"
+    // vient de ShopifyDraftOrderPayment.completed_at (notre propre
+    // registre de paiement), jamais déduit d'un appel Shopify.
+    if (!draftOrders.length) return "";
+    return `
+        <div class="table-wrap mt-3">
+            <div class="table-title">Commandes créées depuis le dashboard Xepay</div>
+            <table class="table">
+                <thead>
+                    <tr><th>Client</th><th>Commande</th><th>Montant</th><th>Statut</th><th>Date</th></tr>
+                </thead>
+                <tbody>
+                    ${draftOrders.map((o) => `
+                        <tr>
+                            <td>${escapeHtmlAttr(o.customer_email || "—")}</td>
+                            <td>${escapeHtmlAttr(o.label || "—")}</td>
+                            <td>${o.amount != null ? `${Number(o.amount).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${o.currency || ""}` : "—"}</td>
+                            <td><span class="status-badge ${o.status === "paid" ? "status-success" : "status-warning"}">${o.status === "paid" ? "Payée" : "En attente de paiement"}</span></td>
+                            <td>${shopifyDate(o.created_at)}</td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
 async function renderShopifyOrdersSection(container, { silent = false } = {}) {
     if (!silent) container.innerHTML = viewLoadingHtml();
     try {
-        const response = await apiFetch("/shopify/orders");
-        const data = await response.json();
-        if (response.status === 404) {
-            container.innerHTML = "";
+        // /shopify/draft-orders (toujours interrogé, même sans boutique
+        // connectée - voir shopifyDraftOrdersTableHtml) en parallèle de
+        // /shopify/orders (peut légitimement renvoyer 404 si aucune
+        // boutique n'est connectée, voir plus bas).
+        const [ordersResponse, draftOrdersResponse] = await Promise.all([
+            apiFetch("/shopify/orders"),
+            apiFetch("/shopify/draft-orders"),
+        ]);
+        const draftOrders = draftOrdersResponse.ok ? (await draftOrdersResponse.json()).data || [] : [];
+        const draftOrdersHtml = shopifyDraftOrdersTableHtml(draftOrders);
+
+        if (ordersResponse.status === 404) {
+            // Aucune boutique connectée : les commandes Shopify "live"
+            // n'ont pas de sens, mais l'historique Xepay (ci-dessus)
+            // reste pertinent et doit quand même s'afficher.
+            container.innerHTML = draftOrdersHtml || "";
             return;
         }
-        if (!response.ok) throw new Error(data.detail || "Impossible de récupérer les commandes Shopify");
+        const data = await ordersResponse.json();
+        if (!ordersResponse.ok) throw new Error(data.detail || "Impossible de récupérer les commandes Shopify");
         const orders = data.data || [];
         container.innerHTML = `
             <div class="table-wrap">
@@ -6911,6 +6956,7 @@ async function renderShopifyOrdersSection(container, { silent = false } = {}) {
                 </table>
                 `}
             </div>
+            ${draftOrdersHtml}
         `;
     } catch (error) {
         console.error(error);

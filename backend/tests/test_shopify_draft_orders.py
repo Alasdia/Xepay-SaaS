@@ -11,6 +11,9 @@ que cette commande... est payée via un lien xepay") :
    complète la commande côté Shopify (draftOrderComplete) ET crée une
    Notification confirmant explicitement au marchand que cette commande
    a été payée via Xepay.
+3. GET /shopify/draft-orders (routes/shopify.py) - l'historique de ces
+   commandes, affiché sur le dashboard (demande explicite : le marchand
+   veut aussi les VOIR, pas seulement les créer).
 
 Même conventions SQLite mémoire + patch de SessionLocal là où elle est
 IMPORTÉE que les autres fichiers de ce dossier - aucun appel réel à
@@ -158,6 +161,91 @@ class CreateShopifyDraftOrderRouteTests(unittest.TestCase):
             json={"customer_email": "client@example.com", "line_items": []},
         )
         self.assertEqual(res.status_code, 422)
+
+
+class ListShopifyDraftOrdersRouteTests(unittest.TestCase):
+    """GET /shopify/draft-orders (ajouté le 2026-11-28, demande explicite
+    du marchand : voir les commandes créées depuis Xepay, pas seulement
+    les créer) - scopé par merchant_id (ShopifyDraftOrderPayment), jamais
+    par _get_connected_shop : reste consultable même boutique
+    déconnectée."""
+
+    def setUp(self):
+        self.db = TestingSessionLocal()
+        suffix = id(self)
+        self.owner = UserDB(email=f"list-draft-owner-{suffix}@example.com", password="x")
+        self.other_owner = UserDB(email=f"list-draft-other-{suffix}@example.com", password="x")
+        self.db.add_all([self.owner, self.other_owner])
+        self.db.flush()
+        self.workspace_id = self.owner.id
+        self.db.add(WorkspaceUser(user_id=self.owner.id, workspace_id=self.workspace_id, role="owner"))
+        self.db.add(WorkspaceUser(user_id=self.other_owner.id, workspace_id=self.other_owner.id, role="owner"))
+
+        self.shop = f"list-draft-{suffix}.myshopify.com"
+        self.db.add(ShopifyShop(shop_domain=self.shop, merchant_id=self.owner.id, access_token=encrypt_secret("shpat_fake")))
+
+        self.paid_link = Link(
+            id=f"lk_paid_{suffix}", token=f"tok_paid_{suffix}", user_id=self.owner.id,
+            email="paid-client@example.com", name="Commande Shopify Alice", amount=49.90, currency="EUR", url="https://api.xepay.finance/pay/paid",
+        )
+        self.pending_link = Link(
+            id=f"lk_pending_{suffix}", token=f"tok_pending_{suffix}", user_id=self.owner.id,
+            email="pending-client@example.com", name="Commande Shopify Bob", amount=10.0, currency="EUR", url="https://api.xepay.finance/pay/pending",
+        )
+        self.other_link = Link(
+            id=f"lk_other_{suffix}", token=f"tok_other_{suffix}", user_id=self.other_owner.id,
+            email="other-client@example.com", name="Commande Shopify Autre", amount=5.0, currency="EUR", url="https://api.xepay.finance/pay/other",
+        )
+        self.db.add_all([self.paid_link, self.pending_link, self.other_link])
+        self.db.flush()
+
+        from datetime import datetime, timezone
+        self.db.add(ShopifyDraftOrderPayment(
+            shop_domain=self.shop, draft_order_gid=f"gid://shopify/DraftOrder/1-{suffix}",
+            link_id=self.paid_link.id, merchant_id=self.owner.id, completed_at=datetime.now(timezone.utc),
+        ))
+        self.db.add(ShopifyDraftOrderPayment(
+            shop_domain=self.shop, draft_order_gid=f"gid://shopify/DraftOrder/2-{suffix}",
+            link_id=self.pending_link.id, merchant_id=self.owner.id,
+        ))
+        # D'un AUTRE workspace (shop/gid suffixés - base SQLite partagée
+        # entre méthodes de test de cette classe, même précaution que
+        # test_notifications.py) - ne doit jamais apparaître dans la
+        # liste de self.owner (isolation stricte).
+        self.db.add(ShopifyDraftOrderPayment(
+            shop_domain=f"other-shop-{suffix}.myshopify.com", draft_order_gid=f"gid://shopify/DraftOrder/3-{suffix}",
+            link_id=self.other_link.id, merchant_id=self.other_owner.id,
+        ))
+        self.db.commit()
+
+        _active_user_id["value"] = self.owner.id
+        self.app = build_app()
+        self.client = TestClient(self.app)
+
+    def tearDown(self):
+        self.db.close()
+
+    def test_lists_own_draft_orders_with_status(self):
+        res = self.client.get("/shopify/draft-orders", headers={"X-Workspace-Id": self.workspace_id})
+        self.assertEqual(res.status_code, 200)
+        rows = res.json()["data"]
+        self.assertEqual(len(rows), 2)
+        by_email = {r["customer_email"]: r for r in rows}
+        self.assertEqual(by_email["paid-client@example.com"]["status"], "paid")
+        self.assertEqual(by_email["pending-client@example.com"]["status"], "pending")
+        self.assertEqual(by_email["paid-client@example.com"]["amount"], 49.90)
+
+    def test_never_lists_another_workspace_draft_orders(self):
+        res = self.client.get("/shopify/draft-orders", headers={"X-Workspace-Id": self.workspace_id})
+        emails = [r["customer_email"] for r in res.json()["data"]]
+        self.assertNotIn("other-client@example.com", emails)
+
+    def test_still_lists_history_after_shop_disconnected(self):
+        self.db.query(ShopifyShop).filter(ShopifyShop.shop_domain == self.shop).delete()
+        self.db.commit()
+        res = self.client.get("/shopify/draft-orders", headers={"X-Workspace-Id": self.workspace_id})
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.json()["data"]), 2)
 
 
 class SyncDraftOrderPaidWithShopifyTests(unittest.TestCase):

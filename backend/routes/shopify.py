@@ -812,6 +812,50 @@ async def create_shopify_draft_order(
     return {"shop_domain": shop_row.shop_domain, "draft_order_gid": draft_order_gid, "pay_url": pay_url, "customer_email": data.customer_email}
 
 
+@router.get("/shopify/draft-orders")
+def list_shopify_draft_orders(
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("view_shopify_data")),
+):
+    """Historique des commandes créées DEPUIS le dashboard Xepay (ajouté
+    le 2026-11-28, demande explicite : le marchand veut aussi les VOIR
+    sur le dashboard, pas seulement les créer) - scopé par merchant_id,
+    jamais par _get_connected_shop : contrairement aux autres endpoints
+    de lecture Shopify ci-dessus, cet historique reste consultable même
+    si la boutique a depuis été déconnectée/reconnectée (registre propre
+    à Xepay, voir ShopifyDraftOrderPayment).
+
+    Montant/email/lien proviennent du Link Xepay associé (jamais stockés
+    une seconde fois sur ShopifyDraftOrderPayment) - "status" est déduit
+    de completed_at, la SEULE source de vérité sur le paiement réel (pas
+    un appel Shopify à chaque affichage, cette table existe justement
+    pour éviter ça)."""
+    rows = (
+        db.query(ShopifyDraftOrderPayment, Link)
+        .join(Link, Link.id == ShopifyDraftOrderPayment.link_id)
+        .filter(ShopifyDraftOrderPayment.merchant_id == membership.workspace_id)
+        .order_by(ShopifyDraftOrderPayment.created_at.desc())
+        .all()
+    )
+    return {
+        "data": [
+            {
+                "id": draft_payment.id,
+                "customer_email": link.email,
+                "label": link.name,
+                "amount": link.amount,
+                "currency": link.currency,
+                "pay_url": link.url,
+                "status": "paid" if draft_payment.completed_at else "pending",
+                "completed_at": draft_payment.completed_at,
+                "created_at": draft_payment.created_at,
+                "shopify_draft_order_gid": draft_payment.draft_order_gid,
+            }
+            for draft_payment, link in rows
+        ]
+    }
+
+
 # =========================================================
 # "Buildshop" - rapport de préparation technique de la boutique (demande
 # du 2026-11-25) : AUCUNE UI/thème/design, uniquement la lecture d'état
