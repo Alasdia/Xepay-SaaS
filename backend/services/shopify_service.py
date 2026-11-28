@@ -744,12 +744,21 @@ async def create_product(shop: str, access_token: str, title: str, description: 
     un second appel (productVariantsBulkUpdate) fixe le prix de cette
     variante par défaut juste après. Le STOCK (inventaire) reste hors
     périmètre - nécessiterait un emplacement (location) + un appel
-    distinct (inventoryAdjustQuantities), jamais implémenté ici."""
+    distinct (inventoryAdjustQuantities), jamais implémenté ici.
+
+    CORRIGÉ le 2026-11-28 (bug réel en prod, confirmé par les logs -
+    "Type mismatch on variable $input and argument input
+    (ProductCreateInput! / ProductInput)") : l'argument du champ
+    productCreate s'appelle "product" (type ProductCreateInput), PAS
+    "input" (qui lui n'accepte que l'ancien ProductInput, déprécié) -
+    voir shopify.dev. Variable renommée en conséquence ; title/
+    descriptionHtml/status existent bien sur ProductCreateInput
+    (vérifié contre le schéma), aucun autre changement."""
     result = await _admin_graphql(
         shop, access_token,
         """
-        mutation productCreate($input: ProductCreateInput!) {
-          productCreate(input: $input) {
+        mutation productCreate($product: ProductCreateInput!) {
+          productCreate(product: $product) {
             product {
               id
               title
@@ -760,7 +769,7 @@ async def create_product(shop: str, access_token: str, title: str, description: 
           }
         }
         """,
-        {"input": {"title": title, "descriptionHtml": description or "", "status": status}},
+        {"product": {"title": title, "descriptionHtml": description or "", "status": status}},
     )
     payload = result.get("productCreate") or {}
     user_errors = payload.get("userErrors") or []
