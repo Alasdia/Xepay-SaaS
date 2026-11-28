@@ -75,6 +75,19 @@ SHOPIFY_ORDERS_WEBHOOK_URL = os.getenv(
 SHOPIFY_APP_UNINSTALLED_WEBHOOK_URL = os.getenv(
     "SHOPIFY_APP_UNINSTALLED_WEBHOOK_URL", "https://api.xepay.finance/webhook/shopify/app-uninstalled"
 )
+# Topics "centre de notifications" (ajoutés le 2026-11-28, voir
+# models.Notification) - demande explicite de l'utilisateur : savoir
+# quand un produit/client/commande est créé DIRECTEMENT sur la
+# boutique Shopify (jamais depuis le dashboard Xepay, qui lui utilise
+# les toasts). AUCUN mirroring : seul un évènement ponctuel (titre/
+# résumé figés au moment reçu) est créé, jamais une copie synchronisée
+# du produit/client - voir routes/webhook/shopify.py.
+SHOPIFY_PRODUCTS_CREATE_WEBHOOK_URL = os.getenv(
+    "SHOPIFY_PRODUCTS_CREATE_WEBHOOK_URL", "https://api.xepay.finance/webhook/shopify/products-create"
+)
+SHOPIFY_CUSTOMERS_CREATE_WEBHOOK_URL = os.getenv(
+    "SHOPIFY_CUSTOMERS_CREATE_WEBHOOK_URL", "https://api.xepay.finance/webhook/shopify/customers-create"
+)
 # Nom EXACT de la méthode de paiement manuelle que le marchand doit créer
 # lui-même dans Settings > Payments > Manual payment methods de son admin
 # Shopify (aucune API ne permet de la créer, voir le docstring de routes/
@@ -394,6 +407,75 @@ async def register_app_uninstalled_webhook(shop: str, access_token: str) -> None
     user_errors = (result.get("webhookSubscriptionCreate") or {}).get("userErrors") or []
     if user_errors:
         raise ShopifyAPIError(200, str(user_errors))
+
+
+async def _find_webhook_subscription_id(shop: str, access_token: str, topic: str, callback_url: str) -> str | None:
+    """Généralisé le 2026-11-28 (4e topic ajouté - PRODUCTS_CREATE/
+    CUSTOMERS_CREATE, voir models.Notification/centre de notifications)
+    : au-delà de 2-3 topics quasi identiques, dupliquer encore devenait
+    plus coûteux que factoriser. _find_order_webhook_subscription_id/
+    _find_app_uninstalled_webhook_subscription_id restent en place tels
+    quels (appelants existants déjà testés, jamais retouchés ici) -
+    seuls les 2 NOUVEAUX topics ci-dessous passent par cette fonction."""
+    existing = await _admin_graphql(
+        shop, access_token,
+        """
+        query($topics: [WebhookSubscriptionTopic!]!) {
+          webhookSubscriptions(first: 50, topics: $topics) {
+            edges { node { id endpoint { __typename ... on WebhookHttpEndpoint { callbackUrl } } } }
+          }
+        }
+        """,
+        {"topics": [topic]},
+    )
+    edges = (existing.get("webhookSubscriptions") or {}).get("edges") or []
+    for edge in edges:
+        node = edge.get("node") or {}
+        endpoint = node.get("endpoint") or {}
+        if endpoint.get("callbackUrl") == callback_url:
+            return node.get("id")
+    return None
+
+
+async def _register_webhook_topic(shop: str, access_token: str, topic: str, callback_url: str) -> None:
+    """Coeur commun à register_product_created_webhook/
+    register_customer_created_webhook ci-dessous - idempotent (voir
+    _find_webhook_subscription_id), best-effort à l'appelant
+    (routes/shopify.py::shopify_callback, même raison que
+    register_order_webhook/register_app_uninstalled_webhook)."""
+    if await _find_webhook_subscription_id(shop, access_token, topic, callback_url):
+        return
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        mutation webhookSubscriptionCreate($topic: WebhookSubscriptionTopic!, $webhookSubscription: WebhookSubscriptionInput!) {
+          webhookSubscriptionCreate(topic: $topic, webhookSubscription: $webhookSubscription) {
+            webhookSubscription { id }
+            userErrors { field message }
+          }
+        }
+        """,
+        {"topic": topic, "webhookSubscription": {"callbackUrl": callback_url, "format": "JSON"}},
+    )
+    user_errors = (result.get("webhookSubscriptionCreate") or {}).get("userErrors") or []
+    if user_errors:
+        raise ShopifyAPIError(200, str(user_errors))
+
+
+async def register_product_created_webhook(shop: str, access_token: str) -> None:
+    """Centre de notifications (models.Notification) - jamais de
+    mirroring : voir routes/webhook/shopify.py::
+    shopify_products_create_webhook, qui ne crée qu'un évènement
+    ponctuel, jamais une copie synchronisée du produit."""
+    await _register_webhook_topic(shop, access_token, "PRODUCTS_CREATE", SHOPIFY_PRODUCTS_CREATE_WEBHOOK_URL)
+
+
+async def register_customer_created_webhook(shop: str, access_token: str) -> None:
+    """Centre de notifications (models.Notification) - jamais de
+    mirroring : voir routes/webhook/shopify.py::
+    shopify_customers_create_webhook, qui ne crée qu'un évènement
+    ponctuel, jamais une copie synchronisée du client."""
+    await _register_webhook_topic(shop, access_token, "CUSTOMERS_CREATE", SHOPIFY_CUSTOMERS_CREATE_WEBHOOK_URL)
 
 
 async def mark_order_as_paid(shop: str, access_token: str, order_id) -> dict:

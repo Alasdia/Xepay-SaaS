@@ -447,6 +447,98 @@
 #top-banner .top-banner-actions button:hover,
 #top-banner .top-banner-actions a:hover { background: rgba(17, 24, 39, 0.1); }
 #top-banner #settings-gear-btn:hover { transform: rotate(20deg); }
+
+/* Centre de notifications (icône cloche, ajouté le 2026-11-28 - voir
+   spa/shared/notificationsPanel.js) - #notifications-btn passe en
+   position:relative pour ancrer le badge (absolu) posé en enfant par
+   le JS, même principe que #alhu-widget-badge plus haut dans ce
+   fichier. */
+#top-banner #notifications-btn { position: relative; }
+#notifications-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+  border: 1.5px solid #fff;
+}
+/* position:fixed, top/right posés dynamiquement en JS (positionPanel,
+   notificationsPanel.js) selon le rectangle réel de #notifications-btn
+   - jamais une valeur fixe ici, qui désynchroniserait au moindre
+   changement de mise en page du bandeau. z-index au-dessus de
+   #top-banner/#sidebar (500000/500001) et du widget Alhu (600000),
+   sous le voile de changement de workspace (2000000) et le toast
+   (999999, voir dashboard.css). */
+#notifications-panel {
+  position: fixed;
+  width: min(360px, calc(100vw - 24px));
+  max-height: min(480px, calc(100vh - 100px));
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(17, 24, 39, 0.18);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  z-index: 700000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#notifications-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.08);
+  flex-shrink: 0;
+}
+#notifications-panel-header span { font-size: 13.5px; font-weight: 700; color: #111827; }
+#notifications-mark-all-read {
+  background: none;
+  border: none;
+  color: #b45309;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+#notifications-mark-all-read:hover { text-decoration: underline; }
+#notifications-panel-list { overflow-y: auto; flex: 1; }
+.notification-empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 13px;
+}
+.notification-item {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+  cursor: default;
+}
+.notification-item:last-child { border-bottom: none; }
+.notification-item-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+  background: transparent;
+}
+.notification-item--unread { cursor: pointer; background: rgba(180, 83, 9, 0.04); }
+.notification-item--unread .notification-item-dot { background: #b45309; }
+.notification-item--unread:hover { background: rgba(180, 83, 9, 0.08); }
+.notification-item-body { flex: 1; min-width: 0; }
+.notification-item-title { font-size: 13px; font-weight: 600; color: #111827; line-height: 1.35; }
+.notification-item-desc { font-size: 12.5px; color: #4b5563; margin-top: 2px; line-height: 1.35; }
+.notification-item-time { font-size: 11.5px; color: #9ca3af; margin-top: 4px; }
 /* z-index au-dessus de #sidebar (500000, voir plus haut) : ce coin gauche
    chevauche le coin haut-gauche de la sidebar, qui le cachait entièrement
    depuis que la sidebar est passée au-dessus de tous les backdrops. */
