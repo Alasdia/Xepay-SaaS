@@ -26,22 +26,22 @@ create suivent la documentation officielle Shopify, vérifiés ici
 uniquement par simulation (voir le script de test). À confirmer par une
 vraie commande test sur Connect1 une fois la méthode manuelle créée.
 
-CYCLE DE VIE DE L'APP + RGPD (ajouté le 2026-11-28) - app/uninstalled,
-customers/data_request, customers/redact, shop/redact. AUCUN mirroring
-de données Shopify (produits/commandes/clients) ici : le marchand
-préfère explicitement tout lire en direct via l'API, jamais une copie
-côté Xepay (discussion du 2026-11-28, revient sur un chantier de
-mirroring complet construit puis annulé le même jour) - voir
-models.ShopifyShop.uninstalled_at, seul état propre à Xepay introduit.
+CYCLE DE VIE DE L'APP (app/uninstalled, ajouté le 2026-11-28) - AUCUN
+mirroring de données Shopify (produits/commandes/clients) ici : le
+marchand préfère explicitement tout lire en direct via l'API, jamais
+une copie côté Xepay (discussion du 2026-11-28, revient sur un
+chantier de mirroring complet construit puis annulé le même jour) -
+voir models.ShopifyShop.uninstalled_at, seul état propre à Xepay
+introduit.
 
-Les 3 topics RGPD ne peuvent PAS être enregistrés automatiquement
-(vérifié le 2026-11-28, community.shopify.dev) : Shopify refuse ces 3
-topics via webhookSubscriptionCreate, configurables UNIQUEMENT via
-shopify.app.toml (CLI moderne, jamais utilisé par cette app) ou la
-section "Compliance webhooks" du Partner Dashboard (configuration
-MANUELLE, une seule fois, côté humain - coller les 3 URLs .../
-customers-data-request, .../customers-redact, .../shop-redact
-là-bas)."""
+Les 3 webhooks RGPD obligatoires (customers/data_request, customers/
+redact, shop/redact) ont été envisagés puis RETIRÉS le 2026-11-28 :
+confirmé que Shopify ne les impose qu'aux apps listées sur l'App Store
+("Custom apps for a single store are not required to implement GDPR
+webhooks") - "Xepay Sync" n'y est jamais soumise, et sans aucune
+donnée Shopify mirorée, ces 3 webhooks n'auraient eu aucune action
+réelle à accomplir (juste un email interne disant "rien à faire") -
+jamais ajoutés pour cette raison."""
 
 import hashlib
 import logging
@@ -53,7 +53,7 @@ from sqlalchemy.exc import IntegrityError
 
 from backend.database import SessionLocal
 from backend.models import Link, ShopifyOrderPayment, ShopifyShop, UserDB, generate_prefixed_id
-from backend.services.email_service import send_shopify_gdpr_request_internal_email, send_shopify_payment_link_email
+from backend.services.email_service import send_shopify_payment_link_email
 from backend.services.shopify_service import (
     SHOPIFY_MANUAL_GATEWAY_NAME,
     is_valid_shop_domain,
@@ -202,10 +202,9 @@ async def shopify_orders_create_webhook(request: Request):
 
 
 async def _verify_shopify_webhook(request: Request) -> tuple[str, dict]:
-    """Coeur commun aux 4 handlers ci-dessous (ajouté le 2026-11-28) -
+    """Coeur commun au handler ci-dessous (ajouté le 2026-11-28) -
     jamais appliqué rétroactivement à shopify_orders_create_webhook
-    ci-dessus (hors périmètre de ce chantier, qui reste volontairement
-    limité au cycle de vie de l'app + RGPD). Lève HTTPException
+    plus haut (hors périmètre de ce chantier). Lève HTTPException
     (401/400) sur signature/en-tête/JSON invalide - jamais un retour
     silencieux."""
     raw_body = await request.body()
@@ -239,67 +238,4 @@ async def shopify_app_uninstalled_webhook(request: Request):
             db.commit()
     finally:
         db.close()
-    return {"ok": True}
-
-
-# =========================================================
-# RGPD obligatoire (ajouté le 2026-11-28) - voir le docstring en tête
-# de fichier pour pourquoi ces 3 topics ne peuvent PAS être enregistrés
-# automatiquement (refusés par webhookSubscriptionCreate, configuration
-# MANUELLE requise côté Partner Dashboard). AUCUNE donnée Shopify
-# mirrorée côté Xepay (voir discussion du 2026-11-28) : customers/
-# redact et shop/redact n'ont donc RIEN de métier à supprimer - seule
-# la ligne ShopifyShop (connexion propre à Xepay, pas une donnée
-# Shopify) est retirée par shop/redact. NON VÉRIFIÉ contre un vrai
-# payload (même réserve que orders/create en tête de fichier).
-# =========================================================
-
-@router.post("/webhook/shopify/customers-data-request")
-async def shopify_customers_data_request_webhook(request: Request):
-    """AUCUNE automatisation possible : compiler et transmettre les
-    données d'un client à sa demande est un acte humain, jamais
-    déductible d'un simple webhook (et Xepay ne mirrore rien localement
-    de toute façon) - alerte l'équipe Xepay par email, jamais plus."""
-    shop, payload = await _verify_shopify_webhook(request)
-    logger.warning("RGPD customers/data_request reçu pour %s", shop)
-    try:
-        send_shopify_gdpr_request_internal_email(shop, "customers/data_request", payload)
-    except Exception:
-        logger.exception("Échec notification RGPD customers/data_request pour %s", shop)
-    return {"ok": True}
-
-
-@router.post("/webhook/shopify/customers-redact")
-async def shopify_customers_redact_webhook(request: Request):
-    """Rien à supprimer localement (aucune donnée client Shopify
-    mirrorée côté Xepay) - purement informatif/traçabilité RGPD."""
-    shop, payload = await _verify_shopify_webhook(request)
-    try:
-        send_shopify_gdpr_request_internal_email(shop, "customers/redact", payload)
-    except Exception:
-        logger.exception("Échec notification RGPD customers/redact pour %s", shop)
-    return {"ok": True}
-
-
-@router.post("/webhook/shopify/shop-redact")
-async def shopify_shop_redact_webhook(request: Request):
-    """Supprime la ligne ShopifyShop (connexion propre à Xepay) -
-    envoyé par Shopify ~48h après une désinstallation, voir app/
-    uninstalled ci-dessus. Ne touche JAMAIS ShopifyOrderPayment/Link -
-    ce sont les PROPRES registres financiers de Xepay (paiements/liens
-    réellement émis), pas une donnée Shopify, hors périmètre RGPD de
-    cette boutique précise. La notification email (best-effort, dans
-    son propre try/except) ne doit JAMAIS empêcher cette suppression
-    de committer."""
-    shop, payload = await _verify_shopify_webhook(request)
-    db = SessionLocal()
-    try:
-        db.query(ShopifyShop).filter(ShopifyShop.shop_domain == shop).delete()
-        db.commit()
-    finally:
-        db.close()
-    try:
-        send_shopify_gdpr_request_internal_email(shop, "shop/redact", payload)
-    except Exception:
-        logger.exception("Échec notification RGPD shop/redact pour %s", shop)
     return {"ok": True}
