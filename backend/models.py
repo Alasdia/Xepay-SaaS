@@ -1069,7 +1069,19 @@ class ShopifyShop(Base):
     pas de mécanisme de déconnexion qui viderait cette colonne - une
     ligne ShopifyShop n'existe QUE si un vrai token est en main (voir
     shopify_callback, routes/shopify.py, qui ne crée/met à jour la ligne
-    qu'après un échange OAuth réussi)."""
+    qu'après un échange OAuth réussi).
+
+    uninstalled_at (ajouté le 2026-11-28, webhook app/uninstalled) :
+    SEUL signal de désinstallation - access_token reste tel quel
+    (contrainte ci-dessus, jamais vidé), devenu simplement obsolète/
+    révoqué côté Shopify. _get_connected_shop (routes/shopify.py)
+    l'exclut désormais explicitement. Remis à NULL automatiquement sur
+    une ré-installation (shopify_callback, même ligne réutilisée via
+    shop_domain UNIQUE). AUCUN mirroring de données Shopify ici (voir
+    discussion du 2026-11-28 : le marchand préfère explicitement tout
+    lire en direct via l'API, jamais une copie côté Xepay) - ce
+    champ ne trace qu'un ÉTAT DE CONNEXION propre à Xepay, pas une
+    donnée Shopify."""
     __tablename__ = "shopify_shops"
 
     id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("shp"))
@@ -1079,6 +1091,7 @@ class ShopifyShop(Base):
     scope = Column(String, nullable=True)
     installed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    uninstalled_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class ShopifyOrderPayment(Base):

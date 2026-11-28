@@ -65,6 +65,16 @@ SHOPIFY_API_VERSION = os.getenv("SHOPIFY_API_VERSION", "2025-01")
 SHOPIFY_ORDERS_WEBHOOK_URL = os.getenv(
     "SHOPIFY_ORDERS_WEBHOOK_URL", "https://api.xepay.finance/webhook/shopify/orders-create"
 )
+# Topic de cycle de vie (ajouté le 2026-11-28) - AUCUN mirroring de
+# données Shopify (produits/commandes/clients) : le marchand préfère
+# explicitement tout lire en direct via l'API, jamais une copie côté
+# Xepay (discussion du 2026-11-28, revient sur un chantier de mirroring
+# complet construit puis annulé le même jour). Ce topic ne notifie
+# qu'un changement d'ÉTAT DE CONNEXION propre à Xepay (voir
+# ShopifyShop.uninstalled_at), pas une donnée Shopify.
+SHOPIFY_APP_UNINSTALLED_WEBHOOK_URL = os.getenv(
+    "SHOPIFY_APP_UNINSTALLED_WEBHOOK_URL", "https://api.xepay.finance/webhook/shopify/app-uninstalled"
+)
 # Nom EXACT de la méthode de paiement manuelle que le marchand doit créer
 # lui-même dans Settings > Payments > Manual payment methods de son admin
 # Shopify (aucune API ne permet de la créer, voir le docstring de routes/
@@ -324,6 +334,61 @@ async def register_order_webhook(shop: str, access_token: str) -> None:
         {
             "topic": "ORDERS_CREATE",
             "webhookSubscription": {"callbackUrl": SHOPIFY_ORDERS_WEBHOOK_URL, "format": "JSON"},
+        },
+    )
+    user_errors = (result.get("webhookSubscriptionCreate") or {}).get("userErrors") or []
+    if user_errors:
+        raise ShopifyAPIError(200, str(user_errors))
+
+
+async def _find_app_uninstalled_webhook_subscription_id(shop: str, access_token: str) -> str | None:
+    """Même principe que _find_order_webhook_subscription_id, pour le
+    topic APP_UNINSTALLED (ajouté le 2026-11-28 - voir models.
+    ShopifyShop.uninstalled_at). Dupliqué plutôt que généralisé par
+    topic : un seul 2e topic ne justifie pas une abstraction, voir la
+    discussion du 2026-11-28 sur le périmètre volontairement restreint
+    de ce chantier (cycle de vie uniquement, jamais de mirroring)."""
+    existing = await _admin_graphql(
+        shop, access_token,
+        """
+        query {
+          webhookSubscriptions(first: 50, topics: [APP_UNINSTALLED]) {
+            edges { node { id endpoint { __typename ... on WebhookHttpEndpoint { callbackUrl } } } }
+          }
+        }
+        """,
+    )
+    edges = (existing.get("webhookSubscriptions") or {}).get("edges") or []
+    for edge in edges:
+        node = edge.get("node") or {}
+        endpoint = node.get("endpoint") or {}
+        if endpoint.get("callbackUrl") == SHOPIFY_APP_UNINSTALLED_WEBHOOK_URL:
+            return node.get("id")
+    return None
+
+
+async def register_app_uninstalled_webhook(shop: str, access_token: str) -> None:
+    """Enregistre (une seule fois par boutique) le webhook app/
+    uninstalled - appelée depuis routes/shopify.py juste après un
+    échange OAuth réussi, best-effort (même raison que
+    register_order_webhook : un échec ici ne doit jamais faire échouer
+    tout le callback OAuth, qui a déjà réussi)."""
+    if await _find_app_uninstalled_webhook_subscription_id(shop, access_token):
+        return
+
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        mutation webhookSubscriptionCreate($topic: WebhookSubscriptionTopic!, $webhookSubscription: WebhookSubscriptionInput!) {
+          webhookSubscriptionCreate(topic: $topic, webhookSubscription: $webhookSubscription) {
+            webhookSubscription { id }
+            userErrors { field message }
+          }
+        }
+        """,
+        {
+            "topic": "APP_UNINSTALLED",
+            "webhookSubscription": {"callbackUrl": SHOPIFY_APP_UNINSTALLED_WEBHOOK_URL, "format": "JSON"},
         },
     )
     user_errors = (result.get("webhookSubscriptionCreate") or {}).get("userErrors") or []

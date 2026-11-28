@@ -93,6 +93,7 @@ from backend.services.shopify_service import (
     list_customers,
     list_orders,
     list_products,
+    register_app_uninstalled_webhook,
     register_order_webhook,
     update_customer,
     update_product,
@@ -264,6 +265,11 @@ async def shopify_callback(request: Request, db: Session = Depends(get_db)):
     if existing:
         existing.access_token = encrypted_token
         existing.scope = scope
+        # Ré-installation après une désinstallation (webhook app/
+        # uninstalled, voir routes/webhook/shopify.py) - redevient
+        # "connectée" immédiatement, jamais besoin d'attendre quoi que
+        # ce soit d'autre.
+        existing.uninstalled_at = None
         if merchant_id:
             existing.merchant_id = merchant_id
     else:
@@ -275,17 +281,22 @@ async def shopify_callback(request: Request, db: Session = Depends(get_db)):
         ))
     db.commit()
 
-    # Enregistrement du webhook orders/create - UNIQUEMENT best-effort :
-    # un échec ici (réseau, token déjà invalidé juste après coup...) ne
-    # doit jamais faire échouer le callback OAuth lui-même, qui a déjà
-    # réussi et déjà committé le token. Sans ce webhook, "Payer via
-    # Xepay" (voir routes/webhook/shopify.py) ne recevra simplement
-    # jamais de commande - un échec silencieux de SYNCHRONISATION, pas de
-    # l'installation.
+    # Enregistrement des webhooks - UNIQUEMENT best-effort (chacun
+    # indépendamment protégé) : un échec ici (réseau, token déjà
+    # invalidé juste après coup...) ne doit jamais faire échouer le
+    # callback OAuth lui-même, qui a déjà réussi et déjà committé le
+    # token. orders/create : sans lui, "Payer via Xepay" (routes/
+    # webhook/shopify.py) ne recevra simplement jamais de commande.
+    # app/uninstalled : sans lui, ShopifyShop.uninstalled_at ne sera
+    # jamais posé si le marchand désinstalle l'app.
     try:
         await register_order_webhook(shop, access_token)
     except ShopifyAPIError:
         logger.exception("Échec de l'enregistrement du webhook orders/create pour %s", shop)
+    try:
+        await register_app_uninstalled_webhook(shop, access_token)
+    except ShopifyAPIError:
+        logger.exception("Échec de l'enregistrement du webhook app/uninstalled pour %s", shop)
 
     # Redirige vers l'admin Shopify de la boutique (jamais vers
     # app.xepay.finance) : une app embarquée doit rester embarquée après
@@ -411,10 +422,17 @@ def _get_connected_shop(db: Session, workspace_id: str) -> ShopifyShop | None:
     celle réellement rafraîchie le plus récemment (scope/token mis à
     jour via un reconsentement OAuth, qui ne change QUE updated_at) -
     symptôme observé : un scope qui semblait ne jamais se mettre à
-    jour, alors qu'une AUTRE ligne, non affichée, l'était bien."""
+    jour, alors qu'une AUTRE ligne, non affichée, l'était bien.
+
+    uninstalled_at IS NULL (ajouté le 2026-11-28, webhook app/
+    uninstalled) : une boutique désinstallée ne doit plus jamais
+    apparaître comme "connectée" nulle part (GET /shopify/status,
+    onglet Commerce...), même si access_token (jamais vidé, voir
+    models.ShopifyShop) a toujours sa dernière valeur connue - celle-ci
+    est révoquée côté Shopify, tout appel réel échouerait."""
     shop_row = (
         db.query(ShopifyShop)
-        .filter(ShopifyShop.merchant_id == workspace_id)
+        .filter(ShopifyShop.merchant_id == workspace_id, ShopifyShop.uninstalled_at.is_(None))
         .order_by(ShopifyShop.updated_at.desc())
         .first()
     )

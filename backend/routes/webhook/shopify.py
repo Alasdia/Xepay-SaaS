@@ -24,7 +24,24 @@ encore été créée sur Connect1 avec une méthode "Xepay") - l'algorithme de
 signature (X-Shopify-Hmac-Sha256, base64) et la forme du payload orders/
 create suivent la documentation officielle Shopify, vérifiés ici
 uniquement par simulation (voir le script de test). À confirmer par une
-vraie commande test sur Connect1 une fois la méthode manuelle créée."""
+vraie commande test sur Connect1 une fois la méthode manuelle créée.
+
+CYCLE DE VIE DE L'APP (app/uninstalled, ajouté le 2026-11-28) - AUCUN
+mirroring de données Shopify (produits/commandes/clients) ici : le
+marchand préfère explicitement tout lire en direct via l'API, jamais
+une copie côté Xepay (discussion du 2026-11-28, revient sur un
+chantier de mirroring complet construit puis annulé le même jour) -
+voir models.ShopifyShop.uninstalled_at, seul état propre à Xepay
+introduit.
+
+Les 3 webhooks RGPD obligatoires (customers/data_request, customers/
+redact, shop/redact) ont été envisagés puis RETIRÉS le 2026-11-28 :
+confirmé que Shopify ne les impose qu'aux apps listées sur l'App Store
+("Custom apps for a single store are not required to implement GDPR
+webhooks") - "Xepay Sync" n'y est jamais soumise, et sans aucune
+donnée Shopify mirorée, ces 3 webhooks n'auraient eu aucune action
+réelle à accomplir (juste un email interne disant "rien à faire") -
+jamais ajoutés pour cette raison."""
 
 import hashlib
 import logging
@@ -181,4 +198,44 @@ async def shopify_orders_create_webhook(request: Request):
     finally:
         db.close()
 
+    return {"ok": True}
+
+
+async def _verify_shopify_webhook(request: Request) -> tuple[str, dict]:
+    """Coeur commun au handler ci-dessous (ajouté le 2026-11-28) -
+    jamais appliqué rétroactivement à shopify_orders_create_webhook
+    plus haut (hors périmètre de ce chantier). Lève HTTPException
+    (401/400) sur signature/en-tête/JSON invalide - jamais un retour
+    silencieux."""
+    raw_body = await request.body()
+    if not verify_webhook_signature(raw_body, request.headers.get("X-Shopify-Hmac-Sha256")):
+        raise HTTPException(status_code=401, detail="Signature invalide")
+    shop = request.headers.get("X-Shopify-Shop-Domain")
+    if not shop or not is_valid_shop_domain(shop):
+        raise HTTPException(status_code=400, detail="En-tête X-Shopify-Shop-Domain manquant ou invalide")
+    try:
+        payload = await request.json()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="JSON invalide")
+    return shop, payload
+
+
+@router.post("/webhook/shopify/app-uninstalled")
+async def shopify_app_uninstalled_webhook(request: Request):
+    """SEUL signal de désinstallation (voir models.ShopifyShop,
+    uninstalled_at) - access_token n'est JAMAIS vidé (contrainte
+    explicite du modèle), juste marqué obsolète. _get_connected_shop
+    (routes/shopify.py) exclut désormais cette boutique de "connectée"
+    partout - une ré-installation (shopify_callback) remet
+    uninstalled_at à NULL automatiquement. AUCUNE donnée Shopify
+    (produits/commandes/clients) touchée ici - rien n'en est mirroré."""
+    shop, _payload = await _verify_shopify_webhook(request)
+    db = SessionLocal()
+    try:
+        shop_row = db.query(ShopifyShop).filter(ShopifyShop.shop_domain == shop).first()
+        if shop_row:
+            shop_row.uninstalled_at = datetime.now(timezone.utc)
+            db.commit()
+    finally:
+        db.close()
     return {"ok": True}
