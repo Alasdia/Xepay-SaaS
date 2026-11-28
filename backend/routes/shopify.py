@@ -45,10 +45,12 @@ simulation (DB jetable + hmac recalculé + échange de code mocké, voir
 le script de test), jamais par un vrai appel. À confirmer par le
 marchand sur Connect1."""
 
+import hashlib
 import hmac
 import json
 import logging
 import os
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -58,7 +60,10 @@ from backend.database import get_db
 from backend.middleware.authorization import require_capability
 from backend.models import (
     BuildshopProvisionRequest,
+    Link,
     ShopifyCustomerUpsertRequest,
+    ShopifyDraftOrderCreateRequest,
+    ShopifyDraftOrderPayment,
     ShopifyOrderCancelRequest,
     ShopifyOrderPayment,
     ShopifyProductUpsertRequest,
@@ -67,10 +72,11 @@ from backend.models import (
     ShopifyStoreRequestCreate,
     UserDB,
     WorkspaceUser,
+    generate_prefixed_id,
 )
 from backend.routes.buildness import _get_latest_company
 from backend.security import create_shopify_state_token, decode_shopify_state_token, decrypt_secret, encrypt_secret
-from backend.services.email_service import send_shopify_store_request_internal_email
+from backend.services.email_service import send_shopify_payment_link_email, send_shopify_store_request_internal_email
 from backend.services.buildshop_service import (
     get_buildshop_readiness,
     provision_catalog,
@@ -85,6 +91,7 @@ from backend.services.shopify_service import (
     build_authorize_url,
     cancel_order,
     create_customer,
+    create_draft_order,
     create_product,
     exchange_code_for_token,
     get_shop_info,
@@ -101,6 +108,8 @@ from backend.services.shopify_service import (
     update_product,
     verify_hmac,
 )
+
+PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "https://api.xepay.finance")
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -691,6 +700,116 @@ async def shopify_cancel_order(
     # presque toujours false ici : c'est une annulation LANCÉE, pas
     # confirmée. Le frontend doit l'afficher comme telle.
     return {"shop_domain": shop_row.shop_domain, "job": job}
+
+
+# =========================================================
+# Commande créée DEPUIS le dashboard Xepay pour un client du marchand
+# (demande explicite du 2026-11-28 : "le marchand doit comprendre que
+# cette commande... est payée via un lien xepay") - voir
+# services/shopify_service.py::create_draft_order/complete_draft_order
+# pour la discussion complète (draftOrderInvoiceSend écarté, jamais via
+# le checkout Shopify natif). Même capacité que les autres écritures
+# Shopify (manage_shopify_data). Le Link généré ici suit EXACTEMENT le
+# même schéma que shopify_orders_create_webhook (routes/webhook/
+# shopify.py) - token haché, pas d'expiration, max_uses=1 - afin que
+# tout le reste du flux de paiement Xepay (page /pay/{token}, webhook
+# process_checkout_session_payment) traite ce lien sans aucune
+# distinction particulière.
+# =========================================================
+
+@router.post("/shopify/draft-orders", status_code=201)
+async def create_shopify_draft_order(
+    data: ShopifyDraftOrderCreateRequest,
+    db: Session = Depends(get_db),
+    membership: WorkspaceUser = Depends(require_capability("manage_shopify_data")),
+):
+    shop_row = _get_connected_shop(db, membership.workspace_id)
+    if not shop_row:
+        raise HTTPException(status_code=404, detail="Aucune boutique Shopify connectée")
+
+    line_items = [item.model_dump() for item in data.line_items]
+    # note/tags : AFFICHÉS sur la commande résultante dans l'admin Shopify
+    # du marchand (voir create_draft_order) - c'est ce qui permet au
+    # marchand de comprendre, en consultant Shopify, que cette commande
+    # précise a été créée depuis Xepay et sera payée via un lien Xepay
+    # (paymentGatewayNames ne le précisera pas, voir complete_draft_order).
+    note = "Commande créée depuis le dashboard Xepay - payée via un lien de paiement Xepay."
+    if data.note:
+        note = f"{note} {data.note}"
+
+    try:
+        draft_order = await create_draft_order(
+            shop_row.shop_domain, decrypt_secret(shop_row.access_token), line_items,
+            customer_email=data.customer_email, note=note, tags=["Xepay"],
+        )
+    except ShopifyScopeError:
+        raise HTTPException(
+            status_code=409,
+            detail="Le scope write_draft_orders n'est pas accordé - reconnectez la boutique après l'avoir ajouté au Partner Dashboard",
+        )
+    except ShopifyRateLimitError:
+        raise HTTPException(status_code=429, detail="Limite Shopify atteinte, réessayez dans quelques secondes")
+    except ShopifyAPIError as e:
+        logger.warning("Échec draftOrderCreate pour %s : %s", shop_row.shop_domain, e.body)
+        raise HTTPException(status_code=400, detail="Shopify a refusé la création de cette commande")
+
+    draft_order_gid = draft_order.get("id")
+    if not draft_order_gid:
+        logger.error("draftOrderCreate sans id pour %s : %s", shop_row.shop_domain, draft_order)
+        raise HTTPException(status_code=502, detail="Réponse Shopify inattendue")
+
+    total = (draft_order.get("totalPriceSet") or {}).get("shopMoney") or {}
+    amount = total.get("amount")
+    currency = total.get("currencyCode") or "USD"
+
+    raw_token = generate_prefixed_id("pl")
+    hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
+    pay_url = f"{PUBLIC_API_URL}/pay/{raw_token}"
+
+    link = Link(
+        id=generate_prefixed_id("lk"),
+        token=hashed_token,
+        user_id=membership.workspace_id,
+        email=data.customer_email,
+        name=f"Commande Shopify {data.customer_name or data.customer_email}",
+        amount=float(amount) if amount is not None else None,
+        currency=str(currency).upper(),
+        url=pay_url,
+        created_at=datetime.now(timezone.utc),
+        active=True,
+        # Pas d'expiration, max_uses=1 : même convention que le Link généré
+        # par shopify_orders_create_webhook (routes/webhook/shopify.py).
+        expires_at=None,
+        max_uses=1,
+        link_metadata={
+            "workspace_id": membership.workspace_id,
+            "user_id": membership.workspace_id,
+            "xepay_type": "shopify_draft_order_payment",
+            "shopify_shop_domain": shop_row.shop_domain,
+            "shopify_draft_order_gid": draft_order_gid,
+        },
+        source="shopify",
+    )
+    db.add(link)
+    db.flush()
+
+    db.add(ShopifyDraftOrderPayment(
+        shop_domain=shop_row.shop_domain,
+        draft_order_gid=draft_order_gid,
+        link_id=link.id,
+        merchant_id=membership.workspace_id,
+    ))
+    db.commit()
+
+    try:
+        send_shopify_payment_link_email(data.customer_email, data.customer_name or data.customer_email, amount, currency, pay_url)
+    except Exception:
+        # Best-effort, même convention que shopify_orders_create_webhook : le
+        # Link existe déjà et reste consultable/renvoyable depuis le
+        # dashboard Xepay même si cet envoi échoue.
+        logger.exception("Échec envoi email lien Xepay pour la commande Shopify (draft %s)", draft_order_gid)
+
+    return {"shop_domain": shop_row.shop_domain, "draft_order_gid": draft_order_gid, "pay_url": pay_url, "customer_email": data.customer_email}
 
 
 # =========================================================

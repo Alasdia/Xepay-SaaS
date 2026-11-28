@@ -37,19 +37,24 @@ SHOPIFY_CLIENT_ID = os.getenv("SHOPIFY_CLIENT_ID")
 SHOPIFY_CLIENT_SECRET = os.getenv("SHOPIFY_CLIENT_SECRET")
 SHOPIFY_REDIRECT_URI = os.getenv("SHOPIFY_REDIRECT_URI", "https://api.xepay.finance/auth/shopify/callback")
 # Doit rester IDENTIQUE aux scopes déclarés dans le Partner Dashboard pour
-# "Xepay Sync" - read_customers/write_customers ajoutés le 2026-11-24.
+# "Xepay Sync" - read_customers/write_customers ajoutés le 2026-11-24,
+# write_draft_orders ajouté le 2026-11-28 (commande créée depuis le
+# dashboard Xepay, voir create_draft_order/complete_draft_order
+# plus bas).
 # IMPORTANT : ce changement ne s'applique QU'AUX NOUVELLES autorisations -
 # une boutique
 # déjà connectée (Connect0/Connect1) garde le token émis avec l'ANCIEN
 # jeu de scopes tel quel ; elle doit être reconnectée (GET /shopify/
 # install, Paramètres > Shopify) pour que Shopify émette un nouveau
-# token couvrant read_customers (OAuth Shopify : le scope d'un token
-# déjà émis ne s'étend jamais rétroactivement, re-consentement
-# obligatoire). Un scope demandé ici mais absent du Partner Dashboard
-# ferait échouer /admin/oauth/authorize côté Shopify.
+# token couvrant read_customers/write_draft_orders (OAuth Shopify : le
+# scope d'un token déjà émis ne s'étend jamais rétroactivement,
+# re-consentement obligatoire). Un scope demandé ici mais absent du
+# Partner Dashboard ferait échouer /admin/oauth/authorize côté Shopify -
+# AJOUTER write_draft_orders au Partner Dashboard AVANT de déployer ce
+# changement, sinon toute nouvelle connexion échouerait.
 SHOPIFY_SCOPES = os.getenv(
     "SHOPIFY_SCOPES",
-    "read_orders,write_orders,read_products,write_products,read_customers,write_customers",
+    "read_orders,write_orders,read_products,write_products,read_customers,write_customers,write_draft_orders",
 )
 SHOPIFY_TIMEOUT_SECONDS = 10
 # Version d'API Admin GraphQL - voir shopify.dev, une release stable par
@@ -924,3 +929,89 @@ async def cancel_order(shop: str, access_token: str, order_id, reason: str, rest
     if user_errors:
         raise ShopifyAPIError(200, str(user_errors))
     return payload.get("job") or {}
+
+
+# =========================================================
+# Commande créée DEPUIS le dashboard Xepay pour un client (ajoutée le
+# 2026-11-28, demande explicite) - JAMAIS via le checkout Shopify
+# (draftOrderInvoiceSend, écarté : renvoie systématiquement vers le
+# checkout Shopify natif, sans paramètre pour y substituer une URL
+# externe - voir la discussion du 2026-11-28). À la place :
+# create_draft_order construit la commande, un Link Xepay est généré
+# et envoyé directement au client (voir routes/shopify.py::
+# create_shopify_draft_order), puis complete_draft_order (appelée
+# UNIQUEMENT une fois le paiement Xepay acquis, voir
+# shopify_order_sync_service.py) la marque payée côté Shopify.
+# =========================================================
+
+async def create_draft_order(
+    shop: str, access_token: str, line_items: list[dict],
+    customer_email: str | None = None, note: str | None = None, tags: list[str] | None = None,
+) -> dict:
+    """draftOrderCreate - line_items : lignes PERSONNALISÉES
+    ({"title","price","quantity"}, jamais un variantId d'un produit
+    existant dans cette 1re itération - voir ShopifyDraftOrderLineItem,
+    models.py). "note"/"tags" (confirmé le 2026-11-28, DraftOrderInput)
+    sont affichés sur la commande RÉSULTANTE dans l'admin Shopify du
+    marchand une fois complétée - c'est ce qui permet au marchand de
+    voir que cette commande précise a été créée depuis Xepay, même si
+    paymentGatewayNames (complete_draft_order, sans paymentGatewayId)
+    ne le précise pas."""
+    input_data = {
+        "lineItems": [
+            {"title": li["title"], "originalUnitPrice": str(li["price"]), "quantity": li["quantity"]}
+            for li in line_items
+        ],
+    }
+    if customer_email:
+        input_data["email"] = customer_email
+    if note:
+        input_data["note"] = note
+    if tags:
+        input_data["tags"] = tags
+
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        mutation draftOrderCreate($input: DraftOrderInput!) {
+          draftOrderCreate(input: $input) {
+            draftOrder { id totalPriceSet { shopMoney { amount currencyCode } } }
+            userErrors { field message }
+          }
+        }
+        """,
+        {"input": input_data},
+    )
+    payload = result.get("draftOrderCreate") or {}
+    user_errors = payload.get("userErrors") or []
+    if user_errors:
+        raise ShopifyAPIError(200, str(user_errors))
+    return payload.get("draftOrder") or {}
+
+
+async def complete_draft_order(shop: str, access_token: str, draft_order_gid: str) -> dict:
+    """draftOrderComplete SANS paymentGatewayId - confirmé optionnel le
+    2026-11-28 (shopify.dev) : aucune API fiable n'expose l'id réel du
+    gateway manuel "Xepay" du marchand de toute façon (limitation
+    documentée côté Shopify, pas un manque de notre part). Appelée
+    UNIQUEMENT une fois le paiement Xepay réellement acquis (voir
+    shopify_order_sync_service.py::sync_draft_order_paid_with_shopify),
+    jamais avant - cette mutation marque la commande payée, inventaire
+    décompté immédiatement côté Shopify."""
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        mutation draftOrderComplete($id: ID!) {
+          draftOrderComplete(id: $id) {
+            draftOrder { id order { id name } }
+            userErrors { field message }
+          }
+        }
+        """,
+        {"id": draft_order_gid},
+    )
+    payload = result.get("draftOrderComplete") or {}
+    user_errors = payload.get("userErrors") or []
+    if user_errors:
+        raise ShopifyAPIError(200, str(user_errors))
+    return payload.get("draftOrder") or {}
