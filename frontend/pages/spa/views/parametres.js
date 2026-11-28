@@ -3120,37 +3120,44 @@ function shopifyTemplate() {
   `;
 }
 
-// Scopes attendus par le code actuel (voir SHOPIFY_SCOPES, backend/
-// services/shopify_service.py) - dupliqués ici UNIQUEMENT pour l'affichage
-// (self-diagnostic côté marchand, voir shopifyCardHtml) : jamais utilisés
-// pour une décision côté serveur, qui reste l'unique source de vérité
-// (has_customers_scope/has_write_customers_scope).
-const SHOPIFY_EXPECTED_SCOPES = [
-  "read_orders", "write_orders", "read_products", "write_products",
-  "read_customers", "write_customers",
-];
-
+// PLUS de comparaison de scopes ici (SHOPIFY_EXPECTED_SCOPES vs
+// status.scope) - SUPPRIMÉE le 2026-11-28, signalé par l'utilisateur
+// sur une boutique VENANT D'ÊTRE connectée (donc le token le plus
+// récent possible) qui affichait pourtant des scopes "manquants"
+// inventés par cette comparaison, jamais par Shopify lui-même. Cause :
+// status.scope (ShopifyShop.scope, la chaîne brute renvoyée par
+// l'échange OAuth) a déjà été prouvée PEU FIABLE pour ce genre de
+// comparaison côté SERVEUR le 2026-11-24 (voir routes/shopify.py,
+// has_customers_scope/has_write_customers_scope retirées à cette
+// date - "une boutique réelle avait read_orders/read_products
+// fonctionnels alors que cette même chaîne ne les listait pas non
+// plus") ; ce bloc frontend comparait encore cette même chaîne
+// peu fiable sans avoir jamais été corrigé en même temps, 4 jours
+// après. La SEULE source de vérité reste un VRAI appel Shopify au
+// moment de l'action (ShopifyScopeError, levée UNIQUEMENT sur un
+// vrai refus ACCESS_DENIED - voir shopify_customers/
+// shopify_create_customer, routes/shopify.py) : plus aucune
+// déduction a priori n'est affichée ici.
+//
 // Installer/rouvrir "Xepay Sync" depuis l'admin Shopify NE redemande
 // JAMAIS les scopes à jour (voir handle_shopify_app_entry, backend/
 // routes/shopify.py : une boutique déjà connectée saute directement sur
 // la page "connecté", sans jamais repasser par /admin/oauth/authorize) -
 // découvert le 2026-11-24 après plusieurs tentatives infructueuses. Le
 // SEUL moyen de forcer une nouvelle demande de consentement (donc une
-// nouvelle liste de scopes) est de rappeler GET /shopify/install
-// explicitement - ce bouton, absent jusqu'ici dès qu'une boutique était
-// déjà connectée, est le mécanisme qui manquait.
+// nouvelle liste de scopes, si le Partner Dashboard en déclare de
+// nouveaux) est de rappeler GET /shopify/install explicitement - ce
+// bouton reste donc utile en soi, même sans diagnostic automatique
+// pour savoir QUAND s'en servir.
 function shopifyCardHtml(status) {
   if (status && status.connected) {
-    const grantedScopes = (status.scope || "").split(",").map((s) => s.trim()).filter(Boolean);
-    const missingScopes = SHOPIFY_EXPECTED_SCOPES.filter((s) => !grantedScopes.includes(s));
     return `
       <div class="params-promo-card">
         <h3 class="params-promo-title">Boutique Shopify connectée</h3>
         <p class="params-promo-sub">Xepay Sync encaisse les commandes de <strong>${status.shop_domain}</strong> payées avec la méthode de paiement manuelle "Xepay" et met à jour leur statut sur Shopify une fois réglées.</p>
-        <p class="params-promo-sub" style="margin-top:8px;"><strong>Autorisations accordées :</strong> ${grantedScopes.length ? grantedScopes.join(", ") : "aucune"}</p>
-        ${missingScopes.length ? `<p class="params-promo-sub" style="color:#b45309;"><strong>Manquantes :</strong> ${missingScopes.join(", ")} - cliquez "Mettre à jour les autorisations" ci-dessous après les avoir ajoutées au Partner Dashboard.</p>` : ""}
+        <p class="params-promo-sub" style="margin-top:8px;">En cas d'erreur de permission sur une action précise (clients, produits, commandes...), renouvelez les autorisations ci-dessous après les avoir ajoutées au Partner Dashboard.</p>
         <div class="params-promo-actions" style="gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;">
-          <button type="button" id="p-shopify-reconnect-btn" class="create-client-btn" data-shop-domain="${status.shop_domain}">Mettre à jour les autorisations</button>
+          <button type="button" id="p-shopify-reconnect-btn" class="create-client-btn" data-shop-domain="${status.shop_domain}">Renouveler les autorisations</button>
         </div>
       </div>
     `;
