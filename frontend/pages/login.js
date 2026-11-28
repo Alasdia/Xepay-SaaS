@@ -250,6 +250,23 @@ function finalizeLogin(email, workspaceId, accountId) {
   `;
   showToast('success', 'CONNEXION RÉUSSIE', 'Bienvenue sur votre dashboard Xepay.', 3000);
   setTimeout(() => {
+    // "next" (ajouté le 2026-11-27, voir log_middleware.py) : présent
+    // uniquement quand cette page a été ouverte après une redirection
+    // automatique depuis une route API protégée atteinte par
+    // navigation directe (ex. /shopify/install avec une session
+    // expirée) - renvoie vers cette même destination une fois
+    // connecté, plutôt que sur le tableau de bord nu. Re-validé ICI
+    // (jamais fait confiance au contenu de l'URL tel quel, même si
+    // notre propre middleware ne génère que des valeurs sûres) :
+    // doit commencer EXACTEMENT par le domaine de l'API - anti
+    // open-redirect, un lien "login.html?next=https://evil.com/..."
+    // forgé et partagé ne doit jamais pouvoir rediriger ailleurs après
+    // une connexion réelle.
+    const next = new URLSearchParams(window.location.search).get('next');
+    if (next && next.startsWith('https://api.xepay.finance/')) {
+      window.location.href = next;
+      return;
+    }
     window.location.href = accountId
       ? `https://app.xepay.finance/dashboard.html?account_id=${accountId}`
       : `https://app.xepay.finance/dashboard.html`;
