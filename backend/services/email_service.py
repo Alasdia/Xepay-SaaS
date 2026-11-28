@@ -23,6 +23,15 @@ BUILDNESS_CORRECTION_NOTIFY_EMAIL = os.getenv("BUILDNESS_CORRECTION_NOTIFY_EMAIL
 # buildshop_service.py) et effectue le transfert Partner Dashboard,
 # confirmé impossible à automatiser.
 SHOPIFY_STORE_REQUEST_NOTIFY_EMAIL = os.getenv("SHOPIFY_STORE_REQUEST_NOTIFY_EMAIL")
+# Boîte interne Xepay qui reçoit les 3 webhooks RGPD obligatoires
+# (customers/data_request, customers/redact, shop/redact - voir
+# send_shopify_gdpr_request_internal_email ci-dessous, routes/webhook/
+# shopify.py) - customers/data_request n'a AUCUNE automatisation
+# possible côté Xepay (compiler et envoyer les données d'un client à
+# sa demande est un acte humain), et même pour redact/shop_redact (où
+# la suppression EST automatisée, voir les handlers), un humain doit
+# être notifié pour suivi/traçabilité RGPD.
+SHOPIFY_GDPR_NOTIFY_EMAIL = os.getenv("SHOPIFY_GDPR_NOTIFY_EMAIL")
 
 
 def is_notification_enabled(user, event_key: str, legacy_flag: bool | None = None) -> bool:
@@ -631,3 +640,49 @@ def send_shopify_store_request_internal_email(workspace_id, owner_email, request
         }
     )
     print("SHOPIFY STORE REQUEST INTERNAL EMAIL", response.status_code, response.text)
+
+
+def send_shopify_gdpr_request_internal_email(shop_domain, topic, payload):
+    """Vers SHOPIFY_GDPR_NOTIFY_EMAIL - les 3 webhooks RGPD obligatoires
+    (customers/data_request, customers/redact, shop/redact) n'ont
+    AUCUNE automatisation possible pour customers/data_request
+    (compiler et transmettre les données d'un client à sa demande est
+    un acte humain) ; pour redact/shop_redact, la suppression EST déjà
+    automatisée côté appelant (voir routes/webhook/shopify.py) - cet
+    email ne sert alors qu'au suivi/traçabilité RGPD, jamais à
+    déclencher l'action elle-même. "payload" (dict JSON brut du
+    webhook) est affiché TEL QUEL (pré-formaté, pas de template HTML
+    par champ) : sa forme exacte n'est pas garantie identique entre les
+    3 topics, un humain doit pouvoir lire le brut plutôt qu'un extrait
+    partiel qui aurait pu rater un champ pertinent."""
+    if not SHOPIFY_GDPR_NOTIFY_EMAIL:
+        logger.warning(
+            "SHOPIFY_GDPR_NOTIFY_EMAIL non configuré - webhook RGPD %s (shop=%s) non notifié par email.",
+            topic, shop_domain,
+        )
+        return
+    safe_shop = html.escape(shop_domain or "")
+    safe_topic = html.escape(topic or "")
+    safe_payload = html.escape(str(payload))
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": "Xepay <noreply@alasdia.com>",
+            "to": [SHOPIFY_GDPR_NOTIFY_EMAIL],
+            "subject": f"[RGPD Shopify] {safe_topic} - {safe_shop}",
+            "html": f"""
+                <h2>Webhook RGPD Shopify reçu</h2>
+                <p>Boutique : <b>{safe_shop}</b></p>
+                <p>Topic : <b>{safe_topic}</b></p>
+                <p>Payload brut :</p>
+                <pre>{safe_payload}</pre>
+                <p>customers/data_request : compiler et transmettre manuellement les données du client concerné.<br>
+                customers/redact / shop/redact : suppression déjà effectuée automatiquement côté Xepay - cet email est uniquement informatif.</p>
+            """
+        }
+    )
+    print("SHOPIFY GDPR INTERNAL EMAIL", response.status_code, response.text)

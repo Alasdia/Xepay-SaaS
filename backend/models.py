@@ -1069,7 +1069,15 @@ class ShopifyShop(Base):
     pas de mécanisme de déconnexion qui viderait cette colonne - une
     ligne ShopifyShop n'existe QUE si un vrai token est en main (voir
     shopify_callback, routes/shopify.py, qui ne crée/met à jour la ligne
-    qu'après un échange OAuth réussi)."""
+    qu'après un échange OAuth réussi).
+
+    uninstalled_at (ajouté le 2026-11-28, webhook app/uninstalled) :
+    SEUL signal de désinstallation - access_token reste tel quel
+    (contrainte ci-dessus, jamais vidé), devenu simplement obsolète/
+    révoqué côté Shopify. _get_connected_shop (routes/shopify.py)
+    l'exclut désormais explicitement. Remis à NULL automatiquement sur
+    une ré-installation (shopify_callback, même ligne réutilisée via
+    shop_domain UNIQUE)."""
     __tablename__ = "shopify_shops"
 
     id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("shp"))
@@ -1079,6 +1087,103 @@ class ShopifyShop(Base):
     scope = Column(String, nullable=True)
     installed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    uninstalled_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class ShopifyProductMirror(Base):
+    """Copie locale d'un produit Shopify, tenue à jour par webhooks
+    (products/create|update|delete - ajouté le 2026-11-28, demande
+    explicite de l'utilisateur de mirrorer produits/commandes/clients,
+    PAS juste réagir au cycle de vie de l'app comme initialement
+    recommandé). Remplace, pour un futur usage qui en aurait besoin,
+    la lecture live GraphQL (list_products, services/shopify_service.py,
+    toujours utilisée telle quelle par l'onglet Commerce > Shopify - ce
+    mirroir est un magasin SUPPLÉMENTAIRE, il ne remplace aucune route
+    existante).
+
+    shopify_product_id : id NUMÉRIQUE brut du payload REST webhook
+    (jamais le GID GraphQL "gid://shopify/Product/123" utilisé par
+    list_products - DEUX représentations différentes de la même
+    ressource selon qu'on vient d'un webhook REST ou d'un appel
+    GraphQL direct, jamais confondues)."""
+    __tablename__ = "shopify_product_mirrors"
+
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("spm"))
+    shop_domain = Column(String, nullable=False, index=True)
+    shopify_product_id = Column(String, nullable=False)
+    title = Column(String, nullable=True)
+    status = Column(String, nullable=True)
+    vendor = Column(String, nullable=True)
+    price_min = Column(Float, nullable=True)
+    price_max = Column(Float, nullable=True)
+    image_url = Column(String, nullable=True)
+    shopify_created_at = Column(DateTime(timezone=True), nullable=True)
+    shopify_updated_at = Column(DateTime(timezone=True), nullable=True)
+    raw_payload = Column(JSON, nullable=True)
+    synced_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint("shop_domain", "shopify_product_id", name="uq_shopify_product_mirror_shop_product"),
+    )
+
+
+class ShopifyOrderMirror(Base):
+    """Copie locale d'une commande Shopify, tenue à jour par webhooks
+    (orders/create pour la création - voir le handler existant, étendu
+    pour mirrorer EN PLUS de sa logique Link Xepay déjà en place -, et
+    orders/update pour le reste du cycle de vie) - ajouté le
+    2026-11-28, même contexte que ShopifyProductMirror ci-dessus.
+    AUCUN rapport avec ShopifyOrderPayment (qui, lui, ne trace que les
+    commandes payées via la méthode manuelle "Xepay" + le Link associé)
+    - celle-ci mirrore TOUTES les commandes, quelle que soit leur
+    méthode de paiement."""
+    __tablename__ = "shopify_order_mirrors"
+
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("som"))
+    shop_domain = Column(String, nullable=False, index=True)
+    shopify_order_id = Column(String, nullable=False)
+    name = Column(String, nullable=True)
+    financial_status = Column(String, nullable=True)
+    fulfillment_status = Column(String, nullable=True)
+    cancelled_at = Column(DateTime(timezone=True), nullable=True)
+    total_price = Column(Float, nullable=True)
+    currency = Column(String, nullable=True)
+    customer_email = Column(String, nullable=True)
+    shopify_created_at = Column(DateTime(timezone=True), nullable=True)
+    shopify_updated_at = Column(DateTime(timezone=True), nullable=True)
+    raw_payload = Column(JSON, nullable=True)
+    synced_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint("shop_domain", "shopify_order_id", name="uq_shopify_order_mirror_shop_order"),
+    )
+
+
+class ShopifyCustomerMirror(Base):
+    """Copie locale d'un client Shopify, tenue à jour par webhooks
+    (customers/create|update|delete) - ajouté le 2026-11-28, même
+    contexte que ShopifyProductMirror ci-dessus. Purgée entièrement sur
+    customers/redact ou shop/redact (RGPD, voir routes/webhook/
+    shopify.py) - jamais conservée après une demande de suppression."""
+    __tablename__ = "shopify_customer_mirrors"
+
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("scm"))
+    shop_domain = Column(String, nullable=False, index=True)
+    shopify_customer_id = Column(String, nullable=False)
+    first_name = Column(String, nullable=True)
+    last_name = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    orders_count = Column(Integer, nullable=True)
+    total_spent = Column(Float, nullable=True)
+    shopify_created_at = Column(DateTime(timezone=True), nullable=True)
+    shopify_updated_at = Column(DateTime(timezone=True), nullable=True)
+    raw_payload = Column(JSON, nullable=True)
+    synced_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint("shop_domain", "shopify_customer_id", name="uq_shopify_customer_mirror_shop_customer"),
+    )
 
 
 class ShopifyOrderPayment(Base):

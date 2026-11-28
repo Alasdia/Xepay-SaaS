@@ -331,6 +331,110 @@ async def register_order_webhook(shop: str, access_token: str) -> None:
         raise ShopifyAPIError(200, str(user_errors))
 
 
+# =========================================================
+# Mirroring produits/commandes/clients (ajouté le 2026-11-28, demande
+# EXPLICITE de l'utilisateur de synchroniser pleinement - pas
+# uniquement réagir au cycle de vie de l'app - après confirmation que
+# ça revient sur le principe du 2026-11-24 "jamais de copie locale,
+# toujours lu en direct" pour l'onglet Commerce > Shopify, QUI RESTE
+# INCHANGÉ : ce mirroir est un magasin SUPPLÉMENTAIRE, voir
+# models.Shopify{Product,Order,Customer}Mirror).
+#
+# ORDERS_CREATE n'apparaît PAS dans SHOPIFY_MIRROR_WEBHOOK_TOPICS :
+# déjà géré par register_order_webhook/SHOPIFY_ORDERS_WEBHOOK_URL
+# ci-dessus - jamais une 2e souscription vers une 2e URL pour le même
+# topic (le handler existant mirrore désormais EN PLUS de sa logique
+# Link Xepay, voir routes/webhook/shopify.py).
+#
+# Les 3 topics RGPD (customers/data_request, customers/redact,
+# shop/redact) n'y apparaissent PAS non plus, pour une raison
+# DIFFÉRENTE - vérifié le 2026-11-28 (community.shopify.dev) :
+# Shopify REFUSE ces 3 topics via webhookSubscriptionCreate, ils ne
+# sont configurables QUE via shopify.app.toml (CLI moderne, jamais
+# utilisé par cette app - OAuth manuel historique) ou la section
+# "Compliance webhooks" du Partner Dashboard (configuration MANUELLE,
+# une seule fois, côté humain) - voir les routes dédiées dans
+# routes/webhook/shopify.py et le message à l'utilisateur sur les URLs
+# à y coller.
+SHOPIFY_WEBHOOK_BASE_URL = os.getenv("SHOPIFY_WEBHOOK_BASE_URL", "https://api.xepay.finance/webhook/shopify")
+
+SHOPIFY_MIRROR_WEBHOOK_TOPICS = {
+    "ORDERS_UPDATE": f"{SHOPIFY_WEBHOOK_BASE_URL}/orders-update",
+    "PRODUCTS_CREATE": f"{SHOPIFY_WEBHOOK_BASE_URL}/products-create",
+    "PRODUCTS_UPDATE": f"{SHOPIFY_WEBHOOK_BASE_URL}/products-update",
+    "PRODUCTS_DELETE": f"{SHOPIFY_WEBHOOK_BASE_URL}/products-delete",
+    "CUSTOMERS_CREATE": f"{SHOPIFY_WEBHOOK_BASE_URL}/customers-create",
+    "CUSTOMERS_UPDATE": f"{SHOPIFY_WEBHOOK_BASE_URL}/customers-update",
+    "CUSTOMERS_DELETE": f"{SHOPIFY_WEBHOOK_BASE_URL}/customers-delete",
+    "APP_UNINSTALLED": f"{SHOPIFY_WEBHOOK_BASE_URL}/app-uninstalled",
+}
+
+
+async def _list_webhook_subscriptions(shop: str, access_token: str) -> list[dict]:
+    """Lecture PURE de TOUTES les souscriptions actives (tous topics
+    confondus, contrairement à _find_order_webhook_subscription_id qui
+    filtre sur ORDERS_CREATE uniquement) - factorisée pour
+    register_all_mirror_webhooks, qui doit connaître l'état de TOUS
+    les topics de SHOPIFY_MIRROR_WEBHOOK_TOPICS en UN SEUL appel
+    GraphQL plutôt qu'un par topic."""
+    result = await _admin_graphql(
+        shop, access_token,
+        """
+        query {
+          webhookSubscriptions(first: 50) {
+            edges { node { topic endpoint { __typename ... on WebhookHttpEndpoint { callbackUrl } } } }
+          }
+        }
+        """,
+    )
+    edges = (result.get("webhookSubscriptions") or {}).get("edges") or []
+    return [e["node"] for e in edges]
+
+
+async def register_all_mirror_webhooks(shop: str, access_token: str) -> dict:
+    """Idempotent (même principe que register_order_webhook) : relit
+    TOUTES les souscriptions existantes UNE SEULE FOIS puis ne crée que
+    les topics de SHOPIFY_MIRROR_WEBHOOK_TOPICS encore absents - jamais
+    un abonnement en double. Chaque création est TENTÉE INDÉPENDAMMENT
+    (best-effort par topic, voir la boucle) : un scope manquant sur UN
+    topic (ex. write_customers insuffisant pour CUSTOMERS_*) ne doit
+    jamais empêcher les autres topics de s'enregistrer, et ne doit
+    jamais faire échouer tout l'appel OAuth qui suit cette fonction
+    (shopify_callback, routes/shopify.py)."""
+    existing = await _list_webhook_subscriptions(shop, access_token)
+    existing_callback_by_topic = {}
+    for node in existing:
+        endpoint = node.get("endpoint") or {}
+        existing_callback_by_topic[node.get("topic")] = endpoint.get("callbackUrl")
+
+    created, failed = [], []
+    for topic, callback_url in SHOPIFY_MIRROR_WEBHOOK_TOPICS.items():
+        if existing_callback_by_topic.get(topic) == callback_url:
+            continue
+        try:
+            result = await _admin_graphql(
+                shop, access_token,
+                """
+                mutation webhookSubscriptionCreate($topic: WebhookSubscriptionTopic!, $webhookSubscription: WebhookSubscriptionInput!) {
+                  webhookSubscriptionCreate(topic: $topic, webhookSubscription: $webhookSubscription) {
+                    webhookSubscription { id }
+                    userErrors { field message }
+                  }
+                }
+                """,
+                {"topic": topic, "webhookSubscription": {"callbackUrl": callback_url, "format": "JSON"}},
+            )
+            user_errors = (result.get("webhookSubscriptionCreate") or {}).get("userErrors") or []
+            if user_errors:
+                failed.append({"topic": topic, "error": str(user_errors)})
+            else:
+                created.append(topic)
+        except ShopifyAPIError as e:
+            logger.warning("Echec souscription webhook %s pour %s : %s", topic, shop, e)
+            failed.append({"topic": topic, "error": str(e)})
+    return {"created": created, "failed": failed}
+
+
 async def mark_order_as_paid(shop: str, access_token: str, order_id) -> dict:
     """Mutation orderMarkAsPaid - requiert UNIQUEMENT le scope write_orders
     (déjà accordé par le Partner Dashboard pour "Xepay Sync", confirmé
