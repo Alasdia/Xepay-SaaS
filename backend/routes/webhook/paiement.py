@@ -16,7 +16,7 @@ from backend.services.email_service import (
 )
 from backend.services.webhook_service import send_webhook_event
 from backend.services import commission_service
-from backend.services.shopify_order_sync_service import sync_order_paid_with_shopify
+from backend.services.shopify_order_sync_service import sync_draft_order_paid_with_shopify, sync_order_paid_with_shopify
 import traceback
 import hmac
 import hashlib
@@ -435,8 +435,15 @@ def process_checkout_session_payment(session_dict, user_id, link_id, reference_k
         # profondeur plutôt que de lui faire confiance aveuglément).
         try:
             link = db.query(Link).filter(Link.id == link_id).first()
-            if link and (link.link_metadata or {}).get("xepay_type") == "shopify_order_payment":
+            xepay_type = (link.link_metadata or {}).get("xepay_type") if link else None
+            if xepay_type == "shopify_order_payment":
                 sync_order_paid_with_shopify(db, link, reference_key)
+            # Commande créée DEPUIS le dashboard Xepay (POST /shopify/
+            # draft-orders, routes/shopify.py) - voir
+            # sync_draft_order_paid_with_shopify pour la notification
+            # "payée via Xepay" qui accompagne ce marquage.
+            elif xepay_type == "shopify_draft_order_payment":
+                sync_draft_order_paid_with_shopify(db, link, reference_key)
         except Exception:
             traceback.print_exc()
             print(f"⚠️ Échec synchronisation Shopify (link_id={link_id}, reference={reference_key})")
