@@ -611,6 +611,38 @@ class SecurityEvent(Base):
     ip = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+class Notification(Base):
+    """Centre de notifications (icône cloche, bandeau du haut -
+    #notifications-btn) - AJOUTÉ le 2026-11-28 : ce bouton n'était relié
+    à RIEN jusqu'ici (voir spa/app.js, un simple showToast statique),
+    confirmé "100% inutilisé" par l'utilisateur. Distinction explicite
+    avec les TOASTS (éphémères, réservés aux actions faites DEPUIS le
+    dashboard Xepay) : une Notification signale un évènement survenu
+    AILLEURS (ex. un produit/client/commande créé directement sur la
+    boutique Shopify connectée, jamais depuis Xepay) - persistée par
+    workspace jusqu'à lecture explicite (read_at).
+
+    AUCUN rapport avec le mirroring de données Shopify (refusé le
+    2026-11-28, le marchand préfère tout lire en direct via l'API) :
+    une ligne ici est un ÉVÈNEMENT PONCTUEL ("ce produit a été créé"),
+    jamais mise à jour après coup, jamais utilisée pour répondre à "à
+    quoi ressemble ce produit aujourd'hui" - title/description sont un
+    résumé figé au moment de l'évènement (ex. le titre du produit tel
+    que reçu dans le webhook), pas une copie synchronisée. Même esprit
+    que SecurityEvent ci-dessus (journal, jamais modifié/supprimé après
+    coup), mais pour des évènements produit plutôt que sécurité, et
+    avec un état lu/non lu (SecurityEvent n'en a pas besoin, c'est un
+    historique consulté à la demande, pas une alerte à acquitter)."""
+    __tablename__ = "notifications"
+
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("ntf"))
+    workspace_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    event_type = Column(String, nullable=False)
+    title = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    read_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
 class PasskeyCredential(Base):
     """Clé d'accès WebAuthn (Paramètres > Informations personnelles). Le
     challenge de la cérémonie d'enregistrement n'est jamais persisté ici -

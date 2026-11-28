@@ -4,8 +4,8 @@ import { registerRoute, configure, start, navigate } from "./core/router.js";
 import { isAuthenticated, setSession, getWorkspaceId, setWorkspaceId } from "./core/state.js";
 import { apiFetch } from "./core/apiClient.js";
 import { initSidebar, setActiveRoute } from "./sidebar.js";
-import { showToast } from "./shared/toast.js";
 import { initAlhuWidget } from "./shared/alhuWidget.js";
+import { initNotificationsPanel } from "./shared/notificationsPanel.js";
 import { initLlcBanner } from "./shared/llcBanner.js";
 import { initPostLlcOnboardingBanner } from "./shared/postLlcOnboardingBanner.js";
 
@@ -168,20 +168,19 @@ async function init() {
   await initLlcBanner();
   await initPostLlcOnboardingBanner();
   initAlhuWidget();
+  // Cloche notifications (ajouté le 2026-11-28) - remplace l'ancien
+  // toast statique "Aucune nouvelle notification" : ce bouton est
+  // désormais relié à un vrai centre de notifications côté serveur
+  // (backend/models.Notification) - voir shared/notificationsPanel.js
+  // pour la distinction explicite avec les toasts (réservés aux
+  // actions faites DEPUIS le dashboard Xepay).
+  initNotificationsPanel();
 
   // Icône ⚙️ du bandeau jaune (#top-banner, dashboard.html) - navigue vers
   // la vue Paramètres (ex-pages Profil/KYC + Sécurité, voir
   // views/parametres.js), comme n'importe quel autre lien de la sidebar.
   document.getElementById("settings-gear-btn")?.addEventListener("click", () => {
     navigate(`/dash/workspace/${encodeURIComponent(getWorkspaceId() || WORKSPACE_PLACEHOLDER)}/parametres`);
-  });
-
-  // Cloche notifications : pas de centre de notifications côté backend pour
-  // l'instant - feedback honnête plutôt qu'un panneau avec du contenu
-  // inventé. Aide : mailto direct (même adresse support que les pages
-  // légales, voir conditions-utilisation.html).
-  document.getElementById("notifications-btn")?.addEventListener("click", () => {
-    showToast("Aucune nouvelle notification");
   });
 
   // Voile "léger" (.overlay-soft-dim, voir sidebar.css) sur le backdrop

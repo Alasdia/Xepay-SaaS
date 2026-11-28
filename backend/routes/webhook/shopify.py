@@ -41,7 +41,18 @@ confirmé que Shopify ne les impose qu'aux apps listées sur l'App Store
 webhooks") - "Xepay Sync" n'y est jamais soumise, et sans aucune
 donnée Shopify mirorée, ces 3 webhooks n'auraient eu aucune action
 réelle à accomplir (juste un email interne disant "rien à faire") -
-jamais ajoutés pour cette raison."""
+jamais ajoutés pour cette raison.
+
+CENTRE DE NOTIFICATIONS (products/create, customers/create, +
+extension d'orders/create ci-dessous - ajouté le 2026-11-28, demande
+explicite de l'utilisateur) - voir models.Notification/services/
+notification_service.py : signale au marchand qu'un produit/client/
+commande a été créé DIRECTEMENT sur sa boutique Shopify (jamais depuis
+le dashboard Xepay, qui lui utilise les toasts - distinction
+explicite). Chaque notification est un ÉVÈNEMENT PONCTUEL (titre/
+résumé figés au moment reçu), JAMAIS une copie synchronisée du
+produit/client/commande - toujours cohérent avec le refus du mirroring
+complet (discussion du 2026-11-28)."""
 
 import hashlib
 import logging
@@ -54,6 +65,7 @@ from sqlalchemy.exc import IntegrityError
 from backend.database import SessionLocal
 from backend.models import Link, ShopifyOrderPayment, ShopifyShop, UserDB, generate_prefixed_id
 from backend.services.email_service import send_shopify_payment_link_email
+from backend.services.notification_service import create_notification
 from backend.services.shopify_service import (
     SHOPIFY_MANUAL_GATEWAY_NAME,
     is_valid_shop_domain,
@@ -78,6 +90,20 @@ def _uses_xepay_gateway(order: dict) -> bool:
     return any(str(n).strip().lower() == target for n in names)
 
 
+def _resolve_shop_merchant_id(db, shop: str) -> str | None:
+    """Résout le workspace Xepay rattaché à cette boutique (ou None si
+    inconnue/jamais rattachée - voir GET /shopify/install, routes/
+    shopify.py) - factorisé le 2026-11-28 pour les 3 handlers du
+    centre de notifications (orders/create étendu ci-dessous +
+    products/create + customers/create), jamais utilisé pour créer une
+    copie du produit/client/commande, seulement pour savoir à QUEL
+    workspace adresser la notification."""
+    shop_row = db.query(ShopifyShop).filter(ShopifyShop.shop_domain == shop).first()
+    if not shop_row or not shop_row.merchant_id:
+        return None
+    return shop_row.merchant_id
+
+
 @router.post("/webhook/shopify/orders-create")
 async def shopify_orders_create_webhook(request: Request):
     raw_body = await request.body()
@@ -98,9 +124,32 @@ async def shopify_orders_create_webhook(request: Request):
     if not order_id:
         raise HTTPException(status_code=400, detail="Commande sans id")
 
+    # Notification (ajoutée le 2026-11-28) - TOUTE commande créée sur la
+    # boutique, indépendamment de son mode de paiement (contrairement à
+    # la génération de lien Xepay plus bas, qui ne concerne QUE le
+    # gateway manuel "Xepay") - session DB indépendante, commitée/
+    # fermée immédiatement, jamais mêlée à la transaction Link/
+    # ShopifyOrderPayment plus bas.
+    notif_db = SessionLocal()
+    try:
+        merchant_id = _resolve_shop_merchant_id(notif_db, shop)
+        if merchant_id:
+            order_name = order.get("name") or f"#{order_id}"
+            amount = order.get("total_price")
+            currency = order.get("currency") or ""
+            create_notification(
+                notif_db, merchant_id, "shopify_order_created",
+                f"Nouvelle commande {order_name} sur votre boutique Shopify",
+                f"{amount} {currency}".strip() if amount is not None else None,
+            )
+    finally:
+        notif_db.close()
+
     # Ignoré (200, jamais une erreur - Shopify livre CE webhook pour
     # TOUTES les commandes, pas seulement celles qui nous intéressent) :
-    # déjà payée, ou pas payée avec "notre" méthode manuelle.
+    # déjà payée, ou pas payée avec "notre" méthode manuelle. La
+    # notification ci-dessus a déjà été créée pour TOUTE commande, ce
+    # filtre ne concerne QUE la génération d'un lien Xepay.
     if order.get("financial_status") != "pending" or not _uses_xepay_gateway(order):
         return {"ok": True, "ignored": True}
 
@@ -236,6 +285,49 @@ async def shopify_app_uninstalled_webhook(request: Request):
         if shop_row:
             shop_row.uninstalled_at = datetime.now(timezone.utc)
             db.commit()
+    finally:
+        db.close()
+    return {"ok": True}
+
+
+@router.post("/webhook/shopify/products-create")
+async def shopify_products_create_webhook(request: Request):
+    """Centre de notifications (models.Notification, ajouté le
+    2026-11-28) - crée UN évènement ponctuel ("ce produit a été créé"),
+    JAMAIS une copie synchronisée du produit (voir le docstring en tête
+    de fichier) : title/description sont un résumé figé au moment
+    reçu, jamais relus/mis à jour ensuite."""
+    shop, product = await _verify_shopify_webhook(request)
+    db = SessionLocal()
+    try:
+        merchant_id = _resolve_shop_merchant_id(db, shop)
+        if merchant_id:
+            title = product.get("title") or "Produit sans titre"
+            create_notification(
+                db, merchant_id, "shopify_product_created",
+                "Nouveau produit sur votre boutique Shopify", title,
+            )
+    finally:
+        db.close()
+    return {"ok": True}
+
+
+@router.post("/webhook/shopify/customers-create")
+async def shopify_customers_create_webhook(request: Request):
+    """Centre de notifications (models.Notification, ajouté le
+    2026-11-28) - même principe que products/create ci-dessus, jamais
+    une copie synchronisée du client."""
+    shop, customer = await _verify_shopify_webhook(request)
+    db = SessionLocal()
+    try:
+        merchant_id = _resolve_shop_merchant_id(db, shop)
+        if merchant_id:
+            name = " ".join(filter(None, [customer.get("first_name"), customer.get("last_name")])).strip()
+            name = name or customer.get("email") or "Client"
+            create_notification(
+                db, merchant_id, "shopify_customer_created",
+                "Nouveau client sur votre boutique Shopify", name,
+            )
     finally:
         db.close()
     return {"ok": True}

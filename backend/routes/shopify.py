@@ -94,7 +94,9 @@ from backend.services.shopify_service import (
     list_orders,
     list_products,
     register_app_uninstalled_webhook,
+    register_customer_created_webhook,
     register_order_webhook,
+    register_product_created_webhook,
     update_customer,
     update_product,
     verify_hmac,
@@ -297,6 +299,17 @@ async def shopify_callback(request: Request, db: Session = Depends(get_db)):
         await register_app_uninstalled_webhook(shop, access_token)
     except ShopifyAPIError:
         logger.exception("Échec de l'enregistrement du webhook app/uninstalled pour %s", shop)
+    # products/create, customers/create : centre de notifications
+    # (models.Notification) - sans eux, le marchand n'est jamais averti
+    # d'un produit/client créé directement sur sa boutique Shopify.
+    try:
+        await register_product_created_webhook(shop, access_token)
+    except ShopifyAPIError:
+        logger.exception("Échec de l'enregistrement du webhook products/create pour %s", shop)
+    try:
+        await register_customer_created_webhook(shop, access_token)
+    except ShopifyAPIError:
+        logger.exception("Échec de l'enregistrement du webhook customers/create pour %s", shop)
 
     # Redirige vers l'admin Shopify de la boutique (jamais vers
     # app.xepay.finance) : une app embarquée doit rester embarquée après
