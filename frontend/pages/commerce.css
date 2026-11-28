@@ -378,6 +378,54 @@
     vertical-align: middle;
 }
 
+/* Commande créée depuis le dashboard (ajouté le 2026-11-28) - lignes
+   d'articles dynamiques, voir shopifyDraftOrderModalHtml/
+   renderShopifyOrdersSection (spa/views/commerce.js). */
+.shopify-draft-order-line-item {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.shopify-draft-order-line-title { flex: 2; }
+.shopify-draft-order-line-price,
+.shopify-draft-order-line-qty { flex: 1; min-width: 0; }
+.shopify-draft-order-line-item input {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #111827;
+    font-size: 13px;
+    padding: 9px 11px;
+    outline: none;
+    box-sizing: border-box;
+    width: 100%;
+}
+.shopify-draft-order-line-remove {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    color: #6b7280;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+}
+.shopify-draft-order-line-remove:hover { background: #f9fafb; color: #111827; }
+.shopify-draft-order-add-line {
+    background: none;
+    border: none;
+    color: #b45309;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 12px;
+}
+.shopify-draft-order-add-line:hover { text-decoration: underline; }
+
 .form-group label:has(input[type="checkbox"]) {
     display: flex;
     align-items: center;

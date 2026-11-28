@@ -6883,6 +6883,7 @@ async function renderShopifyOrdersSection(container, { silent = false } = {}) {
                         <div class="table-title">Commandes Shopify</div>
                         <div class="page-subtitle">${orders.length} commande(s) - ${data.shop_domain}</div>
                     </div>
+                    <button type="button" class="create-client-btn" id="shopify-open-create-draft-order">+ Créer une commande</button>
                 </div>
                 ${!orders.length ? `<p class="text-muted">Aucune commande dans cette boutique.</p>` : `
                 <table class="table">
@@ -7133,6 +7134,52 @@ function shopifyProductModalHtml() {
     `;
 }
 
+// Commande créée DEPUIS le dashboard Xepay (ajouté le 2026-11-28,
+// demande explicite) - jamais via le checkout Shopify : un lien de
+// paiement Xepay est généré et envoyé directement au client, voir
+// POST /shopify/draft-orders (routes/shopify.py). Lignes personnalisées
+// uniquement (titre/prix/quantité) - pas de sélection depuis le
+// catalogue existant dans cette 1re itération, pour ne pas devoir
+// résoudre un variantId Shopify ici.
+function shopifyDraftOrderLineItemRowHtml() {
+    return `
+        <div class="shopify-draft-order-line-item">
+            <input type="text" class="shopify-draft-order-line-title" placeholder="Article" required>
+            <input type="number" step="0.01" min="0.01" class="shopify-draft-order-line-price" placeholder="Prix" required>
+            <input type="number" step="1" min="1" value="1" class="shopify-draft-order-line-qty" placeholder="Qté" required>
+            <button type="button" class="shopify-draft-order-line-remove" aria-label="Retirer cette ligne">×</button>
+        </div>
+    `;
+}
+
+function shopifyDraftOrderModalHtml() {
+    return `
+        <div class="customer-modal-overlay" id="shopify-draft-order-modal">
+            <div class="customer-modal">
+                <div class="customer-modal-header">
+                    <div>
+                        <h3>Créer une commande pour un client</h3>
+                        <p>Un lien de paiement Xepay sera envoyé directement au client par email - il ne passe jamais par le checkout Shopify. Une fois payée, la commande apparaît comme payée dans votre admin Shopify.</p>
+                    </div>
+                    <button type="button" class="customer-modal-close" id="shopify-draft-order-modal-close">×</button>
+                </div>
+                <form id="shopify-draft-order-form">
+                    <div class="form-row">
+                        <div class="form-group"><label>Email du client</label><input type="email" id="shopify-draft-order-customer-email" required></div>
+                        <div class="form-group"><label>Nom du client (optionnel)</label><input type="text" id="shopify-draft-order-customer-name"></div>
+                    </div>
+                    <label>Articles</label>
+                    <div id="shopify-draft-order-line-items">${shopifyDraftOrderLineItemRowHtml()}</div>
+                    <button type="button" class="shopify-draft-order-add-line" id="shopify-draft-order-add-line">+ Ajouter une ligne</button>
+                    <div class="form-group"><label>Note (optionnel)</label><input type="text" id="shopify-draft-order-note"></div>
+                    <div id="shopify-draft-order-total" class="text-muted" style="font-size:13px; margin:8px 0;"></div>
+                    <button type="submit" class="create-client-btn" id="shopify-draft-order-submit">Créer et envoyer le lien de paiement</button>
+                </form>
+            </div>
+        </div>
+    `;
+}
+
 function shopifyCancelOrderModalHtml() {
     return `
         <div class="customer-modal-overlay" id="shopify-cancel-order-modal">
@@ -7193,6 +7240,7 @@ async function renderShopify(container) {
 
         ${shopifyCustomerModalHtml()}
         ${shopifyProductModalHtml()}
+        ${shopifyDraftOrderModalHtml()}
         ${shopifyCancelOrderModalHtml()}
     `;
 
@@ -7350,6 +7398,85 @@ async function renderShopify(container) {
     });
 
     /* =====================================================
+       MODALE COMMANDE CRÉÉE DEPUIS LE DASHBOARD (ajouté le 2026-11-28)
+       - lignes dynamiques (titre/prix/quantité), total recalculé à
+       chaque saisie, jamais envoyé au checkout Shopify : un lien
+       Xepay est généré par le backend et envoyé directement au client.
+    ===================================================== */
+    const draftOrderModal = container.querySelector("#shopify-draft-order-modal");
+    const draftOrderForm = container.querySelector("#shopify-draft-order-form");
+    const draftOrderLineItemsEl = container.querySelector("#shopify-draft-order-line-items");
+    const draftOrderTotalEl = container.querySelector("#shopify-draft-order-total");
+
+    function recalcDraftOrderTotal() {
+        let total = 0;
+        draftOrderLineItemsEl.querySelectorAll(".shopify-draft-order-line-item").forEach((row) => {
+            const price = Number(row.querySelector(".shopify-draft-order-line-price").value) || 0;
+            const qty = Number(row.querySelector(".shopify-draft-order-line-qty").value) || 0;
+            total += price * qty;
+        });
+        draftOrderTotalEl.textContent = total > 0 ? `Total : ${total.toFixed(2)}` : "";
+    }
+
+    function openDraftOrderModal() {
+        draftOrderForm.reset();
+        // Une seule ligne au départ, les autres (ajoutées par le bouton
+        // "+ Ajouter une ligne" pendant une session précédente du
+        // modal) sont retirées - jamais réutilisées d'une ouverture à
+        // l'autre.
+        draftOrderLineItemsEl.innerHTML = shopifyDraftOrderLineItemRowHtml();
+        recalcDraftOrderTotal();
+        draftOrderModal.classList.add("open");
+    }
+
+    container.querySelector("#shopify-draft-order-modal-close").addEventListener("click", () => draftOrderModal.classList.remove("open"));
+    container.querySelector("#shopify-draft-order-add-line").addEventListener("click", () => {
+        draftOrderLineItemsEl.insertAdjacentHTML("beforeend", shopifyDraftOrderLineItemRowHtml());
+    });
+    // Délégué sur le conteneur stable des lignes (jamais ré-attaché par
+    // ligne, qui peuvent être ajoutées/retirées dynamiquement).
+    draftOrderLineItemsEl.addEventListener("click", (e) => {
+        const removeBtn = e.target.closest(".shopify-draft-order-line-remove");
+        if (!removeBtn) return;
+        // Toujours garder au moins une ligne - jamais un formulaire
+        // vide sans aucun article.
+        if (draftOrderLineItemsEl.querySelectorAll(".shopify-draft-order-line-item").length > 1) {
+            removeBtn.closest(".shopify-draft-order-line-item").remove();
+            recalcDraftOrderTotal();
+        }
+    });
+    draftOrderLineItemsEl.addEventListener("input", recalcDraftOrderTotal);
+
+    draftOrderForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const lineItems = Array.from(draftOrderLineItemsEl.querySelectorAll(".shopify-draft-order-line-item")).map((row) => ({
+            title: row.querySelector(".shopify-draft-order-line-title").value.trim(),
+            price: Number(row.querySelector(".shopify-draft-order-line-price").value),
+            quantity: Number(row.querySelector(".shopify-draft-order-line-qty").value),
+        }));
+        if (!lineItems.length || lineItems.some((li) => !li.title || !(li.price > 0) || !(li.quantity > 0))) {
+            showToast("Chaque ligne doit avoir un titre, un prix et une quantité valides", "error");
+            return;
+        }
+        const body = {
+            customer_email: container.querySelector("#shopify-draft-order-customer-email").value.trim(),
+            customer_name: container.querySelector("#shopify-draft-order-customer-name").value.trim() || null,
+            line_items: lineItems,
+            note: container.querySelector("#shopify-draft-order-note").value.trim() || null,
+        };
+        try {
+            const response = await apiFetch("/shopify/draft-orders", { method: "POST", body });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || "Impossible de créer la commande");
+            showToast(`Commande créée - lien de paiement envoyé à ${body.customer_email}`, "success");
+            draftOrderModal.classList.remove("open");
+            if (activeTabKey === "commandes") await reloadActiveTab({ silent: true });
+        } catch (error) {
+            showToast(error.message || "Erreur lors de la création de la commande", "error");
+        }
+    });
+
+    /* =====================================================
        MODALE ANNULATION COMMANDE
     ===================================================== */
     const cancelOrderModal = container.querySelector("#shopify-cancel-order-modal");
@@ -7418,6 +7545,11 @@ async function renderShopify(container) {
         const createProductBtn = event.target.closest("#shopify-open-create-product");
         if (createProductBtn) {
             openProductModal();
+            return;
+        }
+        const createDraftOrderBtn = event.target.closest("#shopify-open-create-draft-order");
+        if (createDraftOrderBtn) {
+            openDraftOrderModal();
             return;
         }
         const editProductBtn = event.target.closest("[data-shopify-edit-product]");

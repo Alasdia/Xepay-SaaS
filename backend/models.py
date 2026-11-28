@@ -336,6 +336,24 @@ class ShopifyProductUpsertRequest(BaseModel):
     price: float | None = Field(default=None, gt=0)
     status: Literal["ACTIVE", "DRAFT", "ARCHIVED"] = "ACTIVE"
 
+class ShopifyDraftOrderLineItem(BaseModel):
+    # Ligne PERSONNALISÉE uniquement (ajouté le 2026-11-28) - jamais un
+    # variantId d'un produit existant dans cette 1re itération, voir
+    # POST /shopify/draft-orders (routes/shopify.py).
+    title: str
+    price: float = Field(gt=0)
+    quantity: int = Field(gt=0, default=1)
+
+class ShopifyDraftOrderCreateRequest(BaseModel):
+    # Commande créée DEPUIS le dashboard Xepay pour un client - jamais
+    # via le checkout Shopify, voir ShopifyDraftOrderPayment (plus bas
+    # dans ce fichier) et services/shopify_service.py::
+    # create_draft_order/complete_draft_order.
+    customer_email: EmailStr
+    customer_name: str | None = None
+    line_items: list[ShopifyDraftOrderLineItem] = Field(min_length=1)
+    note: str | None = Field(default=None, max_length=500)
+
 class ShopifyOrderCancelRequest(BaseModel):
     # Enum EXACT confirmé contre la doc officielle Shopify le 2026-11-24
     # (OrderCancelReason) - Literal pour un 422 FastAPI plutôt qu'un
@@ -1162,4 +1180,35 @@ class ShopifyOrderPayment(Base):
 
     __table_args__ = (
         UniqueConstraint("shop_domain", "shopify_order_id", name="uq_shopify_order_payment_shop_order"),
+    )
+
+
+class ShopifyDraftOrderPayment(Base):
+    """Une commande créée DEPUIS le dashboard Xepay pour un client du
+    marchand (ajouté le 2026-11-28, demande explicite : "le marchand
+    doit comprendre que cette commande... est payée via un lien
+    Xepay") - voir POST /shopify/draft-orders (routes/shopify.py) :
+    un Link Xepay est généré et envoyé directement au client, JAMAIS
+    via le checkout Shopify (contrairement à ShopifyOrderPayment
+    ci-dessus, qui trace une commande créée par un VRAI client ayant
+    déjà choisi le gateway manuel "Xepay" au checkout). Une fois payée,
+    draftOrderComplete (services/shopify_order_sync_service.py::
+    sync_draft_order_paid_with_shopify) marque la commande payée côté
+    Shopify, ET une Notification (models.Notification) confirme
+    explicitement au marchand que CETTE commande a été payée via
+    Xepay - jamais supposé évident juste parce qu'elle apparaît payée
+    dans son admin Shopify."""
+    __tablename__ = "shopify_draft_order_payments"
+
+    id = Column(String, primary_key=True, default=lambda: generate_prefixed_id("sdop"))
+    shop_domain = Column(String, nullable=False, index=True)
+    draft_order_gid = Column(String, nullable=False)
+    link_id = Column(String, ForeignKey("links.id"), nullable=False)
+    merchant_id = Column(String, ForeignKey("users.id"), nullable=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    xepay_reference = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint("shop_domain", "draft_order_gid", name="uq_shopify_draft_order_payment_shop_draft"),
     )
